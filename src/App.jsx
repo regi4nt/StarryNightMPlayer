@@ -48,7 +48,7 @@ const SONGS_DATA = [
 // ─── OpenRouter Free Models — Auto-Fallback ──────────────────────────────────
 // Daftar: https://openrouter.ai/collections/free-models
 // Ganti YOUR_OPENROUTER_KEY dengan key dari https://openrouter.ai/keys (gratis, tanpa kartu kredit)
-const OPENROUTER_API_KEY = "YOUR_OPENROUTER_KEY_HERE";
+const OPENROUTER_API_KEY = "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";
 
 // Model gratis tersedia di OpenRouter (semua berakhiran :free)
 // Sistem akan mencoba satu per satu dari atas ke bawah jika terjadi error/rate limit
@@ -318,7 +318,7 @@ export default function App() {
   };
 
   const pct = duration > 0 ? progress / duration : 0;
-  const hasKey = OPENROUTER_API_KEY !== "YOUR_OPENROUTER_KEY_HERE";
+  const hasKey = OPENROUTER_API_KEY !== "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";
 
   // ── Shared styles ──────────────────────────────────────────────────────────
   const pill = {
