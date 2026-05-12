@@ -68,7 +68,7 @@ const FREE_MODELS = [
 let currentModelIdx = 0;
 
 async function askAI(userPrompt, systemPrompt = "", retryCount = 0) {
-  if (!OPENROUTER_API_KEY || OPENROUTER_API_KEY === "YOUR_OPENROUTER_KEY_HERE") {
+  if (!OPENROUTER_API_KEY || OPENROUTER_API_KEY === "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") {
     return "⚠️ Tambahkan OpenRouter API key di App.jsx baris OPENROUTER_API_KEY.\n\nDapat key gratis di: https://openrouter.ai/keys";
   }
 
