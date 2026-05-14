@@ -1,775 +1,895 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  Play, Pause, SkipBack, SkipForward,
-  LayoutGrid, Compass, Clock, Star, Award,
-  Sparkles, MessageSquare, X, Send, Zap, User, Wifi, WifiOff
+  Play, Pause, SkipBack, SkipForward, Music2,
+  ListMusic, Compass, Heart, Volume2, VolumeX,
+  Sparkles, MessageSquare, X, Send, Zap,
+  ChevronUp, Radio, Headphones, Bot
 } from 'lucide-react';
 
-// ─── Data ───────────────────────────────────────────────────────────────────
-const SONGS_DATA = [
+// ═══════════════════════════════════════════════════════
+//  DATA
+// ═══════════════════════════════════════════════════════
+const SONGS = [
   {
     id: 1,
     title: "Deep Space Night",
-    artist: "SoundHelix Vol. 1",
+    artist: "SoundHelix",
+    album: "Vol. 1",
     cover: "https://images.unsplash.com/photo-1464802686167-b939a6910659?w=400&h=400&fit=crop",
     src: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-    accent: "#3b82f6",
+    color: "#3b82f6",
+    bg: "rgba(59,130,246,0.15)",
     mood: "calm, expansive, mysterious"
   },
   {
     id: 2,
     title: "Lunar Reflection",
-    artist: "SoundHelix Vol. 2",
+    artist: "SoundHelix",
+    album: "Vol. 2",
     cover: "https://images.unsplash.com/photo-1532693322450-2cb5c511067d?w=400&h=400&fit=crop",
     src: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
-    accent: "#a855f7",
+    color: "#a855f7",
+    bg: "rgba(168,85,247,0.15)",
     mood: "melancholic, bright, reflective"
   },
   {
     id: 3,
     title: "Nebula Pulse",
-    artist: "SoundHelix Vol. 3",
+    artist: "SoundHelix",
+    album: "Vol. 3",
     cover: "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=400&h=400&fit=crop",
     src: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
-    accent: "#6366f1",
+    color: "#6366f1",
+    bg: "rgba(99,102,241,0.15)",
     mood: "energetic, rhythmic, futuristic"
   },
   {
     id: 4,
     title: "Aurora Glow",
-    artist: "SoundHelix Vol. 8",
+    artist: "SoundHelix",
+    album: "Vol. 8",
     cover: "https://images.unsplash.com/photo-1531306728370-e2ebd9d7bb99?w=400&h=400&fit=crop",
     src: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
-    accent: "#14b8a6",
+    color: "#14b8a6",
+    bg: "rgba(20,184,166,0.15)",
     mood: "uplifting, organic, vibrant"
   }
 ];
 
-// ─── OpenRouter Free Models — Auto-Fallback ──────────────────────────────────
-// Daftar: https://openrouter.ai/collections/free-models
-// Ganti YOUR_OPENROUTER_KEY dengan key dari https://openrouter.ai/keys (gratis, tanpa kartu kredit)
-const OPENROUTER_API_KEY = "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";
-
-// Model gratis tersedia di OpenRouter (semua berakhiran :free)
-// Sistem akan mencoba satu per satu dari atas ke bawah jika terjadi error/rate limit
-const FREE_MODELS = [
-  "deepseek/deepseek-chat-v3-0324:free",       // DeepSeek V3 — terbaik, 131K ctx
-  "meta-llama/llama-4-maverick:free",            // Llama 4 Maverick — 1M ctx
-  "deepseek/deepseek-r1:free",                   // DeepSeek R1 reasoning — 164K ctx
-  "qwen/qwen3-235b-a22b:free",                   // Qwen3 235B — 131K ctx
-  "meta-llama/llama-3.3-70b-instruct:free",      // Llama 3.3 70B — solid fallback
-  "qwen/qwen-2.5-72b-instruct:free",             // Qwen 2.5 72B
-  "google/gemma-3-12b-it:free",                  // Gemma 3 12B — ringan & cepat
-  "mistralai/mistral-small-3.1-24b-instruct:free", // Mistral Small 3.1
-  "openrouter/quasar-alpha:free",                // Quasar Alpha — OpenRouter native
+// ═══════════════════════════════════════════════════════
+//  AI — OpenRouter dual key + auto-fallback
+// ═══════════════════════════════════════════════════════
+const API_KEYS = [
+  "GANTI_KEY_1_DISINI",  // ← key dari openrouter.ai/keys
+  "GANTI_KEY_2_DISINI",
 ];
 
-// State model: track index model yang sedang dipakai
-let currentModelIdx = 0;
+const FREE_MODELS = [
+  "deepseek/deepseek-chat-v3-0324:free",
+  "meta-llama/llama-4-maverick:free",
+  "deepseek/deepseek-r1:free",
+  "qwen/qwen3-235b-a22b:free",
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "qwen/qwen-2.5-72b-instruct:free",
+  "google/gemma-3-12b-it:free",
+  "mistralai/mistral-small-3.1-24b-instruct:free",
+  "openrouter/quasar-alpha:free",
+];
 
-async function askAI(userPrompt, systemPrompt = "", retryCount = 0) {
-  if (!OPENROUTER_API_KEY || OPENROUTER_API_KEY === "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") {
-    return "⚠️ Tambahkan OpenRouter API key di App.jsx baris OPENROUTER_API_KEY.\n\nDapat key gratis di: https://openrouter.ai/keys";
-  }
+const SLOTS = API_KEYS.flatMap(k => FREE_MODELS.map(m => ({ k, m })));
+let slotIdx = 0;
 
-  // Sudah coba semua model, menyerah
-  if (retryCount >= FREE_MODELS.length) {
-    currentModelIdx = 0; // reset untuk request berikutnya
-    return "🌌 Semua model sedang sibuk. Coba lagi dalam beberapa menit.";
-  }
-
-  const modelId = FREE_MODELS[currentModelIdx % FREE_MODELS.length];
-
+async function askAI(user, system = "", tries = 0) {
+  const valid = API_KEYS.filter(k => k && !k.includes("GANTI_KEY"));
+  if (!valid.length) return "⚠️ Belum ada API key. Isi API_KEYS di App.jsx — gratis di openrouter.ai/keys";
+  if (tries >= SLOTS.length) { slotIdx = 0; return "Semua model sedang sibuk, coba lagi nanti."; }
+  const { k, m } = SLOTS[slotIdx % SLOTS.length];
   try {
     const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+        "Authorization": `Bearer ${k}`,
         "HTTP-Referer": window.location.origin,
-        "X-Title": "Starry Night Music Player"
+        "X-Title": "Starry Night"
       },
       body: JSON.stringify({
-        model: modelId,
-        max_tokens: 300,
+        model: m, max_tokens: 300,
         messages: [
-          ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
-          { role: "user", content: userPrompt }
+          ...(system ? [{ role: "system", content: system }] : []),
+          { role: "user", content: user }
         ]
       })
     });
-
     const data = await res.json();
-
-    // Rate limit atau error → coba model berikutnya
     if (res.status === 429 || res.status === 503 || data.error) {
-      console.warn(`Model ${modelId} limit/error, mencoba model berikutnya...`, data.error?.message);
-      currentModelIdx = (currentModelIdx + 1) % FREE_MODELS.length;
-      return await askAI(userPrompt, systemPrompt, retryCount + 1);
+      slotIdx = (slotIdx + 1) % SLOTS.length;
+      return askAI(user, system, tries + 1);
     }
-
-    const text = data.choices?.[0]?.message?.content;
-    if (!text) {
-      currentModelIdx = (currentModelIdx + 1) % FREE_MODELS.length;
-      return await askAI(userPrompt, systemPrompt, retryCount + 1);
-    }
-
-    return text.trim();
-  } catch (err) {
-    console.warn(`Error pada model ${modelId}:`, err.message);
-    currentModelIdx = (currentModelIdx + 1) % FREE_MODELS.length;
-    return await askAI(userPrompt, systemPrompt, retryCount + 1);
+    const txt = data.choices?.[0]?.message?.content;
+    if (!txt) { slotIdx = (slotIdx + 1) % SLOTS.length; return askAI(user, system, tries + 1); }
+    return txt.trim();
+  } catch {
+    slotIdx = (slotIdx + 1) % SLOTS.length;
+    return askAI(user, system, tries + 1);
   }
 }
 
-function getCurrentModelName() {
-  const id = FREE_MODELS[currentModelIdx % FREE_MODELS.length];
-  return id.split('/')[1]?.replace(':free', '') || id;
-}
+const activeModel = () => SLOTS[slotIdx % SLOTS.length].m.split('/')[1]?.replace(':free','') || '';
+const hasKey = () => API_KEYS.some(k => k && !k.includes("GANTI_KEY"));
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-const fmt = (t) => {
+// ═══════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════
+const fmt = t => {
   if (!t || isNaN(t)) return "0:00";
-  const m = Math.floor(t / 60);
-  const s = Math.floor(t % 60);
-  return `${m}:${s < 10 ? '0' + s : s}`;
+  return `${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,'0')}`;
 };
 
-// ─── Orbital Ring ─────────────────────────────────────────────────────────────
-function OrbitalRing({ pct, accent, progress, duration, artSize, ringSize }) {
-  const cx = ringSize / 2;
-  const cy = ringSize / 2;
-  const r = artSize / 2 + 22;
-  const circ = 2 * Math.PI * r;
-  const angleDeg = pct * 360 - 90;
-  const angleRad = angleDeg * (Math.PI / 180);
-  const dotX = cx + Math.cos(angleRad) * r;
-  const dotY = cy + Math.sin(angleRad) * r;
-  const labelR = r + 20;
-  const curLX = cx + Math.cos(angleRad) * labelR;
-  const curLY = cy + Math.sin(angleRad) * labelR;
-  const botRad = 90 * (Math.PI / 180);
-  const durLX = cx + Math.cos(botRad) * labelR;
-  const durLY = cy + Math.sin(botRad) * labelR;
+// ═══════════════════════════════════════════════════════
+//  ORBITAL RING  — album art + circular progress + time
+// ═══════════════════════════════════════════════════════
+function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, title }) {
+  const cx = size / 2, cy = size / 2;
+  // Ring sits 18px outside art
+  const artR  = size / 2 - 36;   // album art radius
+  const ringR = artR + 18;        // progress ring radius
+  const circ  = 2 * Math.PI * ringR;
+
+  // Dot position (starts at top = -90°)
+  const deg    = pct * 360 - 90;
+  const rad    = deg * Math.PI / 180;
+  const dotX   = cx + Math.cos(rad) * ringR;
+  const dotY   = cy + Math.sin(rad) * ringR;
+
+  // Time label follows dot — pushed 22px further out
+  const lblR  = ringR + 22;
+  const lblX  = cx + Math.cos(rad) * lblR;
+  const lblY  = cy + Math.sin(rad) * lblR;
+
+  // Duration label — always at bottom (90°)
+  const durX  = cx + Math.cos(Math.PI / 2) * lblR;
+  const durY  = cy + Math.sin(Math.PI / 2) * lblR;
+
+  // Start marker — top (−90°)
+  const startX = cx;
+  const startY = cy - ringR;
 
   return (
-    <svg width={ringSize} height={ringSize}
-      className="absolute inset-0 pointer-events-none" style={{ zIndex: 5 }}>
-      <circle cx={cx} cy={cy} r={r} stroke="rgba(255,255,255,0.08)" strokeWidth="2" fill="none" />
-      <circle cx={cx} cy={cy} r={r} stroke={accent} strokeWidth="2.5" fill="none"
-        strokeDasharray={circ} strokeDashoffset={circ - circ * pct}
-        strokeLinecap="round" transform={`rotate(-90 ${cx} ${cy})`}
-        style={{ transition: 'stroke-dashoffset 0.3s linear' }} />
-      <circle cx={dotX} cy={dotY} r={9} fill="white" opacity="0.12" />
-      <circle cx={dotX} cy={dotY} r={5} fill="white"
-        style={{ filter: 'drop-shadow(0 0 5px rgba(255,255,255,0.9))' }} />
-      {pct > 0.015 && (
-        <text x={curLX} y={curLY} textAnchor="middle" dominantBaseline="middle"
-          fill="white" fontSize="10" fontWeight="700" fontFamily="monospace" opacity="0.95">
-          {fmt(progress)}
+    <div style={{ position:'relative', width:size, height:size, flexShrink:0 }}>
+      {/* Album art — rotates when playing */}
+      <div style={{
+        position:'absolute',
+        top: cy - artR, left: cx - artR,
+        width: artR*2, height: artR*2,
+        borderRadius:'50%', overflow:'hidden',
+        border:`3px solid rgba(255,255,255,0.12)`,
+        boxShadow:`0 0 40px -8px ${color}80`,
+        animation: isPlaying ? 'spin20 20s linear infinite' : 'none',
+        zIndex:2
+      }}>
+        <img src={cover} alt={title} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+      </div>
+
+      {/* SVG ring layer */}
+      <svg width={size} height={size} style={{ position:'absolute', inset:0, zIndex:3, overflow:'visible' }}>
+        {/* Track */}
+        <circle cx={cx} cy={cy} r={ringR}
+          stroke="rgba(255,255,255,0.1)" strokeWidth="3" fill="none" />
+
+        {/* Progress arc */}
+        <circle cx={cx} cy={cy} r={ringR}
+          stroke={color} strokeWidth="3.5" fill="none"
+          strokeDasharray={circ}
+          strokeDashoffset={circ - circ * pct}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${cx} ${cy})`}
+          style={{ transition:'stroke-dashoffset 0.35s linear', filter:`drop-shadow(0 0 4px ${color})` }} />
+
+        {/* Start tick mark */}
+        <line x1={startX} y1={startY - 6} x2={startX} y2={startY + 6}
+          stroke="rgba(255,255,255,0.25)" strokeWidth="2" strokeLinecap="round" />
+
+        {/* Dot glow */}
+        <circle cx={dotX} cy={dotY} r={11} fill={color} opacity="0.2" />
+        {/* Dot */}
+        <circle cx={dotX} cy={dotY} r={6} fill="white"
+          style={{ filter:'drop-shadow(0 0 6px rgba(255,255,255,0.9))' }} />
+
+        {/* Current time label — follows dot, only show after 1% */}
+        {pct > 0.01 && (
+          <text x={lblX} y={lblY}
+            textAnchor="middle" dominantBaseline="middle"
+            fill="white" fontSize="11" fontWeight="800" fontFamily="monospace"
+            style={{ filter:'drop-shadow(0 1px 3px rgba(0,0,0,0.8))' }}>
+            {fmt(progress)}
+          </text>
+        )}
+
+        {/* Duration label — fixed at bottom */}
+        <text x={durX} y={durY}
+          textAnchor="middle" dominantBaseline="middle"
+          fill="rgba(255,255,255,0.35)" fontSize="10" fontWeight="600" fontFamily="monospace">
+          {fmt(duration)}
         </text>
-      )}
-      <text x={durLX} y={durLY + 1} textAnchor="middle" dominantBaseline="middle"
-        fill="rgba(255,255,255,0.3)" fontSize="10" fontWeight="600" fontFamily="monospace">
-        {fmt(duration)}
-      </text>
-    </svg>
+
+        {/* "0:00" start label — top */}
+        <text x={startX} y={startY - 16}
+          textAnchor="middle" dominantBaseline="middle"
+          fill="rgba(255,255,255,0.25)" fontSize="10" fontWeight="600" fontFamily="monospace">
+          0:00
+        </text>
+      </svg>
+    </div>
   );
 }
 
-// ─── App ──────────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+//  MAIN APP
+// ═══════════════════════════════════════════════════════
 export default function App() {
-  const [currentTrack, setCurrentTrack] = useState(SONGS_DATA[0]);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [view, setView] = useState('orbital');
-  const [ringSize, setRingSize] = useState(280);
-  const [activeModel, setActiveModel] = useState(getCurrentModelName());
+  const [track, setTrack]         = useState(SONGS[0]);
+  const [playing, setPlaying]     = useState(false);
+  const [progress, setProgress]   = useState(0);
+  const [duration, setDuration]   = useState(0);
+  const [volume, setVolume]       = useState(0.75);
+  const [muted, setMuted]         = useState(false);
+  const [liked, setLiked]         = useState({});
+  const [tab, setTab]             = useState('player');  // player | queue | ai
 
-  // AI
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [chatMessages, setChatMessages] = useState([
-    { role: 'bot', text: "Halo, Penjelajah! Aku Starry Navigator. Tanya apa saja tentang musik atau alam semesta ✨" }
+  // AI states
+  const [insight, setInsight]     = useState('');
+  const [insightLoading, setIL]   = useState(false);
+  const [messages, setMessages]   = useState([
+    { from:'ai', text:'Halo! Saya Starry AI 🌟 Tanya apa saja tentang musik yang sedang diputar, atau minta rekomendasi berdasarkan suasana hati kamu.' }
   ]);
-  const [userInput, setUserInput] = useState("");
-  const [isAiLoading, setIsAiLoading] = useState(false);
-  const [astralInsight, setAstralInsight] = useState("");
-  const [vibeQuery, setVibeQuery] = useState("");
+  const [input, setInput]         = useState('');
+  const [chatLoading, setCL]      = useState(false);
+  const [vibeInput, setVibeInput] = useState('');
+  const [vibeLoading, setVL]      = useState(false);
 
-  const audioRef = useRef(null);
-  const chatBottomRef = useRef(null);
+  // Responsive size
+  const [ringSize, setRingSize]   = useState(280);
+  const audioRef   = useRef(null);
+  const chatEndRef = useRef(null);
 
-  // Responsive ring size
+  // ── Responsive ring ──────────────────────────────────
   useEffect(() => {
-    const update = () => {
-      const sz = Math.max(200, Math.min(300, Math.min(window.innerWidth - 40, window.innerHeight - 280)));
-      setRingSize(sz);
+    const calc = () => {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      // Player tab: ring + controls + title + tabs = ~280px overhead
+      const maxH = vh - 280;
+      const maxW = vw - 48;
+      setRingSize(Math.max(220, Math.min(320, Math.min(maxH, maxW))));
     };
-    update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
+    calc();
+    window.addEventListener('resize', calc);
+    return () => window.removeEventListener('resize', calc);
   }, []);
 
-  const artSize = ringSize - 72;
-
-  // Init audio
+  // ── Audio init ───────────────────────────────────────
   useEffect(() => {
-    audioRef.current = new Audio(currentTrack.src);
-    audioRef.current.volume = 0.7;
+    audioRef.current = new Audio(track.src);
+    audioRef.current.volume = volume;
     return () => { audioRef.current?.pause(); };
   }, []);
 
-  // Audio events
+  // ── Audio events ─────────────────────────────────────
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    const onTime = () => setProgress(audio.currentTime);
-    const onMeta = () => setDuration(audio.duration);
-    const onEnd = () => handleNext();
-    audio.addEventListener('timeupdate', onTime);
-    audio.addEventListener('loadedmetadata', onMeta);
-    audio.addEventListener('ended', onEnd);
+    const a = audioRef.current; if (!a) return;
+    const onTime = () => setProgress(a.currentTime);
+    const onMeta = () => setDuration(a.duration);
+    const onEnd  = () => next();
+    a.addEventListener('timeupdate', onTime);
+    a.addEventListener('loadedmetadata', onMeta);
+    a.addEventListener('ended', onEnd);
     return () => {
-      audio.removeEventListener('timeupdate', onTime);
-      audio.removeEventListener('loadedmetadata', onMeta);
-      audio.removeEventListener('ended', onEnd);
+      a.removeEventListener('timeupdate', onTime);
+      a.removeEventListener('loadedmetadata', onMeta);
+      a.removeEventListener('ended', onEnd);
     };
-  }, [currentTrack]);
+  }, [track]);
 
+  // ── Play/pause ───────────────────────────────────────
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (isPlaying) audio.play().catch(() => setIsPlaying(false));
-    else audio.pause();
-  }, [isPlaying]);
+    const a = audioRef.current; if (!a) return;
+    if (playing) a.play().catch(() => setPlaying(false));
+    else a.pause();
+  }, [playing]);
 
+  // ── Volume/mute ──────────────────────────────────────
   useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages]);
+    if (audioRef.current) audioRef.current.volume = muted ? 0 : volume;
+  }, [volume, muted]);
 
-  const selectTrack = useCallback((track) => {
-    setAstralInsight("");
-    if (currentTrack.id === track.id) {
-      setIsPlaying(p => !p);
-    } else {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = track.src;
-        audioRef.current.load();
-      }
-      setCurrentTrack(track);
-      setProgress(0);
-      setDuration(0);
-      setIsPlaying(true);
+  // ── Chat scroll ──────────────────────────────────────
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior:'smooth' });
+  }, [messages]);
+
+  // ── Track change ─────────────────────────────────────
+  const play = useCallback((t) => {
+    setInsight('');
+    if (track.id === t.id) { setPlaying(p => !p); return; }
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = t.src;
+      audioRef.current.load();
     }
-  }, [currentTrack]);
+    setTrack(t); setProgress(0); setDuration(0); setPlaying(true);
+  }, [track]);
 
-  const handleNext = useCallback(() => {
-    const idx = SONGS_DATA.findIndex(s => s.id === currentTrack.id);
-    selectTrack(SONGS_DATA[(idx + 1) % SONGS_DATA.length]);
-  }, [currentTrack, selectTrack]);
+  const next = useCallback(() => {
+    const i = SONGS.findIndex(s => s.id === track.id);
+    play(SONGS[(i+1) % SONGS.length]);
+  }, [track, play]);
 
-  const handlePrev = useCallback(() => {
-    const idx = SONGS_DATA.findIndex(s => s.id === currentTrack.id);
-    selectTrack(SONGS_DATA[(idx - 1 + SONGS_DATA.length) % SONGS_DATA.length]);
-  }, [currentTrack, selectTrack]);
+  const prev = useCallback(() => {
+    const i = SONGS.findIndex(s => s.id === track.id);
+    play(SONGS[(i-1+SONGS.length) % SONGS.length]);
+  }, [track, play]);
 
-  const runAI = async (prompt, system) => {
-    const result = await askAI(prompt, system);
-    setActiveModel(getCurrentModelName());
-    return result;
+  // Seek on ring click (simple: pass pct based on progress bar click)
+  const seek = (e) => {
+    const bar = e.currentTarget;
+    const rect = bar.getBoundingClientRect();
+    const p = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    if (audioRef.current && duration) {
+      audioRef.current.currentTime = p * duration;
+      setProgress(p * duration);
+    }
   };
 
-  const getAstralInsight = async () => {
-    setIsAiLoading(true);
-    const insight = await runAI(
-      `Buat 1 kalimat puitis 'astral insight' untuk lagu "${currentTrack.title}" oleh ${currentTrack.artist}. Vibe: ${currentTrack.mood}. Sebutkan energi kosmik atau bintang.`,
-      "Kamu adalah oracle puitis luar angkasa. Maks 25 kata. Balas hanya kalimat puitis saja, tanpa kutip, tanpa pembuka."
+  // ── AI ───────────────────────────────────────────────
+  const getInsight = async () => {
+    setIL(true);
+    const r = await askAI(
+      `Buat 1 kalimat puitis singkat untuk lagu "${track.title}" dengan vibe ${track.mood}. Sebutkan bintang atau alam semesta.`,
+      "Kamu oracle puitis. Maks 20 kata. Hanya kalimat puitis, tanpa tanda petik."
     );
-    setAstralInsight(insight);
-    setIsAiLoading(false);
+    setInsight(r); setIL(false);
   };
 
-  const sendChatMessage = async () => {
-    if (!userInput.trim()) return;
-    const msg = userInput;
-    setChatMessages(prev => [...prev, { role: 'user', text: msg }]);
-    setUserInput("");
-    setIsAiLoading(true);
-    const reply = await runAI(msg,
-      `Kamu adalah Starry Navigator, pemandu AI untuk stasiun musik Starry Night. Ramah, futuristik, paham musik dan astronomi. Maks 80 kata. User sedang mendengarkan "${currentTrack.title}" oleh ${currentTrack.artist}.`
+  const sendChat = async () => {
+    if (!input.trim()) return;
+    const msg = input; setInput('');
+    setMessages(p => [...p, { from:'user', text:msg }]);
+    setCL(true);
+    const r = await askAI(msg,
+      `Kamu Starry AI, asisten musik yang ramah dan futuristik. Jawab singkat maks 80 kata. Sedang diputar: "${track.title}" oleh ${track.artist}.`
     );
-    setChatMessages(prev => [...prev, { role: 'bot', text: reply }]);
-    setIsAiLoading(false);
+    setMessages(p => [...p, { from:'ai', text:r }]);
+    setCL(false);
   };
 
-  const searchByVibe = async () => {
-    if (!vibeQuery.trim() || isAiLoading) return;
-    setIsAiLoading(true);
-    const reply = await runAI(
-      `Lagu terbaik untuk vibe ini: ${vibeQuery}`,
-      `Kembalikan HANYA satu angka 1-4. Lagu: 1=Deep Space Night(tenang), 2=Lunar Reflection(melankolis), 3=Nebula Pulse(energik), 4=Aurora Glow(semangat). Tidak ada teks lain.`
+  const searchVibe = async () => {
+    if (!vibeInput.trim() || vibeLoading) return;
+    setVL(true);
+    const r = await askAI(
+      `Vibe: ${vibeInput}`,
+      `Pilih lagu terbaik dari daftar ini berdasarkan vibe. Balas HANYA angka 1-4.
+1=Deep Space Night(tenang,misterius) 2=Lunar Reflection(melankolis,reflektif) 3=Nebula Pulse(energik,futuristik) 4=Aurora Glow(semangat,cerah)`
     );
-    const id = parseInt(reply.trim());
-    const match = SONGS_DATA.find(s => s.id === id);
-    if (match) { selectTrack(match); setVibeQuery(`✨ ${match.title}`); }
-    setIsAiLoading(false);
+    const id = parseInt(r.trim());
+    const found = SONGS.find(s => s.id === id);
+    if (found) { play(found); setVibeInput(`✨ Cocok: ${found.title}`); }
+    setVL(false);
   };
 
   const pct = duration > 0 ? progress / duration : 0;
-  const hasKey = OPENROUTER_API_KEY !== "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";
 
-  // ── Shared styles ──────────────────────────────────────────────────────────
-  const pill = {
-    display: 'flex', alignItems: 'center', gap: 8,
-    background: 'rgba(255,255,255,0.09)', backdropFilter: 'blur(20px)',
-    borderRadius: 999, border: '1px solid rgba(255,255,255,0.12)'
-  };
-  const card = {
-    background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.08)',
-    borderRadius: 16, padding: 14
-  };
+  // ── Tab labels ───────────────────────────────────────
+  const tabs = [
+    { id:'player', icon:<Compass size={18}/>, label:'Player' },
+    { id:'queue',  icon:<ListMusic size={18}/>, label:'Daftar Lagu' },
+    { id:'ai',     icon:<Bot size={18}/>, label:'Starry AI' },
+  ];
 
   return (
     <div style={{
-      position: 'relative', height: '100dvh', width: '100vw',
-      overflow: 'hidden', background: '#080818',
-      display: 'flex', flexDirection: 'column',
-      color: '#f1f5f9', fontFamily: 'system-ui,-apple-system,sans-serif',
-      userSelect: 'none'
+      height:'100dvh', width:'100vw', overflow:'hidden',
+      background:'#07071a', color:'#f1f5f9',
+      fontFamily:"'Segoe UI',system-ui,-apple-system,sans-serif",
+      display:'flex', flexDirection:'column',
+      userSelect:'none', WebkitTapHighlightColor:'transparent'
     }}>
 
-      {/* Starscape bg */}
-      <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
-        <div className="stars-layer" />
-        <div style={{
-          position: 'absolute', inset: 0, opacity: 0.4,
-          background: `radial-gradient(ellipse at 65% 15%, ${currentTrack.accent}28 0%, transparent 55%)`,
-          transition: 'background 3s ease'
-        }} />
+      {/* ══ Background glow */}
+      <div style={{
+        position:'fixed', inset:0, pointerEvents:'none', zIndex:0,
+        background:`radial-gradient(ellipse at 60% 10%, ${track.color}20 0%, transparent 60%)`,
+        transition:'background 2s ease'
+      }}/>
+      <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0 }}>
+        <div className="stars"/>
       </div>
 
-      {/* ── Header ── */}
+      {/* ══ Header */}
       <header style={{
-        position: 'relative', zIndex: 50, flexShrink: 0,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '11px 16px'
+        position:'relative', zIndex:10, flexShrink:0,
+        display:'flex', alignItems:'center', justifyContent:'space-between',
+        padding:'12px 20px',
+        borderBottom:'1px solid rgba(255,255,255,0.06)'
       }}>
-        {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
           <div style={{
-            width: 30, height: 30, background: '#6366f1', borderRadius: 9,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 0 16px rgba(99,102,241,0.5)'
+            width:32, height:32, borderRadius:10,
+            background:`linear-gradient(135deg, ${track.color}, #6366f1)`,
+            display:'flex', alignItems:'center', justifyContent:'center',
+            boxShadow:`0 0 14px ${track.color}60`,
+            transition:'all 0.5s'
           }}>
-            <Star size={14} style={{ color: 'white', fill: 'white' }} />
+            <Headphones size={16} style={{ color:'white' }}/>
           </div>
-          <span style={{ fontWeight: 900, fontSize: 14, letterSpacing: '-0.03em', textTransform: 'uppercase' }}>
-            Starry Night
-          </span>
+          <div>
+            <div style={{ fontWeight:800, fontSize:14, lineHeight:1, letterSpacing:'-0.02em' }}>Starry Night</div>
+            <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>Music Player</div>
+          </div>
         </div>
 
-        {/* Nav */}
-        <nav style={{
-          display: 'flex', alignItems: 'center', gap: 1,
-          background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(20px)',
-          padding: 3, borderRadius: 14, border: '1px solid rgba(255,255,255,0.1)'
+        {/* AI status badge */}
+        <div style={{
+          display:'flex', alignItems:'center', gap:5,
+          padding:'5px 10px', borderRadius:999,
+          background: hasKey() ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
+          border:`1px solid ${hasKey() ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
         }}>
-          {[
-            { id: 'orbital', icon: Compass },
-            { id: 'library', icon: LayoutGrid },
-            { id: 'profile', icon: User }
-          ].map(({ id, icon: Icon }) => (
-            <button key={id} onClick={() => setView(id)} style={{
-              padding: '6px 9px', borderRadius: 10, border: 'none', cursor: 'pointer',
-              background: view === id ? '#6366f1' : 'transparent',
-              color: view === id ? 'white' : '#94a3b8',
-              transition: 'all 0.2s', display: 'flex'
-            }}>
-              <Icon size={16} />
-            </button>
-          ))}
-          <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.1)', margin: '0 2px' }} />
-          <button onClick={() => setIsChatOpen(true)} style={{
-            padding: '6px 9px', borderRadius: 10, border: 'none', cursor: 'pointer',
-            background: 'transparent', color: '#818cf8', display: 'flex'
-          }}>
-            <Sparkles size={16} />
-          </button>
-        </nav>
+          <div style={{
+            width:6, height:6, borderRadius:'50%',
+            background: hasKey() ? '#22c55e' : '#ef4444',
+            animation: hasKey() ? 'pulse 2s infinite' : 'none'
+          }}/>
+          <span style={{ fontSize:10, fontWeight:700, color: hasKey() ? '#86efac' : '#fca5a5' }}>
+            {hasKey() ? 'AI Online' : 'AI Offline'}
+          </span>
+        </div>
       </header>
 
-      {/* AI Model badge — shows active model */}
-      {hasKey && (
-        <div style={{
-          position: 'absolute', top: 58, left: '50%', transform: 'translateX(-50%)',
-          zIndex: 40, display: 'flex', alignItems: 'center', gap: 5,
-          background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)',
-          borderRadius: 999, padding: '3px 10px'
-        }}>
-          <Wifi size={9} style={{ color: '#818cf8' }} />
-          <span style={{ fontSize: 9, color: '#a5b4fc', fontWeight: 600, letterSpacing: '0.05em' }}>
-            {activeModel}
-          </span>
-        </div>
-      )}
+      {/* ══ Content area */}
+      <main style={{ flex:1, overflow:'hidden', position:'relative', zIndex:5 }}>
 
-      {/* No key warning */}
-      {!hasKey && (
-        <div style={{
-          position: 'absolute', top: 58, left: '50%', transform: 'translateX(-50%)',
-          zIndex: 40, display: 'flex', alignItems: 'center', gap: 5,
-          background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)',
-          borderRadius: 999, padding: '3px 10px', whiteSpace: 'nowrap'
-        }}>
-          <WifiOff size={9} style={{ color: '#f87171' }} />
-          <span style={{ fontSize: 9, color: '#fca5a5', fontWeight: 600 }}>
-            AI offline — tambahkan OpenRouter key
-          </span>
-        </div>
-      )}
-
-      {/* ── Main ── */}
-      <main style={{
-        position: 'relative', zIndex: 10, flex: 1, overflow: 'hidden',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '16px 16px 12px'
-      }}>
-
-        {/* ── Orbital / Player View ── */}
-        {view === 'orbital' && (
+        {/* ─── PLAYER TAB */}
+        {tab === 'player' && (
           <div style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
-            width: '100%', maxWidth: 400, animation: 'fadeIn 0.5s ease'
+            height:'100%', display:'flex', flexDirection:'column',
+            alignItems:'center', justifyContent:'center',
+            padding:'8px 20px 0', gap:0,
+            animation:'fadeUp 0.4s ease'
           }}>
-            {/* Ring */}
-            <div style={{ position: 'relative', width: ringSize, height: ringSize, flexShrink: 0 }}>
-              <OrbitalRing pct={pct} accent={currentTrack.accent}
-                progress={progress} duration={duration}
-                artSize={artSize} ringSize={ringSize} />
-              {/* Album art */}
-              <div style={{
-                position: 'absolute', top: '50%', left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: artSize, height: artSize, borderRadius: '50%',
-                overflow: 'hidden', border: '3px solid rgba(255,255,255,0.1)',
-                zIndex: 3, boxShadow: `0 0 50px -5px ${currentTrack.accent}60`,
-                animation: isPlaying ? 'rotateSlow 20s linear infinite' : 'none'
-              }}>
-                <img src={currentTrack.cover} alt={currentTrack.title}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+
+            {/* Orbital ring with album art */}
+            <OrbitalRing
+              size={ringSize}
+              pct={pct}
+              color={track.color}
+              progress={progress}
+              duration={duration}
+              isPlaying={playing}
+              cover={track.cover}
+              title={track.title}
+            />
+
+            {/* Track info */}
+            <div style={{ textAlign:'center', marginTop:16, width:'100%', maxWidth:320, padding:'0 8px' }}>
+              <h2 style={{
+                margin:0, fontWeight:900, letterSpacing:'-0.03em', lineHeight:1.1,
+                fontSize:'clamp(20px,5.5vw,28px)',
+                overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'
+              }}>{track.title}</h2>
+              <p style={{ margin:'4px 0 0', fontSize:12, color:'rgba(255,255,255,0.45)', fontWeight:600, letterSpacing:'0.08em' }}>
+                {track.artist} — {track.album}
+              </p>
+            </div>
+
+            {/* Seek bar — tappable progress bar */}
+            <div style={{ width:'100%', maxWidth:320, margin:'14px 0 0', padding:'0 8px' }}>
+              <div
+                onClick={seek}
+                style={{
+                  height:4, borderRadius:999, cursor:'pointer', position:'relative',
+                  background:'rgba(255,255,255,0.1)'
+                }}
+              >
+                <div style={{
+                  height:'100%', borderRadius:999, width:`${pct*100}%`,
+                  background:`linear-gradient(90deg, ${track.color}, ${track.color}aa)`,
+                  transition:'width 0.3s linear', position:'relative'
+                }}>
+                  <div style={{
+                    position:'absolute', right:-5, top:'50%', transform:'translateY(-50%)',
+                    width:10, height:10, borderRadius:'50%', background:'white',
+                    boxShadow:`0 0 6px ${track.color}`
+                  }}/>
+                </div>
+              </div>
+              <div style={{ display:'flex', justifyContent:'space-between', marginTop:5 }}>
+                <span style={{ fontSize:10, color:'rgba(255,255,255,0.35)', fontFamily:'monospace' }}>{fmt(progress)}</span>
+                <span style={{ fontSize:10, color:'rgba(255,255,255,0.35)', fontFamily:'monospace' }}>{fmt(duration)}</span>
               </div>
             </div>
 
             {/* Controls */}
-            <div style={{ ...pill, padding: '7px 20px', marginTop: 4 }}>
-              <button onClick={handlePrev} style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', padding: 6, display: 'flex' }}>
-                <SkipBack size={17} fill="currentColor" />
+            <div style={{
+              display:'flex', alignItems:'center', gap:12, marginTop:12
+            }}>
+              <button
+                onClick={() => setLiked(l => ({ ...l, [track.id]: !l[track.id] }))}
+                style={{ ...btn, color: liked[track.id] ? '#f472b6' : 'rgba(255,255,255,0.4)' }}
+                title="Suka"
+              >
+                <Heart size={20} fill={liked[track.id] ? '#f472b6' : 'none'}/>
               </button>
-              <button onClick={() => setIsPlaying(p => !p)} style={{
-                width: 46, height: 46, borderRadius: '50%', border: 'none',
-                background: 'white', color: '#1e1b4b', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 4px 18px rgba(255,255,255,0.25)', transition: 'transform 0.1s'
-              }}>
-                {isPlaying ? <Pause size={19} fill="currentColor" /> : <Play size={19} fill="currentColor" style={{ marginLeft: 2 }} />}
+
+              <button onClick={prev} style={btn} title="Sebelumnya">
+                <SkipBack size={22} fill="currentColor"/>
               </button>
-              <button onClick={handleNext} style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', padding: 6, display: 'flex' }}>
-                <SkipForward size={17} fill="currentColor" />
+
+              <button
+                onClick={() => setPlaying(p => !p)}
+                style={{
+                  width:58, height:58, borderRadius:'50%', border:'none',
+                  background:'white', color:'#07071a', cursor:'pointer',
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  boxShadow:`0 0 20px ${track.color}80, 0 4px 20px rgba(0,0,0,0.4)`,
+                  transition:'transform 0.1s, box-shadow 0.3s',
+                  flexShrink:0
+                }}
+                title={playing ? 'Pause' : 'Play'}
+              >
+                {playing
+                  ? <Pause size={24} fill="currentColor"/>
+                  : <Play size={24} fill="currentColor" style={{ marginLeft:3 }}/>}
+              </button>
+
+              <button onClick={next} style={btn} title="Berikutnya">
+                <SkipForward size={22} fill="currentColor"/>
+              </button>
+
+              <button onClick={() => setMuted(m => !m)} style={{ ...btn, color: muted ? '#ef4444' : 'rgba(255,255,255,0.4)' }} title="Volume">
+                {muted ? <VolumeX size={20}/> : <Volume2 size={20}/>}
               </button>
             </div>
 
-            {/* Track info */}
-            <div style={{ textAlign: 'center', width: '100%', padding: '12px 8px 0', maxWidth: 340 }}>
-              <h2 style={{
-                fontSize: 'clamp(20px, 5.5vw, 30px)', fontWeight: 900,
-                letterSpacing: '-0.03em', margin: 0, lineHeight: 1.15,
-                color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
-              }}>
-                {currentTrack.title}
-              </h2>
-              <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3em', color: '#94a3b8', opacity: 0.6, margin: '4px 0 0' }}>
-                {currentTrack.artist}
-              </p>
-
-              {/* Astral Insight */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 12 }}>
-                {!astralInsight ? (
-                  <button onClick={getAstralInsight} disabled={isAiLoading}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 6,
-                      padding: '6px 14px', borderRadius: 999,
-                      background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.35)',
-                      color: '#a5b4fc', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                      opacity: isAiLoading ? 0.5 : 1, transition: 'all 0.2s'
-                    }}>
-                    {isAiLoading ? <Zap size={11} style={{ animation: 'spin 0.8s linear infinite' }} /> : <Sparkles size={11} />}
-                    {isAiLoading ? "Channeling cosmos..." : "Get Astral Insight"}
-                  </button>
-                ) : (
-                  <div onClick={() => setAstralInsight("")} style={{
-                    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: 14, padding: '10px 14px', maxWidth: 280, cursor: 'pointer',
-                    animation: 'fadeIn 0.3s ease'
-                  }}>
-                    <p style={{ fontSize: 11, color: '#c7d2fe', fontStyle: 'italic', lineHeight: 1.6, margin: 0 }}>
-                      "{astralInsight}"
-                    </p>
-                  </div>
-                )}
-              </div>
+            {/* Volume slider */}
+            <div style={{ width:'100%', maxWidth:200, marginTop:10, padding:'0 8px' }}>
+              <input type="range" min="0" max="1" step="0.01" value={muted ? 0 : volume}
+                onChange={e => { setVolume(+e.target.value); setMuted(false); }}
+                style={{ width:'100%', accentColor: track.color, height:3 }}
+              />
             </div>
+
+            {/* Astral insight */}
+            <div style={{ width:'100%', maxWidth:320, marginTop:10, padding:'0 8px', marginBottom:4 }}>
+              {!insight ? (
+                <button onClick={getInsight} disabled={insightLoading} style={{
+                  width:'100%', padding:'9px 0', borderRadius:12, border:'none',
+                  background: track.bg, color:'white',
+                  fontSize:12, fontWeight:700, cursor:'pointer',
+                  display:'flex', alignItems:'center', justifyContent:'center', gap:6,
+                  opacity: insightLoading ? 0.6 : 1, transition:'opacity 0.2s'
+                }}>
+                  {insightLoading
+                    ? <><Zap size={13} style={{ animation:'spin 0.8s linear infinite' }}/> Meramal bintang...</>
+                    : <><Sparkles size={13}/> Dapat Wawasan Kosmik ✨</>
+                  }
+                </button>
+              ) : (
+                <div onClick={() => setInsight('')} style={{
+                  padding:'10px 14px', borderRadius:12,
+                  background: track.bg,
+                  border:`1px solid ${track.color}40`,
+                  cursor:'pointer', animation:'fadeUp 0.3s ease'
+                }}>
+                  <div style={{ fontSize:10, color:track.color, fontWeight:700, marginBottom:4, textTransform:'uppercase', letterSpacing:'0.1em' }}>✨ Wawasan Kosmik</div>
+                  <p style={{ margin:0, fontSize:12, color:'rgba(255,255,255,0.85)', fontStyle:'italic', lineHeight:1.6 }}>
+                    {insight}
+                  </p>
+                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.25)', marginTop:5 }}>Ketuk untuk tutup</div>
+                </div>
+              )}
+            </div>
+
           </div>
         )}
 
-        {/* ── Library View ── */}
-        {view === 'library' && (
+        {/* ─── QUEUE TAB */}
+        {tab === 'queue' && (
           <div style={{
-            width: '100%', maxWidth: 480, height: '100%',
-            display: 'flex', flexDirection: 'column', animation: 'slideUp 0.4s ease'
+            height:'100%', display:'flex', flexDirection:'column',
+            padding:'16px 16px 0', animation:'fadeUp 0.4s ease'
           }}>
-            <div style={{ flexShrink: 0, marginBottom: 12 }}>
-              <h3 style={{ fontSize: 'clamp(18px, 5vw, 24px)', fontWeight: 900, letterSpacing: '-0.03em', margin: '0 0 10px' }}>
-                Galaxy Stash
-              </h3>
-              <div style={{ position: 'relative' }}>
-                <input type="text" placeholder="Ceritakan vibe kamu..."
-                  value={vibeQuery}
-                  onChange={e => setVibeQuery(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && searchByVibe()}
+            {/* Vibe search */}
+            <div style={{ marginBottom:14 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.4)', textTransform:'uppercase', letterSpacing:'0.15em', marginBottom:6 }}>
+                🔮 Cari Lagu Berdasarkan Suasana Hati
+              </div>
+              <div style={{ display:'flex', gap:8 }}>
+                <input
+                  value={vibeInput}
+                  onChange={e => setVibeInput(e.target.value)}
+                  onKeyDown={e => e.key==='Enter' && searchVibe()}
+                  placeholder='cth: "semangat pagi", "sedih tapi indah"...'
                   style={{
-                    width: '100%', boxSizing: 'border-box',
-                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
-                    borderRadius: 12, padding: '9px 36px 9px 34px',
-                    fontSize: 13, color: 'white', outline: 'none'
-                  }} />
-                <Sparkles size={13} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: '#818cf8' }} />
-                <button onClick={searchByVibe} disabled={isAiLoading} style={{
-                  position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-                  background: 'none', border: 'none', color: '#818cf8', cursor: 'pointer',
-                  display: 'flex', opacity: isAiLoading ? 0.4 : 1
+                    flex:1, background:'rgba(255,255,255,0.06)',
+                    border:'1px solid rgba(255,255,255,0.12)',
+                    borderRadius:10, padding:'9px 12px',
+                    fontSize:13, color:'white', outline:'none'
+                  }}
+                />
+                <button onClick={searchVibe} disabled={vibeLoading} style={{
+                  padding:'9px 14px', borderRadius:10, border:'none',
+                  background:track.color, color:'white', cursor:'pointer',
+                  fontWeight:700, fontSize:12, flexShrink:0,
+                  opacity: vibeLoading ? 0.5 : 1
                 }}>
-                  <Zap size={13} style={isAiLoading ? { animation: 'spin 0.8s linear infinite' } : {}} />
+                  {vibeLoading ? <Zap size={14} style={{ animation:'spin 0.8s linear infinite' }}/> : 'Cari'}
                 </button>
               </div>
             </div>
 
-            <div className="scrollbar-hide" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 7, paddingBottom: 8 }}>
-              {SONGS_DATA.map(song => (
-                <div key={song.id} onClick={() => selectTrack(song)} style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '9px 13px', borderRadius: 18, cursor: 'pointer',
-                  background: currentTrack.id === song.id ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)',
-                  border: currentTrack.id === song.id ? '1px solid rgba(255,255,255,0.18)' : '1px solid transparent',
-                  transition: 'all 0.2s'
-                }}>
-                  <img src={song.cover} alt={song.title}
-                    style={{ width: 48, height: 48, borderRadius: 13, objectFit: 'cover', flexShrink: 0 }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {song.title}
+            {/* Song list */}
+            <div style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.4)', textTransform:'uppercase', letterSpacing:'0.15em', marginBottom:8 }}>
+              🎵 Semua Lagu ({SONGS.length})
+            </div>
+            <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column', gap:8, paddingBottom:16 }}>
+              {SONGS.map((s, i) => {
+                const isActive = track.id === s.id;
+                return (
+                  <div key={s.id} onClick={() => play(s)} style={{
+                    display:'flex', alignItems:'center', gap:12,
+                    padding:'10px 12px', borderRadius:14, cursor:'pointer',
+                    background: isActive ? s.bg : 'rgba(255,255,255,0.04)',
+                    border:`1px solid ${isActive ? s.color+'50' : 'transparent'}`,
+                    transition:'all 0.2s'
+                  }}>
+                    {/* Track number / playing indicator */}
+                    <div style={{
+                      width:28, height:28, borderRadius:8, flexShrink:0,
+                      background: isActive ? s.color : 'rgba(255,255,255,0.08)',
+                      display:'flex', alignItems:'center', justifyContent:'center',
+                      fontSize:12, fontWeight:800, color: isActive ? 'white' : 'rgba(255,255,255,0.4)'
+                    }}>
+                      {isActive && playing
+                        ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end' }}>
+                            {[12,6,10].map((h,j) => (
+                              <div key={j} style={{
+                                width:2.5, height:h, background:'white', borderRadius:1,
+                                animation:`bounce 0.8s ease-in-out ${j*0.15}s infinite`
+                              }}/>
+                            ))}
+                          </div>
+                        : i+1
+                      }
                     </div>
-                    <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.15em', marginTop: 2 }}>
-                      {song.artist}
+
+                    <img src={s.cover} alt={s.title} style={{ width:44, height:44, borderRadius:10, objectFit:'cover', flexShrink:0 }}/>
+
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontWeight:700, fontSize:14, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color: isActive ? 'white' : 'rgba(255,255,255,0.85)' }}>
+                        {s.title}
+                      </div>
+                      <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:2 }}>
+                        {s.artist} · {s.album}
+                      </div>
                     </div>
+
+                    <button onClick={e => { e.stopPropagation(); setLiked(l => ({ ...l, [s.id]: !l[s.id] })); }}
+                      style={{ ...btn, color: liked[s.id] ? '#f472b6' : 'rgba(255,255,255,0.2)' }}>
+                      <Heart size={16} fill={liked[s.id] ? '#f472b6' : 'none'}/>
+                    </button>
                   </div>
-                  {currentTrack.id === song.id && isPlaying && (
-                    <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end', height: 14, flexShrink: 0 }}>
-                      {[14, 7, 11].map((h, i) => (
-                        <div key={i} style={{
-                          width: 3, height: h, background: '#818cf8', borderRadius: 2,
-                          animation: `pulse 0.9s ease-in-out ${i * 0.12}s infinite`
-                        }} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
 
-        {/* ── Profile View ── */}
-        {view === 'profile' && (
+        {/* ─── AI TAB */}
+        {tab === 'ai' && (
           <div style={{
-            width: '100%', maxWidth: 320,
-            background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(30px)',
-            border: '1px solid rgba(255,255,255,0.1)', borderRadius: 26,
-            padding: 'clamp(20px,5vw,32px)', textAlign: 'center', animation: 'fadeIn 0.4s ease'
+            height:'100%', display:'flex', flexDirection:'column',
+            animation:'fadeUp 0.4s ease'
           }}>
+            {/* AI header */}
             <div style={{
-              width: 64, height: 64, margin: '0 auto 12px',
-              background: 'linear-gradient(135deg,#6366f1,#9333ea)',
-              borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transform: 'rotate(3deg)', boxShadow: '0 8px 24px rgba(99,102,241,0.4)'
+              padding:'14px 16px 10px',
+              borderBottom:'1px solid rgba(255,255,255,0.06)',
+              flexShrink:0
             }}>
-              <User size={32} style={{ color: 'white' }} />
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <div style={{
+                  width:34, height:34, borderRadius:10,
+                  background:'linear-gradient(135deg,#6366f1,#a855f7)',
+                  display:'flex', alignItems:'center', justifyContent:'center'
+                }}>
+                  <Bot size={18} style={{ color:'white' }}/>
+                </div>
+                <div>
+                  <div style={{ fontWeight:800, fontSize:13 }}>Starry AI</div>
+                  <div style={{ fontSize:10, color: hasKey() ? '#86efac' : '#fca5a5' }}>
+                    {hasKey() ? `Online · ${activeModel()}` : 'Offline — tambahkan API key'}
+                  </div>
+                </div>
+              </div>
+              <div style={{
+                marginTop:10, padding:'8px 10px', borderRadius:10,
+                background: track.bg, border:`1px solid ${track.color}30`,
+                display:'flex', alignItems:'center', gap:8
+              }}>
+                <img src={track.cover} style={{ width:32, height:32, borderRadius:7, objectFit:'cover' }}/>
+                <div>
+                  <div style={{ fontSize:11, fontWeight:700 }}>{track.title}</div>
+                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)' }}>Sedang diputar</div>
+                </div>
+                <div style={{ marginLeft:'auto', display:'flex', gap:2, alignItems:'flex-end', height:14 }}>
+                  {playing && [12,7,10].map((h,i) => (
+                    <div key={i} style={{ width:3, height:h, background:track.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${i*0.15}s infinite` }}/>
+                  ))}
+                </div>
+              </div>
             </div>
-            <h3 style={{ fontSize: 17, fontWeight: 900, margin: '0 0 3px' }}>Star Voyager</h3>
-            <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.25em', color: '#818cf8', margin: '0 0 20px' }}>
-              Level: Nebula Scout
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9 }}>
-              {[
-                { icon: <Clock size={14} style={{ color: '#64748b', marginBottom: 7 }} />, val: '12.4h', label: 'Flight Time' },
-                { icon: <Award size={14} style={{ color: '#818cf8', marginBottom: 7 }} />, val: '42', label: 'Badges Won' },
-              ].map((c, i) => (
-                <div key={i} style={{ ...card }}>
-                  {c.icon}
-                  <div style={{ fontSize: 17, fontWeight: 900 }}>{c.val}</div>
-                  <div style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.12em', marginTop: 2 }}>{c.label}</div>
+
+            {/* Messages */}
+            <div className="scrollbar-hide" style={{
+              flex:1, overflowY:'auto', padding:'12px 16px',
+              display:'flex', flexDirection:'column', gap:10
+            }}>
+              {messages.map((m,i) => (
+                <div key={i} style={{ display:'flex', justifyContent: m.from==='user' ? 'flex-end' : 'flex-start' }}>
+                  {m.from==='ai' && (
+                    <div style={{
+                      width:24, height:24, borderRadius:7, flexShrink:0,
+                      background:'linear-gradient(135deg,#6366f1,#a855f7)',
+                      display:'flex', alignItems:'center', justifyContent:'center',
+                      marginRight:6, marginTop:2
+                    }}>
+                      <Bot size={12} style={{ color:'white' }}/>
+                    </div>
+                  )}
+                  <div style={{
+                    maxWidth:'78%', padding:'10px 13px', fontSize:13, lineHeight:1.55,
+                    borderRadius: m.from==='user' ? '16px 16px 4px 16px' : '4px 16px 16px 16px',
+                    background: m.from==='user' ? track.color : 'rgba(255,255,255,0.07)',
+                    border: m.from==='user' ? 'none' : '1px solid rgba(255,255,255,0.1)',
+                    color: 'white'
+                  }}>
+                    {m.text}
+                  </div>
                 </div>
               ))}
-              <div style={{ ...card, gridColumn: '1/-1' }}>
-                <Star size={14} style={{ color: '#facc15', fill: '#facc15', marginBottom: 7 }} />
-                <div style={{ fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {currentTrack.title}
+              {chatLoading && (
+                <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                  <div style={{
+                    width:24, height:24, borderRadius:7,
+                    background:'linear-gradient(135deg,#6366f1,#a855f7)',
+                    display:'flex', alignItems:'center', justifyContent:'center'
+                  }}>
+                    <Bot size={12} style={{ color:'white' }}/>
+                  </div>
+                  <div style={{
+                    padding:'10px 14px', borderRadius:'4px 16px 16px 16px',
+                    background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.1)',
+                    display:'flex', gap:5
+                  }}>
+                    {[0,0.15,0.3].map((d,i) => (
+                      <div key={i} style={{ width:6, height:6, borderRadius:'50%', background:'#818cf8', animation:`bounce 0.8s ease-in-out ${d}s infinite` }}/>
+                    ))}
+                  </div>
                 </div>
-                <div style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.12em', marginTop: 2 }}>Currently Playing</div>
+              )}
+              <div ref={chatEndRef}/>
+            </div>
+
+            {/* Suggested prompts */}
+            {messages.length === 1 && (
+              <div style={{ padding:'0 16px 10px', display:'flex', flexWrap:'wrap', gap:6 }}>
+                {[
+                  '🎵 Ceritakan lagu ini',
+                  '💫 Rekomendasikan lagu sejenis',
+                  '🌙 Apa vibe lagu ini?',
+                ].map((q,i) => (
+                  <button key={i} onClick={() => { setInput(q); }} style={{
+                    padding:'6px 12px', borderRadius:999, border:`1px solid rgba(255,255,255,0.15)`,
+                    background:'rgba(255,255,255,0.05)', color:'rgba(255,255,255,0.7)',
+                    fontSize:11, fontWeight:600, cursor:'pointer', transition:'all 0.2s'
+                  }}>{q}</button>
+                ))}
               </div>
-              {/* AI Model info */}
-              <div style={{ ...card, gridColumn: '1/-1', background: 'rgba(99,102,241,0.08)' }}>
-                <Wifi size={14} style={{ color: '#818cf8', marginBottom: 7 }} />
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#a5b4fc' }}>
-                  {hasKey ? activeModel : 'Tidak ada key'}
-                </div>
-                <div style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.12em', marginTop: 2 }}>
-                  {hasKey ? `Model aktif (${currentModelIdx + 1}/${FREE_MODELS.length})` : 'AI offline'}
-                </div>
+            )}
+
+            {/* Input */}
+            <div style={{ padding:'10px 16px 14px', flexShrink:0, borderTop:'1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ display:'flex', gap:8 }}>
+                <input value={input} onChange={e => setInput(e.target.value)}
+                  onKeyDown={e => e.key==='Enter' && sendChat()}
+                  placeholder="Tanya Starry AI..."
+                  style={{
+                    flex:1, background:'rgba(255,255,255,0.07)',
+                    border:'1px solid rgba(255,255,255,0.12)', borderRadius:12,
+                    padding:'10px 14px', fontSize:13, color:'white', outline:'none'
+                  }}/>
+                <button onClick={sendChat} disabled={chatLoading || !input.trim()} style={{
+                  width:42, height:42, borderRadius:12, border:'none',
+                  background:input.trim() ? track.color : 'rgba(255,255,255,0.1)',
+                  color:'white', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
+                  transition:'background 0.2s', opacity: chatLoading ? 0.5 : 1, flexShrink:0
+                }}>
+                  <Send size={16}/>
+                </button>
               </div>
             </div>
           </div>
         )}
       </main>
 
-      {/* ── Chat Drawer ── */}
-      {isChatOpen && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', justifyContent: 'flex-end' }}>
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
-            onClick={() => setIsChatOpen(false)} />
-          <div style={{
-            position: 'relative', width: '100%', maxWidth: 350, height: '100%',
-            background: '#0a0a1e', borderLeft: '1px solid rgba(255,255,255,0.1)',
-            display: 'flex', flexDirection: 'column', animation: 'slideRight 0.3s ease'
-          }}>
-            {/* Chat header */}
-            <div style={{
-              padding: '13px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0
+      {/* ══ Bottom Tab Bar */}
+      <nav style={{
+        position:'relative', zIndex:10, flexShrink:0,
+        display:'flex', alignItems:'center',
+        background:'rgba(7,7,26,0.95)', backdropFilter:'blur(20px)',
+        borderTop:'1px solid rgba(255,255,255,0.08)',
+        padding:'8px 16px 12px',
+        paddingBottom:`max(12px, env(safe-area-inset-bottom))`
+      }}>
+        {tabs.map(t => {
+          const active = tab === t.id;
+          return (
+            <button key={t.id} onClick={() => setTab(t.id)} style={{
+              flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:3,
+              padding:'6px 0', background:'none', border:'none', cursor:'pointer',
+              color: active ? track.color : 'rgba(255,255,255,0.35)',
+              transition:'color 0.2s'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                <div style={{
-                  width: 30, height: 30, background: '#6366f1', borderRadius: 9,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                  <MessageSquare size={14} style={{ color: 'white' }} />
-                </div>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 13 }}>Starry Navigator</div>
-                  <div style={{ fontSize: 9, color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.18em' }}>
-                    {hasKey ? `via ${activeModel}` : 'AI Offline'}
-                  </div>
-                </div>
+              <div style={{
+                padding:'4px 14px', borderRadius:999,
+                background: active ? `${track.color}22` : 'transparent',
+                transition:'background 0.2s'
+              }}>
+                {t.icon}
               </div>
-              <button onClick={() => setIsChatOpen(false)}
-                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 5, display: 'flex' }}>
-                <X size={16} />
-              </button>
-            </div>
-
-            {/* Messages */}
-            <div className="scrollbar-hide" style={{
-              flex: 1, overflowY: 'auto', padding: 13,
-              display: 'flex', flexDirection: 'column', gap: 9
-            }}>
-              {chatMessages.map((msg, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
-                  <div style={{
-                    maxWidth: '85%', padding: '9px 13px', fontSize: 13, lineHeight: 1.5,
-                    borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                    background: msg.role === 'user' ? '#4f46e5' : 'rgba(255,255,255,0.06)',
-                    border: msg.role === 'user' ? 'none' : '1px solid rgba(255,255,255,0.1)',
-                    color: msg.role === 'user' ? 'white' : '#e0e7ff'
-                  }}>
-                    {msg.text}
-                  </div>
-                </div>
-              ))}
-              {isAiLoading && (
-                <div style={{ display: 'flex' }}>
-                  <div style={{
-                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '16px 16px 16px 4px', padding: '9px 13px',
-                    display: 'flex', gap: 5, alignItems: 'center'
-                  }}>
-                    {[0, 0.15, 0.3].map((d, i) => (
-                      <div key={i} style={{
-                        width: 6, height: 6, background: '#818cf8', borderRadius: '50%',
-                        animation: `bounce 0.8s ease-in-out ${d}s infinite`
-                      }} />
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div ref={chatBottomRef} />
-            </div>
-
-            {/* Input */}
-            <div style={{ padding: 11, borderTop: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
-              <div style={{ display: 'flex', gap: 7 }}>
-                <input type="text" value={userInput}
-                  onChange={e => setUserInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && sendChatMessage()}
-                  placeholder="Tanya navigator..."
-                  style={{
-                    flex: 1, background: 'rgba(255,255,255,0.06)',
-                    border: '1px solid rgba(255,255,255,0.1)', borderRadius: 11,
-                    padding: '9px 13px', fontSize: 13, color: 'white', outline: 'none'
-                  }} />
-                <button onClick={sendChatMessage}
-                  disabled={isAiLoading || !userInput.trim()}
-                  style={{
-                    background: '#4f46e5', border: 'none', borderRadius: 11,
-                    padding: '9px 11px', color: 'white', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center',
-                    opacity: (isAiLoading || !userInput.trim()) ? 0.4 : 1, transition: 'opacity 0.2s'
-                  }}>
-                  <Send size={15} />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+              <span style={{ fontSize:10, fontWeight: active ? 700 : 500, letterSpacing:'0.02em' }}>
+                {t.label}
+              </span>
+            </button>
+          );
+        })}
+      </nav>
 
       <style>{`
-        @keyframes fadeIn{from{opacity:0;transform:scale(0.97)}to{opacity:1;transform:scale(1)}}
-        @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes slideRight{from{opacity:0;transform:translateX(100%)}to{opacity:1;transform:translateX(0)}}
-        @keyframes rotateSlow{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-        @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-        @keyframes pulse{0%,100%{opacity:1;height:var(--h)}50%{opacity:0.4;height:4px}}
+        *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+        @keyframes spin20{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+        @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
         @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
-        .stars-layer{
+        @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.6;transform:scale(0.9)}}
+        .stars{
           position:absolute;width:200%;height:200%;
           background-image:
-            radial-gradient(1px 1px at 20px 30px,#fff,rgba(0,0,0,0)),
-            radial-gradient(1.5px 1.5px at 100px 150px,#fff,rgba(0,0,0,0)),
-            radial-gradient(1px 1px at 200px 80px,#fff,rgba(0,0,0,0)),
-            radial-gradient(2px 2px at 300px 250px,#fff,rgba(0,0,0,0)),
-            radial-gradient(1px 1px at 50px 200px,#fff,rgba(0,0,0,0)),
-            radial-gradient(1.5px 1.5px at 180px 40px,#fff,rgba(0,0,0,0));
-          background-size:300px 300px;opacity:0.16;
-          animation:panStars 150s linear infinite;
+            radial-gradient(1px 1px at 15px 25px,rgba(255,255,255,0.6),transparent),
+            radial-gradient(1.5px 1.5px at 90px 130px,rgba(255,255,255,0.4),transparent),
+            radial-gradient(1px 1px at 180px 70px,rgba(255,255,255,0.5),transparent),
+            radial-gradient(2px 2px at 280px 220px,rgba(255,255,255,0.3),transparent),
+            radial-gradient(1px 1px at 40px 180px,rgba(255,255,255,0.5),transparent),
+            radial-gradient(1.5px 1.5px at 160px 30px,rgba(255,255,255,0.4),transparent),
+            radial-gradient(1px 1px at 240px 100px,rgba(255,255,255,0.3),transparent),
+            radial-gradient(2px 2px at 60px 260px,rgba(255,255,255,0.2),transparent);
+          background-size:300px 300px;
+          animation:starMove 120s linear infinite;
         }
-        @keyframes panStars{from{transform:translate(0,0)}to{transform:translate(-300px,-300px)}}
+        @keyframes starMove{from{transform:translate(0,0)}to{transform:translate(-300px,-300px)}}
         .scrollbar-hide::-webkit-scrollbar{display:none}
         .scrollbar-hide{-ms-overflow-style:none;scrollbar-width:none}
-        input::placeholder{color:rgba(148,163,184,0.4)}
-        *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+        input::placeholder{color:rgba(148,163,184,0.35)}
+        input[type=range]{cursor:pointer;height:4px;border-radius:999px}
       `}</style>
     </div>
   );
 }
+
+// Shared button style
+const btn = {
+  background:'none', border:'none', cursor:'pointer',
+  color:'rgba(255,255,255,0.5)', padding:8, display:'flex',
+  transition:'color 0.2s', borderRadius:8
+};
