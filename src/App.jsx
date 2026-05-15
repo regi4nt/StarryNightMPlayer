@@ -80,7 +80,7 @@ const FREE_MODELS = [
 const SLOTS = API_KEYS.flatMap(k => FREE_MODELS.map(m => ({ k, m })));
 let slotIdx = 0;
 async function askAI(user, system='', tries=0) {
-  const valid = .filter(k => k && !k.includes('GANTI_KEY'));
+  const valid = API_KEYS.filter(k => k && !k.includes('GANTI_KEY'));
   if (!valid.length) return '⚠️ Belum ada API key.';
   if (tries >= SLOTS.length) { slotIdx=0; return 'Semua model sibuk, coba lagi.'; }
   const {k,m} = SLOTS[slotIdx % SLOTS.length];
