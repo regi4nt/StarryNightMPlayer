@@ -24,7 +24,7 @@ const SONGS = [
 // ═══════════════════════════════════════════════════════
 //  GOOGLE DRIVE
 // ═══════════════════════════════════════════════════════
-const GOOGLE_CLIENT_ID = 'GANTI_DENGAN_CLIENT_ID_KAMU.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = '1028346781018-vbeafem60jrt8ctu1k1q07pfk41ejlnn.apps.googleusercontent.com';
 const GOOGLE_SCOPES    = 'https://www.googleapis.com/auth/drive.file profile email';
 const DRIVE_FOLDER     = 'Starry Night Music';
 const SONG_COLORS = [
@@ -70,7 +70,7 @@ const SLEEP_OPTIONS = [
 // ═══════════════════════════════════════════════════════
 //  AI
 // ═══════════════════════════════════════════════════════
-const API_KEYS = ["GANTI_KEY_1_DISINI","GANTI_KEY_2_DISINI"];
+const API_KEYS = ["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"];
 const FREE_MODELS = [
   "deepseek/deepseek-chat-v3-0324:free","meta-llama/llama-4-maverick:free",
   "deepseek/deepseek-r1:free","qwen/qwen3-235b-a22b:free",
@@ -80,7 +80,7 @@ const FREE_MODELS = [
 const SLOTS = API_KEYS.flatMap(k => FREE_MODELS.map(m => ({ k, m })));
 let slotIdx = 0;
 async function askAI(user, system='', tries=0) {
-  const valid = API_KEYS.filter(k => k && !k.includes('GANTI_KEY'));
+  const valid = .filter(k => k && !k.includes('GANTI_KEY'));
   if (!valid.length) return '⚠️ Belum ada API key.';
   if (tries >= SLOTS.length) { slotIdx=0; return 'Semua model sibuk, coba lagi.'; }
   const {k,m} = SLOTS[slotIdx % SLOTS.length];
