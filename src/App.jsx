@@ -521,9 +521,16 @@ export default function App() {
 
   // ── Audio init
   useEffect(() => {
-    audioRef.current = new Audio(track.src);
-    audioRef.current.volume = volume;
-    return () => audioRef.current?.pause();
+    if (!audioRef.current) {
+      audioRef.current = new Audio(track.src);
+      audioRef.current.volume = volume;
+    }
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
   }, []);
 
   // ── Init Web Audio API (EQ + crossfade gain)
@@ -574,9 +581,9 @@ export default function App() {
     if (playing) {
       ensureAudioCtx();
       if (audioCtxRef.current?.state==='suspended') audioCtxRef.current.resume();
-      a.play().catch(()=>setPlaying(false));
+      a.play().catch(e => { console.warn('play error:', e); setPlaying(false); });
     } else { a.pause(); }
-  }, [playing]);
+  }, [playing, ensureAudioCtx]);
 
   // ── Volume/mute
   useEffect(() => { if (audioRef.current) audioRef.current.volume = muted?0:volume; }, [volume, muted]);
@@ -759,7 +766,7 @@ export default function App() {
 
       {/* BG */}
       <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, background:`radial-gradient(ellipse at 60% 10%,${track.color}20 0%,transparent 60%)`, transition:'background 2s ease' }}/>
-      <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0 }}><div className="stars"/></div>
+      <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, overflow:'hidden' }}><div className="stars"/></div>
 
       {/* ══ HEADER */}
       <header style={{ position:'relative', zIndex:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 14px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
