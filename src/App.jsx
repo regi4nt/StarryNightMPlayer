@@ -144,7 +144,43 @@ const fmt = t => { if (!t||isNaN(t)) return '0:00'; return `${Math.floor(t/60)}:
 const fmtSec = s => { const m=Math.floor(s/60), sec=s%60; return `${m}:${String(sec).padStart(2,'0')}`; };
 
 // ═══════════════════════════════════════════════════════
-//  ORBITAL RING  (seek via ring click)
+//  APP LOGO
+// ═══════════════════════════════════════════════════════
+function AppLogo({ size = 32 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="lg1" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#60a5fa"/>
+          <stop offset="100%" stopColor="#c084fc"/>
+        </linearGradient>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="0.8" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      {/* Dark background */}
+      <circle cx="16" cy="16" r="15.5" fill="#07071e"/>
+      {/* Outer border gradient */}
+      <circle cx="16" cy="16" r="15.5" stroke="url(#lg1)" strokeWidth="1" fill="none" opacity="0.5"/>
+      {/* Orbit ring - dashed like the player ring */}
+      <circle cx="16" cy="16" r="10.5" stroke="url(#lg1)" strokeWidth="2.2" fill="none"
+        strokeDasharray="46 20" strokeLinecap="round" transform="rotate(-60 16 16)"/>
+      {/* Glowing dot on orbit (top-right position) */}
+      <circle cx="23.4" cy="9.4" r="2.2" fill="white" filter="url(#glow)"/>
+      {/* 4-pointed star / spark in center */}
+      <path d="M16 9.5 L17.1 14.9 L22.5 16 L17.1 17.1 L16 22.5 L14.9 17.1 L9.5 16 L14.9 14.9 Z"
+        fill="white" opacity="0.95" filter="url(#glow)"/>
+      {/* Tiny accent stars */}
+      <circle cx="7.5" cy="8.5" r="0.9" fill="white" opacity="0.55"/>
+      <circle cx="24.5" cy="24" r="0.7" fill="white" opacity="0.45"/>
+      <circle cx="9" cy="23.5" r="0.6" fill="#60a5fa" opacity="0.7"/>
+    </svg>
+  );
+}
+
+// ═══════════════════════════════════════════════════════
+//  ORBITAL RING  — tap OR drag to seek
 // ═══════════════════════════════════════════════════════
 function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, title, onSeek }) {
   const cx=size/2, cy=size/2, artR=size/2-36, ringR=artR+18, circ=2*Math.PI*ringR;
@@ -153,33 +189,76 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
   const lblR=ringR+26, lblX=cx+Math.cos(rad)*lblR, lblY=cy+Math.sin(rad)*lblR;
   const durX=cx+Math.cos(Math.PI/2)*lblR, durY=cy+Math.sin(Math.PI/2)*lblR;
 
-  const handleClick = e => {
-    if (!onSeek||!duration) return;
-    const rect=e.currentTarget.getBoundingClientRect();
-    const x=e.clientX-rect.left-cx, y=e.clientY-rect.top-cy;
-    if (Math.abs(Math.sqrt(x*x+y*y)-ringR)>28) return;
-    let angle=Math.atan2(x,-y); if (angle<0) angle+=2*Math.PI;
-    onSeek(angle/(2*Math.PI));
+  const svgRef  = useRef(null);
+  const dragging = useRef(false);
+
+  const getPct = (clientX, clientY) => {
+    const rect = svgRef.current.getBoundingClientRect();
+    const x = clientX - rect.left - cx, y = clientY - rect.top - cy;
+    let a = Math.atan2(x, -y); if (a < 0) a += 2 * Math.PI;
+    return a / (2 * Math.PI);
   };
+  const nearRing = (clientX, clientY) => {
+    const rect = svgRef.current.getBoundingClientRect();
+    const x = clientX - rect.left - cx, y = clientY - rect.top - cy;
+    return Math.abs(Math.sqrt(x*x+y*y) - ringR) <= 38;
+  };
+
+  // Mouse events
+  const onMouseDown = e => { if (!onSeek||!duration||!nearRing(e.clientX,e.clientY)) return; dragging.current=true; onSeek(getPct(e.clientX,e.clientY)); };
+  const onMouseMove = e => { if (!dragging.current||!onSeek) return; onSeek(getPct(e.clientX,e.clientY)); };
+  const onMouseUp   = () => { dragging.current=false; };
+
+  // Touch events — need non-passive to call preventDefault (stops page scroll during drag)
+  useEffect(() => {
+    const svg = svgRef.current; if (!svg) return;
+    const tStart = e => {
+      const t=e.touches[0]; if (!onSeek||!duration||!nearRing(t.clientX,t.clientY)) return;
+      dragging.current=true; onSeek(getPct(t.clientX,t.clientY)); e.preventDefault();
+    };
+    const tMove = e => {
+      if (!dragging.current||!onSeek) return;
+      const t=e.touches[0]; onSeek(getPct(t.clientX,t.clientY)); e.preventDefault();
+    };
+    const tEnd = () => { dragging.current=false; };
+    svg.addEventListener('touchstart', tStart, { passive:false });
+    svg.addEventListener('touchmove',  tMove,  { passive:false });
+    svg.addEventListener('touchend',   tEnd);
+    return () => { svg.removeEventListener('touchstart',tStart); svg.removeEventListener('touchmove',tMove); svg.removeEventListener('touchend',tEnd); };
+  }, [onSeek, duration, size]); // eslint-disable-line
 
   return (
     <div style={{ position:'relative', width:size, height:size, flexShrink:0 }}>
-      <div style={{ position:'absolute', top:cy-artR, left:cx-artR, width:artR*2, height:artR*2, borderRadius:'50%', overflow:'hidden', border:'3px solid rgba(255,255,255,0.12)', boxShadow:`0 0 40px -8px ${color}80`, animation:isPlaying?'spin20 20s linear infinite':'none', zIndex:2 }}>
+      {/* Album art */}
+      <div style={{ position:'absolute', top:cy-artR, left:cx-artR, width:artR*2, height:artR*2, borderRadius:'50%', overflow:'hidden', border:'3px solid rgba(255,255,255,0.13)', boxShadow:`0 0 40px -8px ${color}90`, animation:isPlaying?'spin20 20s linear infinite':'none', zIndex:2 }}>
         <img src={cover} alt={title} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
       </div>
-      <svg width={size} height={size} style={{ position:'absolute', inset:0, zIndex:3, overflow:'visible', cursor:duration?'pointer':'default' }} onClick={handleClick}>
-        <circle cx={cx} cy={cy} r={ringR} stroke="transparent" strokeWidth="36" fill="none"/>
-        <circle cx={cx} cy={cy} r={ringR} stroke="rgba(255,255,255,0.1)" strokeWidth="3.5" fill="none"/>
-        <circle cx={cx} cy={cy} r={ringR} stroke={color} strokeWidth="4" fill="none"
+      {/* SVG ring — mouse drag + click */}
+      <svg ref={svgRef} width={size} height={size}
+        style={{ position:'absolute', inset:0, zIndex:3, overflow:'visible', cursor:duration?'grab':'default', touchAction:'none' }}
+        onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}>
+        {/* Wide invisible hit area */}
+        <circle cx={cx} cy={cy} r={ringR} stroke="transparent" strokeWidth="44" fill="none"/>
+        {/* Track */}
+        <circle cx={cx} cy={cy} r={ringR} stroke="rgba(255,255,255,0.09)" strokeWidth="3.5" fill="none"/>
+        {/* Progress arc */}
+        <circle cx={cx} cy={cy} r={ringR} stroke={color} strokeWidth="4.5" fill="none"
           strokeDasharray={circ} strokeDashoffset={circ-circ*pct} strokeLinecap="round"
           transform={`rotate(-90 ${cx} ${cy})`}
-          style={{ transition:'stroke-dashoffset 0.35s linear', filter:`drop-shadow(0 0 5px ${color})` }}/>
-        <line x1={cx} y1={cy-ringR-6} x2={cx} y2={cy-ringR+6} stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeLinecap="round"/>
-        <circle cx={dotX} cy={dotY} r={13} fill={color} opacity="0.18"/>
-        <circle cx={dotX} cy={dotY} r={6.5} fill="white" style={{ filter:'drop-shadow(0 0 7px rgba(255,255,255,0.95))' }}/>
-        {pct>0.01&&<text x={lblX} y={lblY} textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="11" fontWeight="800" fontFamily="monospace" style={{ filter:'drop-shadow(0 1px 4px rgba(0,0,0,0.9))', pointerEvents:'none' }}>{fmt(progress)}</text>}
-        <text x={durX} y={durY} textAnchor="middle" dominantBaseline="middle" fill="rgba(255,255,255,0.3)" fontSize="10" fontWeight="600" fontFamily="monospace" style={{ pointerEvents:'none' }}>{fmt(duration)}</text>
-        <text x={cx} y={cy-ringR-18} textAnchor="middle" dominantBaseline="middle" fill="rgba(255,255,255,0.2)" fontSize="10" fontWeight="600" fontFamily="monospace" style={{ pointerEvents:'none' }}>0:00</text>
+          style={{ transition: dragging.current?'none':'stroke-dashoffset 0.35s linear', filter:`drop-shadow(0 0 6px ${color})` }}/>
+        {/* 0:00 tick */}
+        <line x1={cx} y1={cy-ringR-7} x2={cx} y2={cy-ringR+7} stroke="rgba(255,255,255,0.18)" strokeWidth="2.5" strokeLinecap="round"/>
+        {/* Dot glow */}
+        <circle cx={dotX} cy={dotY} r={14} fill={color} opacity="0.15"/>
+        {/* Draggable dot */}
+        <circle cx={dotX} cy={dotY} r={7} fill="white"
+          style={{ filter:'drop-shadow(0 0 8px rgba(255,255,255,1))', cursor:'grab' }}/>
+        {/* Current time */}
+        {pct>0.01&&<text x={lblX} y={lblY} textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="11" fontWeight="800" fontFamily="monospace" style={{ filter:'drop-shadow(0 1px 5px rgba(0,0,0,1))', pointerEvents:'none' }}>{fmt(progress)}</text>}
+        {/* Duration */}
+        <text x={durX} y={durY} textAnchor="middle" dominantBaseline="middle" fill="rgba(255,255,255,0.28)" fontSize="10" fontWeight="600" fontFamily="monospace" style={{ pointerEvents:'none' }}>{fmt(duration)}</text>
+        {/* Start label */}
+        <text x={cx} y={cy-ringR-20} textAnchor="middle" dominantBaseline="middle" fill="rgba(255,255,255,0.18)" fontSize="10" fontWeight="600" fontFamily="monospace" style={{ pointerEvents:'none' }}>0:00</text>
       </svg>
     </div>
   );
@@ -427,12 +506,17 @@ export default function App() {
   // ── Responsive ring
   useEffect(() => {
     const calc = () => {
-      const overhead = 330; // header + track info + controls + insight + tabbar
-      const maxH = window.innerHeight - overhead;
-      const maxW = window.innerWidth - 56;
-      setRingSize(Math.max(190, Math.min(330, Math.min(maxH, maxW))));
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      // Measure all fixed UI elements:
+      // header ~50 + tabbar ~60 + trackInfo ~55 + controls ~58 + secControls ~46 + insight ~42 + gaps ~36 = ~347
+      const overhead = 347;
+      const available = Math.min(vh - overhead, vw - 48);
+      setRingSize(Math.max(185, Math.min(310, available)));
     };
-    calc(); window.addEventListener('resize', calc); return () => window.removeEventListener('resize', calc);
+    calc();
+    window.addEventListener('resize', calc);
+    return () => window.removeEventListener('resize', calc);
   }, []);
 
   // ── Audio init
@@ -678,12 +762,12 @@ export default function App() {
       <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0 }}><div className="stars"/></div>
 
       {/* ══ HEADER */}
-      <header style={{ position:'relative', zIndex:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 16px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-          <div style={{ width:30, height:30, borderRadius:9, background:`linear-gradient(135deg,${track.color},#6366f1)`, display:'flex', alignItems:'center', justifyContent:'center', boxShadow:`0 0 14px ${track.color}60`, transition:'all 0.5s' }}><Headphones size={15} style={{ color:'white' }}/></div>
+      <header style={{ position:'relative', zIndex:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 14px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:9 }}>
+          <AppLogo size={30}/>
           <div>
-            <div style={{ fontWeight:800, fontSize:13, lineHeight:1, letterSpacing:'-0.02em' }}>Starry Night</div>
-            <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', marginTop:1 }}>Music Player</div>
+            <div style={{ fontWeight:900, fontSize:13, lineHeight:1, letterSpacing:'-0.03em', background:'linear-gradient(90deg,#60a5fa,#c084fc)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>Starry Night</div>
+            <div style={{ fontSize:9.5, fontWeight:700, color:'rgba(255,255,255,0.35)', marginTop:0.5, letterSpacing:'0.06em', textTransform:'uppercase' }}>MPlayer</div>
           </div>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
@@ -720,9 +804,10 @@ export default function App() {
 
         {/* ─── PLAYER TAB */}
         {tab==='player'&&(
-          <div style={{ height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'4px 20px 0', animation:'fadeUp 0.4s ease' }}>
+          <div className="scrollbar-hide" style={{ height:'100%', overflowY:'auto' }}>
+          <div style={{ minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'clamp(4px,1.5vh,12px) 20px clamp(4px,1vh,8px)', animation:'fadeUp 0.4s ease' }}>
             {loadingTrack&&(
-              <div style={{ position:'absolute', inset:0, zIndex:20, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'rgba(7,7,26,0.8)', backdropFilter:'blur(4px)', gap:12 }}>
+              <div style={{ position:'fixed', inset:0, zIndex:20, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'rgba(7,7,26,0.85)', backdropFilter:'blur(6px)', gap:12 }}>
                 <Loader2 size={30} style={{ color:track.color, animation:'spin 1s linear infinite' }}/>
                 <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)' }}>Memuat dari Google Drive…</div>
               </div>
@@ -732,50 +817,51 @@ export default function App() {
             <OrbitalRing size={ringSize} pct={pct} color={track.color} progress={progress} duration={duration} isPlaying={playing} cover={track.cover} title={track.title} onSeek={seekByPct}/>
 
             {/* Track info */}
-            <div style={{ textAlign:'center', marginTop:10, width:'100%', maxWidth:320, padding:'0 8px' }}>
-              {track.isDrive&&<div style={{ display:'inline-flex', alignItems:'center', gap:3, padding:'2px 7px', borderRadius:999, marginBottom:5, background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)' }}><Cloud size={9} style={{ color:track.color }}/><span style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em' }}>Drive</span></div>}
-              <h2 style={{ margin:0, fontWeight:900, letterSpacing:'-0.03em', lineHeight:1.1, fontSize:'clamp(17px,4.5vw,25px)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{track.title}</h2>
-              <p style={{ margin:'3px 0 0', fontSize:11, color:'rgba(255,255,255,0.45)', fontWeight:600 }}>{track.artist} — {track.album}</p>
+            <div style={{ textAlign:'center', marginTop:'clamp(8px,1.8vh,16px)', width:'100%', maxWidth:320, padding:'0 8px' }}>
+              {track.isDrive&&<div style={{ display:'inline-flex', alignItems:'center', gap:3, padding:'2px 7px', borderRadius:999, marginBottom:4, background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)' }}><Cloud size={9} style={{ color:track.color }}/><span style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em' }}>Drive</span></div>}
+              <h2 style={{ margin:0, fontWeight:900, letterSpacing:'-0.03em', lineHeight:1.1, fontSize:'clamp(16px,4.2vw,24px)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{track.title}</h2>
+              <p style={{ margin:'2px 0 0', fontSize:'clamp(10px,2.5vw,12px)', color:'rgba(255,255,255,0.45)', fontWeight:600 }}>{track.artist} — {track.album}</p>
             </div>
 
             {/* Main controls: Shuffle | Prev | Play | Next | Repeat */}
-            <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:14 }}>
-              <button onClick={()=>setShuffle(s=>!s)} title="Acak" style={{ ...btn, color:shuffle?track.color:'rgba(255,255,255,0.35)', position:'relative' }}>
-                <Shuffle size={19}/>
-                {shuffle&&<div style={{ position:'absolute', bottom:5, left:'50%', transform:'translateX(-50%)', width:4, height:4, borderRadius:'50%', background:track.color }}/>}
+            <div style={{ display:'flex', alignItems:'center', gap:'clamp(4px,2vw,10px)', marginTop:'clamp(10px,2vh,16px)' }}>
+              <button onClick={()=>setShuffle(s=>!s)} style={{ ...btn, color:shuffle?track.color:'rgba(255,255,255,0.3)', position:'relative', padding:'clamp(5px,1.2vw,8px)' }}>
+                <Shuffle size={18}/>
+                {shuffle&&<div style={{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:track.color }}/>}
               </button>
-              <button onClick={goPrev} style={btn}><SkipBack size={22} fill="currentColor"/></button>
-              <button onClick={()=>setPlaying(p=>!p)} style={{ width:54, height:54, borderRadius:'50%', border:'none', background:'white', color:'#07071a', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:`0 0 20px ${track.color}80,0 4px 20px rgba(0,0,0,0.4)`, transition:'transform 0.1s,box-shadow 0.3s', flexShrink:0 }}>
-                {playing?<Pause size={22} fill="currentColor"/>:<Play size={22} fill="currentColor" style={{ marginLeft:3 }}/>}
+              <button onClick={goPrev} style={{ ...btn, padding:'clamp(5px,1.2vw,8px)' }}><SkipBack size={22} fill="currentColor"/></button>
+              <button onClick={()=>setPlaying(p=>!p)} style={{ width:'clamp(48px,13vw,56px)', height:'clamp(48px,13vw,56px)', borderRadius:'50%', border:'none', background:'white', color:'#07071a', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:`0 0 22px ${track.color}90,0 4px 20px rgba(0,0,0,0.4)`, transition:'transform 0.1s,box-shadow 0.3s', flexShrink:0 }}>
+                {playing?<Pause size={21} fill="currentColor"/>:<Play size={21} fill="currentColor" style={{ marginLeft:3 }}/>}
               </button>
-              <button onClick={goNext} style={btn}><SkipForward size={22} fill="currentColor"/></button>
-              <button onClick={cycleRepeat} title={repeat==='one'?'Ulangi satu':repeat==='all'?'Ulangi semua':'Tidak diulangi'} style={{ ...btn, color:repeat!=='off'?track.color:'rgba(255,255,255,0.35)', position:'relative' }}>
-                {repeat==='one'?<Repeat1 size={19}/>:<Repeat size={19}/>}
-                {repeat!=='off'&&<div style={{ position:'absolute', bottom:5, left:'50%', transform:'translateX(-50%)', width:4, height:4, borderRadius:'50%', background:track.color }}/>}
+              <button onClick={goNext} style={{ ...btn, padding:'clamp(5px,1.2vw,8px)' }}><SkipForward size={22} fill="currentColor"/></button>
+              <button onClick={cycleRepeat} style={{ ...btn, color:repeat!=='off'?track.color:'rgba(255,255,255,0.3)', position:'relative', padding:'clamp(5px,1.2vw,8px)' }}>
+                {repeat==='one'?<Repeat1 size={18}/>:<Repeat size={18}/>}
+                {repeat!=='off'&&<div style={{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:track.color }}/>}
               </button>
             </div>
 
-            {/* Secondary controls: Like | Volume | Settings */}
-            <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:6, width:'100%', maxWidth:280 }}>
-              <button onClick={()=>setLiked(l=>({...l,[track.id]:!l[track.id]}))} style={{ ...btn, color:liked[track.id]?'#f472b6':'rgba(255,255,255,0.35)' }}><Heart size={18} fill={liked[track.id]?'#f472b6':'none'}/></button>
-              <button onClick={()=>setMuted(m=>!m)} style={{ ...btn, color:muted?'#ef4444':'rgba(255,255,255,0.35)' }}>{muted?<VolumeX size={18}/>:<Volume2 size={18}/>}</button>
+            {/* Secondary: Like | Mute | Volume slider | Settings */}
+            <div style={{ display:'flex', alignItems:'center', gap:4, marginTop:'clamp(3px,0.8vh,7px)', width:'100%', maxWidth:290 }}>
+              <button onClick={()=>setLiked(l=>({...l,[track.id]:!l[track.id]}))} style={{ ...btn, color:liked[track.id]?'#f472b6':'rgba(255,255,255,0.3)', padding:6 }}><Heart size={17} fill={liked[track.id]?'#f472b6':'none'}/></button>
+              <button onClick={()=>setMuted(m=>!m)} style={{ ...btn, color:muted?'#ef4444':'rgba(255,255,255,0.3)', padding:6 }}>{muted?<VolumeX size={17}/>:<Volume2 size={17}/>}</button>
               <input type="range" min="0" max="1" step="0.01" value={muted?0:volume} onChange={e=>{setVolume(+e.target.value);setMuted(false)}} style={{ flex:1, accentColor:track.color, height:3 }}/>
-              <button onClick={()=>setShowSettings(true)} title="Pengaturan (EQ, Timer, Crossfade)" style={{ ...btn, color:showSettings||eqEnabled||sleepTimer?track.color:'rgba(255,255,255,0.35)' }}><Settings size={18}/></button>
+              <button onClick={()=>setShowSettings(true)} style={{ ...btn, color:eqEnabled||sleepTimer?track.color:'rgba(255,255,255,0.3)', padding:6 }}><Settings size={17}/></button>
             </div>
 
             {/* AI Insight */}
-            <div style={{ width:'100%', maxWidth:300, marginTop:8, padding:'0 8px', marginBottom:4 }}>
+            <div style={{ width:'100%', maxWidth:300, marginTop:'clamp(6px,1.2vh,10px)', padding:'0 8px', paddingBottom:'clamp(8px,1.5vh,14px)' }}>
               {!insight?(
                 <button onClick={getInsight} disabled={insightLoading} style={{ width:'100%', padding:'8px 0', borderRadius:12, border:'none', background:track.bg, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, opacity:insightLoading?0.6:1 }}>
                   {insightLoading?<><Zap size={12} style={{ animation:'spin 0.8s linear infinite' }}/>Meramal...</>:<><Sparkles size={12}/>Wawasan Kosmik ✨</>}
                 </button>
               ):(
-                <div onClick={()=>setInsight('')} style={{ padding:'9px 13px', borderRadius:12, background:track.bg, border:`1px solid ${track.color}40`, cursor:'pointer' }}>
+                <div onClick={()=>setInsight('')} style={{ padding:'9px 13px', borderRadius:12, background:track.bg, border:`1px solid ${track.color}40`, cursor:'pointer', animation:'fadeUp 0.3s ease' }}>
                   <div style={{ fontSize:9, color:track.color, fontWeight:700, marginBottom:3, textTransform:'uppercase', letterSpacing:'0.1em' }}>✨ Wawasan Kosmik</div>
                   <p style={{ margin:0, fontSize:12, color:'rgba(255,255,255,0.85)', fontStyle:'italic', lineHeight:1.6 }}>{insight}</p>
                 </div>
               )}
             </div>
+          </div>
           </div>
         )}
 
