@@ -7,7 +7,8 @@ import {
   CheckCircle, Loader2, User, Shuffle, Repeat,
   Repeat1, Settings, Moon, FileText, Clock,
   ChevronRight, SlidersHorizontal, History,
-  Search, Mic2, Trash2
+  Search, Mic2, Trash2, ListPlus, FolderOpen,
+  PenLine, ChevronLeft
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════
@@ -143,6 +144,77 @@ async function driveUploadSong(file, meta, token) {
 const fmt = t => { if (!t||isNaN(t)) return '0:00'; return `${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,'0')}`; };
 const fmtSec = s => { const m=Math.floor(s/60), sec=s%60; return `${m}:${String(sec).padStart(2,'0')}`; };
 
+
+// ═══════════════════════════════════════════════════════
+//  PLAYLIST MODAL - Create / Edit
+// ═══════════════════════════════════════════════════════
+function PlaylistModal({ onClose, onSave, allSongs, existing }) {
+  const isEdit = !!existing;
+  const [name, setName] = useState(existing?.name || '');
+  const [selected, setSelected] = useState(new Set(existing?.songIds || []));
+
+  const toggle = id => setSelected(s => {
+    const n = new Set(s);
+    n.has(id) ? n.delete(id) : n.add(id);
+    return n;
+  });
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:100, background:'rgba(0,0,0,0.75)', backdropFilter:'blur(8px)', display:'flex', alignItems:'flex-end', animation:'fadeUp 0.25s ease' }} onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div style={{ width:'100%', maxHeight:'92dvh', overflowY:'auto', background:'#0f0f2a', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'24px 24px 0 0', padding:'20px 20px 32px' }}>
+        <div style={{ width:36, height:4, borderRadius:999, background:'rgba(255,255,255,0.15)', margin:'0 auto 18px' }}/>
+        <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:18 }}>
+          <div style={{ width:36, height:36, borderRadius:10, background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            {isEdit ? <PenLine size={16} style={{color:'white'}}/> : <ListPlus size={16} style={{color:'white'}}/>}
+          </div>
+          <div>
+            <div style={{ fontWeight:800, fontSize:15 }}>{isEdit ? 'Edit Playlist' : 'Buat Playlist Baru'}</div>
+            <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)' }}>{selected.size} lagu dipilih</div>
+          </div>
+          <button onClick={onClose} style={{ marginLeft:'auto', background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.4)' }}><X size={20}/></button>
+        </div>
+
+        {/* Name */}
+        <div style={{ marginBottom:16 }}>
+          <label style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.4)', textTransform:'uppercase', letterSpacing:'0.1em' }}>Nama Playlist</label>
+          <input value={name} onChange={e=>setName(e.target.value)} placeholder="Nama playlist kamu..."
+            style={{ width:'100%', marginTop:6, background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:10, padding:'10px 12px', fontSize:13, color:'white', outline:'none' }}/>
+        </div>
+
+        {/* Song picker */}
+        <div style={{ marginBottom:18 }}>
+          <label style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.4)', textTransform:'uppercase', letterSpacing:'0.1em' }}>Pilih Lagu</label>
+          <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:4 }}>
+            {allSongs.map(s => {
+              const on = selected.has(s.id);
+              return (
+                <div key={s.id} onClick={()=>toggle(s.id)} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:12, cursor:'pointer', background:on?s.bg:'rgba(255,255,255,0.03)', border:`1px solid ${on?s.color+'50':'rgba(255,255,255,0.08)'}`, transition:'all 0.15s' }}>
+                  <img src={s.cover} style={{ width:34, height:34, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontWeight:700, fontSize:13, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:on?'white':'rgba(255,255,255,0.8)' }}>{s.title}</div>
+                    <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>{s.artist}</div>
+                  </div>
+                  <div style={{ width:20, height:20, borderRadius:'50%', border:`2px solid ${on?s.color:'rgba(255,255,255,0.2)'}`, background:on?s.color:'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, transition:'all 0.15s' }}>
+                    {on && <CheckCircle size={12} style={{color:'white'}}/>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{ display:'flex', gap:10 }}>
+          <button onClick={onClose} style={{ flex:1, padding:'12px 0', borderRadius:14, border:'1px solid rgba(255,255,255,0.12)', background:'transparent', color:'rgba(255,255,255,0.6)', fontSize:13, fontWeight:700, cursor:'pointer' }}>Batal</button>
+          <button onClick={()=>{ if(!name.trim()) return alert('Isi nama playlist!'); onSave({ name:name.trim(), songIds:[...selected] }); }}
+            style={{ flex:2, padding:'12px 0', borderRadius:14, border:'none', background:'linear-gradient(135deg,#6366f1,#a855f7)', color:'white', fontSize:13, fontWeight:800, cursor:'pointer' }}>
+            {isEdit ? 'Simpan Perubahan' : 'Buat Playlist'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════════════════════
 //  APP LOGO
 // ═══════════════════════════════════════════════════════
@@ -267,7 +339,7 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
 // ═══════════════════════════════════════════════════════
 //  SONG ROW
 // ═══════════════════════════════════════════════════════
-function SongRow({ s, i, track, playing, liked, setLiked, play, isDrive, onRemove }) {
+function SongRow({ s, i, track, playing, liked, setLiked, play, isDrive, onRemove, playlists, addToPlaylist }) {
   const isActive = track.id === s.id;
   return (
     <div style={{ display:'flex', alignItems:'center', gap:12, padding:'9px 12px', borderRadius:14, cursor:'pointer', background:isActive?s.bg:'rgba(255,255,255,0.04)', border:`1px solid ${isActive?s.color+'50':'transparent'}`, transition:'all 0.2s' }} onClick={()=>play(s)}>
@@ -281,6 +353,25 @@ function SongRow({ s, i, track, playing, liked, setLiked, play, isDrive, onRemov
       </div>
       <div style={{ display:'flex', gap:2 }}>
         {onRemove&&<button onClick={e=>{e.stopPropagation();onRemove(s.id)}} style={{ ...btn, color:'rgba(255,255,255,0.2)', padding:6 }}><Trash2 size={14}/></button>}
+        {playlists&&addToPlaylist&&(
+          <div style={{ position:'relative' }} onClick={e=>e.stopPropagation()}>
+            <button
+              style={{ ...btn, color:'rgba(255,255,255,0.2)', padding:6 }}
+              title="Tambah ke Playlist"
+              onClick={e=>{ e.stopPropagation(); const el=e.currentTarget.nextSibling; el.style.display=el.style.display==='block'?'none':'block'; }}
+            ><ListPlus size={14}/></button>
+            <div style={{ display:'none', position:'absolute', right:0, top:'110%', zIndex:50, background:'#1a1a3e', border:'1px solid rgba(255,255,255,0.15)', borderRadius:10, minWidth:160, padding:'6px 0', boxShadow:'0 8px 24px rgba(0,0,0,0.5)' }}>
+              <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.35)', padding:'4px 12px 6px', textTransform:'uppercase', letterSpacing:'0.1em' }}>Tambah ke</div>
+              {playlists.map(pl=>(
+                <div key={pl.id} onClick={()=>{ addToPlaylist(pl.id, s.id); }} style={{ padding:'7px 12px', fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.8)', cursor:'pointer', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}
+                  onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.07)'}
+                  onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                  {pl.name}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <button onClick={e=>{e.stopPropagation();setLiked(l=>({...l,[s.id]:!l[s.id]}))}} style={{ ...btn, color:liked[s.id]?'#f472b6':'rgba(255,255,255,0.2)', padding:6 }}><Heart size={15} fill={liked[s.id]?'#f472b6':'none'}/></button>
       </div>
     </div>
@@ -472,6 +563,16 @@ export default function App() {
   const [uploadProgress, setUploadProg] = useState(0);
   const [loadingTrack, setLoadingTrack] = useState(false);
   const [driveError, setDriveError]     = useState('');
+
+  // ── Playlists
+  const [playlists, setPlaylists]         = useState([
+    { id:'pl_fav', name:'❤️ Favorit', songIds:[], locked:false },
+    { id:'pl_chill', name:'🌙 Chill Night', songIds:[1,2], locked:false },
+  ]);
+  const [activePl, setActivePl]           = useState(null); // null = all songs, else playlist id
+  const [showPlModal, setShowPlModal]     = useState(false);
+  const [editingPl, setEditingPl]         = useState(null);
+  const [plView, setPlView]               = useState('list'); // 'list' | 'detail'
 
   // ── Responsive
   const [ringSize, setRingSize] = useState(260);
@@ -713,6 +814,36 @@ export default function App() {
     if (found) { play(found); setVibeInput(`✨ Cocok: ${found.title}`); } setVL(false);
   };
 
+  // ── Playlists
+  const createPlaylist = useCallback(({ name, songIds }) => {
+    const id = 'pl_' + Date.now();
+    setPlaylists(p => [...p, { id, name, songIds, locked:false }]);
+    setShowPlModal(false);
+    setEditingPl(null);
+  }, []);
+
+  const updatePlaylist = useCallback(({ name, songIds }) => {
+    setPlaylists(p => p.map(pl => pl.id===editingPl.id ? { ...pl, name, songIds } : pl));
+    setShowPlModal(false);
+    setEditingPl(null);
+  }, [editingPl]);
+
+  const deletePlaylist = useCallback((id) => {
+    if (!window.confirm('Hapus playlist ini?')) return;
+    setPlaylists(p => p.filter(pl => pl.id!==id));
+    if (activePl===id) setActivePl(null);
+  }, [activePl]);
+
+  const addToPlaylist = useCallback((plId, songId) => {
+    setPlaylists(p => p.map(pl => pl.id===plId && !pl.songIds.includes(songId)
+      ? { ...pl, songIds:[...pl.songIds, songId] } : pl));
+  }, []);
+
+  const removeFromPlaylist = useCallback((plId, songId) => {
+    setPlaylists(p => p.map(pl => pl.id===plId
+      ? { ...pl, songIds: pl.songIds.filter(id=>id!==songId) } : pl));
+  }, []);
+
   // ── Google
   const handleGoogleLogin = useCallback(() => {
     if (!window.google) return setDriveError('Google API belum siap, coba lagi.');
@@ -754,11 +885,17 @@ export default function App() {
   const filteredBuiltin = filteredSongs.filter(s => !s.isDrive);
   const filteredCustom  = filteredSongs.filter(s =>  s.isDrive);
 
+  // ── Active playlist songs
+  const activePlSongs = activePl
+    ? (() => { const pl = playlists.find(p=>p.id===activePl); return pl ? allSongs.filter(s=>pl.songIds.includes(s.id)) : allSongs; })()
+    : allSongs;
+
   const tabs = [
-    { id:'player', icon:<Compass size={17}/>,  label:'Player' },
-    { id:'queue',  icon:<ListMusic size={17}/>, label:'Antrian' },
-    { id:'lyrics', icon:<Mic2 size={17}/>,      label:'Lirik' },
-    { id:'ai',     icon:<Bot size={17}/>,       label:'AI' },
+    { id:'player',   icon:<Compass size={17}/>,   label:'Player' },
+    { id:'queue',    icon:<ListMusic size={17}/>,  label:'Antrian' },
+    { id:'playlist', icon:<FolderOpen size={17}/>, label:'Playlist' },
+    { id:'lyrics',   icon:<Mic2 size={17}/>,       label:'Lirik' },
+    { id:'ai',       icon:<Bot size={17}/>,        label:'AI' },
   ];
 
   return (
@@ -914,7 +1051,7 @@ export default function App() {
             <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column', gap:5, paddingBottom:16 }}>
               {/* Built-in songs */}
               <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.15em', marginBottom:4 }}>🎵 Lagu Bawaan ({filteredBuiltin.length})</div>
-              {filteredBuiltin.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} play={play}/>)}
+              {filteredBuiltin.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} play={play} playlists={playlists} addToPlaylist={addToPlaylist}/>)}
 
               {/* Drive songs */}
               {(googleUser||customSongs.length>0)&&(
@@ -925,7 +1062,7 @@ export default function App() {
                   </div>
                   {loadingDrive&&filteredCustom.length===0&&<div style={{ textAlign:'center', padding:16, color:'rgba(255,255,255,0.3)', fontSize:12 }}>Memuat dari Drive…</div>}
                   {!loadingDrive&&filteredCustom.length===0&&googleUser&&<div style={{ padding:'16px', textAlign:'center', background:'rgba(255,255,255,0.02)', borderRadius:12, border:'1px dashed rgba(255,255,255,0.1)' }}><Cloud size={22} style={{ color:'rgba(255,255,255,0.12)', margin:'0 auto 8px', display:'block' }}/><div style={{ fontSize:12, color:'rgba(255,255,255,0.3)' }}>Belum ada lagu di Drive</div></div>}
-                  {filteredCustom.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} play={play} isDrive onRemove={id=>setCustomSongs(p=>p.filter(x=>x.id!==id))}/>)}
+                  {filteredCustom.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} play={play} isDrive onRemove={id=>setCustomSongs(p=>p.filter(x=>x.id!==id))} playlists={playlists} addToPlaylist={addToPlaylist}/>)}
                 </>
               )}
 
@@ -948,6 +1085,158 @@ export default function App() {
                 </>
               )}
             </div>
+          </div>
+        )}
+
+        {/* ─── PLAYLIST TAB */}
+        {tab==='playlist'&&(
+          <div style={{ height:'100%', display:'flex', flexDirection:'column', animation:'fadeUp 0.4s ease' }}>
+
+            {/* ── Playlist list view */}
+            {plView==='list'&&(
+              <div style={{ height:'100%', display:'flex', flexDirection:'column', padding:'14px 16px 0' }}>
+                {/* Header */}
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+                  <div>
+                    <div style={{ fontWeight:800, fontSize:15 }}>Playlist Saya</div>
+                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:2 }}>{playlists.length} playlist</div>
+                  </div>
+                  <button onClick={()=>{ setEditingPl(null); setShowPlModal(true); }}
+                    style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 12px', borderRadius:10, border:'none', background:'linear-gradient(135deg,#6366f1,#a855f7)', color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                    <ListPlus size={14}/>Baru
+                  </button>
+                </div>
+
+                {/* All songs shortcut */}
+                <div onClick={()=>{ setActivePl(null); setTab('queue'); }}
+                  style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', borderRadius:14, cursor:'pointer', background:activePl===null?'rgba(99,102,241,0.15)':'rgba(255,255,255,0.04)', border:`1px solid ${activePl===null?'rgba(99,102,241,0.4)':'rgba(255,255,255,0.08)'}`, marginBottom:10, transition:'all 0.2s' }}>
+                  <div style={{ width:42, height:42, borderRadius:10, background:'linear-gradient(135deg,rgba(99,102,241,0.3),rgba(168,85,247,0.3))', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                    <ListMusic size={20} style={{color:'#a78bfa'}}/>
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontWeight:700, fontSize:14, color:'white' }}>Semua Lagu</div>
+                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:1 }}>{allSongs.length} lagu</div>
+                  </div>
+                  <ChevronRight size={16} style={{color:'rgba(255,255,255,0.3)'}}/>
+                </div>
+
+                {/* Playlist cards */}
+                <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column', gap:8, paddingBottom:16 }}>
+                  {playlists.map(pl => {
+                    const songs = allSongs.filter(s=>pl.songIds.includes(s.id));
+                    const isActive = activePl===pl.id;
+                    const covers = songs.slice(0,4).map(s=>s.cover);
+                    return (
+                      <div key={pl.id} style={{ borderRadius:16, background:isActive?'rgba(99,102,241,0.12)':'rgba(255,255,255,0.03)', border:`1px solid ${isActive?'rgba(99,102,241,0.35)':'rgba(255,255,255,0.08)'}`, overflow:'hidden', transition:'all 0.2s' }}>
+                        <div onClick={()=>{ setActivePl(pl.id); setPlView('detail'); }} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', cursor:'pointer' }}>
+                          {/* Cover mosaic */}
+                          <div style={{ width:48, height:48, borderRadius:10, overflow:'hidden', flexShrink:0, display:'grid', gridTemplateColumns:'1fr 1fr', gap:1.5, background:'rgba(255,255,255,0.06)' }}>
+                            {covers.length>0 ? covers.map((c,i)=>(
+                              <img key={i} src={c} style={{ width:'100%', height:'100%', objectFit:'cover', display: covers.length===1&&i>0?'none':covers.length===2&&i>1?'none':covers.length===3&&i===3?'none':'block' }}/>
+                            )) : <Music size={20} style={{color:'rgba(255,255,255,0.2)',margin:'auto',gridColumn:'span 2'}}/>}
+                          </div>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontWeight:700, fontSize:14, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'white' }}>{pl.name}</div>
+                            <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:2 }}>{songs.length} lagu</div>
+                          </div>
+                          <ChevronRight size={16} style={{color:'rgba(255,255,255,0.3)'}}/>
+                        </div>
+                        {/* Actions */}
+                        <div style={{ display:'flex', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
+                          {songs.length>0&&(
+                            <button onClick={()=>{ setActivePl(pl.id); play(songs[0]); setTab('player'); }}
+                              style={{ flex:1, padding:'8px 0', background:'none', border:'none', color:isActive?'#a78bfa':'rgba(255,255,255,0.5)', fontSize:11, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                              <Play size={12} fill="currentColor"/>Putar
+                            </button>
+                          )}
+                          <button onClick={()=>{ setEditingPl(pl); setShowPlModal(true); }}
+                            style={{ flex:1, padding:'8px 0', background:'none', border:'none', borderLeft:'1px solid rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.5)', fontSize:11, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                            <PenLine size={12}/>Edit
+                          </button>
+                          {!pl.locked&&(
+                            <button onClick={()=>deletePlaylist(pl.id)}
+                              style={{ flex:1, padding:'8px 0', background:'none', border:'none', borderLeft:'1px solid rgba(255,255,255,0.06)', color:'rgba(239,68,68,0.6)', fontSize:11, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                              <Trash2 size={12}/>Hapus
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {playlists.length===0&&(
+                    <div style={{ textAlign:'center', padding:'40px 20px' }}>
+                      <FolderOpen size={44} style={{color:'rgba(255,255,255,0.1)',display:'block',margin:'0 auto 12px'}}/>
+                      <div style={{ fontSize:14, fontWeight:700, color:'rgba(255,255,255,0.3)' }}>Belum ada playlist</div>
+                      <div style={{ fontSize:12, color:'rgba(255,255,255,0.2)', marginTop:4 }}>Ketuk "Baru" untuk membuat playlist pertamamu</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ── Playlist detail view */}
+            {plView==='detail'&&activePl&&(()=>{
+              const pl = playlists.find(p=>p.id===activePl);
+              if (!pl) return null;
+              const songs = allSongs.filter(s=>pl.songIds.includes(s.id));
+              return (
+                <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
+                  {/* Header */}
+                  <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                      <button onClick={()=>setPlView('list')} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.5)', padding:4, display:'flex' }}>
+                        <ChevronLeft size={20}/>
+                      </button>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontWeight:800, fontSize:15, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{pl.name}</div>
+                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:1 }}>{songs.length} lagu</div>
+                      </div>
+                      {songs.length>0&&(
+                        <button onClick={()=>{ play(songs[0]); setTab('player'); }}
+                          style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:10, border:'none', background:track.color, color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                          <Play size={13} fill="currentColor"/>Putar Semua
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Songs */}
+                  <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'10px 16px 16px', display:'flex', flexDirection:'column', gap:5 }}>
+                    {songs.length===0&&(
+                      <div style={{ textAlign:'center', padding:'40px 20px' }}>
+                        <Music size={44} style={{color:'rgba(255,255,255,0.1)',display:'block',margin:'0 auto 12px'}}/>
+                        <div style={{ fontSize:13, color:'rgba(255,255,255,0.3)' }}>Playlist ini masih kosong</div>
+                        <button onClick={()=>{ setEditingPl(pl); setShowPlModal(true); }} style={{ marginTop:12, padding:'8px 16px', borderRadius:10, border:'none', background:'rgba(99,102,241,0.2)', color:'#a78bfa', fontSize:12, fontWeight:700, cursor:'pointer' }}>+ Tambah Lagu</button>
+                      </div>
+                    )}
+                    {songs.map((s,i)=>{
+                      const isActive = track.id===s.id;
+                      return (
+                        <div key={s.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:12, cursor:'pointer', background:isActive?s.bg:'rgba(255,255,255,0.02)', border:`1px solid ${isActive?s.color+'50':'rgba(255,255,255,0.06)'}`, transition:'all 0.15s' }}>
+                          <div onClick={()=>play(s)} style={{ display:'flex', alignItems:'center', gap:10, flex:1, minWidth:0 }}>
+                            <img src={s.cover} style={{ width:36, height:36, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
+                            <div style={{ flex:1, minWidth:0 }}>
+                              <div style={{ fontWeight:700, fontSize:13, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:isActive?'white':'rgba(255,255,255,0.85)' }}>{s.title}</div>
+                              <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{s.artist} · {s.album}</div>
+                            </div>
+                          </div>
+                          {isActive&&playing&&(
+                            <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:14, marginRight:4 }}>
+                              {[12,6,10].map((h,j)=><div key={j} style={{ width:2.5, height:h, background:s.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${j*0.15}s infinite` }}/>)}
+                            </div>
+                          )}
+                          <button onClick={()=>removeFromPlaylist(pl.id, s.id)}
+                            style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(239,68,68,0.5)', padding:'4px 6px', display:'flex', borderRadius:6, flexShrink:0 }}>
+                            <X size={14}/>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -1068,6 +1357,12 @@ export default function App() {
       </nav>
 
       {/* ══ MODALS */}
+      {showPlModal&&<PlaylistModal
+        allSongs={allSongs}
+        existing={editingPl}
+        onClose={()=>{ setShowPlModal(false); setEditingPl(null); }}
+        onSave={editingPl ? updatePlaylist : createPlaylist}
+      />}
       {showSettings&&<SettingsPanel onClose={()=>setShowSettings(false)} color={track.color} eqEnabled={eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset} setEqPreset={setEqPreset} eqGains={eqGains} setEqGains={setEqGains} crossfade={crossfade} setCrossfade={setCrossfade} sleepTimer={sleepTimer} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer}/>}
       {showUpload&&<UploadModal onClose={()=>!uploading&&setShowUpload(false)} onUpload={handleUpload} uploading={uploading} uploadProgress={uploadProgress} color={track.color}/>}
 
