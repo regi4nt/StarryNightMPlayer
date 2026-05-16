@@ -61,18 +61,33 @@
     <div id="root"></div>
     <script>
       // Hide splash once React mounts
+      function hideSplash() {
+        var s = document.getElementById('splash');
+        if (s && !s._hidden) {
+          s._hidden = true;
+          s.classList.add('hide');
+          setTimeout(function(){ if (s.parentNode) s.remove(); }, 450);
+        }
+      }
       window.addEventListener('DOMContentLoaded', function() {
+        var root = document.getElementById('root');
+
+        // Primary: observe React mount
         var obs = new MutationObserver(function() {
-          var root = document.getElementById('root');
           if (root && root.children.length > 0) {
-            setTimeout(function() {
-              var s = document.getElementById('splash');
-              if (s) { s.classList.add('hide'); setTimeout(function(){ s.remove(); }, 450); }
-            }, 300);
+            setTimeout(hideSplash, 300);
             obs.disconnect();
           }
         });
-        obs.observe(document.getElementById('root'), { childList: true });
+        obs.observe(root, { childList: true });
+
+        // Fallback 1: jika React sudah mount tapi observer kelewatan
+        setTimeout(function() {
+          if (root && root.children.length > 0) { obs.disconnect(); hideSplash(); }
+        }, 1500);
+
+        // Fallback 2: paksa hilang setelah 5 detik apapun yang terjadi
+        setTimeout(function() { obs.disconnect(); hideSplash(); }, 5000);
       });
     </script>
     <script type="module" src="/src/main.jsx"></script>

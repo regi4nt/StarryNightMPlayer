@@ -1468,6 +1468,12 @@ export default function App() {
     const prev = audioRef.current;
     const wasPlaying = prev && !prev.paused;
     if (prev) { prev.pause(); prev.src = ''; }
+    // Guard: jangan buat Audio jika src kosong (placeholder track)
+    if (!track.src) {
+      audioRef.current = null;
+      setPlaying(false);
+      return;
+    }
     const a = new Audio(track.src);
     a.volume = muted ? 0 : volume;
     a.preload = dataSaver ? 'none' : 'auto'; // hemat data: jangan buffer sebelum diputar
@@ -1508,18 +1514,29 @@ export default function App() {
   // ── Audio events
   useEffect(() => {
     const a = audioRef.current; if (!a) return;
-    const onTime = () => setProgress(a.currentTime);
-    const onMeta = () => setDuration(a.duration);
-    const onEnd  = () => {
+    const onTime  = () => setProgress(a.currentTime);
+    const onMeta  = () => setDuration(a.duration);
+    const onEnd   = () => {
       if (repeatRef.current === 'one') { a.currentTime = 0; a.play().catch(()=>{}); return; }
       if (repeatRef.current === 'all' || repeatRef.current === 'off') {
         if (goNextRef.current) goNextRef.current();
       }
     };
+    // Error / stall — pastikan loading state tidak terjebak selamanya
+    const onError = () => { setPlaying(false); setLoadingTrack(false); };
+    const onStall = () => { console.warn('Audio stalled:', track.src); };
     a.addEventListener('timeupdate', onTime);
     a.addEventListener('loadedmetadata', onMeta);
     a.addEventListener('ended', onEnd);
-    return () => { a.removeEventListener('timeupdate',onTime); a.removeEventListener('loadedmetadata',onMeta); a.removeEventListener('ended',onEnd); };
+    a.addEventListener('error', onError);
+    a.addEventListener('stalled', onStall);
+    return () => {
+      a.removeEventListener('timeupdate', onTime);
+      a.removeEventListener('loadedmetadata', onMeta);
+      a.removeEventListener('ended', onEnd);
+      a.removeEventListener('error', onError);
+      a.removeEventListener('stalled', onStall);
+    };
   }, [track]); // only re-attach when track changes (not customSongs)
 
   // ── Play/pause
@@ -1621,6 +1638,11 @@ export default function App() {
     let td = { ...t };
     if (t.isDrive && !t.src) {
       setLoadingTrack(true);
+      // Safety timeout: 15 detik — pastikan loading tidak stuck selamanya
+      const safetyTimer = setTimeout(() => {
+        setLoadingTrack(false);
+        setDriveError('Timeout: gagal memuat lagu. Coba lagi.');
+      }, 15000);
       const tryLoad = async (tok) => {
         return driveStreamBlob(t.driveId, tok);
       };
@@ -1639,7 +1661,7 @@ export default function App() {
             } catch(re) {
               // Silent refresh failed → show login prompt gently (no full alert)
               setDriveError('Sesi Google berakhir. Ketuk tombol Login untuk lanjut.');
-              setLoadingTrack(false); return;
+              clearTimeout(safetyTimer); setLoadingTrack(false); return;
             }
           } else { throw e; }
         }
@@ -1648,9 +1670,9 @@ export default function App() {
         setDriveError('');
       } catch(e) {
         setDriveError('Gagal memutar: ' + e.message);
-        setLoadingTrack(false); return;
+        clearTimeout(safetyTimer); setLoadingTrack(false); return;
       }
-      setLoadingTrack(false);
+      clearTimeout(safetyTimer); setLoadingTrack(false);
     }
 
     if (track.id === td.id) { setPlaying(p=>!p); return; }
@@ -2019,7 +2041,7 @@ export default function App() {
                 {shuffle&&<div style={{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:embedTrack?.type==='youtube'?'#ff4444':track.color }}/>}
               </button>
               <button onClick={()=>embedTrack?.type==='youtube'?ytPrev():goPrev()} style={{ ...btn, padding:'clamp(5px,1.2vw,8px)' }}><SkipBack size={22} fill="currentColor"/></button>
-              <button onClick={()=>setPlaying(p=>!p)} style={{ width:'clamp(48px,13vw,56px)', height:'clamp(48px,13vw,56px)', borderRadius:'50%', border:'none', background:'white', color:'#07071a', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow: isLite ? `0 2px 8px rgba(0,0,0,0.4)` : `0 0 22px ${embedTrack?.type==='youtube'?'#ff444490':track.color+'90'},0 4px 20px rgba(0,0,0,0.4)`, transition:'transform 0.1s,box-shadow 0.3s', flexShrink:0 }}>
+              <button onClick={()=>{ if(!track.src&&!embedTrack) return; setPlaying(p=>!p); }} disabled={!track.src&&!embedTrack} style={{ width:'clamp(48px,13vw,56px)', height:'clamp(48px,13vw,56px)', borderRadius:'50%', border:'none', background:'white', color:'#07071a', cursor:(!track.src&&!embedTrack)?'default':'pointer', opacity:(!track.src&&!embedTrack)?0.4:1, display:'flex', alignItems:'center', justifyContent:'center', boxShadow: isLite ? `0 2px 8px rgba(0,0,0,0.4)` : `0 0 22px ${embedTrack?.type==='youtube'?'#ff444490':track.color+'90'},0 4px 20px rgba(0,0,0,0.4)`, transition:'transform 0.1s,box-shadow 0.3s', flexShrink:0 }}>
                 {playing?<Pause size={21} fill="currentColor"/>:<Play size={21} fill="currentColor" style={{ marginLeft:3 }}/>}
               </button>
               <button onClick={()=>embedTrack?.type==='youtube'?ytNext():goNext()} style={{ ...btn, padding:'clamp(5px,1.2vw,8px)' }}><SkipForward size={22} fill="currentColor"/></button>
