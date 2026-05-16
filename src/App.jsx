@@ -561,33 +561,118 @@ async function driveListSongs(token, forceRefresh = false) {
   _driveCache.folderId = folderId;
   return songs;
 }
-// Stream langsung pakai URL (tidak perlu download blob dulu — jauh lebih cepat)
-// Cache blob URLs agar tidak download ulang lagu yang sama. Key = driveId:token slice
+// Cache in-memory (sesi ini) + Cache API (persisten antar refresh)
 const _blobCache = new Map();
+const DRIVE_CACHE_NAME = 'sn-drive-v1';
 
+// Simpan blob ke Cache API (IndexedDB-like, persisten)
+async function cachePut(cacheKey, blob) {
+  try {
+    const cache = await caches.open(DRIVE_CACHE_NAME);
+    await cache.put(`/drive/${cacheKey}`, new Response(blob, { headers: { 'Content-Type': blob.type } }));
+  } catch { /* private browsing atau storage penuh */ }
+}
+
+// Ambil blob dari Cache API jika ada
+async function cacheGet(cacheKey) {
+  try {
+    const cache = await caches.open(DRIVE_CACHE_NAME);
+    const res = await cache.match(`/drive/${cacheKey}`);
+    if (res) return await res.blob();
+  } catch {}
+  return null;
+}
+
+// Tebak mime type dari Content-Type header
+function guessMime(contentType) {
+  if (!contentType) return 'audio/mpeg';
+  if (contentType.includes('ogg')) return 'audio/ogg';
+  if (contentType.includes('wav')) return 'audio/wav';
+  if (contentType.includes('mp4') || contentType.includes('m4a') || contentType.includes('aac')) return 'audio/mp4';
+  if (contentType.includes('flac')) return 'audio/flac';
+  if (contentType.includes('webm')) return 'audio/webm';
+  return 'audio/mpeg';
+}
+
+// Streaming via MediaSource API — audio mulai diputar segera tanpa tunggu download selesai.
+// Fallback ke blob biasa jika MediaSource tidak support mime atau response body tidak tersedia.
 async function driveStreamBlob(driveId, token) {
-  // Cache key includes token prefix so stale-token entries are automatically missed
-  const cacheKey = `${driveId}:${token.slice(-12)}`;
-  if (_blobCache.has(cacheKey)) return _blobCache.get(cacheKey);
+  // Cache key: driveId saja (token bisa expired, tapi file-nya sama)
+  const cacheKey = driveId;
+  const memKey   = `${driveId}:${token.slice(-12)}`;
+
+  // 1. Cek in-memory cache (paling cepat)
+  if (_blobCache.has(memKey)) return _blobCache.get(memKey);
+
+  // 2. Cek Cache API (persisten antar refresh) — langsung bisa diputar tanpa download ulang
+  const cachedBlob = await cacheGet(cacheKey);
+  if (cachedBlob) {
+    const url = URL.createObjectURL(cachedBlob);
+    _blobCache.set(memKey, url);
+    return url;
+  }
+
+  // 3. Fetch dari Google Drive
   const res = await fetch(
     `https://www.googleapis.com/drive/v3/files/${driveId}?alt=media&acknowledgeAbuse=true`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
   if (res.status === 401 || res.status === 403) throw new Error(`${res.status}`);
   if (!res.ok) throw new Error(`Drive ${res.status}`);
+
+  const contentType = res.headers.get('Content-Type') || '';
+  const mime = guessMime(contentType);
+
+  const cleanup = () => {
+    for (const [k, v] of _blobCache) {
+      if (k.startsWith(driveId + ':') && k !== memKey) { URL.revokeObjectURL(v); _blobCache.delete(k); }
+    }
+  };
+
+  // 4. Gunakan MediaSource streaming — audio langsung bisa diputar tanpa tunggu download selesai
+  if (typeof MediaSource !== 'undefined' && MediaSource.isTypeSupported(mime) && res.body) {
+    const ms  = new MediaSource();
+    const url = URL.createObjectURL(ms);
+    cleanup();
+    _blobCache.set(memKey, url);
+
+    ms.addEventListener('sourceopen', async () => {
+      try {
+        const sb = ms.addSourceBuffer(mime);
+        const reader = res.body.getReader();
+        const chunks = [];
+        const waitUpdate = () => new Promise(r => sb.addEventListener('updateend', r, { once: true }));
+        const pump = async () => {
+          const { done, value } = await reader.read();
+          if (done) {
+            if (ms.readyState === 'open') ms.endOfStream();
+            // Simpan ke Cache API untuk refresh berikutnya
+            cachePut(cacheKey, new Blob(chunks, { type: mime }));
+            return;
+          }
+          chunks.push(value);
+          if (sb.updating) await waitUpdate();
+          if (ms.readyState === 'open') { sb.appendBuffer(value); await waitUpdate(); }
+          await pump();
+        };
+        await pump();
+      } catch { /* stream closed / tab navigated */ }
+    }, { once: true });
+    return url;
+  }
+
+  // 5. Fallback: download seluruh blob (format tidak didukung MediaSource)
   const blob = await res.blob();
   const url  = URL.createObjectURL(blob);
-  // Clean up old cache entry for same driveId with different token
-  for (const [k, v] of _blobCache) {
-    if (k.startsWith(driveId + ':') && k !== cacheKey) { URL.revokeObjectURL(v); _blobCache.delete(k); }
-  }
-  _blobCache.set(cacheKey, url);
+  cleanup();
+  _blobCache.set(memKey, url);
+  cachePut(cacheKey, blob); // simpan ke Cache API
   return url;
 }
 
 // Pre-fetch lagu berikutnya di background agar instant saat diklik
 async function drivePrefetch(driveId, token) {
-  if (!driveId || _blobCache.has(driveId)) return;
+  if (!driveId || !token || _blobCache.has(`${driveId}:${token.slice(-12)}`)) return;
   try { await driveStreamBlob(driveId, token); } catch { /* silent fail */ }
 }
 async function driveUploadSong(file, meta, token) {
@@ -653,7 +738,7 @@ function PlaylistModal({ onClose, onSave, allSongs, existing, isLite }) {
               const on = selected.has(s.id);
               return (
                 <div key={s.id} onClick={()=>toggle(s.id)} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:12, cursor:'pointer', background:on?s.bg:'rgba(255,255,255,0.03)', border:`1px solid ${on?s.color+'50':'rgba(255,255,255,0.08)'}`, transition:'all 0.15s' }}>
-                  <img src={s.cover} style={{ width:34, height:34, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
+                  <img src={s.cover} loading="lazy" decoding="async" style={{ width:34, height:34, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ fontWeight:700, fontSize:13, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:on?'white':'rgba(255,255,255,0.8)' }}>{s.title}</div>
                     <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>{s.artist}</div>
@@ -812,7 +897,7 @@ function SongRow({ s, i, track, playing, liked, setLiked, play, isDrive, onRemov
       <div style={{ width:28, height:28, borderRadius:8, flexShrink:0, background:isActive?s.color:'rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:800, color:isActive?'white':'rgba(255,255,255,0.4)' }}>
         {isActive&&playing ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end' }}>{[12,6,10].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:'white', borderRadius:1, animation:`bounce 0.8s ease-in-out ${j*0.15}s infinite` }}/>))}</div> : isDrive?<Cloud size={12}/>:i+1}
       </div>
-      <img src={s.cover} alt={s.title} style={{ width:42, height:42, borderRadius:10, objectFit:'cover', flexShrink:0 }}/>
+      <img src={s.cover} alt={s.title} loading="lazy" decoding="async" style={{ width:42, height:42, borderRadius:10, objectFit:'cover', flexShrink:0 }}/>
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ fontWeight:700, fontSize:13, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:isActive?'white':'rgba(255,255,255,0.85)' }}>{s.title}</div>
         <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:2 }}>{s.artist} · {s.album}{isDrive&&<span style={{ color:s.color, marginLeft:4 }}>· Drive</span>}</div>
@@ -847,7 +932,9 @@ function SongRow({ s, i, track, playing, liked, setLiked, play, isDrive, onRemov
 // ═══════════════════════════════════════════════════════
 //  SETTINGS PANEL  (EQ, Crossfade, Sleep Timer)
 // ═══════════════════════════════════════════════════════
-function SettingsPanel({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setEqPreset, eqGains, setEqGains, crossfade, setCrossfade, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, dataSaver, toggleDataSaver, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns }) {
+function SettingsPanel({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setEqPreset, eqGains, setEqGains, crossfade, setCrossfade, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns }) {
+  const dataSaver = isLite; // Lite = hemat data
+  const toggleDataSaver = toggleMode;
   const coverRef = useRef(null);
   return (
     <div style={{ position:'fixed', inset:0, zIndex:100, background:'rgba(0,0,0,0.75)', ...(isLite ? {} : { backdropFilter:'blur(8px)' }), display:'flex', alignItems:'flex-end', animation:'fadeUp 0.25s ease' }} onClick={e=>e.target===e.currentTarget&&onClose()}>
@@ -928,35 +1015,43 @@ function SettingsPanel({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setE
           )}
         </div>
 
-        {/* ── HEMAT DATA */}
+        {/* ── MODE LITE / PRO */}
         <div style={{ marginTop:28 }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
             <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <span style={{ fontSize:16 }}>🌿</span>
+              <span style={{ fontSize:16 }}>{isLite ? '⚡' : '✨'}</span>
               <div>
-                <div style={{ fontWeight:800, fontSize:14 }}>Hemat Data</div>
-                <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>Nonaktifkan cover, AI, dan buffer audio</div>
+                <div style={{ fontWeight:800, fontSize:14 }}>Mode {isLite ? 'Lite' : 'Pro'}</div>
+                <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{isLite ? 'Hemat data · tanpa animasi · load cepat' : 'Animasi penuh · cover art · fitur AI'}</div>
               </div>
             </div>
-            <div onClick={toggleDataSaver} style={{ width:44, height:24, borderRadius:999, background:dataSaver?'#10b981':'rgba(255,255,255,0.1)', cursor:'pointer', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
-              <div style={{ position:'absolute', top:3, left:dataSaver?22:3, width:18, height:18, borderRadius:'50%', background:'white', transition:'left 0.2s', boxShadow:'0 1px 4px rgba(0,0,0,0.3)' }}/>
+            <div onClick={toggleMode} style={{ width:44, height:24, borderRadius:999, background:isLite?'#10b981':'rgba(255,255,255,0.1)', cursor:'pointer', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
+              <div style={{ position:'absolute', top:3, left:isLite?22:3, width:18, height:18, borderRadius:'50%', background:'white', transition:'left 0.2s', boxShadow:'0 1px 4px rgba(0,0,0,0.3)' }}/>
             </div>
           </div>
-          {dataSaver && (
-            <div style={{ borderRadius:12, background:'rgba(16,185,129,0.08)', border:'1px solid rgba(16,185,129,0.2)', padding:'10px 14px', display:'flex', flexDirection:'column', gap:5 }}>
-              {[
-                ['🚫 Cover art', 'Gambar album tidak dimuat dari internet'],
-                ['🚫 Buffer audio', 'Audio hanya dimuat saat diputar (preload: none)'],
-                ['🚫 Prefetch Drive', 'Lagu Drive tidak di-cache sebelum diputar'],
-                ['🚫 AI & Insight', 'Starry AI, Vibe Search, dan Insight dinonaktifkan'],
-              ].map(([icon, desc])=>(
-                <div key={icon} style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  <span style={{ fontSize:11 }}>{icon}</span>
-                  <span style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>{desc}</span>
+          <div style={{ borderRadius:12, background:isLite?'rgba(16,185,129,0.08)':'rgba(99,102,241,0.08)', border:`1px solid ${isLite?'rgba(16,185,129,0.2)':'rgba(99,102,241,0.2)'}`, padding:'10px 14px', display:'flex', flexDirection:'column', gap:5 }}>
+            {isLite ? [
+              ['⚡ Cover art dinonaktifkan', 'Gambar album tidak dimuat — halaman lebih ringan'],
+              ['⚡ Audio preload: none', 'Audio hanya dimuat saat diputar, menghemat bandwidth'],
+              ['⚡ Prefetch Drive dinonaktifkan', 'Lagu tidak di-cache di background'],
+              ['⚡ AI & Insight dinonaktifkan', 'Starry AI, Vibe Search, dan Wawasan Kosmik dimatikan'],
+              ['⚡ Animasi dinonaktifkan', 'Semua efek visual dan blur dimatikan untuk performa maksimal'],
+            ] : [
+              ['✨ Cover art aktif', 'Gambar album dimuat dari internet'],
+              ['✨ Audio preload: auto', 'Buffer audio disiapkan lebih awal untuk playback instan'],
+              ['✨ Prefetch Drive aktif', 'Lagu berikutnya di-cache di background'],
+              ['✨ AI & Insight aktif', 'Starry AI, Vibe Search, dan Wawasan Kosmik tersedia'],
+              ['✨ Animasi penuh', 'Bintang-bintang, blur, dan efek visual lengkap'],
+            ]}.map(([feat, desc])=>(
+              <div key={feat} style={{ display:'flex', alignItems:'flex-start', gap:8 }}>
+                <span style={{ fontSize:11, flexShrink:0 }}>{feat.split(' ')[0]}</span>
+                <div>
+                  <div style={{ fontSize:11, fontWeight:600, color:'rgba(255,255,255,0.7)' }}>{feat.slice(2)}</div>
+                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{desc}</div>
                 </div>
-              ))}
-            </div>
-          )}
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* ── INSTALL APP (PWA) */}
@@ -1151,16 +1246,20 @@ const builtinSongs = [];
 //  MAIN APP
 // ═══════════════════════════════════════════════════════
 export default function App() {
-  // ── Mode: Pro (full) vs Lite (lightweight)
-  const [isLite, setIsLite] = useState(() => localStorage.getItem('sn_mode') === 'lite');
-  const toggleMode = () => setIsLite(v => { const n=!v; localStorage.setItem('sn_mode', n?'lite':'pro'); return n; });
-
-  // ── Hemat Data: blokir cover image, preload audio, prefetch Drive, & AI calls
-  const [dataSaver, setDataSaver] = useState(() => localStorage.getItem('sn_datasaver') === '1');
-  const [customDns, setCustomDns] = useState(() => localStorage.getItem('sn_custom_dns') || '');
-  const toggleDataSaver = () => setDataSaver(v => {
-    const n = !v; localStorage.setItem('sn_datasaver', n ? '1' : '0'); return n;
+  // ── Mode: Lite (ringan + hemat data) vs Pro (penuh)
+  // Lite otomatis mengaktifkan semua penghematan: cover, buffer, prefetch, AI, animasi
+  const [isLite, setIsLite] = useState(() =>
+    localStorage.getItem('sn_mode') === 'lite' || localStorage.getItem('sn_datasaver') === '1'
+  );
+  const toggleMode = () => setIsLite(v => {
+    const n = !v;
+    localStorage.setItem('sn_mode', n ? 'lite' : 'pro');
+    localStorage.removeItem('sn_datasaver'); // bersihkan key lama
+    return n;
   });
+  const dataSaver = isLite; // alias untuk backward compat semua referensi lama
+  const toggleDataSaver = toggleMode; // backward compat
+  const [customDns, setCustomDns] = useState(() => localStorage.getItem('sn_custom_dns') || '');
 
   // ── Built-in songs dihapus; semua musik dicari di platform eksternal
   // builtinSongs is defined at module level as empty array
@@ -1579,7 +1678,7 @@ export default function App() {
   const coverInputRef = useRef(null);
 
   // Helper: ambil cover aktif (globalCover override semua)
-  const getCover = useCallback((song) => dataSaver ? (globalCover || '') : (globalCover || song?.cover || ''), [globalCover, dataSaver]);
+  const getCover = useCallback((song) => isLite ? (globalCover || '') : (globalCover || song?.cover || ''), [globalCover, isLite]);
 
   // ── Playlists
   const [playlists, setPlaylists]         = useState([
@@ -1760,9 +1859,11 @@ export default function App() {
       setPlaying(false);
       return;
     }
-    const a = new Audio(track.src);
+    const a = new Audio();
     a.volume = muted ? 0 : volume;
-    a.preload = dataSaver ? 'none' : 'auto'; // hemat data: jangan buffer sebelum diputar
+    // Lite: preload none (hemat bandwidth). Pro: metadata (baca durasi tanpa full buffer)
+    a.preload = isLite ? 'none' : 'metadata';
+    a.src = track.src; // set src SETELAH preload agar browser hormati pengaturan preload
     audioRef.current = a;
     if (wasPlaying) {
       a.play().catch(e => { console.warn('autoplay blocked:', e); setPlaying(false); });
@@ -1904,7 +2005,7 @@ export default function App() {
     const idx = allSongs.findIndex(s => s.id === track.id);
     const next = allSongs[(idx + 1) % allSongs.length];
     if (next?.isDrive && next?.driveId && tokenRef.current) {
-      if (!dataSaver) drivePrefetch(next.driveId, tokenRef.current); // hemat data: skip prefetch
+      if (!isLite) drivePrefetch(next.driveId, tokenRef.current); // Lite: skip prefetch hemat bandwidth
     }
   }, [track.id, customSongs]);
 
@@ -1929,11 +2030,11 @@ export default function App() {
     let td = { ...t };
     if (t.isDrive && !t.src) {
       setLoadingTrack(true);
-      // Safety timeout: 15 detik — pastikan loading tidak stuck selamanya
+      // Safety timeout: 60 detik untuk fallback full-blob download (MediaSource streaming tidak perlu ini)
       const safetyTimer = setTimeout(() => {
         setLoadingTrack(false);
-        setDriveError('Timeout: gagal memuat lagu. Coba lagi.');
-      }, 15000);
+        setDriveError('Timeout: koneksi lambat. Coba lagi atau periksa koneksi internet.');
+      }, 60000);
       const tryLoad = async (tok) => {
         return driveStreamBlob(t.driveId, tok);
       };
@@ -1950,7 +2051,6 @@ export default function App() {
               tok = await silentRefreshToken();
               url = await tryLoad(tok);
             } catch(re) {
-              // Silent refresh failed → show login prompt gently (no full alert)
               setDriveError('Sesi Google berakhir. Ketuk tombol Login untuk lanjut.');
               clearTimeout(safetyTimer); setLoadingTrack(false); return;
             }
@@ -2073,7 +2173,7 @@ export default function App() {
 
   // ── AI
   const getInsight = async () => {
-    if (dataSaver) { setInsight('🌿 Hemat Data aktif — fitur AI dinonaktifkan.'); return; }
+    if (isLite) { setInsight('⚡ Mode Lite aktif — fitur AI dinonaktifkan.'); return; }
     setIL(true);
     const r = await askAI(
       `Lagu: "${track.title}" oleh ${track.artist}. Vibe/mood: ${track.mood || 'unknown'}.\n\nBuat 1 kalimat puitis singkat yang menangkap esensi lagu ini. Gunakan metafora tentang bintang, alam semesta, atau alam. Maksimal 20 kata. Bahasa Indonesia.`,
@@ -2086,7 +2186,7 @@ export default function App() {
     if (!input.trim()) return;
     if (dataSaver) {
       const msg=input; setInput('');
-      setMessages(p=>[...p,{from:'user',text:msg},{from:'ai',text:'🌿 Mode Hemat Data aktif — AI chat dinonaktifkan untuk menghemat kuota internet.'}]);
+      setMessages(p=>[...p,{from:'user',text:msg},{from:'ai',text:'⚡ Mode Lite aktif — AI chat dinonaktifkan. Ketuk tombol Lite ⚡ di header untuk beralih ke mode Pro.'}]);
       return;
     }
     const msg=input; setInput(''); setMessages(p=>[...p,{from:'user',text:msg}]); setCL(true);
@@ -2099,7 +2199,7 @@ export default function App() {
   };
   const searchVibe = async () => {
     if (!vibeInput.trim()||vibeLoading) return;
-    if (dataSaver) { setVibeInput('🌿 Hemat Data aktif — Vibe Search dinonaktifkan'); return; }
+    if (isLite) { setVibeInput('⚡ Mode Lite aktif — Vibe Search dinonaktifkan'); return; }
     setVL(true);
 
     // First try to match from Drive songs
@@ -2231,10 +2331,10 @@ export default function App() {
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
           {/* Mode toggle */}
-          <button onClick={toggleMode} title={isLite ? 'Switch to Pro Mode' : 'Switch to Lite Mode'}
-            style={{ display:'flex', alignItems:'center', gap:3, padding:'4px 8px', borderRadius:999, border:`1px solid ${isLite ? 'rgba(99,102,241,0.5)' : 'rgba(255,255,255,0.15)'}`, background: isLite ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.05)', cursor:'pointer', color: isLite ? '#a5b4fc' : 'rgba(255,255,255,0.5)', fontSize:9, fontWeight:700, letterSpacing:'0.04em', textTransform:'uppercase' }}>
+          <button onClick={toggleMode} title={isLite ? 'Mode Lite aktif (hemat data) — ketuk untuk Pro' : 'Mode Pro — ketuk untuk Lite (hemat data)'}
+            style={{ display:'flex', alignItems:'center', gap:3, padding:'4px 8px', borderRadius:999, border:`1px solid ${isLite ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.15)'}`, background: isLite ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)', cursor:'pointer', color: isLite ? '#6ee7b7' : 'rgba(255,255,255,0.5)', fontSize:9, fontWeight:700, letterSpacing:'0.04em', textTransform:'uppercase' }}>
             {isLite ? <Zap size={9}/> : <Sparkles size={9}/>}
-            {isLite ? 'Lite' : 'Pro'}
+            {isLite ? 'Lite ⚡' : 'Pro'}
           </button>
           {/* Sleep timer badge */}
           {sleepTimer&&(
@@ -2244,11 +2344,7 @@ export default function App() {
             </div>
           )}
 
-          {/* Hemat Data toggle button */}
-          <button onClick={toggleDataSaver} style={{ display:'flex', alignItems:'center', gap:4, padding:'4px 8px', borderRadius:999, border:`1px solid ${dataSaver?'rgba(16,185,129,0.4)':'rgba(255,255,255,0.15)'}`, background:dataSaver?'rgba(16,185,129,0.15)':'rgba(255,255,255,0.06)', cursor:'pointer' }} title={dataSaver ? 'Mode Hemat Data aktif — ketuk untuk nonaktifkan' : 'Aktifkan Mode Hemat Data'}>
-            <span style={{ fontSize:11 }}>{dataSaver ? '🌿' : '📶'}</span>
-            <span style={{ fontSize:9, fontWeight:700, color:dataSaver?'#6ee7b7':'rgba(255,255,255,0.45)' }}>{dataSaver ? 'Hemat' : 'Data'}</span>
-          </button>
+
           {/* Google */}
           {googleUser ? (
             <div style={{ display:'flex', alignItems:'center', gap:5 }}>
@@ -2423,7 +2519,7 @@ export default function App() {
                           return (
                             <div key={s.id} onClick={()=>{ setTrack(s); setProgress(0); setDuration(0); setPlaying(true); }}
                               style={{ display:'flex', alignItems:'center', gap:9, padding:'8px 12px', background:isCur?`${track.color}15`:'transparent', borderBottom:'1px solid rgba(255,255,255,0.04)', cursor:'pointer' }}>
-                              <img src={getCover(s)} style={{ width:32, height:32, borderRadius:6, objectFit:'cover', flexShrink:0 }}/>
+                              <img src={getCover(s)} loading="lazy" decoding="async" style={{ width:32, height:32, borderRadius:6, objectFit:'cover', flexShrink:0 }}/>
                               <div style={{ flex:1, minWidth:0 }}>
                                 <div style={{ fontSize:11, fontWeight:isCur?700:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:isCur?track.color:'rgba(255,255,255,0.85)' }}>{s.title}</div>
                                 <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>{s.artist}</div>
@@ -2718,7 +2814,7 @@ export default function App() {
                                       onMouseLeave={e=>{ if(!isActive) e.currentTarget.style.background='rgba(255,255,255,0.04)'; }}>
                                       {/* Album art + play button */}
                                       <div style={{ position:'relative', flexShrink:0, cursor:'pointer' }} onClick={() => hasPreview ? playSpotifyPreview(t) : window.open(t.spotifyUrl, '_blank')}>
-                                        <img src={t.cover} alt={t.title}
+                                        <img src={t.cover} alt={t.title} loading="lazy" decoding="async"
                                           style={{ width:36, height:36, borderRadius:6, objectFit:'cover', display:'block' }}
                                           onError={e => { e.target.style.display='none'; }}/>
                                         <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.45)', borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center', opacity: isActive ? 1 : 0, transition:'opacity 0.15s' }}
@@ -2830,7 +2926,7 @@ export default function App() {
                   </div>
                   {history.slice(1, 6).map((s,i)=>(
                     <div key={`h-${s.id}-${i}`} onClick={()=>play(s)} style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 12px', borderRadius:12, cursor:'pointer', background:'rgba(255,255,255,0.03)', border:'1px solid transparent', transition:'all 0.2s' }}>
-                      <img src={s.cover} style={{ width:36, height:36, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
+                      <img src={s.cover} loading="lazy" decoding="async" style={{ width:36, height:36, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ fontSize:13, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'rgba(255,255,255,0.7)' }}>{s.title}</div>
                         <div style={{ fontSize:10, color:'rgba(255,255,255,0.3)' }}>{s.artist}</div>
@@ -3086,7 +3182,7 @@ export default function App() {
                       return (
                         <div key={s.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:12, cursor:'pointer', background:isActive?s.bg:'rgba(255,255,255,0.02)', border:`1px solid ${isActive?s.color+'50':'rgba(255,255,255,0.06)'}`, transition:'all 0.15s' }}>
                           <div onClick={()=>play(s)} style={{ display:'flex', alignItems:'center', gap:10, flex:1, minWidth:0 }}>
-                            <img src={s.cover} style={{ width:36, height:36, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
+                            <img src={s.cover} loading="lazy" decoding="async" style={{ width:36, height:36, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
                             <div style={{ flex:1, minWidth:0 }}>
                               <div style={{ fontWeight:700, fontSize:13, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:isActive?'white':'rgba(255,255,255,0.85)' }}>{s.title}</div>
                               <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{s.artist} · {s.album}</div>
@@ -3290,7 +3386,7 @@ export default function App() {
         onSave={editingPl ? updatePlaylist : createPlaylist}
         isLite={isLite}
       />}
-      {showSettings&&<SettingsPanel onClose={()=>setShowSettings(false)} color={track.color} eqEnabled={eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset} setEqPreset={setEqPreset} eqGains={eqGains} setEqGains={setEqGains} crossfade={crossfade} setCrossfade={setCrossfade} sleepTimer={sleepTimer} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover} setGlobalCover={setGlobalCover} isLite={isLite} dataSaver={dataSaver} toggleDataSaver={toggleDataSaver} pwaPrompt={pwaPrompt} pwaInstalled={pwaInstalled} installPwa={installPwa} customDns={customDns} setCustomDns={setCustomDns}/>}
+      {showSettings&&<SettingsPanel onClose={()=>setShowSettings(false)} color={track.color} eqEnabled={eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset} setEqPreset={setEqPreset} eqGains={eqGains} setEqGains={setEqGains} crossfade={crossfade} setCrossfade={setCrossfade} sleepTimer={sleepTimer} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover} setGlobalCover={setGlobalCover} isLite={isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt} pwaInstalled={pwaInstalled} installPwa={installPwa} customDns={customDns} setCustomDns={setCustomDns}/>}
       {showUpload&&<UploadModal onClose={()=>!uploading&&setShowUpload(false)} onUpload={handleUpload} uploading={uploading} uploadProgress={uploadProgress} color={track.color} isLite={isLite}/>}
 
       {/* ══ YOUTUBE HIDDEN AUDIO IFRAME — persistent, single instance ══ */}
