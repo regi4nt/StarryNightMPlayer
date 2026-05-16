@@ -523,8 +523,7 @@ const AUDIO_MIME_EXTRAS = new Set([
   'video/webm',     // opus/webm audio mis-MIME
 ]);
 
-// Ambil SEMUA file audio dari seluruh Google Drive (bukan hanya satu folder)
-// Query diperluas: audio/* + MIME alternatif + octet-stream dengan ekstensi audio
+// Ambil file audio HANYA dari folder "Starry Night Music" di Google Drive
 async function driveListSongs(token, forceRefresh = false) {
   const now = Date.now();
   if (!forceRefresh && _driveCache.token === token && _driveCache.songs
@@ -535,12 +534,19 @@ async function driveListSongs(token, forceRefresh = false) {
 
   const fields = 'nextPageToken,files(id,name,mimeType,appProperties,size)';
 
-  // Query luas: audio/* + video/mp4 (M4A mis-MIME) + video/webm (opus mis-MIME)
-  // + application/octet-stream (upload manual tanpa deteksi MIME)
-  // + application/mpeg dan varian (upload dari browser tertentu)
-  // Tidak dibatasi ke folder — cari seluruh Drive agar file lama juga muncul
+  // Cari folder "Starry Night Music" dulu
+  const folderId = await driveGetFolderId(token);
+  if (!folderId) {
+    // Folder belum ada — kembalikan array kosong
+    _driveCache.token = token;
+    _driveCache.songs = [];
+    _driveCache.ts    = now;
+    return [];
+  }
+
+  // Query dibatasi ke folder Starry Night Music saja
   const RAW_Q =
-    "trashed=false and (" +
+    `'${folderId}' in parents and trashed=false and (` +
       "mimeType contains 'audio/' or " +
       "mimeType = 'video/mp4' or " +
       "mimeType = 'video/webm' or " +
