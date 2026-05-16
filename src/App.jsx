@@ -19,10 +19,10 @@ const STREAMING_PLATFORMS = [
     id: 'ytmusic',
     name: 'YouTube Music',
     icon: '🔴',
-    embedType: 'youtube',   // in-app embed via YouTube iframe
+    embedType: 'youtube',
     description: 'Cari & putar langsung dalam app via YouTube',
     color: '#FF0000',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Youtube_Music_icon.svg/240px-Youtube_Music_icon.svg.png',
+    logo: null, // use inline SVG
     searchUrl: (q) => `https://music.youtube.com/search?q=${encodeURIComponent(q)}`,
     openUrl: 'https://music.youtube.com',
     hint: 'Cari judul lagu, artis, album…',
@@ -31,10 +31,10 @@ const STREAMING_PLATFORMS = [
     id: 'soundcloud',
     name: 'SoundCloud',
     icon: '🟠',
-    embedType: 'redirect',   // open in browser like Spotify
+    embedType: 'redirect',
     description: 'Buka pencarian di SoundCloud (perlu app/browser)',
     color: '#ff5500',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Antu_soundcloud.svg/240px-Antu_soundcloud.svg.png',
+    logo: null,
     searchUrl: (q) => `https://soundcloud.com/search?q=${encodeURIComponent(q)}`,
     openUrl: 'https://soundcloud.com',
     hint: 'Cari track, artis, genre…',
@@ -43,10 +43,10 @@ const STREAMING_PLATFORMS = [
     id: 'spotify',
     name: 'Spotify',
     icon: '🟢',
-    embedType: 'redirect',   // open in browser (API key needed for embed)
+    embedType: 'redirect',
     description: 'Buka pencarian di Spotify (perlu app/browser)',
     color: '#1DB954',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Spotify_logo_without_text.svg/168px-Spotify_logo_without_text.svg.png',
+    logo: null,
     searchUrl: (q) => `https://open.spotify.com/search/${encodeURIComponent(q)}`,
     openUrl: 'https://open.spotify.com',
     hint: 'Cari lagu, artis, album…',
@@ -55,15 +55,51 @@ const STREAMING_PLATFORMS = [
     id: 'applemusic',
     name: 'Apple Music',
     icon: '🎵',
-    embedType: 'redirect',   // open in browser
+    embedType: 'redirect',
     description: 'Buka pencarian di Apple Music',
     color: '#fc3c44',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Apple_Music_icon.svg/240px-Apple_Music_icon.svg.png',
+    logo: null,
     searchUrl: (q) => `https://music.apple.com/search?term=${encodeURIComponent(q)}`,
     openUrl: 'https://music.apple.com',
     hint: 'Cari lagu, artis, album…',
   },
 ];
+
+// Inline SVG logos for each platform (always reliable, no network dependency)
+function PlatformLogo({ id, size = 22 }) {
+  if (id === 'ytmusic') return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="24" height="24" rx="5" fill="#FF0000"/>
+      <circle cx="12" cy="13" r="5" fill="white"/>
+      <circle cx="12" cy="13" r="2" fill="#FF0000"/>
+      <rect x="8" y="4" width="8" height="2.5" rx="1.25" fill="white"/>
+    </svg>
+  );
+  if (id === 'soundcloud') return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="24" height="24" rx="5" fill="#ff5500"/>
+      <path d="M2.5 14.5c0 1.1.9 2 2 2s2-.9 2-2-.9-2-2-2c-.18 0-.35.02-.52.06C3.64 11.42 4.72 10.5 6 10.5c.28 0 .55.05.8.13V8.57C6.54 8.52 6.27 8.5 6 8.5c-2.49 0-4.5 2.01-4.5 4.5 0 .52.09 1.01.25 1.5H2.5z" fill="white" opacity="0.5"/>
+      <rect x="5.5" y="10" width="2" height="7" rx="1" fill="white"/>
+      <rect x="8.5" y="8.5" width="2" height="8.5" rx="1" fill="white"/>
+      <rect x="11.5" y="7" width="2" height="10" rx="1" fill="white"/>
+      <rect x="14.5" y="8" width="2" height="9" rx="1" fill="white"/>
+      <rect x="17.5" y="9.5" width="2" height="7.5" rx="1" fill="white"/>
+    </svg>
+  );
+  if (id === 'spotify') return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="24" height="24" rx="12" fill="#1DB954"/>
+      <path d="M17.9 10.9C14.7 9 9.35 8.8 6.3 9.75c-.5.15-1-.15-1.15-.6-.15-.5.15-1 .6-1.15C9.65 6.8 15.5 7 19.1 9.15c.45.25.6.85.35 1.3-.25.35-.85.5-1.55.45zM17.75 13.55c-.2.35-.65.45-1 .25-2.65-1.6-6.65-2.05-9.75-1.1-.4.1-.8-.1-.9-.5-.1-.4.1-.8.5-.9 3.55-1.1 7.95-.55 11 1.3.3.15.4.6.15.95zM16.6 16.1c-.15.3-.5.4-.8.25-2.3-1.4-5.2-1.7-8.6-.95-.35.1-.65-.15-.75-.45-.1-.35.15-.65.45-.75 3.75-.85 6.95-.5 9.5 1.1.35.15.4.5.2.8z" fill="white"/>
+    </svg>
+  );
+  if (id === 'applemusic') return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="24" height="24" rx="6" fill="#fc3c44"/>
+      <path d="M16 6H10v8.5c-.5-.32-1.1-.5-1.75-.5C6.45 14 5 15.34 5 17s1.45 3 3.25 3S11.5 18.66 11.5 17V9.5H16V6z" fill="white"/>
+    </svg>
+  );
+  return <span style={{ fontSize: size * 0.75 }}>🎵</span>;
+}
 
 // ── Tetap ada MUSIC_SOURCES kosong agar kode lain tidak error
 const MUSIC_SOURCES = [];
@@ -346,9 +382,14 @@ async function driveGetFolderId(token) {
 // Ambil semua file audio di folder "Starry Night Music" dengan pagination + cache
 async function driveListSongs(token, forceRefresh = false) {
   const now = Date.now();
+  // Invalidate cache if token changed or TTL expired
   if (!forceRefresh && _driveCache.token === token && _driveCache.songs
       && (now - _driveCache.ts) < DRIVE_CACHE_TTL) {
     return _driveCache.songs;
+  }
+  // If token changed, force refresh regardless
+  if (_driveCache.token && _driveCache.token !== token) {
+    forceRefresh = true;
   }
   // Cari folder dulu
   let folderId;
@@ -402,21 +443,26 @@ async function driveListSongs(token, forceRefresh = false) {
   return songs;
 }
 // Stream langsung pakai URL (tidak perlu download blob dulu — jauh lebih cepat)
-// Cache blob URLs agar tidak download ulang lagu yang sama
+// Cache blob URLs agar tidak download ulang lagu yang sama. Key = driveId:token slice
 const _blobCache = new Map();
 
 async function driveStreamBlob(driveId, token) {
-  if (_blobCache.has(driveId)) return _blobCache.get(driveId);
-  // Fetch dengan streaming — tidak tunggu seluruh file
+  // Cache key includes token prefix so stale-token entries are automatically missed
+  const cacheKey = `${driveId}:${token.slice(-12)}`;
+  if (_blobCache.has(cacheKey)) return _blobCache.get(cacheKey);
   const res = await fetch(
     `https://www.googleapis.com/drive/v3/files/${driveId}?alt=media&acknowledgeAbuse=true`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
+  if (res.status === 401 || res.status === 403) throw new Error(`${res.status}`);
   if (!res.ok) throw new Error(`Drive ${res.status}`);
-  // Buat blob dari stream agar audio bisa langsung mulai
   const blob = await res.blob();
   const url  = URL.createObjectURL(blob);
-  _blobCache.set(driveId, url);
+  // Clean up old cache entry for same driveId with different token
+  for (const [k, v] of _blobCache) {
+    if (k.startsWith(driveId + ':') && k !== cacheKey) { URL.revokeObjectURL(v); _blobCache.delete(k); }
+  }
+  _blobCache.set(cacheKey, url);
   return url;
 }
 
@@ -955,6 +1001,8 @@ export default function App() {
   const [ytResults, setYtResults] = useState({});
   const [ytLoading, setYtLoading] = useState({});
   const [ytError,   setYtError]   = useState({});
+  const [ytTrending, setYtTrending] = useState([]); // live trending chips
+  const [ytTrendingLoading, setYtTrendingLoading] = useState(false);
 
   // ── SoundCloud widget state
   const [scQuery,  setScQuery]  = useState({});
@@ -997,7 +1045,13 @@ export default function App() {
         clearTimeout(tid);
         if (!res.ok) continue;
         const data = await res.json();
-        const items = (data.items || []).filter(i => i.url && i.url.includes('watch')).slice(0, 10);
+        const items = (data.items || []).filter(i => i.url && i.url.includes('watch')).slice(0, 10).map(i => ({
+          ...i,
+          videoId: i.url ? (i.url.match(/[?&v=]([^&]{11})/)?.[1] || i.url.replace('/watch?v=','')) : i.videoId,
+          thumbnail: i.thumbnail || (i.url ? `https://i.ytimg.com/vi/${i.url.replace('/watch?v=','')}/mqdefault.jpg` : ''),
+          uploaderName: i.uploaderName || i.uploader || i.channel || 'YouTube',
+          duration: i.duration || i.lengthSeconds || 0,
+        }));
         if (items.length > 0) return items;
       } catch { /* try next */ }
     }
@@ -1053,6 +1107,68 @@ export default function App() {
     return null;
   };
 
+  // Fetch live trending music from Invidious/Piped → shown as suggestion chips
+  const fetchYtTrending = useCallback(async () => {
+    if (ytTrendingLoading || ytTrending.length > 0) return; // only fetch once per session
+    setYtTrendingLoading(true);
+    try {
+      // Try Invidious trending (music category = 10)
+      for (const base of INVIDIOUS_INSTANCES) {
+        try {
+          const ctrl = new AbortController();
+          const tid  = setTimeout(() => ctrl.abort(), 5000);
+          const res  = await fetch(`${base}/api/v1/trending?type=Music&fields=title,videoId`, { signal: ctrl.signal });
+          clearTimeout(tid);
+          if (!res.ok) continue;
+          const data = await res.json();
+          if (!Array.isArray(data) || data.length === 0) continue;
+          // Extract clean titles without artist prefix for chip labels
+          const chips = data.slice(0, 8).map(v => {
+            // Shorten title to ≤22 chars for chip display
+            let label = v.title || '';
+            if (label.length > 22) label = label.slice(0, 20) + '…';
+            return { label, query: v.title };
+          });
+          setYtTrending(chips);
+          setYtTrendingLoading(false);
+          return;
+        } catch { /* try next */ }
+      }
+      // Fallback: try Piped trending
+      for (const base of PIPED_INSTANCES) {
+        try {
+          const ctrl = new AbortController();
+          const tid  = setTimeout(() => ctrl.abort(), 5000);
+          const res  = await fetch(`${base}/trending?region=ID`, { signal: ctrl.signal });
+          clearTimeout(tid);
+          if (!res.ok) continue;
+          const data = await res.json();
+          if (!Array.isArray(data) || data.length === 0) continue;
+          const chips = data.slice(0, 8).map(v => {
+            let label = v.title || '';
+            if (label.length > 22) label = label.slice(0, 20) + '…';
+            return { label, query: v.title };
+          });
+          setYtTrending(chips);
+          setYtTrendingLoading(false);
+          return;
+        } catch { /* try next */ }
+      }
+    } catch { /* silent */ }
+    // Hard fallback — popular Indonesian/global chips
+    setYtTrending([
+      { label:'Top hits 2025', query:'top hits 2025' },
+      { label:'Lo-fi hip hop', query:'lo-fi hip hop' },
+      { label:'Pop Indonesia', query:'pop Indonesia terbaru' },
+      { label:'K-pop playlist', query:'kpop playlist 2025' },
+      { label:'Indie acoustic', query:'indie acoustic' },
+      { label:'OPM hits', query:'OPM hits 2025' },
+      { label:'Chill vibes', query:'chill vibes music' },
+      { label:'R&B 2025', query:'RnB 2025' },
+    ]);
+    setYtTrendingLoading(false);
+  }, [ytTrendingLoading, ytTrending.length]); // eslint-disable-line
+
   const searchYouTube = async (platformId, query) => {
     if (!query.trim()) return;
     setYtLoading(p => ({...p, [platformId]: true}));
@@ -1095,7 +1211,7 @@ export default function App() {
     // Pause normal audio player, set playing state for UI
     if (audioRef.current) { audioRef.current.pause(); }
     setPlaying(true);
-    setTab('player');
+    // Stay on current tab — do NOT switch to player
   };
 
   const playSoundCloud = (platformId, query) => {
@@ -1166,11 +1282,14 @@ export default function App() {
   const [volume, setVolume]     = useState(0.75);
   const [muted, setMuted]       = useState(false);
   const [liked, setLiked]       = useState({});
-  const [tab, setTab]           = useState('player');
+  const [tab, setTabRaw]           = useState(() => localStorage.getItem('sn_tab') || 'player');
+  const setTab = (t) => { setTabRaw(t); localStorage.setItem('sn_tab', t); };
 
   // ── New playback features
-  const [shuffle, setShuffle]   = useState(false);
-  const [repeat, setRepeat]     = useState('off'); // 'off'|'all'|'one'
+  const [shuffle, setShuffleRaw] = useState(() => localStorage.getItem('sn_shuffle') === 'true');
+  const setShuffle = (v) => { const val = typeof v === 'function' ? v(shuffle) : v; setShuffleRaw(val); localStorage.setItem('sn_shuffle', val); };
+  const [repeat, setRepeatRaw]   = useState(() => localStorage.getItem('sn_repeat') || 'off');
+  const setRepeat = (v) => { const val = typeof v === 'function' ? v(repeat) : v; setRepeatRaw(val); localStorage.setItem('sn_repeat', val); };
   const [crossfade, setCrossfade] = useState(0);
   const [history, setHistory]   = useState([]);
 
@@ -1249,8 +1368,9 @@ export default function App() {
   const audioRef      = useRef(null);
   const chatEndRef    = useRef(null);
   const tokenRef      = useRef(null);
-  const shuffleRef    = useRef(false);
-  const repeatRef     = useRef('off');
+  const shuffleRef    = useRef(shuffle);
+  const repeatRef     = useRef(repeat);
+  const goNextRef     = useRef(null); // avoids stale closure in onEnd
   const audioCtxRef   = useRef(null);
   const eqNodesRef    = useRef([]);
   const masterGainRef = useRef(null);
@@ -1292,10 +1412,27 @@ export default function App() {
 
   // ── Auto-restore Drive songs if we have a saved valid token
   useEffect(() => {
-    const savedToken = (() => { try { const s=JSON.parse(localStorage.getItem('sn_google_token')||'null'); return s&&s.expiry>Date.now()?s.token:null; } catch{return null;} })();
+    const savedToken = (() => {
+      try { const s=JSON.parse(localStorage.getItem('sn_google_token')||'null'); return s&&s.expiry>Date.now()?s.token:null; }
+      catch{return null;}
+    })();
     if (savedToken && !customSongs.length) {
       setLoadingDrive(true);
-      driveListSongs(savedToken).then(songs => { setCustomSongs(songs); setLoadingDrive(false); }).catch(()=>setLoadingDrive(false));
+      driveListSongs(savedToken)
+        .then(songs => { setCustomSongs(songs); setDriveError(''); setLoadingDrive(false); })
+        .catch(async (e) => {
+          // Token might be expired — try silent refresh once
+          if (e.message.includes('401') || e.message.includes('403') || e.message.includes('400')) {
+            try {
+              const newTok = await silentRefreshToken();
+              const songs = await driveListSongs(newTok, true);
+              setCustomSongs(songs); setDriveError(''); setLoadingDrive(false);
+            } catch {
+              setDriveError('Sesi Google berakhir. Ketuk Login untuk lanjut.');
+              setLoadingDrive(false);
+            }
+          } else { setLoadingDrive(false); }
+        });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1369,14 +1506,16 @@ export default function App() {
     const onTime = () => setProgress(a.currentTime);
     const onMeta = () => setDuration(a.duration);
     const onEnd  = () => {
-      if (repeatRef.current==='one') { a.currentTime=0; a.play(); }
-      else goNext();
+      if (repeatRef.current === 'one') { a.currentTime = 0; a.play().catch(()=>{}); return; }
+      if (repeatRef.current === 'all' || repeatRef.current === 'off') {
+        if (goNextRef.current) goNextRef.current();
+      }
     };
     a.addEventListener('timeupdate', onTime);
     a.addEventListener('loadedmetadata', onMeta);
     a.addEventListener('ended', onEnd);
     return () => { a.removeEventListener('timeupdate',onTime); a.removeEventListener('loadedmetadata',onMeta); a.removeEventListener('ended',onEnd); };
-  }, [track, customSongs]);
+  }, [track]); // only re-attach when track changes (not customSongs)
 
   // ── Play/pause
   useEffect(() => {
@@ -1393,6 +1532,24 @@ export default function App() {
       a.play().catch(e => { console.warn('play error:', e); setPlaying(false); });
     } else { a.pause(); }
   }, [playing, ensureAudioCtx, embedTrack]);
+
+  // ── Proactive token expiry: auto silent-refresh 5 min before expiry
+  useEffect(() => {
+    if (!accessToken) return;
+    let saved;
+    try { saved = JSON.parse(localStorage.getItem('sn_google_token') || 'null'); } catch { return; }
+    if (!saved?.expiry) return;
+    const msUntilRefresh = saved.expiry - Date.now() - 5 * 60 * 1000; // 5 min early
+    if (msUntilRefresh <= 0) {
+      silentRefreshToken().catch(() => {}); // already expired, try now
+      return;
+    }
+    const timer = setTimeout(() => { silentRefreshToken().catch(() => {}); }, msUntilRefresh);
+    return () => clearTimeout(timer);
+  }, [accessToken, silentRefreshToken]);
+
+  // ── Fetch YT trending when stream tab opens (once per session, refreshable)
+  useEffect(() => { if (tab === 'stream') fetchYtTrending(); }, [tab]); // eslint-disable-line
 
   // ── Volume/mute
   useEffect(() => { if (audioRef.current) audioRef.current.volume = muted?0:volume; }, [volume, muted]);
@@ -1454,18 +1611,40 @@ export default function App() {
   }, []);
   const cancelSleepTimer = useCallback(() => { if (sleepIntervalRef.current) clearInterval(sleepIntervalRef.current); setSleepTimer(null); }, []);
 
-  // ── PLAY (with crossfade support)
+  // ── PLAY (with crossfade support + Drive auto token refresh)
   const play = useCallback(async (t) => {
     let td = { ...t };
     if (t.isDrive && !t.src) {
       setLoadingTrack(true);
+      const tryLoad = async (tok) => {
+        return driveStreamBlob(t.driveId, tok);
+      };
       try {
-        const tok = tokenRef.current;
+        let tok = tokenRef.current;
         if (!tok) throw new Error('Login Google dulu');
-        const url = await driveStreamBlob(t.driveId, tok);
+        let url;
+        try {
+          url = await tryLoad(tok);
+        } catch(e) {
+          // 401/403 = expired token → silent refresh and retry once
+          if (e.message.includes('401') || e.message.includes('403')) {
+            try {
+              tok = await silentRefreshToken();
+              url = await tryLoad(tok);
+            } catch(re) {
+              // Silent refresh failed → show login prompt gently (no full alert)
+              setDriveError('Sesi Google berakhir. Ketuk tombol Login untuk lanjut.');
+              setLoadingTrack(false); return;
+            }
+          } else { throw e; }
+        }
         setCustomSongs(prev => prev.map(s=>s.id===t.id?{...s,src:url}:s));
         td = { ...t, src: url };
-      } catch(e) { alert('Gagal memutar: '+e.message); setLoadingTrack(false); return; }
+        setDriveError('');
+      } catch(e) {
+        setDriveError('Gagal memutar: ' + e.message);
+        setLoadingTrack(false); return;
+      }
       setLoadingTrack(false);
     }
 
@@ -1487,7 +1666,6 @@ export default function App() {
       gain.linearRampToValueAtTime(0, now + cf);
       setTimeout(() => {
         doSwitch();
-        // fade in
         setTimeout(() => {
           if (masterGainRef.current && audioCtxRef.current) {
             const g = masterGainRef.current.gain;
@@ -1497,27 +1675,31 @@ export default function App() {
         }, 50);
       }, cf * 1000);
     } else { doSwitch(); }
-  }, [track]);
+  }, [track, silentRefreshToken]);
 
   // ── NEXT / PREV
   const goNext = useCallback(() => {
-    const songs = [...builtinSongs, ...customSongs];
-    if (repeatRef.current==='one') { if(audioRef.current){audioRef.current.currentTime=0;audioRef.current.play();} return; }
+    const songs = [...builtinSongs, ...customSongs, ...ytSongs];
+    if (repeatRef.current==='one') { if(audioRef.current){audioRef.current.currentTime=0;audioRef.current.play().catch(()=>{});} return; }
     if (shuffleRef.current) {
       const others = songs.filter(s=>s.id!==track.id);
       if (others.length) play(others[Math.floor(Math.random()*others.length)]);
     } else {
       const i = songs.findIndex(s=>s.id===track.id);
-      play(songs[(i+1)%songs.length]);
+      const next = songs[(i+1)%songs.length];
+      if (next) play(next);
     }
-  }, [track, play, customSongs]);
+  }, [track, play, customSongs, ytSongs]);
+
+  // Keep goNextRef always pointing to latest goNext
+  useEffect(() => { goNextRef.current = goNext; }, [goNext]);
 
   const goPrev = useCallback(() => {
     if (progress > 3) { if(audioRef.current){audioRef.current.currentTime=0;setProgress(0);} return; }
-    const songs = [...builtinSongs, ...customSongs];
+    const songs = [...builtinSongs, ...customSongs, ...ytSongs];
     const i = songs.findIndex(s=>s.id===track.id);
     play(songs[(i-1+songs.length)%songs.length]);
-  }, [track, play, customSongs, progress]);
+  }, [track, play, customSongs, ytSongs, progress]);
 
   // ── SEEK
   const seekByPct = useCallback((p) => { if(audioRef.current&&duration){audioRef.current.currentTime=p*duration;setProgress(p*duration);} }, [duration]);
@@ -1660,7 +1842,26 @@ export default function App() {
     });
     client.requestAccessToken();
   }, []);
-  const handleGoogleLogout = useCallback(() => {
+  // ── Silent token refresh — called automatically when Drive returns 401/403
+  const silentRefreshToken = useCallback(() => new Promise((resolve, reject) => {
+    if (!window.google || !GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes('GANTI_DENGAN')) {
+      return reject(new Error('Google API tidak tersedia'));
+    }
+    try {
+      const client = window.google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID, scope: GOOGLE_SCOPES,
+        prompt: '',        // no user interaction required
+        callback: resp => {
+          if (resp.error) return reject(new Error(resp.error));
+          const tok = resp.access_token;
+          setAccessToken(tok); tokenRef.current = tok;
+          localStorage.setItem('sn_google_token', JSON.stringify({ token: tok, expiry: Date.now() + 3500 * 1000 }));
+          resolve(tok);
+        }
+      });
+      client.requestAccessToken({ prompt: '' });
+    } catch(e) { reject(e); }
+  }), []);
     if (accessToken&&window.google) window.google.accounts.oauth2.revoke(accessToken,()=>{});
     setGoogleUser(null); setAccessToken(null); tokenRef.current=null; setCustomSongs([]); setDriveError('');
     localStorage.removeItem('sn_google_token'); localStorage.removeItem('sn_google_user');
@@ -1726,19 +1927,11 @@ export default function App() {
               <span style={{ fontSize:10, fontWeight:700, color:'#fbbf24', fontFamily:'monospace' }}>{fmtSec(sleepTimer.remaining)}</span>
             </div>
           )}
-          {/* AI badge */}
-          <div style={{ display:'flex', alignItems:'center', gap:4, padding:'4px 8px', borderRadius:999, background:hasKey()?'rgba(34,197,94,0.12)':'rgba(239,68,68,0.12)', border:`1px solid ${hasKey()?'rgba(34,197,94,0.3)':'rgba(239,68,68,0.3)'}` }}>
-            <div style={{ width:5, height:5, borderRadius:'50%', background:hasKey()?'#22c55e':'#ef4444', animation:hasKey()?'pulse 2s infinite':'none' }}/>
-            <span style={{ fontSize:9, fontWeight:700, color:hasKey()?'#86efac':'#fca5a5' }}>{hasKey()?'AI':'Offline'}</span>
-          </div>
-
-          {/* Hemat Data badge */}
-          {dataSaver && (
-            <div style={{ display:'flex', alignItems:'center', gap:4, padding:'4px 8px', borderRadius:999, background:'rgba(16,185,129,0.12)', border:'1px solid rgba(16,185,129,0.35)' }}>
-              <span style={{ fontSize:11 }}>🌿</span>
-              <span style={{ fontSize:9, fontWeight:700, color:'#6ee7b7' }}>Hemat</span>
-            </div>
-          )}
+          {/* Hemat Data toggle button */}
+          <button onClick={toggleDataSaver} style={{ display:'flex', alignItems:'center', gap:4, padding:'4px 8px', borderRadius:999, border:`1px solid ${dataSaver?'rgba(16,185,129,0.4)':'rgba(255,255,255,0.15)'}`, background:dataSaver?'rgba(16,185,129,0.15)':'rgba(255,255,255,0.06)', cursor:'pointer' }} title={dataSaver ? 'Mode Hemat Data aktif — ketuk untuk nonaktifkan' : 'Aktifkan Mode Hemat Data'}>
+            <span style={{ fontSize:11 }}>{dataSaver ? '🌿' : '📶'}</span>
+            <span style={{ fontSize:9, fontWeight:700, color:dataSaver?'#6ee7b7':'rgba(255,255,255,0.45)' }}>{dataSaver ? 'Hemat' : 'Data'}</span>
+          </button>
           {/* Google */}
           {googleUser ? (
             <div style={{ display:'flex', alignItems:'center', gap:5 }}>
@@ -1753,7 +1946,13 @@ export default function App() {
         </div>
       </header>
 
-      {driveError&&<div style={{ position:'relative', zIndex:10, flexShrink:0, padding:'6px 16px', background:'rgba(239,68,68,0.15)', borderBottom:'1px solid rgba(239,68,68,0.25)', display:'flex', alignItems:'center', gap:8 }}><span style={{ fontSize:11, color:'#fca5a5', flex:1 }}>{driveError}</span><button onClick={()=>setDriveError('')} style={{ ...btn, padding:2, color:'#fca5a5' }}><X size={13}/></button></div>}
+      {driveError&&<div style={{ position:'relative', zIndex:10, flexShrink:0, padding:'6px 16px', background:'rgba(239,68,68,0.15)', borderBottom:'1px solid rgba(239,68,68,0.25)', display:'flex', alignItems:'center', gap:8 }}>
+        <span style={{ fontSize:11, color:'#fca5a5', flex:1 }}>{driveError}</span>
+        {(driveError.includes('Sesi') || driveError.includes('401') || driveError.includes('Login')) && (
+          <button onClick={()=>{ setDriveError(''); handleGoogleLogin(); }} style={{ padding:'3px 8px', borderRadius:999, border:'1px solid rgba(239,68,68,0.4)', background:'rgba(239,68,68,0.2)', color:'#fca5a5', fontSize:10, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>Login Ulang</button>
+        )}
+        <button onClick={()=>setDriveError('')} style={{ ...btn, padding:2, color:'#fca5a5' }}><X size={13}/></button>
+      </div>}
 
       {/* ══ CONTENT — flex row wrapper for desktop sidebar layout */}
       <div style={{ flex:1, overflow:'hidden', display:'flex', flexDirection:'row', position:'relative', zIndex:5 }}>
@@ -1905,7 +2104,7 @@ export default function App() {
                         {/* ── Platform header */}
                         <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px 8px' }}>
                           <div style={{ width:36, height:36, borderRadius:10, background:`${platform.color}20`, display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', flexShrink:0 }}>
-                            <img src={platform.logo} alt={platform.name} style={{ width:22, height:22, objectFit:'contain' }} onError={e=>{e.target.style.display='none';}}/>
+                            <PlatformLogo id={platform.id} size={22}/>
                           </div>
                           <div style={{ flex:1, minWidth:0 }}>
                             <div style={{ display:'flex', alignItems:'center', gap:6 }}>
@@ -1936,32 +2135,57 @@ export default function App() {
                                 {loading?'Cari…':'Cari'}
                               </button>
                             </div>
-                            {/* Quick chips */}
+                            {/* Quick chips — live trending */}
                             {!ytQ && (
-                              <div style={{ display:'flex', flexWrap:'wrap', gap:5, marginTop:7 }}>
-                                {['top hits 2024','lo-fi hip hop','Indonesia pop hits','kpop playlist','indie acoustic'].map(chip => (
-                                  <button key={chip} onClick={() => { setYtQuery(p=>({...p,[platform.id]:chip})); searchYouTube(platform.id, chip); }}
-                                    style={{ padding:'3px 9px', borderRadius:999, border:`1px solid ${platform.color}30`, background:`${platform.color}10`, color:'rgba(255,255,255,0.6)', fontSize:10, fontWeight:600, cursor:'pointer' }}>
-                                    {chip}
-                                  </button>
-                                ))}
+                              <div style={{ marginTop:7 }}>
+                                {ytTrendingLoading && (
+                                  <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 0' }}>
+                                    <Loader2 size={10} style={{ color:platform.color, animation:'spin 1s linear infinite' }}/>
+                                    <span style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>Memuat trending…</span>
+                                  </div>
+                                )}
+                                {!ytTrendingLoading && ytTrending.length > 0 && (
+                                  <>
+                                    <div style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:5 }}>🔥 Trending</div>
+                                    <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
+                                      {ytTrending.map((chip, ci) => (
+                                        <button key={ci} onClick={() => { setYtQuery(p=>({...p,[platform.id]:chip.query})); searchYouTube(platform.id, chip.query); }}
+                                          style={{ padding:'3px 9px', borderRadius:999, border:`1px solid ${platform.color}30`, background:`${platform.color}10`, color:'rgba(255,255,255,0.6)', fontSize:10, fontWeight:600, cursor:'pointer' }}>
+                                          {chip.label}
+                                        </button>
+                                      ))}
+                                      <button onClick={()=>{ setYtTrending([]); setYtTrendingLoading(false); fetchYtTrending(); }}
+                                        style={{ padding:'3px 9px', borderRadius:999, border:'1px solid rgba(255,255,255,0.1)', background:'transparent', color:'rgba(255,255,255,0.3)', fontSize:10, cursor:'pointer' }}
+                                        title="Refresh trending">↺</button>
+                                    </div>
+                                  </>
+                                )}
                               </div>
                             )}
                             {error && <div style={{ fontSize:11, color:'#fca5a5', marginTop:6, padding:'6px 10px', borderRadius:8, background:'rgba(239,68,68,0.1)' }}>{error}</div>}
-                            {/* Results */}
+                            {/* Results — no thumbnail, cleaner list */}
                             {results.length > 0 && (
-                              <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:5 }}>
-                                {results.map((v, vi) => (
-                                  <div key={v.id} onClick={() => playYouTube(v, results, vi)}
-                                    style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 8px', borderRadius:10, cursor:'pointer', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)' }}>
-                                    <img src={v.thumb} style={{ width:48, height:36, borderRadius:6, objectFit:'cover', flexShrink:0 }}/>
-                                    <div style={{ flex:1, minWidth:0 }}>
-                                      <div style={{ fontSize:11, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'rgba(255,255,255,0.85)' }}>{v.title}</div>
-                                      <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{v.channel}</div>
+                              <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:4 }}>
+                                {results.map((v, vi) => {
+                                  const secs = v.duration || v.lengthSeconds || 0;
+                                  const dur  = secs > 0 ? `${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}` : '';
+                                  const ch   = v.uploaderName || v.author || v.channel || 'YouTube';
+                                  return (
+                                    <div key={v.videoId || vi} onClick={() => playYouTube(v, results, vi)}
+                                      style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, cursor:'pointer', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', transition:'background 0.15s' }}
+                                      onMouseEnter={e=>e.currentTarget.style.background='rgba(255,0,0,0.08)'}
+                                      onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
+                                      <div style={{ width:32, height:32, borderRadius:8, background:`${platform.color}20`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                                        <Play size={13} style={{ color:platform.color, marginLeft:2 }}/>
+                                      </div>
+                                      <div style={{ flex:1, minWidth:0 }}>
+                                        <div style={{ fontSize:12, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'rgba(255,255,255,0.9)' }}>{v.title}</div>
+                                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{ch}{dur ? ` · ${dur}` : ''}</div>
+                                      </div>
+                                      <Play size={13} style={{ color:platform.color, flexShrink:0, opacity:0.6 }}/>
                                     </div>
-                                    <Play size={14} style={{ color:platform.color, flexShrink:0 }}/>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             )}
                           </div>
@@ -2385,10 +2609,18 @@ export default function App() {
             <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
               <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                 <div style={{ width:32, height:32, borderRadius:10, background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center' }}><Bot size={17} style={{ color:'white' }}/></div>
-                <div>
+                <div style={{ flex:1 }}>
                   <div style={{ fontWeight:800, fontSize:13 }}>Starry AI</div>
-                  <div style={{ fontSize:10, color:hasKey()?'#86efac':'#fca5a5' }}>{hasKey()?`Online · ${activeModel()}`:'Offline'}</div>
+                  <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:1 }}>
+                    <div style={{ width:6, height:6, borderRadius:'50%', background:hasKey()?'#22c55e':'#ef4444', animation:hasKey()?'pulse 2s infinite':'none', flexShrink:0 }}/>
+                    <span style={{ fontSize:10, color:hasKey()?'#86efac':'#fca5a5' }}>{hasKey() ? `Online · ${activeModel()}` : 'Offline — tambah API key'}</span>
+                  </div>
                 </div>
+                {/* Hemat Data quick toggle */}
+                <button onClick={toggleDataSaver} style={{ display:'flex', alignItems:'center', gap:4, padding:'4px 8px', borderRadius:999, border:`1px solid ${dataSaver?'rgba(16,185,129,0.4)':'rgba(255,255,255,0.12)'}`, background:dataSaver?'rgba(16,185,129,0.15)':'rgba(255,255,255,0.05)', cursor:'pointer', flexShrink:0 }} title={dataSaver ? 'Nonaktifkan Hemat Data' : 'Aktifkan Hemat Data'}>
+                  <span style={{ fontSize:11 }}>{dataSaver ? '🌿' : '📶'}</span>
+                  <span style={{ fontSize:9, fontWeight:700, color:dataSaver?'#6ee7b7':'rgba(255,255,255,0.4)' }}>{dataSaver ? 'Hemat ON' : 'Hemat Data'}</span>
+                </button>
               </div>
               <div style={{ marginTop:8, padding:'7px 10px', borderRadius:10, background:track.bg, border:`1px solid ${track.color}30`, display:'flex', alignItems:'center', gap:8 }}>
                 <img src={getCover(track)} style={{ width:30, height:30, borderRadius:7, objectFit:'cover' }}/>
