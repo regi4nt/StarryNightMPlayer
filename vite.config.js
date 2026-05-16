@@ -54,13 +54,20 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
+    // Suppress the large-chunk warning for the 190KB App.jsx
+    chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
-        // lucide-react depends on React internals, so it must live in the
-        // same chunk as react/react-dom to avoid a Temporal Dead Zone (TDZ)
-        // "Cannot access 'X' before initialization" crash at runtime.
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'lucide-react']
+        // Use a FUNCTION form of manualChunks — this is the only safe way to
+        // prevent Rollup from creating circular cross-chunk React references
+        // (TDZ "Cannot access 'X' before initialization" crash).
+        //
+        // Rule: every import from node_modules goes into the 'vendor' chunk.
+        // App source code stays in the index chunk untouched.
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            return 'vendor'
+          }
         }
       }
     }
