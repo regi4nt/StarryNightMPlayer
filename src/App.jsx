@@ -976,8 +976,8 @@ class SettingsErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(0,0,0,0.85)', display:'flex', alignItems:'flex-end' }}>
-          <div style={{ width:'100%', background:'#0d0d24', borderRadius:'24px 24px 0 0', padding:'28px 20px 40px', border:'1px solid rgba(239,68,68,0.3)' }}>
+        <div style={{ position:'absolute', inset:0, zIndex:200, background:'rgba(0,0,0,0.85)', display:'flex', alignItems:'flex-end' }}>
+          <div style={{ width:'100%', background:'#0d0d24', borderRadius:'20px 20px 0 0', padding:'28px 20px 40px', border:'1px solid rgba(239,68,68,0.3)' }}>
             <div style={{ width:36, height:4, borderRadius:999, background:'rgba(255,255,255,0.15)', margin:'0 auto 20px' }}/>
             <div style={{ textAlign:'center', padding:'12px 0' }}>
               <div style={{ fontSize:28, marginBottom:12 }}>⚠️</div>
@@ -1013,8 +1013,8 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
   // Defensive: eqGains harus selalu array 5 elemen
   const safeGains = Array.isArray(eqGains) && eqGains.length === 5 ? eqGains : [0,0,0,0,0];
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:150, background:'rgba(0,0,0,0.78)', display:'flex', alignItems:'flex-end' }} onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="scrollbar-hide" style={{ width:'100%', maxHeight:'92dvh', overflowY:'auto', overflowX:'hidden', background:'#0d0d24', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'24px 24px 0 0', padding:'0 0 env(safe-area-inset-bottom,40px)', paddingBottom:'max(40px,env(safe-area-inset-bottom))' }}>
+    <div style={{ position:'absolute', inset:0, zIndex:150, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(4px)', display:'flex', alignItems:'flex-end' }} onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="scrollbar-hide" style={{ width:'100%', maxHeight:'82%', overflowY:'auto', overflowX:'hidden', background:'#0d0d24', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'20px 20px 0 0', padding:'0 0 32px' }}>
         {/* Drag handle */}
         <div style={{ width:36, height:4, borderRadius:999, background:'rgba(255,255,255,0.15)', margin:'12px auto 0' }}/>
         {/* Header */}
@@ -2655,10 +2655,10 @@ export default function App() {
         {tab==='player'&&(
           <div className="scrollbar-hide" style={{ height:'100%', overflowY:'auto', position:'relative' }}>
 
-          {/* ── QUEUE OVERLAY PANEL — bottom sheet modal */}
+          {/* ── QUEUE PANEL — inline dalam player, bukan full layar */}
           {showQueue && (
-            <div style={{ position:'fixed', inset:0, zIndex:100, background:'rgba(0,0,0,0.7)', ...(isLite?{}:{backdropFilter:'blur(8px)'}), display:'flex', alignItems:'flex-end', animation:isLite?'none':'fadeUp 0.25s ease' }} onClick={e=>e.target===e.currentTarget&&setShowQueue(false)}>
-            <div style={{ width:'100%', maxHeight:'78dvh', display:'flex', flexDirection:'column', background:'#0d0d24', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'24px 24px 0 0', animation:isLite?'none':'slideUp 0.28s cubic-bezier(0.34,1.56,0.64,1)' }}>
+            <div style={{ position:'absolute', inset:0, zIndex:100, background:'rgba(0,0,0,0.55)', ...(isLite?{}:{backdropFilter:'blur(6px)'}), display:'flex', alignItems:'flex-end', animation:isLite?'none':'fadeUp 0.2s ease' }} onClick={e=>e.target===e.currentTarget&&setShowQueue(false)}>
+            <div style={{ width:'100%', maxHeight:'72%', display:'flex', flexDirection:'column', background:'#0d0d24', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'20px 20px 0 0', animation:isLite?'none':'slideUp 0.25s cubic-bezier(0.34,1.56,0.64,1)' }}>
               {/* Queue header */}
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 18px 12px', borderBottom:'1px solid rgba(255,255,255,0.07)', flexShrink:0 }}>
                 <div style={{ width:36, height:4, borderRadius:999, background:'rgba(255,255,255,0.15)', position:'absolute', left:'50%', transform:'translateX(-50%)', top:10 }}/>
@@ -2733,6 +2733,9 @@ export default function App() {
             </div>
             </div>
           )}
+
+          {/* ── SETTINGS PANEL — inline dalam player */}
+          {showSettings&&<SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} eqEnabled={!!eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset||"Normal"} setEqPreset={setEqPreset} eqGains={Array.isArray(eqGains)&&eqGains.length===5?eqGains:[0,0,0,0,0]} setEqGains={setEqGains} crossfade={typeof crossfade==="number"?crossfade:0} setCrossfade={setCrossfade} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns}/>}
 
           <div style={{ minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'clamp(4px,1.5vh,12px) 20px clamp(4px,1vh,8px)' }}>
             {loadingTrack&&!embedTrack&&(
@@ -3712,7 +3715,7 @@ export default function App() {
         onSave={editingPl ? updatePlaylist : createPlaylist}
         isLite={isLite}
       />}
-      {showSettings&&<SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} eqEnabled={!!eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset||"Normal"} setEqPreset={setEqPreset} eqGains={Array.isArray(eqGains)&&eqGains.length===5?eqGains:[0,0,0,0,0]} setEqGains={setEqGains} crossfade={typeof crossfade==="number"?crossfade:0} setCrossfade={setCrossfade} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns}/>}
+
       {showUpload&&<UploadModal onClose={()=>!uploading&&setShowUpload(false)} onUpload={handleUpload} uploading={uploading} uploadProgress={uploadProgress} color={track.color} isLite={isLite}/>}
 
       {/* ══ YOUTUBE HIDDEN AUDIO IFRAME — persistent, single instance ══ */}
