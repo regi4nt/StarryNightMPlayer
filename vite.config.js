@@ -26,7 +26,7 @@ export default defineConfig({
         categories: ['music', 'entertainment'],
         shortcuts: [
           { name: 'Player', url: '/?tab=player', description: 'Buka player' },
-          { name: 'Antrian', url: '/?tab=queue', description: 'Lihat antrian' }
+          { name: 'Stream', url: '/?tab=stream', description: 'Lihat platform streaming' }
         ]
       },
       workbox: {
