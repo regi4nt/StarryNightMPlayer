@@ -943,6 +943,7 @@ export default function App() {
   // ── Embed player state
   const [embedTrack, setEmbedTrack]         = useState(null);
   const [embedMinimized, setEmbedMinimized] = useState(false);
+  const ytIframeRef = useRef(null);
 
   // ── YouTube search state (keyed by platform id)
   const [ytQuery,   setYtQuery]   = useState({});
@@ -1083,6 +1084,9 @@ export default function App() {
     const thumb = item.thumbnail || `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
     setEmbedTrack({ type:'youtube', videoId, title:item.title, artist:item.uploaderName||'YouTube', thumbnail:thumb, duration:dur });
     setEmbedMinimized(false);
+    // Pause normal audio player, set playing state for UI
+    if (audioRef.current) { audioRef.current.pause(); }
+    setPlaying(true);
     setTab('player');
   };
 
@@ -1093,7 +1097,7 @@ export default function App() {
     setEmbedMinimized(false);
   };
 
-  const closeEmbed = () => setEmbedTrack(null);
+  const closeEmbed = () => { setEmbedTrack(null); setPlaying(false); };
 
   // ── Core playback
   const [track, setTrack]       = useState(SONGS[0]);
@@ -1317,13 +1321,19 @@ export default function App() {
 
   // ── Play/pause
   useEffect(() => {
+    // Control YouTube iframe when embedTrack is active
+    if (embedTrack?.type === 'youtube' && ytIframeRef.current) {
+      const cmd = playing ? 'playVideo' : 'pauseVideo';
+      try { ytIframeRef.current.contentWindow.postMessage(JSON.stringify({ event:'command', func:cmd, args:'' }), '*'); } catch(_){}
+      return;
+    }
     const a = audioRef.current; if (!a) return;
     if (playing) {
       ensureAudioCtx();
       if (audioCtxRef.current?.state==='suspended') audioCtxRef.current.resume();
       a.play().catch(e => { console.warn('play error:', e); setPlaying(false); });
     } else { a.pause(); }
-  }, [playing, ensureAudioCtx]);
+  }, [playing, ensureAudioCtx, embedTrack]);
 
   // ── Volume/mute
   useEffect(() => { if (audioRef.current) audioRef.current.volume = muted?0:volume; }, [volume, muted]);
@@ -1686,102 +1696,63 @@ export default function App() {
 
         {/* ─── PLAYER TAB */}
         {tab==='player'&&(
-          embedTrack && embedTrack.type === 'youtube' ? (
-            /* ── YouTube In-App Player */
-            <div style={{ height:'100%', display:'flex', flexDirection:'column', animation:'fadeUp 0.4s ease', background:'#000' }}>
-              {/* Audio-only: hidden iframe + visible thumbnail */}
-              <div style={{ display:'none' }}>
-                <iframe
-                  key={embedTrack.videoId}
-                  src={`https://www.youtube.com/embed/${embedTrack.videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
-                  title={embedTrack.title}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  style={{ width:1, height:1, border:'none' }}
-                />
-              </div>
-              <div style={{ position:'relative', width:'100%', aspectRatio:'1/1', flexShrink:0, background:'#000', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
-                {embedTrack.thumbnail
-                  ? <img src={embedTrack.thumbnail} alt={embedTrack.title} style={{ width:'100%', height:'100%', objectFit:'cover', opacity:0.6, filter:'blur(2px) brightness(0.7)' }}/>
-                  : <div style={{ width:'100%', height:'100%', background:'rgba(255,0,0,0.1)' }}/>
-                }
-                <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:12 }}>
-                  <div style={{ width:90, height:90, borderRadius:'50%', overflow:'hidden', border:'3px solid rgba(255,255,255,0.2)', boxShadow:'0 0 40px rgba(0,0,0,0.7)' }}>
-                    {embedTrack.thumbnail
-                      ? <img src={embedTrack.thumbnail} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-                      : <div style={{ width:'100%', height:'100%', background:'rgba(255,0,0,0.3)', display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={30} style={{ color:'#ff4444' }}/></div>
-                    }
-                  </div>
-                  <div style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 14px', borderRadius:999, background:'rgba(0,0,0,0.5)', border:'1px solid rgba(255,255,255,0.1)' }}>
-                    <div style={{ width:7, height:7, borderRadius:'50%', background:'#ff4444', animation:'pulse 1.5s infinite' }}/>
-                    <span style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.8)', letterSpacing:'0.05em' }}>PLAYING AUDIO</span>
-                  </div>
-                </div>
-              </div>
-              {/* Info */}
-              <div style={{ flex:1, padding:'16px 18px', background:'#07071a', display:'flex', flexDirection:'column', gap:6 }}>
-                <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:999, background:'rgba(255,0,0,0.12)', border:'1px solid rgba(255,0,0,0.25)', width:'fit-content' }}>
-                  <span style={{ fontSize:9, fontWeight:800, color:'#ff6b6b', textTransform:'uppercase', letterSpacing:'0.1em' }}>▶ YouTube</span>
-                </div>
-                <div style={{ fontWeight:900, fontSize:16, lineHeight:1.2, marginTop:2 }}>{embedTrack.title}</div>
-                <div style={{ fontSize:12, color:'rgba(255,255,255,0.45)', fontWeight:600 }}>{embedTrack.artist}{embedTrack.duration&&` · ${embedTrack.duration}`}</div>
-                <div style={{ display:'flex', gap:8, marginTop:10, flexWrap:'wrap' }}>
-                  <button onClick={closeEmbed}
-                    style={{ padding:'9px 16px', borderRadius:12, border:'none', background:'rgba(239,68,68,0.15)', color:'#fca5a5', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
-                    <X size={13}/> Tutup Player
-                  </button>
-                  <button onClick={()=>window.open(`https://www.youtube.com/watch?v=${embedTrack.videoId}`, '_blank')}
-                    style={{ padding:'9px 16px', borderRadius:12, border:'1px solid rgba(255,80,80,0.3)', background:'transparent', color:'rgba(255,120,120,0.85)', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
-                    ↗ Buka di YouTube
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : (
           <div className="scrollbar-hide" style={{ height:'100%', overflowY:'auto' }}>
           <div style={{ minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'clamp(4px,1.5vh,12px) 20px clamp(4px,1vh,8px)', animation:'fadeUp 0.4s ease' }}>
-            {loadingTrack&&(
+            {loadingTrack&&!embedTrack&&(
               <div style={{ position:'fixed', inset:0, zIndex:20, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'rgba(7,7,26,0.85)', ...(isLite ? {} : { backdropFilter:'blur(6px)' }), gap:12 }}>
                 <Loader2 size={30} style={{ color:track.color, animation:'spin 1s linear infinite' }}/>
                 <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)' }}>Memuat dari Google Drive…</div>
               </div>
             )}
 
-            {/* Ring */}
-            <OrbitalRing size={ringSize} pct={pct} color={track.color} progress={progress} duration={duration} isPlaying={playing} cover={getCover(track)} title={track.title} onSeek={seekByPct} isLite={isLite}/>
+            {/* Ring — shows YouTube thumbnail when YT is active */}
+            <OrbitalRing size={ringSize} pct={embedTrack?.type==='youtube'?0:pct} color={embedTrack?.type==='youtube'?'#ff4444':track.color} progress={embedTrack?.type==='youtube'?0:progress} duration={embedTrack?.type==='youtube'?0:duration} isPlaying={playing} cover={embedTrack?.type==='youtube'?(embedTrack.thumbnail||getCover(track)):getCover(track)} title={embedTrack?.type==='youtube'?embedTrack.title:track.title} onSeek={embedTrack?.type==='youtube'?null:seekByPct} isLite={isLite}/>
 
             {/* Track info */}
             <div style={{ textAlign:'center', marginTop:'clamp(8px,1.8vh,16px)', width:'100%', maxWidth:320, padding:'0 8px' }}>
-              {track.isDrive&&<div style={{ display:'inline-flex', alignItems:'center', gap:3, padding:'2px 7px', borderRadius:999, marginBottom:4, background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)' }}><Cloud size={9} style={{ color:track.color }}/><span style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em' }}>Drive</span></div>}
-              <h2 style={{ margin:0, fontWeight:900, letterSpacing:'-0.03em', lineHeight:1.1, fontSize:'clamp(16px,4.2vw,24px)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{track.title}</h2>
-              <p style={{ margin:'2px 0 0', fontSize:'clamp(10px,2.5vw,12px)', color:'rgba(255,255,255,0.45)', fontWeight:600 }}>{track.artist} — {track.album}</p>
+              {embedTrack?.type==='youtube' ? (
+                <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:999, marginBottom:4, background:'rgba(255,0,0,0.12)', border:'1px solid rgba(255,0,0,0.25)' }}>
+                  <span style={{ fontSize:9, fontWeight:800, color:'#ff6b6b', textTransform:'uppercase', letterSpacing:'0.1em' }}>▶ YouTube</span>
+                </div>
+              ) : track.isDrive&&(
+                <div style={{ display:'inline-flex', alignItems:'center', gap:3, padding:'2px 7px', borderRadius:999, marginBottom:4, background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)' }}><Cloud size={9} style={{ color:track.color }}/><span style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em' }}>Drive</span></div>
+              )}
+              <h2 style={{ margin:0, fontWeight:900, letterSpacing:'-0.03em', lineHeight:1.1, fontSize:'clamp(16px,4.2vw,24px)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{embedTrack?.type==='youtube'?embedTrack.title:track.title}</h2>
+              <p style={{ margin:'2px 0 0', fontSize:'clamp(10px,2.5vw,12px)', color:'rgba(255,255,255,0.45)', fontWeight:600 }}>
+                {embedTrack?.type==='youtube' ? embedTrack.artist : `${track.artist} — ${track.album}`}
+              </p>
             </div>
 
             {/* Main controls: Shuffle | Prev | Play | Next | Repeat */}
             <div style={{ display:'flex', alignItems:'center', gap:'clamp(4px,2vw,10px)', marginTop:'clamp(10px,2vh,16px)' }}>
-              <button onClick={()=>setShuffle(s=>!s)} style={{ ...btn, color:shuffle?track.color:'rgba(255,255,255,0.3)', position:'relative', padding:'clamp(5px,1.2vw,8px)' }}>
+              <button onClick={()=>setShuffle(s=>!s)} style={{ ...btn, color:shuffle?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', position:'relative', padding:'clamp(5px,1.2vw,8px)', opacity:embedTrack?.type==='youtube'?0.3:1, pointerEvents:embedTrack?.type==='youtube'?'none':'auto' }}>
                 <Shuffle size={18}/>
-                {shuffle&&<div style={{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:track.color }}/>}
+                {shuffle&&!embedTrack&&<div style={{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:track.color }}/>}
               </button>
-              <button onClick={goPrev} style={{ ...btn, padding:'clamp(5px,1.2vw,8px)' }}><SkipBack size={22} fill="currentColor"/></button>
-              <button onClick={()=>setPlaying(p=>!p)} style={{ width:'clamp(48px,13vw,56px)', height:'clamp(48px,13vw,56px)', borderRadius:'50%', border:'none', background:'white', color:'#07071a', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow: isLite ? `0 2px 8px rgba(0,0,0,0.4)` : `0 0 22px ${track.color}90,0 4px 20px rgba(0,0,0,0.4)`, transition:'transform 0.1s,box-shadow 0.3s', flexShrink:0 }}>
+              <button onClick={()=>!embedTrack&&goPrev()} style={{ ...btn, padding:'clamp(5px,1.2vw,8px)', opacity:embedTrack?.type==='youtube'?0.3:1, pointerEvents:embedTrack?.type==='youtube'?'none':'auto' }}><SkipBack size={22} fill="currentColor"/></button>
+              <button onClick={()=>setPlaying(p=>!p)} style={{ width:'clamp(48px,13vw,56px)', height:'clamp(48px,13vw,56px)', borderRadius:'50%', border:'none', background:'white', color:'#07071a', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow: isLite ? `0 2px 8px rgba(0,0,0,0.4)` : `0 0 22px ${embedTrack?.type==='youtube'?'#ff444490':track.color+'90'},0 4px 20px rgba(0,0,0,0.4)`, transition:'transform 0.1s,box-shadow 0.3s', flexShrink:0 }}>
                 {playing?<Pause size={21} fill="currentColor"/>:<Play size={21} fill="currentColor" style={{ marginLeft:3 }}/>}
               </button>
-              <button onClick={goNext} style={{ ...btn, padding:'clamp(5px,1.2vw,8px)' }}><SkipForward size={22} fill="currentColor"/></button>
-              <button onClick={cycleRepeat} style={{ ...btn, color:repeat!=='off'?track.color:'rgba(255,255,255,0.3)', position:'relative', padding:'clamp(5px,1.2vw,8px)' }}>
+              <button onClick={()=>!embedTrack&&goNext()} style={{ ...btn, padding:'clamp(5px,1.2vw,8px)', opacity:embedTrack?.type==='youtube'?0.3:1, pointerEvents:embedTrack?.type==='youtube'?'none':'auto' }}><SkipForward size={22} fill="currentColor"/></button>
+              <button onClick={cycleRepeat} style={{ ...btn, color:repeat!=='off'?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', position:'relative', padding:'clamp(5px,1.2vw,8px)', opacity:embedTrack?.type==='youtube'?0.3:1, pointerEvents:embedTrack?.type==='youtube'?'none':'auto' }}>
                 {repeat==='one'?<Repeat1 size={18}/>:<Repeat size={18}/>}
-                {repeat!=='off'&&<div style={{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:track.color }}/>}
+                {repeat!=='off'&&!embedTrack&&<div style={{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:track.color }}/>}
               </button>
             </div>
 
-            {/* Secondary: Like | Mute | Volume slider | Settings */}
+            {/* Secondary: Like | Mute | Volume slider | Settings | Close YT */}
             <div style={{ display:'flex', alignItems:'center', gap:4, marginTop:'clamp(3px,0.8vh,7px)', width:'100%', maxWidth:290 }}>
               <button onClick={()=>setLiked(l=>({...l,[track.id]:!l[track.id]}))} style={{ ...btn, color:liked[track.id]?'#f472b6':'rgba(255,255,255,0.3)', padding:6 }}><Heart size={17} fill={liked[track.id]?'#f472b6':'none'}/></button>
               <button onClick={()=>setMuted(m=>!m)} style={{ ...btn, color:muted?'#ef4444':'rgba(255,255,255,0.3)', padding:6 }}>{muted?<VolumeX size={17}/>:<Volume2 size={17}/>}</button>
-              <input type="range" min="0" max="1" step="0.01" value={muted?0:volume} onChange={e=>{setVolume(+e.target.value);setMuted(false)}} style={{ flex:1, accentColor:track.color, height:3 }}/>
-              <button onClick={()=>setShowSettings(true)} style={{ ...btn, color:eqEnabled||sleepTimer?track.color:'rgba(255,255,255,0.3)', padding:6 }}><Settings size={17}/></button>
+              <input type="range" min="0" max="1" step="0.01" value={muted?0:volume} onChange={e=>{setVolume(+e.target.value);setMuted(false)}} style={{ flex:1, accentColor:embedTrack?.type==='youtube'?'#ff4444':track.color, height:3 }}/>
+              {embedTrack?.type==='youtube'
+                ? <button onClick={closeEmbed} style={{ ...btn, color:'#fca5a5', padding:6 }} title="Tutup YouTube"><X size={16}/></button>
+                : <button onClick={()=>setShowSettings(true)} style={{ ...btn, color:eqEnabled||sleepTimer?track.color:'rgba(255,255,255,0.3)', padding:6 }}><Settings size={17}/></button>
+              }
             </div>
 
-            {/* AI Insight */}
+            {/* AI Insight — only for normal tracks */}
+            {!embedTrack && (
             <div style={{ width:'100%', maxWidth:300, marginTop:'clamp(6px,1.2vh,10px)', padding:'0 8px', paddingBottom:'clamp(8px,1.5vh,14px)' }}>
               {!insight?(
                 <button onClick={getInsight} disabled={insightLoading} style={{ width:'100%', padding:'8px 0', borderRadius:12, border:'none', background:track.bg, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, opacity:insightLoading?0.6:1 }}>
@@ -1794,9 +1765,9 @@ export default function App() {
                 </div>
               )}
             </div>
+            )}
           </div>
           </div>
-          ) /* end normal player */
         )}
         {tab==='stream'&&(
           <div style={{ height:'100%', display:'flex', flexDirection:'column', padding:'14px 16px 0', animation:'fadeUp 0.4s ease' }}>
@@ -2414,51 +2385,16 @@ export default function App() {
       {showSettings&&<SettingsPanel onClose={()=>setShowSettings(false)} color={track.color} eqEnabled={eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset} setEqPreset={setEqPreset} eqGains={eqGains} setEqGains={setEqGains} crossfade={crossfade} setCrossfade={setCrossfade} sleepTimer={sleepTimer} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover} setGlobalCover={setGlobalCover} isLite={isLite} dataSaver={dataSaver} toggleDataSaver={toggleDataSaver} pwaPrompt={pwaPrompt} pwaInstalled={pwaInstalled} installPwa={installPwa}/>}
       {showUpload&&<UploadModal onClose={()=>!uploading&&setShowUpload(false)} onUpload={handleUpload} uploading={uploading} uploadProgress={uploadProgress} color={track.color} isLite={isLite}/>}
 
-      {/* ══ YOUTUBE EMBED FLOATING PANEL — only show on non-player tabs ══ */}
-      {embedTrack && embedTrack.type === 'youtube' && tab !== 'player' && (
-        <div style={{
-          position:'fixed', left:0, right:0, bottom:0, zIndex:500,
-          background:'rgba(7,7,26,0.97)', backdropFilter:'blur(20px)',
-          borderTop:'1px solid rgba(255,0,0,0.3)',
-          boxShadow:'0 -8px 32px rgba(0,0,0,0.6)',
-          animation:'fadeUp 0.3s ease',
-        }}>
-          {/* Mini bar (always visible) */}
-          <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderBottom: embedMinimized?'none':'1px solid rgba(255,255,255,0.06)' }}>
-            <div style={{ width:36, height:36, borderRadius:8, overflow:'hidden', flexShrink:0, background:'#111' }}>
-              {embedTrack.thumbnail
-                ? <img src={embedTrack.thumbnail} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-                : <div style={{ width:'100%', height:'100%', background:'rgba(255,0,0,0.2)', display:'flex', alignItems:'center', justifyContent:'center' }}><Play size={14} style={{ color:'#ff4444' }}/></div>
-              }
-            </div>
-            <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontSize:12, fontWeight:700, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{embedTrack.title}</div>
-              <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)', marginTop:1 }}>{embedTrack.artist}{embedTrack.duration&&` · ${embedTrack.duration}`} · YouTube</div>
-            </div>
-            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-              <button onClick={()=>setEmbedMinimized(v=>!v)}
-                style={{ width:28, height:28, borderRadius:999, background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.12)', color:'rgba(255,255,255,0.6)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12 }}>
-                {embedMinimized ? '▲' : '▼'}
-              </button>
-              <button onClick={closeEmbed}
-                style={{ width:28, height:28, borderRadius:999, background:'rgba(239,68,68,0.15)', border:'1px solid rgba(239,68,68,0.3)', color:'#fca5a5', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <X size={12}/>
-              </button>
-            </div>
-          </div>
-          {/* YouTube iframe (hidden for audio-only) */}
-          {!embedMinimized && (
-            <div style={{ display:'none' }}>
-              <iframe
-                key={embedTrack.videoId}
-                src={`https://www.youtube.com/embed/${embedTrack.videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
-                title={embedTrack.title}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                style={{ width:1, height:1, border:'none' }}
-              />
-            </div>
-          )}
-        </div>
+      {/* ══ YOUTUBE HIDDEN AUDIO IFRAME — persistent, single instance ══ */}
+      {embedTrack && embedTrack.type === 'youtube' && (
+        <iframe
+          ref={ytIframeRef}
+          key={embedTrack.videoId}
+          src={`https://www.youtube.com/embed/${embedTrack.videoId}?autoplay=1&enablejsapi=1&rel=0&modestbranding=1&playsinline=1`}
+          title={embedTrack.title}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          style={{ display:'none', width:1, height:1, border:'none', position:'fixed', bottom:-9999, left:-9999 }}
+        />
       )}
 
       <style>{`

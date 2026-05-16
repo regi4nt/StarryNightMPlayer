@@ -1,4 +1,4 @@
-# 🌌 Starry Night Music Player
+# 🌌 Cosmic Music Player
 
 A space-themed music player built with React, Vite, and Tailwind CSS — featuring an AI-powered Cosmic Navigator powered by Claude.
 
