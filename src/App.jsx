@@ -2936,15 +2936,6 @@ export default function App() {
             );
           })}
           <div style={{ flex:1 }}/>
-          {/* ── JAM — fixed di tengah vertikal sidebar, selalu sejajar ring */}
-          <div style={{ position:'fixed', left:0, width:196, top:'50%', transform:'translateY(-50%)', padding:'0 16px', userSelect:'none', pointerEvents:'none', zIndex:5 }}>
-            <div style={{ fontSize:24, fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
-              {nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false })}
-            </div>
-            <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', fontWeight:600, marginTop:4, letterSpacing:'0.04em', textTransform:'uppercase' }}>
-              {nowTime.toLocaleDateString('id-ID',{ weekday:'long', day:'numeric', month:'long' })}
-            </div>
-          </div>
           <button onClick={()=>setShowSettings(true)} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:12, border:'none', cursor:'pointer', background:'transparent', color:'rgba(255,255,255,0.3)', width:'100%', fontSize:13 }}>
             <Settings size={17}/><span>Pengaturan</span>
           </button>
@@ -3038,7 +3029,19 @@ export default function App() {
           {/* ── SETTINGS PANEL — inline dalam player */}
           {showSettings&&<SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} eqEnabled={!!eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset||"Normal"} setEqPreset={setEqPreset} eqGains={Array.isArray(eqGains)&&eqGains.length===5?eqGains:[0,0,0,0,0]} setEqGains={setEqGains} crossfade={typeof crossfade==="number"?crossfade:0} setCrossfade={setCrossfade} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns}/>}
 
-          <div style={{ minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', padding:'clamp(10px,2.5vh,20px) 16px clamp(10px,2vh,18px)' }}>
+          <div style={{ minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', padding:'clamp(10px,2.5vh,20px) 16px clamp(10px,2vh,18px)', position:'relative' }}>
+
+            {/* ── JAM — pojok kiri atas area player (desktop only) */}
+            {isDesktop && (
+              <div style={{ position:'absolute', top:'clamp(10px,2.5vh,20px)', left:16, userSelect:'none', pointerEvents:'none' }}>
+                <div style={{ fontSize:24, fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+                  {nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false })}
+                </div>
+                <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', fontWeight:600, marginTop:4, letterSpacing:'0.04em', textTransform:'uppercase' }}>
+                  {nowTime.toLocaleDateString('id-ID',{ weekday:'long', day:'numeric', month:'long' })}
+                </div>
+              </div>
+            )}
 
             {loadingTrack&&!embedTrack&&(
               <div style={{ position:'fixed', inset:0, zIndex:20, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'rgba(7,7,26,0.85)', ...(isLite ? {} : { backdropFilter:'blur(6px)' }), gap:12 }}>
@@ -3149,21 +3152,7 @@ export default function App() {
               </div>
             )}
 
-            {/* ── AI Insight — only for normal tracks */}
-            {!embedTrack && (
-              <div style={{ width:'100%', maxWidth:340, marginTop:'clamp(10px,1.8vh,16px)', paddingBottom:'clamp(16px,2.5vh,24px)' }}>
-                {!insight?(
-                  <button onClick={getInsight} disabled={insightLoading} style={{ width:'100%', padding:'8px 0', borderRadius:12, border:'none', background:track.bg, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, opacity:insightLoading?0.6:1 }}>
-                    {insightLoading?<><Zap size={12} style={{ animation:'spin 0.8s linear infinite' }}/>Meramal...</>:<><Sparkles size={12}/>Wawasan Kosmik ✨</>}
-                  </button>
-                ):(
-                  <div onClick={()=>setInsight('')} style={{ padding:'9px 13px', borderRadius:12, background:track.bg, border:`1px solid ${track.color}40`, cursor:'pointer' }}>
-                    <div style={{ fontSize:9, color:track.color, fontWeight:700, marginBottom:3, textTransform:'uppercase', letterSpacing:'0.1em' }}>✨ Wawasan Kosmik</div>
-                    <p style={{ margin:0, fontSize:12, color:'rgba(255,255,255,0.85)', fontStyle:'italic', lineHeight:1.6 }}>{insight}</p>
-                  </div>
-                )}
-              </div>
-            )}
+
           </div>
           </div>
         )}
