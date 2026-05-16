@@ -50,6 +50,15 @@ export default defineConfig({
   ],
   build: {
     outDir: 'dist',
-    sourcemap: false
+    sourcemap: false,
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        // Force ALL code into a single bundle — eliminates all cross-chunk
+        // TDZ issues once and for all. The app is small enough (~270KB gz)
+        // that a single chunk is perfectly fine for a PWA.
+        inlineDynamicImports: true,
+      }
+    }
   }
 })
