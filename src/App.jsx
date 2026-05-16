@@ -68,41 +68,85 @@ const SLEEP_OPTIONS = [
 ];
 
 // ═══════════════════════════════════════════════════════
-//  AI
+//  AI — Multi-provider: OpenRouter, Gemini, Groq
 // ═══════════════════════════════════════════════════════
-const API_KEYS = [
-  import.meta.env.VITE_OPENROUTER_KEY_1,
-  import.meta.env.VITE_OPENROUTER_KEY_2,
-  import.meta.env.VITE_OPENROUTER_KEY_3,
-].filter(k => k && !k.includes('undefined'));
-const FREE_MODELS = [
-  "deepseek/deepseek-chat-v3-0324:free","meta-llama/llama-4-maverick:free",
-  "deepseek/deepseek-r1:free","qwen/qwen3-235b-a22b:free",
-  "meta-llama/llama-3.3-70b-instruct:free","qwen/qwen-2.5-72b-instruct:free",
-  "google/gemma-3-12b-it:free","openrouter/quasar-alpha:free",
+
+// ── Provider definitions
+const PROVIDERS = [
+  // OpenRouter — beberapa key & model gratis sebagai slot
+  ...([
+    import.meta.env.VITE_OPENROUTER_KEY_1,
+    import.meta.env.VITE_OPENROUTER_KEY_2,
+    import.meta.env.VITE_OPENROUTER_KEY_3,
+  ].filter(k => k && k.length > 10).flatMap(k => [
+    { provider:'OpenRouter', key:k, model:'deepseek/deepseek-chat-v3-0324:free',      endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true,  extra:{ 'HTTP-Referer':window.location.origin,'X-Title':'Starry Night' } },
+    { provider:'OpenRouter', key:k, model:'meta-llama/llama-4-maverick:free',          endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true,  extra:{ 'HTTP-Referer':window.location.origin,'X-Title':'Starry Night' } },
+    { provider:'OpenRouter', key:k, model:'qwen/qwen3-235b-a22b:free',                endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true,  extra:{ 'HTTP-Referer':window.location.origin,'X-Title':'Starry Night' } },
+    { provider:'OpenRouter', key:k, model:'google/gemma-3-12b-it:free',               endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true,  extra:{ 'HTTP-Referer':window.location.origin,'X-Title':'Starry Night' } },
+    { provider:'OpenRouter', key:k, model:'meta-llama/llama-3.3-70b-instruct:free',   endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true,  extra:{ 'HTTP-Referer':window.location.origin,'X-Title':'Starry Night' } },
+  ])),
+  // Google Gemini — format OpenAI-compatible via AI Studio
+  ...([
+    import.meta.env.VITE_GEMINI_KEY_1,
+    import.meta.env.VITE_GEMINI_KEY_2,
+  ].filter(k => k && k.length > 10).flatMap(k => [
+    { provider:'Gemini', key:k, model:'gemini-2.0-flash', endpoint:'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', isOpenAI:true, extra:{} },
+    { provider:'Gemini', key:k, model:'gemini-1.5-flash', endpoint:'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', isOpenAI:true, extra:{} },
+  ])),
+  // Groq — sangat cepat, format OpenAI-compatible
+  ...([
+    import.meta.env.VITE_GROQ_KEY_1,
+    import.meta.env.VITE_GROQ_KEY_2,
+  ].filter(k => k && k.length > 10).flatMap(k => [
+    { provider:'Groq', key:k, model:'llama-3.3-70b-versatile', endpoint:'https://api.groq.com/openai/v1/chat/completions', isOpenAI:true, extra:{} },
+    { provider:'Groq', key:k, model:'gemma2-9b-it',            endpoint:'https://api.groq.com/openai/v1/chat/completions', isOpenAI:true, extra:{} },
+    { provider:'Groq', key:k, model:'llama3-8b-8192',          endpoint:'https://api.groq.com/openai/v1/chat/completions', isOpenAI:true, extra:{} },
+  ])),
 ];
-const SLOTS = API_KEYS.flatMap(k => FREE_MODELS.map(m => ({ k, m })));
+
 let slotIdx = 0;
+
 async function askAI(user, system='', tries=0) {
-  const valid = API_KEYS.filter(k => k && !k.includes('GANTI_KEY'));
-  if (!valid.length) return '⚠️ Belum ada API key.';
-  if (tries >= SLOTS.length) { slotIdx=0; return 'Semua model sibuk, coba lagi.'; }
-  const {k,m} = SLOTS[slotIdx % SLOTS.length];
+  if (!PROVIDERS.length) return '⚠️ Belum ada API key. Isi di Vercel Environment Variables.';
+  if (tries >= PROVIDERS.length) { slotIdx = 0; return 'Semua provider sibuk, coba lagi nanti.'; }
+  const slot = PROVIDERS[slotIdx % PROVIDERS.length];
   try {
-    const res  = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json','Authorization':`Bearer ${k}`,'HTTP-Referer':window.location.origin,'X-Title':'Starry Night' },
-      body: JSON.stringify({ model:m, max_tokens:500, messages:[...(system?[{role:'system',content:system}]:[]),{role:'user',content:user}] })
+    const res = await fetch(slot.endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${slot.key}`,
+        ...slot.extra,
+      },
+      body: JSON.stringify({
+        model: slot.model,
+        max_tokens: 500,
+        messages: [
+          ...(system ? [{ role:'system', content:system }] : []),
+          { role:'user', content:user },
+        ],
+      }),
     });
     const data = await res.json();
-    if (res.status===429||res.status===503||data.error) { slotIdx=(slotIdx+1)%SLOTS.length; return askAI(user,system,tries+1); }
+    if (res.status === 429 || res.status === 503 || res.status === 401 || data.error) {
+      slotIdx = (slotIdx + 1) % PROVIDERS.length;
+      return askAI(user, system, tries + 1);
+    }
     const txt = data.choices?.[0]?.message?.content;
-    if (!txt) { slotIdx=(slotIdx+1)%SLOTS.length; return askAI(user,system,tries+1); }
+    if (!txt) { slotIdx = (slotIdx + 1) % PROVIDERS.length; return askAI(user, system, tries + 1); }
     return txt.trim();
-  } catch { slotIdx=(slotIdx+1)%SLOTS.length; return askAI(user,system,tries+1); }
+  } catch {
+    slotIdx = (slotIdx + 1) % PROVIDERS.length;
+    return askAI(user, system, tries + 1);
+  }
 }
-const activeModel = () => SLOTS[slotIdx%SLOTS.length].m.split('/')[1]?.replace(':free','') || '';
-const hasKey = () => API_KEYS.some(k => k && !k.includes('GANTI_KEY'));
+
+const activeModel = () => {
+  if (!PROVIDERS.length) return 'no-key';
+  const s = PROVIDERS[slotIdx % PROVIDERS.length];
+  return `${s.provider}·${s.model.split('/').pop()?.replace(':free','') || s.model}`;
+};
+const hasKey = () => PROVIDERS.length > 0;
 
 // ═══════════════════════════════════════════════════════
 //  GOOGLE DRIVE HELPERS
@@ -111,26 +155,48 @@ const hasKey = () => API_KEYS.some(k => k && !k.includes('GANTI_KEY'));
 const _driveCache = { token: null, songs: null, ts: 0 };
 const DRIVE_CACHE_TTL = 5 * 60 * 1000; // 5 menit
 
-// Ambil semua file audio di seluruh Drive dengan pagination + cache
+// Cari atau buat folder "Starry Night Music" di Drive
+async function driveGetFolderId(token) {
+  const q = encodeURIComponent(`mimeType='application/vnd.google-apps.folder' and name='${DRIVE_FOLDER}' and trashed=false`);
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&pageSize=1`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error(`Folder search error ${res.status}`);
+  const data = await res.json();
+  if (data.files && data.files.length > 0) return data.files[0].id;
+  // Folder belum ada — buat baru
+  const create = await fetch('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: DRIVE_FOLDER, mimeType: 'application/vnd.google-apps.folder' }),
+  });
+  if (!create.ok) throw new Error('Gagal membuat folder Drive');
+  const folder = await create.json();
+  return folder.id;
+}
+
+// Ambil semua file audio di folder "Starry Night Music" dengan pagination + cache
 async function driveListSongs(token, forceRefresh = false) {
   const now = Date.now();
   if (!forceRefresh && _driveCache.token === token && _driveCache.songs
       && (now - _driveCache.ts) < DRIVE_CACHE_TTL) {
     return _driveCache.songs;
   }
-  // Fetch semua halaman secara parallel setelah halaman pertama
+  // Cari folder dulu
+  let folderId;
+  try { folderId = await driveGetFolderId(token); }
+  catch(e) { throw new Error('Gagal cari folder: ' + e.message); }
+
   const fields = 'nextPageToken,files(id,name,mimeType,appProperties,size)';
   const makeUrl = (pt) => {
-    const q = encodeURIComponent(`mimeType contains 'audio/' and trashed=false`);
+    const q = encodeURIComponent(`'${folderId}' in parents and mimeType contains 'audio/' and trashed=false`);
     return `https://www.googleapis.com/drive/v3/files?q=${q}&fields=${fields}&pageSize=1000&orderBy=name${pt?'&pageToken='+pt:''}`;
   };
   const headers = { Authorization: `Bearer ${token}` };
-  // Ambil halaman pertama
   const first = await fetch(makeUrl(''), { headers });
   if (!first.ok) throw new Error(`Drive list error ${first.status}`);
   const firstData = await first.json();
   let allFiles = [...(firstData.files || [])];
-  // Jika ada halaman berikutnya, fetch semua sekaligus (parallel)
   if (firstData.nextPageToken) {
     let tokens = [firstData.nextPageToken];
     while (tokens.length) {
@@ -161,9 +227,10 @@ async function driveListSongs(token, forceRefresh = false) {
       src: null,
     };
   });
-  _driveCache.token = token;
-  _driveCache.songs = songs;
-  _driveCache.ts    = now;
+  _driveCache.token   = token;
+  _driveCache.songs   = songs;
+  _driveCache.ts      = now;
+  _driveCache.folderId = folderId;
   return songs;
 }
 // Stream langsung pakai URL (tidak perlu download blob dulu — jauh lebih cepat)
@@ -212,7 +279,7 @@ const fmtSec = s => { const m=Math.floor(s/60), sec=s%60; return `${m}:${String(
 // ═══════════════════════════════════════════════════════
 //  PLAYLIST MODAL - Create / Edit
 // ═══════════════════════════════════════════════════════
-function PlaylistModal({ onClose, onSave, allSongs, existing }) {
+function PlaylistModal({ onClose, onSave, allSongs, existing, isLite }) {
   const isEdit = !!existing;
   const [name, setName] = useState(existing?.name || '');
   const [selected, setSelected] = useState(new Set(existing?.songIds || []));
@@ -224,7 +291,7 @@ function PlaylistModal({ onClose, onSave, allSongs, existing }) {
   });
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:100, background:'rgba(0,0,0,0.75)', backdropFilter:'blur(8px)', display:'flex', alignItems:'flex-end', animation:'fadeUp 0.25s ease' }} onClick={e=>e.target===e.currentTarget&&onClose()}>
+    <div style={{ position:'fixed', inset:0, zIndex:100, background:'rgba(0,0,0,0.75)', ...(isLite ? {} : { backdropFilter:'blur(8px)' }), display:'flex', alignItems:'flex-end', animation:'fadeUp 0.25s ease' }} onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div style={{ width:'100%', maxHeight:'92dvh', overflowY:'auto', background:'#0f0f2a', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'24px 24px 0 0', padding:'20px 20px 32px' }}>
         <div style={{ width:36, height:4, borderRadius:999, background:'rgba(255,255,255,0.15)', margin:'0 auto 18px' }}/>
         <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:18 }}>
@@ -318,7 +385,7 @@ function AppLogo({ size = 32 }) {
 // ═══════════════════════════════════════════════════════
 //  ORBITAL RING  — tap OR drag to seek
 // ═══════════════════════════════════════════════════════
-function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, title, onSeek }) {
+function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, title, onSeek, isLite }) {
   const cx=size/2, cy=size/2, artR=size/2-36, ringR=artR+18, circ=2*Math.PI*ringR;
   const deg=pct*360-90, rad=deg*Math.PI/180;
   const dotX=cx+Math.cos(rad)*ringR, dotY=cy+Math.sin(rad)*ringR;
@@ -366,7 +433,7 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
   return (
     <div style={{ position:'relative', width:size, height:size, flexShrink:0 }}>
       {/* Album art */}
-      <div style={{ position:'absolute', top:cy-artR, left:cx-artR, width:artR*2, height:artR*2, borderRadius:'50%', overflow:'hidden', border:'3px solid rgba(255,255,255,0.13)', boxShadow:`0 0 40px -8px ${color}90`, animation:isPlaying?'spin20 20s linear infinite':'none', zIndex:2 }}>
+      <div style={{ position:'absolute', top:cy-artR, left:cx-artR, width:artR*2, height:artR*2, borderRadius:'50%', overflow:'hidden', border:'3px solid rgba(255,255,255,0.13)', boxShadow:`0 0 40px -8px ${color}90`, animation:(!isLite && isPlaying)?'spin20 20s linear infinite':'none', zIndex:2 }}>
         <img src={cover} alt={title} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
       </div>
       {/* SVG ring — mouse drag + click */}
@@ -445,9 +512,10 @@ function SongRow({ s, i, track, playing, liked, setLiked, play, isDrive, onRemov
 // ═══════════════════════════════════════════════════════
 //  SETTINGS PANEL  (EQ, Crossfade, Sleep Timer)
 // ═══════════════════════════════════════════════════════
-function SettingsPanel({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setEqPreset, eqGains, setEqGains, crossfade, setCrossfade, sleepTimer, startSleepTimer, cancelSleepTimer }) {
+function SettingsPanel({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setEqPreset, eqGains, setEqGains, crossfade, setCrossfade, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite }) {
+  const coverRef = useRef(null);
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:100, background:'rgba(0,0,0,0.75)', backdropFilter:'blur(8px)', display:'flex', alignItems:'flex-end', animation:'fadeUp 0.25s ease' }} onClick={e=>e.target===e.currentTarget&&onClose()}>
+    <div style={{ position:'fixed', inset:0, zIndex:100, background:'rgba(0,0,0,0.75)', ...(isLite ? {} : { backdropFilter:'blur(8px)' }), display:'flex', alignItems:'flex-end', animation:'fadeUp 0.25s ease' }} onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div style={{ width:'100%', maxHeight:'92dvh', overflowY:'auto', background:'#0d0d24', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'24px 24px 0 0', padding:'20px 20px 36px' }}>
         <div style={{ width:36, height:4, borderRadius:999, background:'rgba(255,255,255,0.15)', margin:'0 auto 20px' }}/>
 
@@ -524,6 +592,53 @@ function SettingsPanel({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setE
             </div>
           )}
         </div>
+
+        {/* ── FOTO COVER GLOBAL */}
+        <div style={{ marginTop:28 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+            <Music size={16} style={{ color }}/>
+            <span style={{ fontWeight:800, fontSize:14 }}>Foto Cover Semua Lagu</span>
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+            {/* Preview */}
+            <div style={{ width:64, height:64, borderRadius:14, overflow:'hidden', background:'rgba(255,255,255,0.06)', border:`1px solid ${globalCover?color:'rgba(255,255,255,0.12)'}`, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+              {globalCover
+                ? <img src={globalCover} style={{ width:'100%', height:'100%', objectFit:'cover' }} alt="cover"/>
+                : <Music size={22} style={{ color:'rgba(255,255,255,0.2)' }}/>}
+            </div>
+            <div style={{ flex:1, display:'flex', flexDirection:'column', gap:8 }}>
+              <input ref={coverRef} type="file" accept="image/*" style={{ display:'none' }}
+                onChange={e => {
+                  const f = e.target.files[0];
+                  if (!f) return;
+                  const reader = new FileReader();
+                  reader.onload = ev => {
+                    const dataUrl = ev.target.result;
+                    setGlobalCover(dataUrl);
+                    localStorage.setItem('sn_global_cover', dataUrl);
+                  };
+                  reader.readAsDataURL(f);
+                }}
+              />
+              <button onClick={() => coverRef.current?.click()}
+                style={{ padding:'9px 14px', borderRadius:12, border:`1px solid ${color}50`, background:`${color}15`, color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                {globalCover ? 'Ganti Foto' : 'Pilih Foto'}
+              </button>
+              {globalCover && (
+                <button onClick={() => { setGlobalCover(''); localStorage.removeItem('sn_global_cover'); }}
+                  style={{ padding:'9px 14px', borderRadius:12, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.1)', color:'#fca5a5', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                  Hapus Foto
+                </button>
+              )}
+            </div>
+          </div>
+          {globalCover && (
+            <div style={{ marginTop:8, fontSize:11, color:'rgba(255,255,255,0.3)', textAlign:'center' }}>
+              Foto ini diterapkan ke semua lagu · Tersimpan di browser
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );
@@ -532,13 +647,13 @@ function SettingsPanel({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setE
 // ═══════════════════════════════════════════════════════
 //  UPLOAD MODAL
 // ═══════════════════════════════════════════════════════
-function UploadModal({ onClose, onUpload, uploading, uploadProgress, color }) {
+function UploadModal({ onClose, onUpload, uploading, uploadProgress, color, isLite }) {
   const [file,setFile]=useState(null), [title,setTitle]=useState(''), [artist,setArtist]=useState(''), [album,setAlbum]=useState(''), [dragging,setDragging]=useState(false);
   const fileRef=useRef(null);
   const handleFile=f=>{ if(!f||!f.type.startsWith('audio/')) return alert('Pilih file audio'); setFile(f); if(!title) setTitle(f.name.replace(/\.[^/.]+$/,'')); };
   const inp = { width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:10, padding:'10px 12px', fontSize:13, color:'white', outline:'none', marginTop:6 };
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:100, background:'rgba(0,0,0,0.75)', backdropFilter:'blur(8px)', display:'flex', alignItems:'flex-end', animation:'fadeUp 0.25s ease' }} onClick={e=>e.target===e.currentTarget&&!uploading&&onClose()}>
+    <div style={{ position:'fixed', inset:0, zIndex:100, background:'rgba(0,0,0,0.75)', ...(isLite ? {} : { backdropFilter:'blur(8px)' }), display:'flex', alignItems:'flex-end', animation:'fadeUp 0.25s ease' }} onClick={e=>e.target===e.currentTarget&&!uploading&&onClose()}>
       <div style={{ width:'100%', maxHeight:'92dvh', overflowY:'auto', background:'#0f0f2a', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'24px 24px 0 0', padding:'20px 20px 32px' }}>
         <div style={{ width:36, height:4, borderRadius:999, background:'rgba(255,255,255,0.15)', margin:'0 auto 18px' }}/>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
@@ -573,6 +688,10 @@ function UploadModal({ onClose, onUpload, uploading, uploadProgress, color }) {
 //  MAIN APP
 // ═══════════════════════════════════════════════════════
 export default function App() {
+  // ── Mode: Pro (full) vs Lite (lightweight)
+  const [isLite, setIsLite] = useState(() => localStorage.getItem('sn_mode') === 'lite');
+  const toggleMode = () => setIsLite(v => { const n=!v; localStorage.setItem('sn_mode', n?'lite':'pro'); return n; });
+
   // ── Core playback
   const [track, setTrack]       = useState(SONGS[0]);
   const [playing, setPlaying]   = useState(false);
@@ -627,6 +746,14 @@ export default function App() {
   const [uploadProgress, setUploadProg] = useState(0);
   const [loadingTrack, setLoadingTrack] = useState(false);
   const [driveError, setDriveError]     = useState('');
+
+  // ── Custom cover global (satu foto untuk semua lagu)
+  const [globalCover, setGlobalCover]   = useState(() => localStorage.getItem('sn_global_cover') || '');
+  const [showCoverPicker, setShowCoverPicker] = useState(false);
+  const coverInputRef = useRef(null);
+
+  // Helper: ambil cover aktif (globalCover override semua)
+  const getCover = useCallback((song) => globalCover || song?.cover || '', [globalCover]);
 
   // ── Playlists
   const [playlists, setPlaylists]         = useState([
@@ -973,9 +1100,9 @@ export default function App() {
   return (
     <div style={{ height:'100dvh', width:'100vw', overflow:'hidden', background:'#07071a', color:'#f1f5f9', fontFamily:"'Segoe UI',system-ui,sans-serif", display:'flex', flexDirection:'column', userSelect:'none', WebkitTapHighlightColor:'transparent' }}>
 
-      {/* BG */}
-      <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, background:`radial-gradient(ellipse at 60% 10%,${track.color}20 0%,transparent 60%)`, transition:'background 2s ease' }}/>
-      <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, overflow:'hidden' }}><div className="stars"/></div>
+      {/* BG — Pro only */}
+      {!isLite && <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, background:`radial-gradient(ellipse at 60% 10%,${track.color}20 0%,transparent 60%)`, transition:'background 2s ease' }}/>}
+      {!isLite && <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, overflow:'hidden' }}><div className="stars"/></div>}
 
       {/* ══ HEADER */}
       <header style={{ position:'relative', zIndex:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 14px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
@@ -987,6 +1114,12 @@ export default function App() {
           </div>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+          {/* Mode toggle */}
+          <button onClick={toggleMode} title={isLite ? 'Switch to Pro Mode' : 'Switch to Lite Mode'}
+            style={{ display:'flex', alignItems:'center', gap:3, padding:'4px 8px', borderRadius:999, border:`1px solid ${isLite ? 'rgba(99,102,241,0.5)' : 'rgba(255,255,255,0.15)'}`, background: isLite ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.05)', cursor:'pointer', color: isLite ? '#a5b4fc' : 'rgba(255,255,255,0.5)', fontSize:9, fontWeight:700, letterSpacing:'0.04em', textTransform:'uppercase' }}>
+            {isLite ? <Zap size={9}/> : <Sparkles size={9}/>}
+            {isLite ? 'Lite' : 'Pro'}
+          </button>
           {/* Sleep timer badge */}
           {sleepTimer&&(
             <div style={{ display:'flex', alignItems:'center', gap:4, padding:'4px 8px', borderRadius:999, background:'rgba(245,158,11,0.15)', border:'1px solid rgba(245,158,11,0.3)' }}>
@@ -1023,14 +1156,14 @@ export default function App() {
           <div className="scrollbar-hide" style={{ height:'100%', overflowY:'auto' }}>
           <div style={{ minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'clamp(4px,1.5vh,12px) 20px clamp(4px,1vh,8px)', animation:'fadeUp 0.4s ease' }}>
             {loadingTrack&&(
-              <div style={{ position:'fixed', inset:0, zIndex:20, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'rgba(7,7,26,0.85)', backdropFilter:'blur(6px)', gap:12 }}>
+              <div style={{ position:'fixed', inset:0, zIndex:20, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'rgba(7,7,26,0.85)', ...(isLite ? {} : { backdropFilter:'blur(6px)' }), gap:12 }}>
                 <Loader2 size={30} style={{ color:track.color, animation:'spin 1s linear infinite' }}/>
                 <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)' }}>Memuat dari Google Drive…</div>
               </div>
             )}
 
             {/* Ring */}
-            <OrbitalRing size={ringSize} pct={pct} color={track.color} progress={progress} duration={duration} isPlaying={playing} cover={track.cover} title={track.title} onSeek={seekByPct}/>
+            <OrbitalRing size={ringSize} pct={pct} color={track.color} progress={progress} duration={duration} isPlaying={playing} cover={getCover(track)} title={track.title} onSeek={seekByPct} isLite={isLite}/>
 
             {/* Track info */}
             <div style={{ textAlign:'center', marginTop:'clamp(8px,1.8vh,16px)', width:'100%', maxWidth:320, padding:'0 8px' }}>
@@ -1046,7 +1179,7 @@ export default function App() {
                 {shuffle&&<div style={{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:track.color }}/>}
               </button>
               <button onClick={goPrev} style={{ ...btn, padding:'clamp(5px,1.2vw,8px)' }}><SkipBack size={22} fill="currentColor"/></button>
-              <button onClick={()=>setPlaying(p=>!p)} style={{ width:'clamp(48px,13vw,56px)', height:'clamp(48px,13vw,56px)', borderRadius:'50%', border:'none', background:'white', color:'#07071a', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:`0 0 22px ${track.color}90,0 4px 20px rgba(0,0,0,0.4)`, transition:'transform 0.1s,box-shadow 0.3s', flexShrink:0 }}>
+              <button onClick={()=>setPlaying(p=>!p)} style={{ width:'clamp(48px,13vw,56px)', height:'clamp(48px,13vw,56px)', borderRadius:'50%', border:'none', background:'white', color:'#07071a', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow: isLite ? `0 2px 8px rgba(0,0,0,0.4)` : `0 0 22px ${track.color}90,0 4px 20px rgba(0,0,0,0.4)`, transition:'transform 0.1s,box-shadow 0.3s', flexShrink:0 }}>
                 {playing?<Pause size={21} fill="currentColor"/>:<Play size={21} fill="currentColor" style={{ marginLeft:3 }}/>}
               </button>
               <button onClick={goNext} style={{ ...btn, padding:'clamp(5px,1.2vw,8px)' }}><SkipForward size={22} fill="currentColor"/></button>
@@ -1325,7 +1458,7 @@ export default function App() {
             {/* Header */}
             <div style={{ padding:'14px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
               <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                <img src={track.cover} style={{ width:40, height:40, borderRadius:10, objectFit:'cover' }}/>
+                <img src={getCover(track)} style={{ width:40, height:40, borderRadius:10, objectFit:'cover' }}/>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontWeight:800, fontSize:14, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{track.title}</div>
                   <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)' }}>{track.artist}</div>
@@ -1391,7 +1524,7 @@ export default function App() {
                 </div>
               </div>
               <div style={{ marginTop:8, padding:'7px 10px', borderRadius:10, background:track.bg, border:`1px solid ${track.color}30`, display:'flex', alignItems:'center', gap:8 }}>
-                <img src={track.cover} style={{ width:30, height:30, borderRadius:7, objectFit:'cover' }}/>
+                <img src={getCover(track)} style={{ width:30, height:30, borderRadius:7, objectFit:'cover' }}/>
                 <div><div style={{ fontSize:11, fontWeight:700 }}>{track.title}</div><div style={{ fontSize:10, color:'rgba(255,255,255,0.4)' }}>Sedang diputar</div></div>
                 <div style={{ marginLeft:'auto', display:'flex', gap:2, alignItems:'flex-end', height:13 }}>
                   {playing&&[11,6,9].map((h,i)=>(<div key={i} style={{ width:3, height:h, background:track.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${i*0.15}s infinite` }}/>))}
@@ -1423,7 +1556,7 @@ export default function App() {
       </main>
 
       {/* ══ TAB BAR */}
-      <nav style={{ position:'relative', zIndex:10, flexShrink:0, display:'flex', alignItems:'center', background:'rgba(7,7,26,0.95)', backdropFilter:'blur(20px)', borderTop:'1px solid rgba(255,255,255,0.08)', padding:'6px 8px 10px', paddingBottom:'max(10px,env(safe-area-inset-bottom))' }}>
+      <nav style={{ position:'relative', zIndex:10, flexShrink:0, display:'flex', alignItems:'center', background:'rgba(7,7,26,0.95)', ...(isLite ? {} : { backdropFilter:'blur(20px)' }), borderTop:'1px solid rgba(255,255,255,0.08)', padding:'6px 8px 10px', paddingBottom:'max(10px,env(safe-area-inset-bottom))' }}>
         {tabs.map(t=>{
           const active=tab===t.id;
           return (
@@ -1441,9 +1574,10 @@ export default function App() {
         existing={editingPl}
         onClose={()=>{ setShowPlModal(false); setEditingPl(null); }}
         onSave={editingPl ? updatePlaylist : createPlaylist}
+        isLite={isLite}
       />}
-      {showSettings&&<SettingsPanel onClose={()=>setShowSettings(false)} color={track.color} eqEnabled={eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset} setEqPreset={setEqPreset} eqGains={eqGains} setEqGains={setEqGains} crossfade={crossfade} setCrossfade={setCrossfade} sleepTimer={sleepTimer} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer}/>}
-      {showUpload&&<UploadModal onClose={()=>!uploading&&setShowUpload(false)} onUpload={handleUpload} uploading={uploading} uploadProgress={uploadProgress} color={track.color}/>}
+      {showSettings&&<SettingsPanel onClose={()=>setShowSettings(false)} color={track.color} eqEnabled={eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset} setEqPreset={setEqPreset} eqGains={eqGains} setEqGains={setEqGains} crossfade={crossfade} setCrossfade={setCrossfade} sleepTimer={sleepTimer} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover} setGlobalCover={setGlobalCover} isLite={isLite}/>}
+      {showUpload&&<UploadModal onClose={()=>!uploading&&setShowUpload(false)} onUpload={handleUpload} uploading={uploading} uploadProgress={uploadProgress} color={track.color} isLite={isLite}/>}
 
       <style>{`
         *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -1458,6 +1592,7 @@ export default function App() {
         .scrollbar-hide{-ms-overflow-style:none;scrollbar-width:none}
         input::placeholder{color:rgba(148,163,184,0.35)}
         input[type=range]{cursor:pointer;height:4px;border-radius:999px}
+        ${isLite ? '.lite-no-anim *{animation-duration:0.01ms!important;animation-iteration-count:1!important;transition-duration:0.1s!important}' : ''}
       `}</style>
     </div>
   );
