@@ -2852,7 +2852,7 @@ export default function App() {
           {/* ── SETTINGS PANEL — inline dalam player */}
           {showSettings&&<SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} eqEnabled={!!eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset||"Normal"} setEqPreset={setEqPreset} eqGains={Array.isArray(eqGains)&&eqGains.length===5?eqGains:[0,0,0,0,0]} setEqGains={setEqGains} crossfade={typeof crossfade==="number"?crossfade:0} setCrossfade={setCrossfade} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns}/>}
 
-          <div style={{ minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'clamp(4px,1.5vh,12px) 20px clamp(4px,1vh,8px)' }}>
+          <div style={{ minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', padding:'clamp(14px,3vh,28px) 20px clamp(12px,2vh,20px)' }}>
             {loadingTrack&&!embedTrack&&(
               <div style={{ position:'fixed', inset:0, zIndex:20, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'rgba(7,7,26,0.85)', ...(isLite ? {} : { backdropFilter:'blur(6px)' }), gap:12 }}>
                 <Loader2 size={30} style={{ color:track.color, animation:'spin 1s linear infinite' }}/>
@@ -2901,7 +2901,7 @@ export default function App() {
             </div>
 
             {/* Main controls: Shuffle | Prev | Play | Next | Repeat */}
-            <div style={{ display:'flex', alignItems:'center', gap:'clamp(4px,2vw,10px)', marginTop:'clamp(10px,2vh,16px)' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:'clamp(6px,2.5vw,14px)', marginTop:'clamp(12px,2vh,18px)' }}>
               <button onClick={()=>{ if(embedTrack?.type==='youtube'){ setShuffle(s=>{ const next=!s; if(next){ setRepeat('off'); ytShuffle(); } return next; }); } else { setShuffle(s=>{ const next=!s; if(next) setRepeat("off"); return next; }); } }} style={{ ...btn, color:shuffle?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', position:'relative', padding:'clamp(5px,1.2vw,8px)' }}>
                 <Shuffle size={18}/>
                 {shuffle&&<div style={{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:embedTrack?.type==='youtube'?'#ff4444':track.color }}/>}
@@ -2917,28 +2917,35 @@ export default function App() {
               </button>
             </div>
 
-            {/* Secondary: Like | Queue | Mute | Volume | Settings | Fullscreen */}
-            <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:'clamp(6px,1.2vh,10px)', width:'100%', maxWidth:300, padding:'6px 10px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)' }}>
+            {/* ── Volume row */}
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:'clamp(8px,1.5vh,14px)', width:'100%', maxWidth:320, padding:'8px 14px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)' }}>
+              <button onClick={()=>setMuted(m=>!m)} style={{ ...btn, color:muted?'#ef4444':'rgba(255,255,255,0.38)', padding:4, flexShrink:0 }}>{muted?<VolumeX size={16}/>:<Volume2 size={16}/>}</button>
+              <input type="range" min="0" max="1" step="0.01" value={muted?0:volume} onChange={e=>{setVolume(+e.target.value);setMuted(false)}} style={{ flex:1, accentColor:embedTrack?.type==='youtube'?'#ff4444':track.color, height:3, cursor:'pointer' }}/>
+              <span style={{ fontSize:10, color:'rgba(255,255,255,0.28)', fontWeight:700, minWidth:28, textAlign:'right', fontFamily:'monospace', flexShrink:0 }}>{muted?'0':Math.round(volume*100)}%</span>
+            </div>
+
+            {/* ── Action buttons row */}
+            <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:8, width:'100%', maxWidth:320 }}>
+              {/* Like */}
               {embedTrack?.type==='youtube'
-                ? <button onClick={likeYtTrack} style={{ ...btn, color:liked[`yt_${embedTrack.videoId}`]?'#f472b6':'rgba(255,255,255,0.3)', padding:6 }}><Heart size={17} fill={liked[`yt_${embedTrack.videoId}`]?'#f472b6':'none'}/></button>
-                : <button onClick={()=>setLiked(l=>({...l,[track.id]:!l[track.id]}))} style={{ ...btn, color:liked[track.id]?'#f472b6':'rgba(255,255,255,0.3)', padding:6 }}><Heart size={17} fill={liked[track.id]?'#f472b6':'none'}/></button>
+                ? <button onClick={likeYtTrack} title="Suka" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:liked[`yt_${embedTrack.videoId}`]?'rgba(244,114,182,0.12)':'rgba(255,255,255,0.05)', border:`1px solid ${liked[`yt_${embedTrack.videoId}`]?'rgba(244,114,182,0.3)':'rgba(255,255,255,0.08)'}`, color:liked[`yt_${embedTrack.videoId}`]?'#f472b6':'rgba(255,255,255,0.35)' }}><Heart size={16} fill={liked[`yt_${embedTrack.videoId}`]?'#f472b6':'none'}/></button>
+                : <button onClick={()=>setLiked(l=>({...l,[track.id]:!l[track.id]}))} title="Suka" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:liked[track.id]?'rgba(244,114,182,0.12)':'rgba(255,255,255,0.05)', border:`1px solid ${liked[track.id]?'rgba(244,114,182,0.3)':'rgba(255,255,255,0.08)'}`, color:liked[track.id]?'#f472b6':'rgba(255,255,255,0.35)' }}><Heart size={16} fill={liked[track.id]?'#f472b6':'none'}/></button>
               }
-              {/* Queue toggle — di samping fav */}
-              <button onClick={()=>setShowQueue(q=>!q)} style={{ ...btn, color:showQueue?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', padding:6, position:'relative' }} title="Antrean">
-                <ListMusic size={17}/>
-                {showQueue&&<div style={{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:embedTrack?.type==='youtube'?'#ff4444':track.color }}/>}
+              {/* Queue */}
+              <button onClick={()=>setShowQueue(q=>!q)} title="Antrean" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:showQueue?(embedTrack?.type==='youtube'?'rgba(255,68,68,0.12)':`${track.color}18`):'rgba(255,255,255,0.05)', border:`1px solid ${showQueue?(embedTrack?.type==='youtube'?'rgba(255,68,68,0.3)':track.color+'40'):'rgba(255,255,255,0.08)'}`, color:showQueue?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):'rgba(255,255,255,0.35)' }}>
+                <ListMusic size={16}/>
               </button>
-              <button onClick={()=>setMuted(m=>!m)} style={{ ...btn, color:muted?'#ef4444':'rgba(255,255,255,0.3)', padding:6 }}>{muted?<VolumeX size={17}/>:<Volume2 size={17}/>}</button>
-              <input type="range" min="0" max="1" step="0.01" value={muted?0:volume} onChange={e=>{setVolume(+e.target.value);setMuted(false)}} style={{ flex:1, accentColor:embedTrack?.type==='youtube'?'#ff4444':track.color, height:3 }}/>
-              <button onClick={()=>setShowSettings(true)} style={{ ...btn, color:eqEnabled||sleepTimer?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', padding:6 }} title="Pengaturan"><Settings size={17}/></button>
-              <button onClick={()=>setFullscreen(f=>!f)} style={{ ...btn, color:fullscreen?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', padding:6 }} title={fullscreen?'Keluar Layar Penuh':'Layar Penuh'}>
-                {fullscreen?<Minimize2 size={17}/>:<Maximize2 size={17}/>}
+              {/* Settings */}
+              <button onClick={()=>setShowSettings(true)} title="Pengaturan" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:(eqEnabled||sleepTimer)?(embedTrack?.type==='youtube'?'rgba(255,68,68,0.12)':`${track.color}18`):'rgba(255,255,255,0.05)', border:`1px solid ${(eqEnabled||sleepTimer)?(embedTrack?.type==='youtube'?'rgba(255,68,68,0.3)':track.color+'40'):'rgba(255,255,255,0.08)'}`, color:(eqEnabled||sleepTimer)?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):'rgba(255,255,255,0.35)' }}><Settings size={16}/></button>
+              {/* Fullscreen */}
+              <button onClick={()=>setFullscreen(f=>!f)} title={fullscreen?'Keluar Layar Penuh':'Layar Penuh'} style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:fullscreen?(embedTrack?.type==='youtube'?'rgba(255,68,68,0.12)':`${track.color}18`):'rgba(255,255,255,0.05)', border:`1px solid ${fullscreen?(embedTrack?.type==='youtube'?'rgba(255,68,68,0.3)':track.color+'40'):'rgba(255,255,255,0.08)'}`, color:fullscreen?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):'rgba(255,255,255,0.35)' }}>
+                {fullscreen?<Minimize2 size={16}/>:<Maximize2 size={16}/>}
               </button>
             </div>
 
             {/* YouTube playlist picker — shown when YT track is liked */}
             {embedTrack?.type==='youtube' && liked[`yt_${embedTrack.videoId}`] && (
-              <div style={{ width:'100%', maxWidth:290, marginTop:8, padding:'8px 10px', borderRadius:12, background:'rgba(255,68,68,0.08)', border:'1px solid rgba(255,68,68,0.2)' }}>
+              <div style={{ width:'100%', maxWidth:320, marginTop:10, padding:'10px 14px', borderRadius:14, background:'rgba(255,68,68,0.07)', border:'1px solid rgba(255,68,68,0.18)' }}>
                 <div style={{ fontSize:10, fontWeight:700, color:'#ff6b6b', marginBottom:6, textTransform:'uppercase', letterSpacing:'0.08em' }}>Tambah ke Playlist</div>
                 <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
                   {playlists.map(pl => {
@@ -2957,7 +2964,7 @@ export default function App() {
 
             {/* ── AI Insight — only for normal tracks */}
             {!embedTrack && (
-              <div style={{ width:'100%', maxWidth:300, marginTop:'clamp(6px,1.2vh,10px)', padding:'0 8px', paddingBottom:'clamp(8px,1.5vh,14px)' }}>
+              <div style={{ width:'100%', maxWidth:320, marginTop:'clamp(10px,1.8vh,16px)', paddingBottom:'clamp(16px,2.5vh,24px)' }}>
                 {!insight?(
                   <button onClick={getInsight} disabled={insightLoading} style={{ width:'100%', padding:'8px 0', borderRadius:12, border:'none', background:track.bg, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, opacity:insightLoading?0.6:1 }}>
                     {insightLoading?<><Zap size={12} style={{ animation:'spin 0.8s linear infinite' }}/>Meramal...</>:<><Sparkles size={12}/>Wawasan Kosmik ✨</>}
