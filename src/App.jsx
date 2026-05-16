@@ -275,6 +275,22 @@ const SLEEP_OPTIONS = [
 //  AI — Multi-provider: OpenRouter, Gemini, Groq
 // ═══════════════════════════════════════════════════════
 
+// Public Piped/Invidious API instances (YouTube search, no key needed)
+const PIPED_INSTANCES = [
+  'https://pipedapi.kavin.rocks',
+  'https://pipedapi.tokhmi.xyz',
+  'https://pipedapi.moomoo.me',
+  'https://api.piped.yt',
+  'https://piped-api.garudalinux.org',
+  'https://api.piped.projectsegfault.net',
+];
+const INVIDIOUS_INSTANCES = [
+  'https://invidious.snopyta.org',
+  'https://invidious.kavin.rocks',
+  'https://y.com.sb',
+  'https://invidious.nerdvpn.de',
+];
+
 // ── Provider definitions
 const PROVIDERS = [
   // OpenRouter — beberapa key & model gratis sebagai slot
@@ -969,6 +985,9 @@ function UploadModal({ onClose, onUpload, uploading, uploadProgress, color, isLi
   );
 }
 
+// ── Built-in songs placeholder (empty — music from external platforms)
+const builtinSongs = [];
+
 // ═══════════════════════════════════════════════════════
 //  MAIN APP
 // ═══════════════════════════════════════════════════════
@@ -984,7 +1003,7 @@ export default function App() {
   });
 
   // ── Built-in songs dihapus; semua musik dicari di platform eksternal
-  const builtinSongs = [];
+  // builtinSongs is defined at module level as empty array
 
   // ── Embed player state
   const [embedTrack, setEmbedTrack]         = useState(null);
@@ -1010,24 +1029,6 @@ export default function App() {
 
   // ── Redirect platforms search
   const [platformSearch, setPlatformSearch] = useState({});
-
-  // Public Piped/Invidious API instances (YouTube search, no key needed)
-  const PIPED_INSTANCES = [
-    'https://pipedapi.kavin.rocks',
-    'https://pipedapi.tokhmi.xyz',
-    'https://pipedapi.moomoo.me',
-    'https://api.piped.yt',
-    'https://piped-api.garudalinux.org',
-    'https://api.piped.projectsegfault.net',
-  ];
-
-  // Invidious instances as secondary fallback
-  const INVIDIOUS_INSTANCES = [
-    'https://invidious.snopyta.org',
-    'https://invidious.kavin.rocks',
-    'https://y.com.sb',
-    'https://invidious.nerdvpn.de',
-  ];
 
   const openPlatformSearch = (platform, query) => {
     const q = (query || platformSearch[platform.id] || '').trim();
