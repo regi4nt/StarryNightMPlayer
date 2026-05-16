@@ -2935,7 +2935,17 @@ export default function App() {
               </button>
             );
           })}
-          <div style={{ flex:1 }}/>
+          <div style={{ flex:1, display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'flex-start', padding:'0 14px' }}>
+            {/* ── JAM — di pojok kiri sidebar, sejajar dengan Orbital Ring */}
+            <div style={{ userSelect:'none' }}>
+              <div style={{ fontSize:'clamp(20px,1.6vw,26px)', fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+                {nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false })}
+              </div>
+              <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', fontWeight:600, marginTop:4, letterSpacing:'0.04em', textTransform:'uppercase' }}>
+                {nowTime.toLocaleDateString('id-ID',{ weekday:'long', day:'numeric', month:'long' })}
+              </div>
+            </div>
+          </div>
           <button onClick={()=>setShowSettings(true)} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:12, border:'none', cursor:'pointer', background:'transparent', color:'rgba(255,255,255,0.3)', width:'100%', fontSize:13 }}>
             <Settings size={17}/><span>Pengaturan</span>
           </button>
@@ -3031,16 +3041,6 @@ export default function App() {
 
           <div style={{ minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', padding:'clamp(10px,2.5vh,20px) 16px clamp(10px,2vh,18px)' }}>
 
-            {/* ── JAM — rata kiri, tanpa card, tanpa badge mode */}
-            <div style={{ width:'100%', maxWidth:340, marginBottom:'clamp(8px,1.5vh,14px)', paddingLeft:2, userSelect:'none', flexShrink:0 }}>
-              <div style={{ fontSize:'clamp(20px,5.5vw,28px)', fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
-                {nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false })}
-              </div>
-              <div style={{ fontSize:'clamp(9px,2.2vw,11px)', color:'rgba(255,255,255,0.35)', fontWeight:600, marginTop:3, letterSpacing:'0.04em', textTransform:'uppercase' }}>
-                {nowTime.toLocaleDateString('id-ID',{ weekday:'long', day:'numeric', month:'long' })}
-              </div>
-            </div>
-
             {loadingTrack&&!embedTrack&&(
               <div style={{ position:'fixed', inset:0, zIndex:20, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'rgba(7,7,26,0.85)', ...(isLite ? {} : { backdropFilter:'blur(6px)' }), gap:12 }}>
                 <Loader2 size={30} style={{ color:track.color, animation:'spin 1s linear infinite' }}/>
@@ -3055,8 +3055,25 @@ export default function App() {
 
             {/* floating action button moved to root level */}
 
-            {/* Ring — shows YouTube thumbnail + seek when YT is active */}
-            <OrbitalRing size={ringSize} pct={embedTrack?.type==='youtube'?(ytDuration>0?ytProgress/ytDuration:0):pct} color={embedTrack?.type==='youtube'?'#ff4444':track.color} progress={embedTrack?.type==='youtube'?ytProgress:progress} duration={embedTrack?.type==='youtube'?ytDuration:duration} isPlaying={playing} cover={embedTrack?.type==='youtube'?(embedTrack.thumbnail||getCover(track)):getCover(track)} title={embedTrack?.type==='youtube'?embedTrack.title:track.title} onSeek={embedTrack?.type==='youtube'?seekYt:seekByPct} isLite={isLite}/>
+            {/* ── Mobile: jam absolute kiri + ring tetap tengah | Desktop: ring tengah saja */}
+            {!isDesktop ? (
+              <div style={{ position:'relative', width:'100%', display:'flex', justifyContent:'center', alignItems:'center' }}>
+                {/* Jam — absolute kiri, sejajar tengah ring */}
+                <div style={{ position:'absolute', left:2, top:'50%', transform:'translateY(-50%)', userSelect:'none' }}>
+                  <div style={{ fontSize:'clamp(18px,5vw,24px)', fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+                    {nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false })}
+                  </div>
+                  <div style={{ fontSize:'clamp(8px,2vw,10px)', color:'rgba(255,255,255,0.35)', fontWeight:600, marginTop:3, letterSpacing:'0.04em', textTransform:'uppercase' }}>
+                    {nowTime.toLocaleDateString('id-ID',{ weekday:'long', day:'numeric', month:'long' })}
+                  </div>
+                </div>
+                {/* Ring — tetap di tengah */}
+                <OrbitalRing size={ringSize} pct={embedTrack?.type==='youtube'?(ytDuration>0?ytProgress/ytDuration:0):pct} color={embedTrack?.type==='youtube'?'#ff4444':track.color} progress={embedTrack?.type==='youtube'?ytProgress:progress} duration={embedTrack?.type==='youtube'?ytDuration:duration} isPlaying={playing} cover={embedTrack?.type==='youtube'?(embedTrack.thumbnail||getCover(track)):getCover(track)} title={embedTrack?.type==='youtube'?embedTrack.title:track.title} onSeek={embedTrack?.type==='youtube'?seekYt:seekByPct} isLite={isLite}/>
+              </div>
+            ) : (
+              /* Desktop: ring saja di tengah (jam sudah di sidebar) */
+              <OrbitalRing size={ringSize} pct={embedTrack?.type==='youtube'?(ytDuration>0?ytProgress/ytDuration:0):pct} color={embedTrack?.type==='youtube'?'#ff4444':track.color} progress={embedTrack?.type==='youtube'?ytProgress:progress} duration={embedTrack?.type==='youtube'?ytDuration:duration} isPlaying={playing} cover={embedTrack?.type==='youtube'?(embedTrack.thumbnail||getCover(track)):getCover(track)} title={embedTrack?.type==='youtube'?embedTrack.title:track.title} onSeek={embedTrack?.type==='youtube'?seekYt:seekByPct} isLite={isLite}/>
+            )}
 
             {/* Track info */}
             <div style={{ textAlign:'center', marginTop:'clamp(8px,1.6vh,14px)', width:'100%', maxWidth:340, padding:'0 6px' }}>
@@ -3919,12 +3936,65 @@ export default function App() {
                     <button onClick={()=>setVibeInput('')} style={{ marginTop:7, fontSize:10, color:track.color, background:'none', border:'none', cursor:'pointer', fontWeight:700, padding:0 }}>× Reset</button>
                   </div>
                 )}
-                {messages.map((m,i)=>(
+                {messages.map((m,i)=>{
+                  // Deteksi rekomendasi lagu dari pesan AI: format "JUDUL - ARTIS" atau "JUDUL" by "ARTIS"
+                  let songRec = null;
+                  if (m.from==='ai') {
+                    const patterns = [
+                      /[""]([^""]+)[""]\s*[-–]\s*([^\n,.(]+)/,
+                      /[""]([^""]+)[""]\s+by\s+([^\n,.(]+)/i,
+                      /^([^-\n]+)\s+-\s+([^\n]+)$/m,
+                    ];
+                    for (const pat of patterns) {
+                      const match = m.text.match(pat);
+                      if (match) {
+                        songRec = { title: match[1].trim(), artist: match[2].trim() };
+                        break;
+                      }
+                    }
+                  }
+                  return (
                   <div key={i} style={{ display:'flex', justifyContent:m.from==='user'?'flex-end':'flex-start' }}>
                     {m.from==='ai'&&<div style={{ width:22, height:22, borderRadius:7, flexShrink:0, background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center', marginRight:6, marginTop:2 }}><Bot size={11} style={{ color:'white' }}/></div>}
-                    <div style={{ maxWidth:'78%', padding:'9px 13px', fontSize:13, lineHeight:1.55, borderRadius:m.from==='user'?'16px 16px 4px 16px':'4px 16px 16px 16px', background:m.from==='user'?track.color:'rgba(255,255,255,0.07)', border:m.from==='user'?'none':'1px solid rgba(255,255,255,0.1)', color:'white' }}>{m.text}</div>
+                    <div style={{ maxWidth:'78%' }}>
+                      <div style={{ padding:'9px 13px', fontSize:13, lineHeight:1.55, borderRadius:m.from==='user'?'16px 16px 4px 16px':'4px 16px 16px 16px', background:m.from==='user'?track.color:'rgba(255,255,255,0.07)', border:m.from==='user'?'none':'1px solid rgba(255,255,255,0.1)', color:'white' }}>{m.text}</div>
+                      {songRec && (
+                        <button
+                          onClick={async ()=>{
+                            // 1. Cari di library dulu
+                            const allS = [...builtinSongs, ...customSongs, ...ytSongs];
+                            const found = allS.find(s =>
+                              s.title.toLowerCase().includes(songRec.title.toLowerCase()) ||
+                              songRec.title.toLowerCase().includes(s.title.toLowerCase())
+                            );
+                            if (found) {
+                              play(found);
+                              setTab('player');
+                              return;
+                            }
+                            // 2. Search YouTube via Piped/Invidious → langsung embed
+                            const query = `${songRec.title} ${songRec.artist} official audio`;
+                            setTab('player');
+                            try {
+                              let results = await searchViaPiped(query);
+                              if (!results || results.length === 0) results = await searchViaInvidious(query);
+                              if (results && results.length > 0) {
+                                playYouTube(results[0], results, 0);
+                              } else {
+                                window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`, '_blank');
+                              }
+                            } catch {
+                              window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`, '_blank');
+                            }
+                          }}
+                          style={{ marginTop:6, display:'flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:999, border:`1px solid ${track.color}50`, background:`${track.color}18`, color:track.color, fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                          <Play size={11} style={{ fill:track.color }}/> Putar: {songRec.title}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                ))}
+                  );
+                })}
                 {chatLoading&&<div style={{ display:'flex', alignItems:'center', gap:6 }}><div style={{ width:22, height:22, borderRadius:7, background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center' }}><Bot size={11} style={{ color:'white' }}/></div><div style={{ padding:'9px 13px', borderRadius:'4px 16px 16px 16px', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.1)', display:'flex', gap:5 }}>{[0,0.15,0.3].map((d,i)=>(<div key={i} style={{ width:6, height:6, borderRadius:'50%', background:'#818cf8', animation:`bounce 0.8s ease-in-out ${d}s infinite` }}/>))}</div></div>}
                 <div ref={chatEndRef}/>
               </div>
