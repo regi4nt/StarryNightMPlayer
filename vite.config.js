@@ -30,16 +30,13 @@ export default defineConfig({
         ]
       },
       workbox: {
-        // Cache shell app & static assets; audio di-stream langsung (no cache)
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
         runtimeCaching: [
           {
-            // Jangan cache audio — biarkan browser stream langsung
             urlPattern: /\.(mp3|wav|ogg|flac|m4a)$/i,
             handler: 'NetworkOnly'
           },
           {
-            // Cache cover art (Unsplash) max 50 gambar, 7 hari
             urlPattern: /^https:\/\/images\.unsplash\.com\//,
             handler: 'CacheFirst',
             options: {
@@ -54,16 +51,9 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
-    // Suppress the large-chunk warning for the 190KB App.jsx
     chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
-        // Use a FUNCTION form of manualChunks — this is the only safe way to
-        // prevent Rollup from creating circular cross-chunk React references
-        // (TDZ "Cannot access 'X' before initialization" crash).
-        //
-        // Rule: every import from node_modules goes into the 'vendor' chunk.
-        // App source code stays in the index chunk untouched.
         manualChunks(id) {
           if (id.includes('node_modules')) {
             return 'vendor'
