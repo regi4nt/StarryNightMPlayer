@@ -8,7 +8,7 @@ import {
   Repeat1, Settings, Moon, FileText, Clock,
   ChevronRight, SlidersHorizontal, History,
   Search, Mic2, Trash2, ListPlus, FolderOpen,
-  PenLine, ChevronLeft, Radio
+  PenLine, ChevronLeft, Radio, Maximize2, Minimize2
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════
@@ -1030,7 +1030,7 @@ function SettingsPanel({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setE
             </div>
           </div>
           <div style={{ borderRadius:12, background:isLite?'rgba(16,185,129,0.08)':'rgba(99,102,241,0.08)', border:`1px solid ${isLite?'rgba(16,185,129,0.2)':'rgba(99,102,241,0.2)'}`, padding:'10px 14px', display:'flex', flexDirection:'column', gap:5 }}>
-            {isLite ? [
+            {(isLite ? [
               ['⚡ Cover art dinonaktifkan', 'Gambar album tidak dimuat — halaman lebih ringan'],
               ['⚡ Audio preload: none', 'Audio hanya dimuat saat diputar, menghemat bandwidth'],
               ['⚡ Prefetch Drive dinonaktifkan', 'Lagu tidak di-cache di background'],
@@ -1042,7 +1042,7 @@ function SettingsPanel({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setE
               ['✨ Prefetch Drive aktif', 'Lagu berikutnya di-cache di background'],
               ['✨ AI & Insight aktif', 'Starry AI, Vibe Search, dan Wawasan Kosmik tersedia'],
               ['✨ Animasi penuh', 'Bintang-bintang, blur, dan efek visual lengkap'],
-            ]}.map(([feat, desc])=>(
+            ]).map(([feat, desc])=>(
               <div key={feat} style={{ display:'flex', alignItems:'flex-start', gap:8 }}>
                 <span style={{ fontSize:11, flexShrink:0 }}>{feat.split(' ')[0]}</span>
                 <div>
@@ -1563,7 +1563,13 @@ export default function App() {
     }
     const nextIdx = ytQueueIdxRef.current + 1;
     if (nextIdx >= q.length) {
-      // Sudah lagu terakhir, tidak ada repeat all → berhenti
+      if (repeatRef.current === 'all') {
+        // Repeat all: kembali ke lagu pertama
+        ytQueueIdxRef.current = 0;
+        playYouTube(q[0], q, 0);
+        return;
+      }
+      // Sudah lagu terakhir, tidak ada repeat → berhenti
       setPlaying(false);
       return;
     }
@@ -1634,6 +1640,7 @@ export default function App() {
 
   // ── Settings panel
   const [showSettings, setShowSettings] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
 
   // ── Queue / search
   const [searchQuery, setSearchQuery]   = useState('');
@@ -1716,7 +1723,7 @@ export default function App() {
   useEffect(() => { crossfadeRef.current = crossfade; }, [crossfade]);
 
   // ── Persist preferences to localStorage
-  useEffect(() => { localStorage.setItem('sn_tab', tab); }, [tab]);
+  useEffect(() => { localStorage.setItem('sn_tab', tab); if (tab !== 'player') setFullscreen(false); }, [tab]);
   useEffect(() => { localStorage.setItem('sn_shuffle', shuffle); }, [shuffle]);
   useEffect(() => { localStorage.setItem('sn_repeat', repeat); }, [repeat]);
 
@@ -1848,6 +1855,25 @@ export default function App() {
     return () => window.removeEventListener('resize', calc);
   }, []);
 
+  // ── Fullscreen ring recalculate
+  useEffect(() => {
+    if (fullscreen) {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const size = Math.min(vw - 48, vh - 280);
+      setRingSize(Math.max(220, Math.min(380, size)));
+    } else {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const desktop = vw >= 768;
+      if (desktop) {
+        setRingSize(Math.max(200, Math.min(270, Math.min(vh - 340, 300))));
+      } else {
+        setRingSize(Math.max(185, Math.min(310, Math.min(vh - 347, vw - 48))));
+      }
+    }
+  }, [fullscreen]);
+
   // ── Audio init
   useEffect(() => {
     const prev = audioRef.current;
@@ -1902,7 +1928,8 @@ export default function App() {
   useEffect(() => {
     const a = audioRef.current; if (!a) return;
     const onTime  = () => setProgress(a.currentTime);
-    const onMeta  = () => setDuration(a.duration);
+    const onMeta  = () => { if (a.duration && isFinite(a.duration)) setDuration(a.duration); };
+    const onDurChange = () => { if (a.duration && isFinite(a.duration)) setDuration(a.duration); };
     const onEnd   = () => {
       if (repeatRef.current === 'one') { a.currentTime = 0; a.play().catch(()=>{}); return; }
       if (repeatRef.current === 'all' || repeatRef.current === 'off') {
@@ -1914,12 +1941,14 @@ export default function App() {
     const onStall = () => { console.warn('Audio stalled:', track.src); };
     a.addEventListener('timeupdate', onTime);
     a.addEventListener('loadedmetadata', onMeta);
+    a.addEventListener('durationchange', onDurChange);
     a.addEventListener('ended', onEnd);
     a.addEventListener('error', onError);
     a.addEventListener('stalled', onStall);
     return () => {
       a.removeEventListener('timeupdate', onTime);
       a.removeEventListener('loadedmetadata', onMeta);
+      a.removeEventListener('durationchange', onDurChange);
       a.removeEventListener('ended', onEnd);
       a.removeEventListener('error', onError);
       a.removeEventListener('stalled', onStall);
@@ -2124,14 +2153,14 @@ export default function App() {
   const seekByPct = useCallback((p) => { if(audioRef.current&&duration){audioRef.current.currentTime=p*duration;setProgress(p*duration);} }, [duration]);
 
   // ── REPEAT cycle
-  // Di stream (embedTrack YouTube): hanya off ↔ one (repeat 1 lagu)
+  // Di stream (embedTrack YouTube): off → all → one → off
   // Di player biasa (Drive/lokal): off → all → one → off
   // Keduanya: mengaktifkan repeat → matikan shuffle, dan sebaliknya
   const cycleRepeat = () => {
     if (embedTrack?.type === 'youtube') {
       setRepeat(r => {
-        const next = r === 'off' ? 'one' : 'off';
-        if (next === 'one') setShuffle(false);
+        const next = r === 'off' ? 'all' : r === 'all' ? 'one' : 'off';
+        if (next !== 'off') setShuffle(false);
         return next;
       });
     } else {
@@ -2306,6 +2335,101 @@ export default function App() {
     ? (() => { const pl = playlists.find(p=>p.id===activePl); return pl ? allSongs.filter(s=>pl.songIds.includes(s.id)) : allSongs; })()
     : allSongs;
 
+
+  // ── Global keyboard shortcuts
+  useEffect(() => {
+    const onKey = (e) => {
+      const tag = document.activeElement?.tagName?.toLowerCase();
+      const isTyping = tag === 'input' || tag === 'textarea' || document.activeElement?.isContentEditable;
+
+      // ── Space: play/pause (only when not typing)
+      if (e.code === 'Space' && !isTyping) {
+        e.preventDefault();
+        if (track.src || embedTrack) setPlaying(p => !p);
+        return;
+      }
+
+      // ── Arrow keys (only when not typing)
+      if (!isTyping) {
+        if (e.code === 'ArrowRight') {
+          e.preventDefault();
+          if (e.shiftKey) {
+            // Shift+→ : next track
+            if (embedTrack?.type === 'youtube') ytNext(); else goNext();
+          } else {
+            // →  : seek forward 5s
+            if (embedTrack?.type === 'youtube') {
+              setYtProgress(p => Math.min(p + 5, ytDuration));
+            } else if (audioRef.current && duration > 0) {
+              audioRef.current.currentTime = Math.min(audioRef.current.currentTime + 5, duration);
+            }
+          }
+          return;
+        }
+        if (e.code === 'ArrowLeft') {
+          e.preventDefault();
+          if (e.shiftKey) {
+            // Shift+← : previous track
+            if (embedTrack?.type === 'youtube') ytPrev(); else goPrev();
+          } else {
+            // ← : seek back 5s
+            if (embedTrack?.type === 'youtube') {
+              setYtProgress(p => Math.max(p - 5, 0));
+            } else if (audioRef.current) {
+              audioRef.current.currentTime = Math.max(audioRef.current.currentTime - 5, 0);
+            }
+          }
+          return;
+        }
+        if (e.code === 'ArrowUp') {
+          e.preventDefault();
+          setVolume(v => { const nv = Math.min(v + 0.1, 1); setMuted(false); return +nv.toFixed(2); });
+          return;
+        }
+        if (e.code === 'ArrowDown') {
+          e.preventDefault();
+          setVolume(v => { const nv = Math.max(v - 0.1, 0); return +nv.toFixed(2); });
+          return;
+        }
+
+        // ── M : mute toggle
+        if (e.code === 'KeyM') {
+          setMuted(m => !m);
+          return;
+        }
+        // ── S : shuffle toggle
+        if (e.code === 'KeyS' && !e.ctrlKey && !e.metaKey) {
+          setShuffle(s => !s);
+          return;
+        }
+        // ── R : cycle repeat
+        if (e.code === 'KeyR' && !e.ctrlKey && !e.metaKey) {
+          cycleRepeat();
+          return;
+        }
+        // ── Q : toggle queue panel (only on player tab)
+        if (e.code === 'KeyQ' && !e.ctrlKey && !e.metaKey) {
+          if (tab === 'player') setShowQueue(q => !q);
+          return;
+        }
+        // ── Escape : close overlays
+        if (e.code === 'Escape') {
+          if (showQueue) { setShowQueue(false); return; }
+          if (showSettings) { setShowSettings(false); return; }
+        }
+
+        // ── Number keys 1-4 : switch tabs
+        if (e.code === 'Digit1') { setTab('player'); return; }
+        if (e.code === 'Digit2') { setTab('stream'); return; }
+        if (e.code === 'Digit3') { setTab('playlist'); return; }
+        if (e.code === 'Digit4') { setTab('ai'); return; }
+      }
+    };
+
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [track, embedTrack, playing, volume, muted, shuffle, repeat, tab, showQueue, showSettings, duration, ytDuration, goNext, goPrev, ytNext, ytPrev, cycleRepeat]);
+
   const tabs = [
     { id:'player',   icon:<Compass size={17}/>,   label:'Player' },
     { id:'stream',   icon:<Radio size={17}/>,       label:'Stream' },
@@ -2321,7 +2445,7 @@ export default function App() {
       {!isLite && <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, overflow:'hidden' }}><div className="stars"/></div>}
 
       {/* ══ HEADER */}
-      <header style={{ position:'relative', zIndex:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 14px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+      {!fullscreen && <header style={{ position:'relative', zIndex:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 14px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
         <div style={{ display:'flex', alignItems:'center', gap:9 }}>
           <AppLogo size={30}/>
           <div>
@@ -2357,7 +2481,7 @@ export default function App() {
             </button>
           )}
         </div>
-      </header>
+      </header>}
 
       {driveError&&<div style={{ position:'relative', zIndex:10, flexShrink:0, padding:'6px 16px', background:'rgba(239,68,68,0.15)', borderBottom:'1px solid rgba(239,68,68,0.25)', display:'flex', alignItems:'center', gap:8 }}>
         <span style={{ fontSize:11, color:'#fca5a5', flex:1 }}>{driveError}</span>
@@ -2371,7 +2495,7 @@ export default function App() {
       <div style={{ flex:1, overflow:'hidden', display:'flex', flexDirection:'row', position:'relative', zIndex:5 }}>
 
       {/* Desktop left sidebar nav */}
-      {isDesktop && (
+      {isDesktop && !fullscreen && (
         <div style={{ width:196, flexShrink:0, borderRight:'1px solid rgba(255,255,255,0.07)', background:'rgba(0,0,0,0.18)', display:'flex', flexDirection:'column', padding:'10px 8px 16px', gap:3 }}>
           {tabs.map(t=>{
             const active=tab===t.id;
@@ -2392,13 +2516,96 @@ export default function App() {
 
         {/* ─── PLAYER TAB */}
         {tab==='player'&&(
-          <div className="scrollbar-hide" style={{ height:'100%', overflowY:'auto' }}>
+          <div className="scrollbar-hide" style={{ height:'100%', overflowY:'auto', position:'relative' }}>
+
+          {/* ── QUEUE OVERLAY PANEL — slides in from bottom inside player */}
+          {showQueue && (
+            <div style={{ position:'absolute', inset:0, zIndex:15, background:'rgba(7,7,26,0.96)', backdropFilter:'blur(12px)', display:'flex', flexDirection:'column', animation:'slideUp 0.28s cubic-bezier(0.34,1.56,0.64,1)' }}>
+              {/* Queue header */}
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 18px 12px', borderBottom:'1px solid rgba(255,255,255,0.07)', flexShrink:0 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:9 }}>
+                  <div style={{ width:30, height:30, borderRadius:9, background:embedTrack?.type==='youtube'?'rgba(255,68,68,0.2)':`${track.color}22`, border:`1px solid ${embedTrack?.type==='youtube'?'rgba(255,68,68,0.4)':track.color+'40'}`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <ListMusic size={15} style={{ color:embedTrack?.type==='youtube'?'#ff6b6b':track.color }}/>
+                  </div>
+                  <div>
+                    <div style={{ fontWeight:800, fontSize:14 }}>Antrean</div>
+                    <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>
+                      {embedTrack?.type==='youtube' ? `${ytQueueRef.current.length} lagu` : `${[...builtinSongs,...customSongs,...ytSongs].length} lagu`}
+                    </div>
+                  </div>
+                </div>
+                <button onClick={()=>setShowQueue(false)} style={{ width:30, height:30, borderRadius:999, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.7)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, fontWeight:700 }}>×</button>
+              </div>
+              {/* Queue list */}
+              <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'8px 0' }}>
+                {embedTrack?.type==='youtube' ? (
+                  ytQueueRef.current.length > 0 ? (
+                    ytQueueRef.current.map((item,i)=>{
+                      const isCur = i === ytQueueIdxRef.current;
+                      return (
+                        <div key={i} onClick={()=>{playYouTube(item, ytQueueRef.current, i); setShowQueue(false);}}
+                          style={{ display:'flex', alignItems:'center', gap:11, padding:'9px 18px', background:isCur?'rgba(255,68,68,0.1)':'transparent', cursor:'pointer', transition:'background 0.15s' }}>
+                          <div style={{ width:20, textAlign:'center', fontSize:10, color:'rgba(255,255,255,0.25)', fontWeight:600, flexShrink:0 }}>{isCur ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12, justifyContent:'center' }}>{[9,5,7].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:'#ff4444', borderRadius:1, animation:`bounce 0.8s ease-in-out ${j*0.15}s infinite` }}/>))}</div> : i+1}</div>
+                          {item.thumbnail
+                            ? <img src={item.thumbnail} style={{ width:38, height:38, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
+                            : <div style={{ width:38, height:38, borderRadius:8, background:'rgba(255,68,68,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:14 }}>▶</div>}
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontSize:12, fontWeight:isCur?700:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:isCur?'#ff6b6b':'rgba(255,255,255,0.88)' }}>{item.title||item.url}</div>
+                            <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:2 }}>{item.artist||'YouTube'}</div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div style={{ padding:'48px 20px', textAlign:'center' }}>
+                      <ListMusic size={40} style={{ color:'rgba(255,255,255,0.08)', margin:'0 auto 14px', display:'block' }}/>
+                      <div style={{ fontSize:13, color:'rgba(255,255,255,0.25)', fontWeight:600 }}>Antrean YouTube kosong</div>
+                    </div>
+                  )
+                ) : (()=>{
+                    const q2 = [...builtinSongs, ...customSongs, ...ytSongs];
+                    const curIdx = q2.findIndex(s=>s.id===track.id);
+                    const upcoming = curIdx >= 0 ? q2.slice(curIdx) : q2;
+                    return upcoming.length === 0 ? (
+                      <div style={{ padding:'48px 20px', textAlign:'center' }}>
+                        <ListMusic size={40} style={{ color:'rgba(255,255,255,0.08)', margin:'0 auto 14px', display:'block' }}/>
+                        <div style={{ fontSize:13, color:'rgba(255,255,255,0.25)', fontWeight:600 }}>Antrean kosong</div>
+                      </div>
+                    ) : upcoming.map((s,i)=>{
+                      const isCur = i===0;
+                      return (
+                        <div key={s.id} onClick={()=>{ setTrack(s); setProgress(0); setDuration(0); setPlaying(true); setShowQueue(false); }}
+                          style={{ display:'flex', alignItems:'center', gap:11, padding:'9px 18px', background:isCur?`${track.color}12`:'transparent', cursor:'pointer', transition:'background 0.15s' }}>
+                          <div style={{ width:20, textAlign:'center', fontSize:10, color:'rgba(255,255,255,0.25)', fontWeight:600, flexShrink:0 }}>{isCur ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12, justifyContent:'center' }}>{[9,5,7].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:track.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${j*0.15}s infinite` }}/>))}</div> : curIdx+i+1}</div>
+                          <img src={getCover(s)} loading="lazy" decoding="async" style={{ width:38, height:38, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontSize:12, fontWeight:isCur?700:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:isCur?track.color:'rgba(255,255,255,0.88)' }}>{s.title}</div>
+                            <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:2 }}>{s.artist}</div>
+                          </div>
+                          {isCur && <div style={{ width:6, height:6, borderRadius:'50%', background:track.color, flexShrink:0, animation:'pulse 2s infinite' }}/>}
+                        </div>
+                      );
+                    });
+                  })()
+                }
+              </div>
+            </div>
+          )}
+
           <div style={{ minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'clamp(4px,1.5vh,12px) 20px clamp(4px,1vh,8px)', animation:'fadeUp 0.4s ease' }}>
             {loadingTrack&&!embedTrack&&(
               <div style={{ position:'fixed', inset:0, zIndex:20, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'rgba(7,7,26,0.85)', ...(isLite ? {} : { backdropFilter:'blur(6px)' }), gap:12 }}>
                 <Loader2 size={30} style={{ color:track.color, animation:'spin 1s linear infinite' }}/>
                 <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)' }}>Memuat dari Google Drive…</div>
               </div>
+            )}
+
+            {/* Fullscreen exit button */}
+            {fullscreen && (
+              <button onClick={()=>setFullscreen(false)}
+                style={{ position:'fixed', top:14, right:14, zIndex:20, display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:999, border:'1px solid rgba(255,255,255,0.15)', background:'rgba(7,7,26,0.75)', backdropFilter:'blur(10px)', color:'rgba(255,255,255,0.6)', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                <Minimize2 size={13}/> Keluar
+              </button>
             )}
 
             {/* Ring — shows YouTube thumbnail + seek when YT is active */}
@@ -2436,15 +2643,23 @@ export default function App() {
               </button>
             </div>
 
-            {/* Secondary: Like | Mute | Volume slider | Settings | Close YT */}
+            {/* Secondary: Like | Queue | Mute | Volume slider | Settings | Close YT */}
             <div style={{ display:'flex', alignItems:'center', gap:4, marginTop:'clamp(3px,0.8vh,7px)', width:'100%', maxWidth:290 }}>
               {embedTrack?.type==='youtube'
                 ? <button onClick={likeYtTrack} style={{ ...btn, color:liked[`yt_${embedTrack.videoId}`]?'#f472b6':'rgba(255,255,255,0.3)', padding:6 }}><Heart size={17} fill={liked[`yt_${embedTrack.videoId}`]?'#f472b6':'none'}/></button>
                 : <button onClick={()=>setLiked(l=>({...l,[track.id]:!l[track.id]}))} style={{ ...btn, color:liked[track.id]?'#f472b6':'rgba(255,255,255,0.3)', padding:6 }}><Heart size={17} fill={liked[track.id]?'#f472b6':'none'}/></button>
               }
+              {/* Queue toggle — di samping fav */}
+              <button onClick={()=>setShowQueue(q=>!q)} style={{ ...btn, color:showQueue?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', padding:6, position:'relative' }} title="Antrean">
+                <ListMusic size={17}/>
+                {showQueue&&<div style={{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:embedTrack?.type==='youtube'?'#ff4444':track.color }}/>}
+              </button>
               <button onClick={()=>setMuted(m=>!m)} style={{ ...btn, color:muted?'#ef4444':'rgba(255,255,255,0.3)', padding:6 }}>{muted?<VolumeX size={17}/>:<Volume2 size={17}/>}</button>
               <input type="range" min="0" max="1" step="0.01" value={muted?0:volume} onChange={e=>{setVolume(+e.target.value);setMuted(false)}} style={{ flex:1, accentColor:embedTrack?.type==='youtube'?'#ff4444':track.color, height:3 }}/>
               <button onClick={()=>setShowSettings(true)} style={{ ...btn, color:eqEnabled||sleepTimer?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', padding:6 }} title="Pengaturan"><Settings size={17}/></button>
+              <button onClick={()=>setFullscreen(f=>!f)} style={{ ...btn, color:fullscreen?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', padding:6 }} title={fullscreen?'Keluar Layar Penuh':'Layar Penuh'}>
+                {fullscreen?<Minimize2 size={17}/>:<Maximize2 size={17}/>}
+              </button>
               {embedTrack?.type==='youtube' && (
                 <button onClick={()=>{ closeEmbed(); setShowSettings(false); }} style={{ ...btn, color:'#fca5a5', padding:6 }} title="Tutup YouTube"><X size={16}/></button>
               )}
@@ -2469,76 +2684,10 @@ export default function App() {
               </div>
             )}
 
-            {/* Queue + AI Insight row */}
-            <div style={{ width:'100%', maxWidth:300, marginTop:'clamp(6px,1.2vh,10px)', padding:'0 8px', display:'flex', flexDirection:'column', gap:6, paddingBottom:'clamp(8px,1.5vh,14px)' }}>
-              {/* Antrean button */}
-              <button onClick={()=>setShowQueue(q=>!q)} style={{ width:'100%', padding:'8px 0', borderRadius:12, border:`1px solid ${showQueue?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.1)'}`, background:showQueue?(embedTrack?.type==='youtube'?'rgba(255,68,68,0.15)':`${track.color}22`):'rgba(255,255,255,0.04)', color:showQueue?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):'rgba(255,255,255,0.55)', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, transition:'all 0.2s' }}>
-                <ListMusic size={14}/>{showQueue ? 'Tutup Antrean' : 'Antrean'}
-              </button>
-
-              {/* Queue panel */}
-              {showQueue && (
-                <div style={{ borderRadius:12, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', overflow:'hidden', animation:'fadeUp 0.25s ease' }}>
-                  {embedTrack?.type==='youtube' ? (
-                    /* YT queue */
-                    ytQueueRef.current.length > 0 ? (
-                      <div className="scrollbar-hide" style={{ maxHeight:220, overflowY:'auto' }}>
-                        {ytQueueRef.current.map((item,i)=>{
-                          const isCur = i === ytQueueIdxRef.current;
-                          return (
-                            <div key={i} onClick={()=>playYouTube(item, ytQueueRef.current, i)}
-                              style={{ display:'flex', alignItems:'center', gap:9, padding:'8px 12px', background:isCur?'rgba(255,68,68,0.12)':'transparent', borderBottom:'1px solid rgba(255,255,255,0.04)', cursor:'pointer' }}>
-                              {item.thumbnail
-                                ? <img src={item.thumbnail} style={{ width:32, height:32, borderRadius:6, objectFit:'cover', flexShrink:0 }}/>
-                                : <div style={{ width:32, height:32, borderRadius:6, background:'rgba(255,68,68,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:12 }}>▶</div>}
-                              <div style={{ flex:1, minWidth:0 }}>
-                                <div style={{ fontSize:11, fontWeight:isCur?700:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:isCur?'#ff6b6b':'rgba(255,255,255,0.85)' }}>{item.title||item.url}</div>
-                                <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>{item.artist||'YouTube'}</div>
-                              </div>
-                              {isCur && <div style={{ display:'flex', gap:2, alignItems:'flex-end', height:12, flexShrink:0 }}>
-                                {[9,5,7].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:'#ff4444', borderRadius:1, animation:`bounce 0.8s ease-in-out ${j*0.15}s infinite` }}/>))}
-                              </div>}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div style={{ padding:'18px 12px', textAlign:'center', fontSize:11, color:'rgba(255,255,255,0.3)' }}>Tidak ada antrean YouTube</div>
-                    )
-                  ) : (
-                    /* Normal song queue */
-                    <div className="scrollbar-hide" style={{ maxHeight:220, overflowY:'auto' }}>
-                      {(()=>{
-                        const q2 = [...builtinSongs, ...customSongs, ...ytSongs];
-                        const curIdx = q2.findIndex(s=>s.id===track.id);
-                        const upcoming = curIdx >= 0 ? q2.slice(curIdx) : q2;
-                        return upcoming.length === 0 ? (
-                          <div style={{ padding:'18px 12px', textAlign:'center', fontSize:11, color:'rgba(255,255,255,0.3)' }}>Antrean kosong</div>
-                        ) : upcoming.map((s,i)=>{
-                          const isCur = i===0;
-                          return (
-                            <div key={s.id} onClick={()=>{ setTrack(s); setProgress(0); setDuration(0); setPlaying(true); }}
-                              style={{ display:'flex', alignItems:'center', gap:9, padding:'8px 12px', background:isCur?`${track.color}15`:'transparent', borderBottom:'1px solid rgba(255,255,255,0.04)', cursor:'pointer' }}>
-                              <img src={getCover(s)} loading="lazy" decoding="async" style={{ width:32, height:32, borderRadius:6, objectFit:'cover', flexShrink:0 }}/>
-                              <div style={{ flex:1, minWidth:0 }}>
-                                <div style={{ fontSize:11, fontWeight:isCur?700:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:isCur?track.color:'rgba(255,255,255,0.85)' }}>{s.title}</div>
-                                <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>{s.artist}</div>
-                              </div>
-                              {isCur && <div style={{ display:'flex', gap:2, alignItems:'flex-end', height:12, flexShrink:0 }}>
-                                {[9,5,7].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:track.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${j*0.15}s infinite` }}/>))}
-                              </div>}
-                            </div>
-                          );
-                        });
-                      })()}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* AI Insight — only for normal tracks */}
-              {!embedTrack && (
-                !insight?(
+            {/* ── AI Insight — only for normal tracks */}
+            {!embedTrack && (
+              <div style={{ width:'100%', maxWidth:300, marginTop:'clamp(6px,1.2vh,10px)', padding:'0 8px', paddingBottom:'clamp(8px,1.5vh,14px)' }}>
+                {!insight?(
                   <button onClick={getInsight} disabled={insightLoading} style={{ width:'100%', padding:'8px 0', borderRadius:12, border:'none', background:track.bg, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, opacity:insightLoading?0.6:1 }}>
                     {insightLoading?<><Zap size={12} style={{ animation:'spin 0.8s linear infinite' }}/>Meramal...</>:<><Sparkles size={12}/>Wawasan Kosmik ✨</>}
                   </button>
@@ -2547,9 +2696,9 @@ export default function App() {
                     <div style={{ fontSize:9, color:track.color, fontWeight:700, marginBottom:3, textTransform:'uppercase', letterSpacing:'0.1em' }}>✨ Wawasan Kosmik</div>
                     <p style={{ margin:0, fontSize:12, color:'rgba(255,255,255,0.85)', fontStyle:'italic', lineHeight:1.6 }}>{insight}</p>
                   </div>
-                )
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
           </div>
         )}
@@ -2615,33 +2764,6 @@ export default function App() {
                                 {loading?'Cari…':'Cari'}
                               </button>
                             </div>
-                            {/* Quick chips — live trending */}
-                            {!ytQ && (
-                              <div style={{ marginTop:7 }}>
-                                {ytTrendingLoading && (
-                                  <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 0' }}>
-                                    <Loader2 size={10} style={{ color:platform.color, animation:'spin 1s linear infinite' }}/>
-                                    <span style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>Memuat trending…</span>
-                                  </div>
-                                )}
-                                {!ytTrendingLoading && ytTrending.length > 0 && (
-                                  <>
-                                    <div style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:5 }}>🔥 Trending</div>
-                                    <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
-                                      {ytTrending.map((chip, ci) => (
-                                        <button key={ci} onClick={() => { setYtQuery(p=>({...p,[platform.id]:chip.query})); searchYouTube(platform.id, chip.query); }}
-                                          style={{ padding:'3px 9px', borderRadius:999, border:`1px solid ${platform.color}30`, background:`${platform.color}10`, color:'rgba(255,255,255,0.6)', fontSize:10, fontWeight:600, cursor:'pointer' }}>
-                                          {chip.label}
-                                        </button>
-                                      ))}
-                                      <button onClick={()=>{ setYtTrending([]); setYtTrendingLoading(false); fetchYtTrending(); }}
-                                        style={{ padding:'3px 9px', borderRadius:999, border:'1px solid rgba(255,255,255,0.1)', background:'transparent', color:'rgba(255,255,255,0.3)', fontSize:10, cursor:'pointer' }}
-                                        title="Refresh trending">↺</button>
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                            )}
                             {error && <div style={{ fontSize:11, color:'#fca5a5', marginTop:6, padding:'6px 10px', borderRadius:8, background:'rgba(239,68,68,0.1)' }}>{error}</div>}
                             {/* Results — no thumbnail, cleaner list */}
                             {results.length > 0 && (
@@ -2776,26 +2898,6 @@ export default function App() {
                               </button>
                             </div>
 
-                            {/* Quick chips → selalu buka Spotify web */}
-                            {!spResults.length && !spLoading && (
-                              <div style={{ display:'flex', flexWrap:'wrap', gap:5, marginBottom:6 }}>
-                                {[
-                                  { label:'Top Global', q:'top global hits 2025' },
-                                  { label:'Pop Indonesia', q:'pop indonesia terbaru' },
-                                  { label:'K-Pop', q:'kpop 2025' },
-                                  { label:'Lo-fi', q:'lofi chill beats' },
-                                  { label:'Indie', q:'indie 2025' },
-                                  { label:'R&B', q:'rnb 2025' },
-                                ].map(chip => (
-                                  <button key={chip.q}
-                                    onClick={() => { setSpQuery(chip.q); if(spHasKey) doSpotifySearch(chip.q); else window.open(platform.searchUrl(chip.q), '_blank'); }}
-                                    style={{ fontSize:10, padding:'3px 9px', borderRadius:999, background:`${platform.color}15`, border:`1px solid ${platform.color}30`, color:'rgba(255,255,255,0.65)', cursor:'pointer' }}>
-                                    {chip.label}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-
                             {/* Error */}
                             {spError && <div style={{ fontSize:11, color:'#fca5a5', marginBottom:6, padding:'6px 10px', borderRadius:8, background:'rgba(239,68,68,0.1)' }}>{spError}</div>}
 
@@ -2918,24 +3020,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Recently played */}
-              {history.length>1&&(
-                <>
-                  <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.15em', marginTop:14, marginBottom:4, display:'flex', alignItems:'center', gap:6 }}>
-                    <History size={11}/>Baru Dimainkan
-                  </div>
-                  {history.slice(1, 6).map((s,i)=>(
-                    <div key={`h-${s.id}-${i}`} onClick={()=>play(s)} style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 12px', borderRadius:12, cursor:'pointer', background:'rgba(255,255,255,0.03)', border:'1px solid transparent', transition:'all 0.2s' }}>
-                      <img src={s.cover} loading="lazy" decoding="async" style={{ width:36, height:36, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontSize:13, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'rgba(255,255,255,0.7)' }}>{s.title}</div>
-                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.3)' }}>{s.artist}</div>
-                      </div>
-                      <div style={{ width:8, height:8, borderRadius:'50%', background:s.color, boxShadow:`0 0 6px ${s.color}` }}/>
-                    </div>
-                  ))}
-                </>
-              )}
             </div>
           </div>
         )}
@@ -3006,6 +3090,28 @@ export default function App() {
                         : <ChevronRight size={16} style={{color:'rgba(255,255,255,0.3)', flexShrink:0}}/>
                       }
                     </div>
+                  )}
+
+                  {/* ── Baru Dimainkan */}
+                  {history.length>1&&(
+                    <>
+                      <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.25)', textTransform:'uppercase', letterSpacing:'0.15em', marginTop:8, marginBottom:2, display:'flex', alignItems:'center', gap:6 }}>
+                        <History size={10}/>Baru Dimainkan
+                      </div>
+                      <div onClick={()=>{ setActivePl('recently_played'); setPlView('detail'); }}
+                        style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', borderRadius:14, cursor:'pointer', background:'rgba(245,158,11,0.06)', border:'1px solid rgba(245,158,11,0.18)', transition:'all 0.2s' }}
+                        onMouseEnter={e=>e.currentTarget.style.background='rgba(245,158,11,0.12)'}
+                        onMouseLeave={e=>e.currentTarget.style.background='rgba(245,158,11,0.06)'}>
+                        <div style={{ width:42, height:42, borderRadius:10, background:'linear-gradient(135deg,rgba(245,158,11,0.35),rgba(239,68,68,0.25))', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                          <History size={20} style={{color:'#fbbf24'}}/>
+                        </div>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontWeight:700, fontSize:14, color:'white' }}>Baru Dimainkan</div>
+                          <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:1 }}>{Math.max(0,history.length-1)} lagu terakhir</div>
+                        </div>
+                        <ChevronRight size={16} style={{color:'rgba(255,255,255,0.3)'}}/>
+                      </div>
+                    </>
                   )}
 
                   {/* Playlist label */}
@@ -3112,6 +3218,56 @@ export default function App() {
                 );
               }
 
+              // ── Special: Baru Dimainkan
+              if (activePl === 'recently_played') {
+                const songs = history.slice(1);
+                return (
+                  <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
+                    <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                        <button onClick={()=>{ setActivePl(null); setPlView('list'); }} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.5)', padding:4, display:'flex' }}>
+                          <ChevronLeft size={20}/>
+                        </button>
+                        <div style={{ width:36, height:36, borderRadius:10, background:'linear-gradient(135deg,rgba(245,158,11,0.35),rgba(239,68,68,0.25))', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                          <History size={18} style={{color:'#fbbf24'}}/>
+                        </div>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontWeight:800, fontSize:15 }}>Baru Dimainkan</div>
+                          <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:1 }}>{songs.length} lagu terakhir</div>
+                        </div>
+                        {songs.length>0&&(
+                          <button onClick={()=>{ play(songs[0]); setTab('player'); }}
+                            style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:10, border:'none', background:'#fbbf24', color:'black', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                            <Play size={13} fill="currentColor"/>Putar
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'10px 16px 16px', display:'flex', flexDirection:'column', gap:5 }}>
+                      {songs.length===0&&(
+                        <div style={{ textAlign:'center', padding:'40px 20px' }}>
+                          <History size={44} style={{color:'rgba(255,255,255,0.1)',display:'block',margin:'0 auto 12px'}}/>
+                          <div style={{ fontSize:13, color:'rgba(255,255,255,0.3)' }}>Belum ada riwayat pemutaran</div>
+                        </div>
+                      )}
+                      {songs.map((s,i)=>(
+                        <div key={`rp-${s.id}-${i}`} onClick={()=>play(s)} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:12, cursor:'pointer', background:track.id===s.id?s.bg:'rgba(255,255,255,0.02)', border:`1px solid ${track.id===s.id?s.color+'50':'rgba(255,255,255,0.06)'}`, transition:'all 0.15s' }}>
+                          <div style={{ width:26, height:26, borderRadius:6, background:'rgba(245,158,11,0.15)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                            <span style={{ fontSize:10, fontWeight:700, color:'#fbbf24' }}>{i+1}</span>
+                          </div>
+                          <img src={s.cover} loading="lazy" decoding="async" style={{ width:36, height:36, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontSize:13, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:track.id===s.id?s.color:'rgba(255,255,255,0.85)' }}>{s.title}</div>
+                            <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{s.artist}</div>
+                          </div>
+                          <div style={{ width:7, height:7, borderRadius:'50%', background:s.color, boxShadow:`0 0 5px ${s.color}`, flexShrink:0 }}/>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
+
               // ── Special: Semua Lagu
               if (activePl === 'all_songs') {
                 const songs = filteredSongs;
@@ -3210,40 +3366,52 @@ export default function App() {
         {/* ─── AI TAB */}
         {tab==='ai'&&(
           <div style={{ height:'100%', display:'flex', flexDirection:'column', animation:'fadeUp 0.4s ease' }}>
-            {/* Header */}
-            <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                <div style={{ width:32, height:32, borderRadius:10, background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center' }}><Bot size={17} style={{ color:'white' }}/></div>
-                <div style={{ flex:1 }}>
-                  <div style={{ fontWeight:800, fontSize:13 }}>{aiSubView==='lyrics' ? 'Lirik Lagu' : 'Starry AI'}</div>
-                  <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:1 }}>
-                    <div style={{ width:6, height:6, borderRadius:'50%', background:hasKey()?'#22c55e':'#ef4444', animation:hasKey()?'pulse 2s infinite':'none', flexShrink:0 }}/>
-                    <span style={{ fontSize:10, color:hasKey()?'#86efac':'#fca5a5' }}>{hasKey() ? `Online · ${activeModel()}` : 'Offline — tambah API key'}</span>
+
+            {/* ── AI Header: title + status + now playing */}
+            <div style={{ padding:'14px 16px 0', flexShrink:0 }}>
+              {/* Row 1: icon + title + status */}
+              <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
+                <div style={{ width:36, height:36, borderRadius:12, background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 0 16px #6366f160' }}><Bot size={18} style={{ color:'white' }}/></div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontWeight:800, fontSize:14 }}>Starry AI</div>
+                  <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:2 }}>
+                    <div style={{ width:5, height:5, borderRadius:'50%', background:hasKey()?'#22c55e':'#ef4444', animation:hasKey()?'pulse 2s infinite':'none', flexShrink:0 }}/>
+                    <span style={{ fontSize:10, color:hasKey()?'#86efac':'#fca5a5', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{hasKey() ? `${activeModel()}` : 'Offline — tambah API key'}</span>
                   </div>
                 </div>
-                {/* Lirik toggle button */}
-                <button onClick={()=>setAiSubView(v=>v==='lyrics'?'chat':'lyrics')}
-                  style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:999, border:`1px solid ${aiSubView==='lyrics'?track.color:'rgba(255,255,255,0.15)'}`, background:aiSubView==='lyrics'?`${track.color}22`:'rgba(255,255,255,0.05)', color:aiSubView==='lyrics'?track.color:'rgba(255,255,255,0.6)', fontSize:11, fontWeight:700, cursor:'pointer', transition:'all 0.2s', flexShrink:0 }}>
-                  <Mic2 size={13}/>{aiSubView==='lyrics'?'AI Chat':'Lirik'}
-                </button>
               </div>
-              <div style={{ marginTop:8, padding:'7px 10px', borderRadius:10, background:embedTrack ? 'rgba(255,68,68,0.08)' : track.bg, border:`1px solid ${embedTrack ? 'rgba(255,68,68,0.3)' : track.color+'30'}`, display:'flex', alignItems:'center', gap:8 }}>
+
+              {/* Row 2: now-playing pill */}
+              <div style={{ padding:'8px 11px', borderRadius:12, background:embedTrack ? 'rgba(255,68,68,0.08)' : track.bg, border:`1px solid ${embedTrack ? 'rgba(255,68,68,0.25)' : track.color+'28'}`, display:'flex', alignItems:'center', gap:9, marginBottom:12 }}>
                 {embedTrack ? (
                   embedTrack.thumbnail
-                    ? <img src={embedTrack.thumbnail} style={{ width:30, height:30, borderRadius:7, objectFit:'cover' }} onError={e=>{e.target.style.display='none'}}/>
-                    : <div style={{ width:30, height:30, borderRadius:7, background:'rgba(255,68,68,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:14 }}>{embedTrack.type==='soundcloud'?'☁️':'▶'}</div>
+                    ? <img src={embedTrack.thumbnail} style={{ width:32, height:32, borderRadius:8, objectFit:'cover', flexShrink:0 }} onError={e=>{e.target.style.display='none'}}/>
+                    : <div style={{ width:32, height:32, borderRadius:8, background:'rgba(255,68,68,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:14 }}>{embedTrack.type==='soundcloud'?'☁️':'▶'}</div>
                 ) : (
-                  <img src={getCover(track)} style={{ width:30, height:30, borderRadius:7, objectFit:'cover' }}/>
+                  <img src={getCover(track)} style={{ width:32, height:32, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
                 )}
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:11, fontWeight:700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{embedTrack ? embedTrack.title : track.title}</div>
-                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)' }}>
-                    {embedTrack ? (embedTrack.type==='youtube' ? '▶ YouTube Stream' : embedTrack.type==='soundcloud' ? '☁️ SoundCloud Stream' : 'Stream') : 'Sedang diputar'}
+                  <div style={{ fontSize:12, fontWeight:700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{embedTrack ? embedTrack.title : track.title}</div>
+                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginTop:1 }}>
+                    {embedTrack ? (embedTrack.type==='youtube' ? '▶ YouTube' : '☁️ SoundCloud') : track.artist}
                   </div>
                 </div>
                 <div style={{ display:'flex', gap:2, alignItems:'flex-end', height:13, flexShrink:0 }}>
                   {playing&&[11,6,9].map((h,i)=>(<div key={i} style={{ width:3, height:h, background:embedTrack?'#ff4444':track.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${i*0.15}s infinite` }}/>))}
                 </div>
+              </div>
+
+              {/* Row 3: sub-nav tabs */}
+              <div style={{ display:'flex', gap:6, marginBottom:0, borderBottom:'1px solid rgba(255,255,255,0.06)', paddingBottom:0 }}>
+                {[
+                  { id:'chat', label:'💬 Chat', icon:null },
+                  { id:'lyrics', label:'🎵 Lirik', icon:null },
+                ].map(({id, label})=>(
+                  <button key={id} onClick={()=>setAiSubView(id)}
+                    style={{ padding:'7px 14px', borderRadius:0, border:'none', background:'none', color:aiSubView===id?'white':'rgba(255,255,255,0.4)', fontSize:12, fontWeight:aiSubView===id?800:600, cursor:'pointer', borderBottom:aiSubView===id?`2px solid ${track.color}`:'2px solid transparent', transition:'all 0.2s', marginBottom:-1 }}>
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -3364,7 +3532,7 @@ export default function App() {
       </div>{/* end flex row wrapper */}
 
       {/* ══ TAB BAR — Mobile only */}
-      {!isDesktop && (
+      {!isDesktop && !fullscreen && (
         <nav style={{ position:'relative', zIndex:10, flexShrink:0, display:'flex', alignItems:'center', background:'rgba(7,7,26,0.95)', ...(isLite ? {} : { backdropFilter:'blur(20px)' }), borderTop:'1px solid rgba(255,255,255,0.08)', padding:'6px 8px 10px', paddingBottom:'max(10px,env(safe-area-inset-bottom))' }}>
           {tabs.map(t=>{
             const active=tab===t.id;
@@ -3407,6 +3575,7 @@ export default function App() {
         @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
         @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes slideUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
         @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.6;transform:scale(0.9)}}
         .stars{position:absolute;width:200%;height:200%;background-image:radial-gradient(1px 1px at 15px 25px,rgba(255,255,255,0.6),transparent),radial-gradient(1.5px 1.5px at 90px 130px,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 180px 70px,rgba(255,255,255,0.5),transparent),radial-gradient(2px 2px at 280px 220px,rgba(255,255,255,0.3),transparent),radial-gradient(1px 1px at 40px 180px,rgba(255,255,255,0.5),transparent),radial-gradient(1.5px 1.5px at 160px 30px,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 240px 100px,rgba(255,255,255,0.3),transparent),radial-gradient(2px 2px at 60px 260px,rgba(255,255,255,0.2),transparent);background-size:300px 300px;animation:starMove 120s linear infinite}
         @keyframes starMove{from{transform:translate(0,0)}to{transform:translate(-300px,-300px)}}
