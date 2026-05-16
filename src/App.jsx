@@ -31,8 +31,8 @@ const STREAMING_PLATFORMS = [
     id: 'soundcloud',
     name: 'SoundCloud',
     icon: '🟠',
-    embedType: 'soundcloud', // in-app embed via SoundCloud widget
-    description: 'Cari & putar track SoundCloud dalam app',
+    embedType: 'redirect',   // open in browser like Spotify
+    description: 'Buka pencarian di SoundCloud (perlu app/browser)',
     color: '#ff5500',
     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Antu_soundcloud.svg/240px-Antu_soundcloud.svg.png',
     searchUrl: (q) => `https://soundcloud.com/search?q=${encodeURIComponent(q)}`,
@@ -601,7 +601,7 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
   return (
     <div style={{ position:'relative', width:size, height:size, flexShrink:0 }}>
       {/* Album art */}
-      <div style={{ position:'absolute', top:cy-artR, left:cx-artR, width:artR*2, height:artR*2, borderRadius:'50%', overflow:'hidden', border:'3px solid rgba(255,255,255,0.13)', boxShadow:`0 0 40px -8px ${color}90`, animation:(!isLite && isPlaying)?'spin20 20s linear infinite':'none', zIndex:2 }}>
+      <div style={{ position:'absolute', top:cy-artR, left:cx-artR, width:artR*2, height:artR*2, borderRadius:'50%', overflow:'hidden', border:'3px solid rgba(255,255,255,0.13)', boxShadow:isLite?'none':`0 0 40px -8px ${color}90`, animation:(!isLite && isPlaying)?'spin20 20s linear infinite':'none', zIndex:2 }}>
         <img src={cover} alt={title} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
       </div>
       {/* SVG ring — mouse drag + click */}
@@ -623,7 +623,7 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
         <circle cx={dotX} cy={dotY} r={14} fill={color} opacity="0.15"/>
         {/* Draggable dot */}
         <circle cx={dotX} cy={dotY} r={7} fill="white"
-          style={{ filter:'drop-shadow(0 0 8px rgba(255,255,255,1))', cursor:'grab' }}/>
+          style={{ filter:isLite?'none':'drop-shadow(0 0 8px rgba(255,255,255,1))', cursor:'grab' }}/>
         {/* Current time */}
         {pct>0.01&&<text x={lblX} y={lblY} textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="11" fontWeight="800" fontFamily="monospace" style={{ filter:'drop-shadow(0 1px 5px rgba(0,0,0,1))', pointerEvents:'none' }}>{fmt(progress)}</text>}
         {/* Duration */}
@@ -1083,6 +1083,7 @@ export default function App() {
     const thumb = item.thumbnail || `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
     setEmbedTrack({ type:'youtube', videoId, title:item.title, artist:item.uploaderName||'YouTube', thumbnail:thumb, duration:dur });
     setEmbedMinimized(false);
+    setTab('player');
   };
 
   const playSoundCloud = (platformId, query) => {
@@ -1137,6 +1138,7 @@ export default function App() {
   const [chatLoading, setCL]    = useState(false);
   const [vibeInput, setVibeInput] = useState('');
   const [vibeLoading, setVL]    = useState(false);
+  const [chatMode, setChatMode]   = useState('chat'); // 'chat' | 'mood'
 
   // ── Google Drive — restore session from localStorage if token still valid
   const [googleUser, setGoogleUser]     = useState(() => {
@@ -1169,7 +1171,7 @@ export default function App() {
   // ── Playlists
   const [playlists, setPlaylists]         = useState([
     { id:'pl_fav', name:'❤️ Favorit', songIds:[], locked:false },
-    { id:'pl_chill', name:'🌙 Chill Night', songIds:[1,2], locked:false },
+    { id:'pl_chill', name:'🌙 Chill Night', songIds:[], locked:false },
   ]);
   const [activePl, setActivePl]           = useState(null); // null = all songs, else playlist id
   const [showPlModal, setShowPlModal]     = useState(false);
@@ -1635,18 +1637,7 @@ export default function App() {
             <div style={{ width:5, height:5, borderRadius:'50%', background:hasKey()?'#22c55e':'#ef4444', animation:hasKey()?'pulse 2s infinite':'none' }}/>
             <span style={{ fontSize:9, fontWeight:700, color:hasKey()?'#86efac':'#fca5a5' }}>{hasKey()?'AI':'Offline'}</span>
           </div>
-          {/* PWA Install button */}
-          {!pwaInstalled && pwaPrompt && (
-            <button onClick={installPwa} style={{ display:'flex', alignItems:'center', gap:4, padding:'4px 9px', borderRadius:999, border:'1px solid rgba(99,102,241,0.5)', background:'rgba(99,102,241,0.15)', color:'#a5b4fc', fontSize:9, fontWeight:700, cursor:'pointer', letterSpacing:'0.03em' }}>
-              <span style={{ fontSize:11 }}>📲</span>Install App
-            </button>
-          )}
-          {pwaInstalled && (
-            <div style={{ display:'flex', alignItems:'center', gap:3, padding:'4px 8px', borderRadius:999, background:'rgba(99,102,241,0.1)', border:'1px solid rgba(99,102,241,0.3)' }}>
-              <span style={{ fontSize:10 }}>✅</span>
-              <span style={{ fontSize:9, fontWeight:700, color:'#a5b4fc' }}>Installed</span>
-            </div>
-          )}
+
           {/* Hemat Data badge */}
           {dataSaver && (
             <div style={{ display:'flex', alignItems:'center', gap:4, padding:'4px 8px', borderRadius:999, background:'rgba(16,185,129,0.12)', border:'1px solid rgba(16,185,129,0.35)' }}>
@@ -1695,6 +1686,57 @@ export default function App() {
 
         {/* ─── PLAYER TAB */}
         {tab==='player'&&(
+          embedTrack && embedTrack.type === 'youtube' ? (
+            /* ── YouTube In-App Player */
+            <div style={{ height:'100%', display:'flex', flexDirection:'column', animation:'fadeUp 0.4s ease', background:'#000' }}>
+              {/* Audio-only: hidden iframe + visible thumbnail */}
+              <div style={{ display:'none' }}>
+                <iframe
+                  key={embedTrack.videoId}
+                  src={`https://www.youtube.com/embed/${embedTrack.videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
+                  title={embedTrack.title}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  style={{ width:1, height:1, border:'none' }}
+                />
+              </div>
+              <div style={{ position:'relative', width:'100%', aspectRatio:'1/1', flexShrink:0, background:'#000', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
+                {embedTrack.thumbnail
+                  ? <img src={embedTrack.thumbnail} alt={embedTrack.title} style={{ width:'100%', height:'100%', objectFit:'cover', opacity:0.6, filter:'blur(2px) brightness(0.7)' }}/>
+                  : <div style={{ width:'100%', height:'100%', background:'rgba(255,0,0,0.1)' }}/>
+                }
+                <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:12 }}>
+                  <div style={{ width:90, height:90, borderRadius:'50%', overflow:'hidden', border:'3px solid rgba(255,255,255,0.2)', boxShadow:'0 0 40px rgba(0,0,0,0.7)' }}>
+                    {embedTrack.thumbnail
+                      ? <img src={embedTrack.thumbnail} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                      : <div style={{ width:'100%', height:'100%', background:'rgba(255,0,0,0.3)', display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={30} style={{ color:'#ff4444' }}/></div>
+                    }
+                  </div>
+                  <div style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 14px', borderRadius:999, background:'rgba(0,0,0,0.5)', border:'1px solid rgba(255,255,255,0.1)' }}>
+                    <div style={{ width:7, height:7, borderRadius:'50%', background:'#ff4444', animation:'pulse 1.5s infinite' }}/>
+                    <span style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.8)', letterSpacing:'0.05em' }}>PLAYING AUDIO</span>
+                  </div>
+                </div>
+              </div>
+              {/* Info */}
+              <div style={{ flex:1, padding:'16px 18px', background:'#07071a', display:'flex', flexDirection:'column', gap:6 }}>
+                <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:999, background:'rgba(255,0,0,0.12)', border:'1px solid rgba(255,0,0,0.25)', width:'fit-content' }}>
+                  <span style={{ fontSize:9, fontWeight:800, color:'#ff6b6b', textTransform:'uppercase', letterSpacing:'0.1em' }}>▶ YouTube</span>
+                </div>
+                <div style={{ fontWeight:900, fontSize:16, lineHeight:1.2, marginTop:2 }}>{embedTrack.title}</div>
+                <div style={{ fontSize:12, color:'rgba(255,255,255,0.45)', fontWeight:600 }}>{embedTrack.artist}{embedTrack.duration&&` · ${embedTrack.duration}`}</div>
+                <div style={{ display:'flex', gap:8, marginTop:10, flexWrap:'wrap' }}>
+                  <button onClick={closeEmbed}
+                    style={{ padding:'9px 16px', borderRadius:12, border:'none', background:'rgba(239,68,68,0.15)', color:'#fca5a5', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
+                    <X size={13}/> Tutup Player
+                  </button>
+                  <button onClick={()=>window.open(`https://www.youtube.com/watch?v=${embedTrack.videoId}`, '_blank')}
+                    style={{ padding:'9px 16px', borderRadius:12, border:'1px solid rgba(255,80,80,0.3)', background:'transparent', color:'rgba(255,120,120,0.85)', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
+                    ↗ Buka di YouTube
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
           <div className="scrollbar-hide" style={{ height:'100%', overflowY:'auto' }}>
           <div style={{ minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'clamp(4px,1.5vh,12px) 20px clamp(4px,1vh,8px)', animation:'fadeUp 0.4s ease' }}>
             {loadingTrack&&(
@@ -1754,9 +1796,8 @@ export default function App() {
             </div>
           </div>
           </div>
+          ) /* end normal player */
         )}
-
-        {/* ─── QUEUE TAB */}
         {tab==='stream'&&(
           <div style={{ height:'100%', display:'flex', flexDirection:'column', padding:'14px 16px 0', animation:'fadeUp 0.4s ease' }}>
 
@@ -1942,81 +1983,68 @@ export default function App() {
             {plView==='list'&&(
               <div style={{ height:'100%', display:'flex', flexDirection:'column', padding:'14px 16px 0' }}>
                 {/* Header */}
-                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
                   <div>
-                    <div style={{ fontWeight:800, fontSize:15 }}>Playlist Saya</div>
-                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:2 }}>{playlists.length} playlist</div>
+                    <div style={{ fontWeight:900, fontSize:16 }}>Koleksi Musik</div>
+                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:2 }}>{playlists.length} playlist · {allSongs.length} lagu</div>
                   </div>
                   <button onClick={()=>{ setEditingPl(null); setShowPlModal(true); }}
-                    style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 12px', borderRadius:10, border:'none', background:'linear-gradient(135deg,#6366f1,#a855f7)', color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-                    <ListPlus size={14}/>Baru
+                    style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#6366f1,#a855f7)', color:'white', fontSize:12, fontWeight:700, cursor:'pointer', boxShadow:'0 2px 12px rgba(99,102,241,0.4)' }}>
+                    <ListPlus size={14}/>Buat Playlist
                   </button>
                 </div>
 
-                {/* Search */}
-                <div style={{ position:'relative', marginBottom:10 }}>
-                  <Search size={14} style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', color:'rgba(255,255,255,0.35)', pointerEvents:'none' }}/>
-                  <input value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} placeholder="Cari lagu, artis, album..."
-                    style={{ width:'100%', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:12, padding:'9px 12px 9px 34px', fontSize:13, color:'white', outline:'none', boxSizing:'border-box' }}/>
-                  {searchQuery&&<button onClick={()=>setSearchQuery('')} style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.4)' }}><X size={14}/></button>}
-                </div>
-
-                {/* Tambah Lagu */}
-                <div style={{ marginBottom:10 }}>
-                  {googleUser?(
-                    <button onClick={()=>setShowUpload(true)} style={{ width:'100%', padding:'9px 0', borderRadius:12, background:`linear-gradient(135deg,${track.color}22,rgba(99,102,241,0.2))`, border:`1px solid ${track.color}40`, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
-                      <Plus size={15} style={{ color:track.color }}/>Tambah Lagu ke Drive
-                    </button>
-                  ):(
-                    <button onClick={handleGoogleLogin} style={{ width:'100%', padding:'9px 0', borderRadius:12, background:'rgba(255,255,255,0.04)', border:'1px dashed rgba(255,255,255,0.15)', color:'rgba(255,255,255,0.45)', fontSize:12, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
-                      <LogIn size={13}/>Login Google untuk tambah lagu
-                    </button>
-                  )}
-                </div>
+                {/* Google Drive login/upload row */}
+                {!googleUser ? (
+                  <button onClick={handleGoogleLogin} style={{ marginBottom:12, width:'100%', padding:'9px 0', borderRadius:12, background:'rgba(255,255,255,0.04)', border:'1px dashed rgba(255,255,255,0.15)', color:'rgba(255,255,255,0.45)', fontSize:12, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
+                    <LogIn size={13}/>Login Google untuk Lagu Saya
+                  </button>
+                ) : null}
 
                 <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column', gap:8, paddingBottom:16 }}>
 
+                  {/* ── Koleksi label */}
+                  <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.25)', textTransform:'uppercase', letterSpacing:'0.15em', marginBottom:2 }}>Koleksi</div>
+
                   {/* All songs shortcut */}
-                  <div onClick={()=>{ setActivePl(null); setTab('stream'); }}
-                    style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', borderRadius:14, cursor:'pointer', background:activePl===null?'rgba(99,102,241,0.15)':'rgba(255,255,255,0.04)', border:`1px solid ${activePl===null?'rgba(99,102,241,0.4)':'rgba(255,255,255,0.08)'}`, transition:'all 0.2s' }}>
-                    <div style={{ width:42, height:42, borderRadius:10, background:'linear-gradient(135deg,rgba(99,102,241,0.3),rgba(168,85,247,0.3))', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                  <div onClick={()=>{ setActivePl('all_songs'); setPlView('detail'); }}
+                    style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', borderRadius:14, cursor:'pointer', background:'rgba(99,102,241,0.07)', border:'1px solid rgba(99,102,241,0.18)', transition:'all 0.2s' }}
+                    onMouseEnter={e=>e.currentTarget.style.background='rgba(99,102,241,0.14)'}
+                    onMouseLeave={e=>e.currentTarget.style.background='rgba(99,102,241,0.07)'}>
+                    <div style={{ width:42, height:42, borderRadius:10, background:'linear-gradient(135deg,rgba(99,102,241,0.35),rgba(168,85,247,0.35))', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                       <ListMusic size={20} style={{color:'#a78bfa'}}/>
                     </div>
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ fontWeight:700, fontSize:14, color:'white' }}>Semua Lagu</div>
-                      <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:1 }}>{allSongs.length} lagu</div>
+                      <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:1 }}>{allSongs.length} lagu tersedia</div>
                     </div>
                     <ChevronRight size={16} style={{color:'rgba(255,255,255,0.3)'}}/>
                   </div>
 
                   {/* ── Lagu Saya (Drive) */}
                   {(googleUser||customSongs.length>0)&&(
-                    <div style={{ borderRadius:14, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', overflow:'hidden' }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px' }}>
-                        <div style={{ width:42, height:42, borderRadius:10, background:'linear-gradient(135deg,rgba(14,165,233,0.3),rgba(99,102,241,0.3))', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                          <Cloud size={20} style={{color:'#38bdf8'}}/>
-                        </div>
-                        <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ fontWeight:700, fontSize:14, color:'white' }}>Lagu Saya</div>
-                          <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:1 }}>{filteredCustom.length} lagu dari Drive{loadingDrive&&' · memuat…'}</div>
-                        </div>
-                        {!loadingDrive&&googleUser&&(
-                          <button onClick={async()=>{ setLoadingDrive(true); try{ setCustomSongs(await driveListSongs(tokenRef.current,true)); }catch(e){ setDriveError('Gagal refresh: '+e.message); } setLoadingDrive(false); }}
-                            style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.35)', fontSize:10, padding:'4px 8px', borderRadius:6 }}>
-                            ↺
-                          </button>
-                        )}
+                    <div onClick={()=>{ setActivePl('my_songs'); setPlView('detail'); }}
+                      style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', borderRadius:14, cursor:'pointer', background:'rgba(14,165,233,0.06)', border:'1px solid rgba(14,165,233,0.18)', transition:'all 0.2s' }}
+                      onMouseEnter={e=>e.currentTarget.style.background='rgba(14,165,233,0.12)'}
+                      onMouseLeave={e=>e.currentTarget.style.background='rgba(14,165,233,0.06)'}>
+                      <div style={{ width:42, height:42, borderRadius:10, background:'linear-gradient(135deg,rgba(14,165,233,0.35),rgba(99,102,241,0.35))', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                        <Cloud size={20} style={{color:'#38bdf8'}}/>
                       </div>
-                      <div style={{ borderTop:'1px solid rgba(255,255,255,0.06)', maxHeight:200, overflowY:'auto' }} className="scrollbar-hide">
-                        {loadingDrive&&filteredCustom.length===0&&<div style={{ padding:12, textAlign:'center', color:'rgba(255,255,255,0.3)', fontSize:12 }}>Memuat dari Drive…</div>}
-                        {!loadingDrive&&filteredCustom.length===0&&<div style={{ padding:12, textAlign:'center', color:'rgba(255,255,255,0.3)', fontSize:12 }}>Belum ada lagu di Drive</div>}
-                        {filteredCustom.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} play={play} isDrive onRemove={id=>setCustomSongs(p=>p.filter(x=>x.id!==id))} playlists={playlists} addToPlaylist={addToPlaylist}/>)}
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontWeight:700, fontSize:14, color:'white' }}>Lagu Saya</div>
+                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:1 }}>
+                          {loadingDrive ? 'Memuat dari Drive…' : `${customSongs.length} lagu dari Google Drive`}
+                        </div>
                       </div>
+                      {loadingDrive
+                        ? <Loader2 size={15} style={{ color:'rgba(255,255,255,0.3)', animation:'spin 1s linear infinite', flexShrink:0 }}/>
+                        : <ChevronRight size={16} style={{color:'rgba(255,255,255,0.3)', flexShrink:0}}/>
+                      }
                     </div>
                   )}
 
                   {/* Playlist label */}
-                  <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.15em', marginTop:4 }}>Playlist Kamu</div>
+                  <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.25)', textTransform:'uppercase', letterSpacing:'0.15em', marginTop:8 }}>Playlist Kamu</div>
 
                   {/* Playlist cards */}
                   {playlists.map(pl => {
@@ -2074,6 +2102,83 @@ export default function App() {
 
             {/* ── Playlist detail view */}
             {plView==='detail'&&activePl&&(()=>{
+              // ── Special: Lagu Saya (Drive)
+              if (activePl === 'my_songs') {
+                const songs = filteredCustom;
+                return (
+                  <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
+                    <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                        <button onClick={()=>{ setActivePl(null); setPlView('list'); }} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.5)', padding:4, display:'flex' }}>
+                          <ChevronLeft size={20}/>
+                        </button>
+                        <div style={{ width:36, height:36, borderRadius:10, background:'linear-gradient(135deg,rgba(14,165,233,0.35),rgba(99,102,241,0.35))', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                          <Cloud size={18} style={{color:'#38bdf8'}}/>
+                        </div>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontWeight:800, fontSize:15 }}>Lagu Saya</div>
+                          <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:1 }}>{customSongs.length} lagu dari Google Drive</div>
+                        </div>
+                        {googleUser&&(
+                          <button onClick={async()=>{ setLoadingDrive(true); try{ setCustomSongs(await driveListSongs(tokenRef.current,true)); }catch(e){ setDriveError('Gagal refresh: '+e.message); } setLoadingDrive(false); }}
+                            style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', cursor:'pointer', color:'rgba(255,255,255,0.55)', fontSize:12, padding:'5px 10px', borderRadius:8, fontWeight:700 }}>
+                            ↺ Refresh
+                          </button>
+                        )}
+                      </div>
+                      {googleUser && (
+                        <button onClick={()=>setShowUpload(true)} style={{ marginTop:10, width:'100%', padding:'8px 0', borderRadius:10, background:'rgba(14,165,233,0.12)', border:'1px solid rgba(14,165,233,0.25)', color:'#38bdf8', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                          <Plus size={14}/> Unggah Lagu ke Drive
+                        </button>
+                      )}
+                    </div>
+                    <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'10px 16px 16px', display:'flex', flexDirection:'column', gap:5 }}>
+                      {loadingDrive&&<div style={{ textAlign:'center', padding:'32px 0' }}><Loader2 size={28} style={{ color:'#38bdf8', animation:'spin 1s linear infinite', margin:'0 auto', display:'block' }}/><div style={{ fontSize:12, color:'rgba(255,255,255,0.35)', marginTop:8 }}>Memuat dari Drive…</div></div>}
+                      {!loadingDrive&&songs.length===0&&(
+                        <div style={{ textAlign:'center', padding:'40px 20px' }}>
+                          <Cloud size={44} style={{color:'rgba(255,255,255,0.1)',display:'block',margin:'0 auto 12px'}}/>
+                          <div style={{ fontSize:13, color:'rgba(255,255,255,0.3)' }}>Belum ada lagu di Drive</div>
+                          {!googleUser && <div style={{ fontSize:11, color:'rgba(255,255,255,0.2)', marginTop:4 }}>Login Google untuk melihat lagu</div>}
+                        </div>
+                      )}
+                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} play={play} isDrive onRemove={id=>setCustomSongs(p=>p.filter(x=>x.id!==id))} playlists={playlists} addToPlaylist={addToPlaylist}/>)}
+                    </div>
+                  </div>
+                );
+              }
+
+              // ── Special: Semua Lagu
+              if (activePl === 'all_songs') {
+                const songs = filteredSongs;
+                return (
+                  <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
+                    <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                        <button onClick={()=>{ setActivePl(null); setPlView('list'); }} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.5)', padding:4, display:'flex' }}>
+                          <ChevronLeft size={20}/>
+                        </button>
+                        <div style={{ width:36, height:36, borderRadius:10, background:'linear-gradient(135deg,rgba(99,102,241,0.35),rgba(168,85,247,0.35))', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                          <ListMusic size={18} style={{color:'#a78bfa'}}/>
+                        </div>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontWeight:800, fontSize:15 }}>Semua Lagu</div>
+                          <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:1 }}>{songs.length} lagu</div>
+                        </div>
+                        {songs.length>0&&(
+                          <button onClick={()=>{ play(songs[0]); setTab('player'); }}
+                            style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:10, border:'none', background:'#a78bfa', color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                            <Play size={13} fill="currentColor"/>Putar Semua
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'10px 16px 16px', display:'flex', flexDirection:'column', gap:5 }}>
+                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} play={play} isDrive={s.isDrive} playlists={playlists} addToPlaylist={addToPlaylist}/>)}
+                    </div>
+                  </div>
+                );
+              }
+
               const pl = playlists.find(p=>p.id===activePl);
               if (!pl) return null;
               const songs = allSongs.filter(s=>pl.songIds.includes(s.id));
@@ -2217,33 +2322,14 @@ export default function App() {
               </div>
             </div>
             <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'10px 16px', display:'flex', flexDirection:'column', gap:9 }}>
-              {/* ── Cari Berdasarkan Suasana Hati */}
-              <div style={{ padding:'10px 12px', borderRadius:14, background:'rgba(99,102,241,0.08)', border:'1px solid rgba(99,102,241,0.2)' }}>
-                <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.15em', marginBottom:8 }}>🔮 Cari Berdasarkan Suasana Hati</div>
-                <div style={{ display:'flex', gap:8, marginBottom:6 }}>
-                  <input value={vibeInput} onChange={e=>setVibeInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&!vibeLoading&&searchVibe()} placeholder='"semangat pagi", "sedih tapi indah"...'
-                    style={{ flex:1, background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:10, padding:'8px 11px', fontSize:12, color:'white', outline:'none' }}/>
-                  <button onClick={searchVibe} disabled={vibeLoading} style={{ padding:'8px 12px', borderRadius:10, border:'none', background:track.color, color:'white', cursor:vibeLoading?'default':'pointer', fontWeight:700, fontSize:12, flexShrink:0, opacity:vibeLoading?0.5:1, display:'flex', alignItems:'center', gap:5 }}>
-                    {vibeLoading ? <><Loader2 size={12} style={{ animation:'spin 1s linear infinite' }}/>AI...</> : '🔮 Cari'}
-                  </button>
+              {/* ── Vibe result card */}
+              {vibeInput && vibeInput.startsWith('✨') && (
+                <div style={{ padding:'11px 13px', borderRadius:14, background:`${track.color}12`, border:`1px solid ${track.color}35` }}>
+                  <div style={{ fontSize:9, fontWeight:800, color:track.color, marginBottom:5, textTransform:'uppercase', letterSpacing:'0.12em' }}>🔮 Suasana Hati</div>
+                  <div style={{ fontSize:12, color:'rgba(255,255,255,0.85)', lineHeight:1.75, whiteSpace:'pre-line' }}>{vibeInput.replace(/^✨\s?/,'')}</div>
+                  <button onClick={()=>setVibeInput('')} style={{ marginTop:7, fontSize:10, color:track.color, background:'none', border:'none', cursor:'pointer', fontWeight:700, padding:0 }}>× Reset</button>
                 </div>
-                {!vibeInput && (
-                  <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
-                    {['😌 santai','⚡ semangat','😢 melankolis','🌙 malam','☀️ pagi ceria','💪 workout','🎉 party','💕 romantis'].map(mood => (
-                      <button key={mood} onClick={() => setVibeInput(mood)}
-                        style={{ padding:'4px 10px', borderRadius:999, border:`1px solid ${track.color}30`, background:`${track.color}10`, color:'rgba(255,255,255,0.65)', fontSize:10, fontWeight:600, cursor:'pointer' }}>
-                        {mood}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {vibeInput && vibeInput.startsWith('✨') && (
-                  <div style={{ marginTop:8, padding:'10px 12px', borderRadius:10, background:`${track.color}12`, border:`1px solid ${track.color}30`, fontSize:12, color:'rgba(255,255,255,0.85)', lineHeight:1.7, whiteSpace:'pre-line' }}>
-                    {vibeInput}
-                    <button onClick={() => setVibeInput('')} style={{ marginTop:6, display:'block', fontSize:10, color:track.color, background:'none', border:'none', cursor:'pointer', fontWeight:700 }}>× Reset</button>
-                  </div>
-                )}
-              </div>
+              )}
               {messages.map((m,i)=>(
                 <div key={i} style={{ display:'flex', justifyContent:m.from==='user'?'flex-end':'flex-start' }}>
                   {m.from==='ai'&&<div style={{ width:22, height:22, borderRadius:7, flexShrink:0, background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center', marginRight:6, marginTop:2 }}><Bot size={11} style={{ color:'white' }}/></div>}
@@ -2253,13 +2339,47 @@ export default function App() {
               {chatLoading&&<div style={{ display:'flex', alignItems:'center', gap:6 }}><div style={{ width:22, height:22, borderRadius:7, background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center' }}><Bot size={11} style={{ color:'white' }}/></div><div style={{ padding:'9px 13px', borderRadius:'4px 16px 16px 16px', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.1)', display:'flex', gap:5 }}>{[0,0.15,0.3].map((d,i)=>(<div key={i} style={{ width:6, height:6, borderRadius:'50%', background:'#818cf8', animation:`bounce 0.8s ease-in-out ${d}s infinite` }}/>))}</div></div>}
               <div ref={chatEndRef}/>
             </div>
-            {messages.length===1&&<div style={{ padding:'0 16px 8px', display:'flex', flexWrap:'wrap', gap:6 }}>{['🎵 Ceritakan lagu ini','💫 Rekomendasikan lagu mirip','🌙 Vibe & mood lagu ini','🎸 Fakta menarik artis ini','📝 Buat puisi dari lagu ini'].map((q,i)=>(<button key={i} onClick={()=>setInput(q)} style={{ padding:'5px 11px', borderRadius:999, border:'1px solid rgba(255,255,255,0.15)', background:'rgba(255,255,255,0.05)', color:'rgba(255,255,255,0.7)', fontSize:11, fontWeight:600, cursor:'pointer' }}>{q}</button>))}</div>}
+            {messages.length===1&&chatMode==='chat'&&<div style={{ padding:'0 16px 8px', display:'flex', flexWrap:'wrap', gap:6 }}>{['🎵 Ceritakan lagu ini','💫 Rekomendasikan lagu mirip','🌙 Vibe & mood lagu ini','🎸 Fakta menarik artis ini','📝 Buat puisi dari lagu ini'].map((q,i)=>(<button key={i} onClick={()=>setInput(q)} style={{ padding:'5px 11px', borderRadius:999, border:'1px solid rgba(255,255,255,0.15)', background:'rgba(255,255,255,0.05)', color:'rgba(255,255,255,0.7)', fontSize:11, fontWeight:600, cursor:'pointer' }}>{q}</button>))}</div>}
+
+            {/* Mood chips — show when in mood mode and input empty */}
+            {chatMode==='mood'&&!vibeInput&&(
+              <div style={{ padding:'0 16px 8px', display:'flex', flexWrap:'wrap', gap:5 }}>
+                {['😌 santai','⚡ semangat','😢 melankolis','🌙 malam','☀️ pagi ceria','💪 workout','🎉 party','💕 romantis'].map(mood=>(
+                  <button key={mood} onClick={()=>{ setVibeInput(mood); }}
+                    style={{ padding:'5px 11px', borderRadius:999, border:`1px solid ${track.color}35`, background:`${track.color}12`, color:'rgba(255,255,255,0.75)', fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                    {mood}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div style={{ padding:'8px 16px 14px', flexShrink:0, borderTop:'1px solid rgba(255,255,255,0.06)' }}>
+              {/* Mode toggle row */}
+              <div style={{ display:'flex', gap:5, marginBottom:8 }}>
+                <button onClick={()=>{ setChatMode('chat'); }}
+                  style={{ flex:1, padding:'5px 0', borderRadius:9, border:'none', background:chatMode==='chat'?`${track.color}25`:'rgba(255,255,255,0.05)', color:chatMode==='chat'?track.color:'rgba(255,255,255,0.35)', fontSize:11, fontWeight:700, cursor:'pointer', transition:'all 0.15s', display:'flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                  💬 Tanya AI
+                </button>
+                <button onClick={()=>{ setChatMode('mood'); setVibeInput(''); }}
+                  style={{ flex:1, padding:'5px 0', borderRadius:9, border:'none', background:chatMode==='mood'?`${track.color}25`:'rgba(255,255,255,0.05)', color:chatMode==='mood'?track.color:'rgba(255,255,255,0.35)', fontSize:11, fontWeight:700, cursor:'pointer', transition:'all 0.15s', display:'flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                  🔮 Suasana Hati
+                </button>
+              </div>
               <div style={{ display:'flex', gap:8 }}>
-                <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendChat()} placeholder="Tanya Starry AI..."
-                  style={{ flex:1, background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:12, padding:'9px 13px', fontSize:13, color:'white', outline:'none' }}/>
-                <button onClick={sendChat} disabled={chatLoading||!input.trim()} style={{ width:40, height:40, borderRadius:12, border:'none', background:input.trim()?track.color:'rgba(255,255,255,0.1)', color:'white', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity:chatLoading?0.5:1, flexShrink:0 }}>
-                  <Send size={15}/>
+                <input
+                  value={chatMode==='mood' ? vibeInput : input}
+                  onChange={e=>{ chatMode==='mood' ? setVibeInput(e.target.value) : setInput(e.target.value); }}
+                  onKeyDown={e=>{ if(e.key==='Enter') chatMode==='mood' ? (!vibeLoading&&searchVibe()) : sendChat(); }}
+                  placeholder={chatMode==='mood' ? '"santai", "semangat pagi", "sedih tapi indah"…' : 'Tanya Starry AI...'}
+                  style={{ flex:1, background:'rgba(255,255,255,0.07)', border:`1px solid ${chatMode==='mood'?track.color+'40':'rgba(255,255,255,0.12)'}`, borderRadius:12, padding:'9px 13px', fontSize:13, color:'white', outline:'none' }}/>
+                <button
+                  onClick={()=>{ chatMode==='mood' ? (!vibeLoading&&searchVibe()) : sendChat(); }}
+                  disabled={(chatMode==='mood' ? (vibeLoading||!vibeInput.trim()) : (chatLoading||!input.trim()))}
+                  style={{ width:40, height:40, borderRadius:12, border:'none', background:(chatMode==='mood'?vibeInput.trim():input.trim())?track.color:'rgba(255,255,255,0.1)', color:'white', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity:(chatMode==='mood'?vibeLoading:chatLoading)?0.5:1, flexShrink:0, transition:'background 0.2s' }}>
+                  {(chatMode==='mood'?vibeLoading:chatLoading)
+                    ? <Loader2 size={15} style={{ animation:'spin 1s linear infinite' }}/>
+                    : chatMode==='mood' ? <span style={{fontSize:15}}>🔮</span> : <Send size={15}/>
+                  }
                 </button>
               </div>
             </div>
@@ -2294,8 +2414,8 @@ export default function App() {
       {showSettings&&<SettingsPanel onClose={()=>setShowSettings(false)} color={track.color} eqEnabled={eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset} setEqPreset={setEqPreset} eqGains={eqGains} setEqGains={setEqGains} crossfade={crossfade} setCrossfade={setCrossfade} sleepTimer={sleepTimer} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover} setGlobalCover={setGlobalCover} isLite={isLite} dataSaver={dataSaver} toggleDataSaver={toggleDataSaver} pwaPrompt={pwaPrompt} pwaInstalled={pwaInstalled} installPwa={installPwa}/>}
       {showUpload&&<UploadModal onClose={()=>!uploading&&setShowUpload(false)} onUpload={handleUpload} uploading={uploading} uploadProgress={uploadProgress} color={track.color} isLite={isLite}/>}
 
-      {/* ══ YOUTUBE EMBED FLOATING PANEL ══ */}
-      {embedTrack && embedTrack.type === 'youtube' && (
+      {/* ══ YOUTUBE EMBED FLOATING PANEL — only show on non-player tabs ══ */}
+      {embedTrack && embedTrack.type === 'youtube' && tab !== 'player' && (
         <div style={{
           position:'fixed', left:0, right:0, bottom:0, zIndex:500,
           background:'rgba(7,7,26,0.97)', backdropFilter:'blur(20px)',
@@ -2326,16 +2446,15 @@ export default function App() {
               </button>
             </div>
           </div>
-          {/* YouTube iframe */}
+          {/* YouTube iframe (hidden for audio-only) */}
           {!embedMinimized && (
-            <div style={{ position:'relative', width:'100%', paddingBottom:'56.25%', height:0, background:'#000' }}>
+            <div style={{ display:'none' }}>
               <iframe
                 key={embedTrack.videoId}
                 src={`https://www.youtube.com/embed/${embedTrack.videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
                 title={embedTrack.title}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                style={{ position:'absolute', top:0, left:0, width:'100%', height:'100%', border:'none' }}
+                style={{ width:1, height:1, border:'none' }}
               />
             </div>
           )}
@@ -2355,7 +2474,12 @@ export default function App() {
         .scrollbar-hide{-ms-overflow-style:none;scrollbar-width:none}
         input::placeholder{color:rgba(148,163,184,0.35)}
         input[type=range]{cursor:pointer;height:4px;border-radius:999px}
-        ${isLite ? '.lite-no-anim *{animation-duration:0.01ms!important;animation-iteration-count:1!important;transition-duration:0.1s!important}' : ''}
+        ${isLite ? `
+          .lite-no-anim *{animation-duration:0.01ms!important;animation-iteration-count:1!important;transition-duration:0.1s!important}
+          input[type=range]::-webkit-slider-thumb{box-shadow:none!important;-webkit-box-shadow:none!important}
+          input[type=range]::-moz-range-thumb{box-shadow:none!important}
+          input[type=range]::-ms-thumb{box-shadow:none!important}
+        ` : ''}
       `}</style>
     </div>
   );
