@@ -1862,6 +1862,7 @@ export default function App() {
       client.requestAccessToken({ prompt: '' });
     } catch(e) { reject(e); }
   }), []);
+  const handleGoogleLogout = useCallback(() => {
     if (accessToken&&window.google) window.google.accounts.oauth2.revoke(accessToken,()=>{});
     setGoogleUser(null); setAccessToken(null); tokenRef.current=null; setCustomSongs([]); setDriveError('');
     localStorage.removeItem('sn_google_token'); localStorage.removeItem('sn_google_user');
