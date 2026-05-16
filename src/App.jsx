@@ -943,7 +943,12 @@ export default function App() {
   // ── Embed player state
   const [embedTrack, setEmbedTrack]         = useState(null);
   const [embedMinimized, setEmbedMinimized] = useState(false);
-  const ytIframeRef = useRef(null);
+  const ytIframeRef   = useRef(null);
+  const [ytProgress, setYtProgress]   = useState(0);
+  const [ytDuration, setYtDuration]   = useState(0);
+  const ytQueueRef    = useRef([]);   // current list of YT results
+  const ytQueueIdxRef = useRef(-1);  // index of current video in queue
+  const [ytSongs, setYtSongs]         = useState([]); // YT tracks saved to playlist/liked
 
   // ── YouTube search state (keyed by platform id)
   const [ytQuery,   setYtQuery]   = useState({});
@@ -1071,7 +1076,7 @@ export default function App() {
     setYtLoading(p => ({...p, [platformId]: false}));
   };
 
-  const playYouTube = (item) => {
+  const playYouTube = (item, queue, queueIdx) => {
     // Support Piped format (url), Invidious format (videoId), or direct videoId
     let videoId = item.videoId || null;
     if (!videoId) {
@@ -1079,10 +1084,13 @@ export default function App() {
       videoId = match ? match[1] : (item.url || '').replace('/watch?v=', '');
     }
     if (!videoId || videoId.length < 5) return;
-    const secs  = item.duration || 0;
+    const secs  = item.duration || item.lengthSeconds || 0;
     const dur   = secs > 0 ? `${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}` : '';
     const thumb = item.thumbnail || `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
-    setEmbedTrack({ type:'youtube', videoId, title:item.title, artist:item.uploaderName||'YouTube', thumbnail:thumb, duration:dur });
+    const ytTrack = { type:'youtube', videoId, title:item.title, artist:item.uploaderName||item.author||'YouTube', thumbnail:thumb, duration:dur, durationSecs:secs };
+    setEmbedTrack(ytTrack);
+    setYtProgress(0); setYtDuration(secs||0);
+    if (queue) { ytQueueRef.current = queue; ytQueueIdxRef.current = queueIdx ?? queue.findIndex(v=>(v.videoId||v.url?.includes(videoId))===videoId); }
     setEmbedMinimized(false);
     // Pause normal audio player, set playing state for UI
     if (audioRef.current) { audioRef.current.pause(); }
@@ -1097,7 +1105,58 @@ export default function App() {
     setEmbedMinimized(false);
   };
 
-  const closeEmbed = () => { setEmbedTrack(null); setPlaying(false); };
+  const closeEmbed = () => { setEmbedTrack(null); setPlaying(false); setYtProgress(0); setYtDuration(0); ytQueueRef.current=[]; ytQueueIdxRef.current=-1; };
+
+  // ── YouTube seek via postMessage
+  const seekYt = useCallback((pct) => {
+    if (!ytIframeRef.current || !ytDuration) return;
+    const t = pct * ytDuration;
+    setYtProgress(t);
+    ytIframeRef.current.contentWindow.postMessage(JSON.stringify({ event:'command', func:'seekTo', args:[t, true] }), '*');
+  }, [ytDuration]);
+
+  // ── YouTube queue navigation
+  const ytNext = useCallback(() => {
+    const q = ytQueueRef.current; if (!q.length) return;
+    if (repeatRef.current === 'one') { seekYt(0); return; }
+    let idx;
+    if (shuffleRef.current) { idx = Math.floor(Math.random()*q.length); }
+    else { idx = (ytQueueIdxRef.current + 1) % q.length; }
+    ytQueueIdxRef.current = idx;
+    playYouTube(q[idx], q, idx);
+  }, [seekYt]); // eslint-disable-line
+
+  const ytPrev = useCallback(() => {
+    const q = ytQueueRef.current; if (!q.length) return;
+    if (ytProgress > 3) { seekYt(0); return; }
+    const idx = (ytQueueIdxRef.current - 1 + q.length) % q.length;
+    ytQueueIdxRef.current = idx;
+    playYouTube(q[idx], q, idx);
+  }, [seekYt, ytProgress]); // eslint-disable-line
+
+  const ytShuffle = useCallback(() => {
+    const q = ytQueueRef.current; if (!q.length) return;
+    const idx = Math.floor(Math.random()*q.length);
+    ytQueueIdxRef.current = idx;
+    playYouTube(q[idx], q, idx);
+  }, []); // eslint-disable-line
+
+  // ── Like a YouTube track → save to ytSongs + liked state
+  const likeYtTrack = useCallback(() => {
+    if (!embedTrack || embedTrack.type !== 'youtube') return;
+    const id = `yt_${embedTrack.videoId}`;
+    setLiked(l => ({ ...l, [id]: !l[id] }));
+    setYtSongs(prev => {
+      if (prev.find(s => s.id === id)) return prev;
+      return [...prev, {
+        id, type:'youtube', videoId:embedTrack.videoId,
+        title:embedTrack.title, artist:embedTrack.artist,
+        album:'YouTube', cover:embedTrack.thumbnail||'',
+        src:'', color:'#ff4444', bg:'rgba(255,68,68,0.15)', mood:'youtube',
+        thumbnail:embedTrack.thumbnail, duration:embedTrack.durationSecs||0,
+      }];
+    });
+  }, [embedTrack]); // eslint-disable-line
 
   // ── Core playback
   const [track, setTrack]       = useState(SONGS[0]);
@@ -1198,7 +1257,7 @@ export default function App() {
   const cfGainRef     = useRef(null); // crossfade gain
   const crossfadeRef  = useRef(0);
 
-  const allSongs = [...builtinSongs, ...customSongs];
+  const allSongs = [...builtinSongs, ...customSongs, ...ytSongs];
 
   // ── Keep refs in sync
   useEffect(() => { shuffleRef.current  = shuffle;   }, [shuffle]);
@@ -1337,6 +1396,31 @@ export default function App() {
 
   // ── Volume/mute
   useEffect(() => { if (audioRef.current) audioRef.current.volume = muted?0:volume; }, [volume, muted]);
+
+  // ── YouTube time sync: listen to postMessage events from iframe
+  useEffect(() => {
+    if (!embedTrack || embedTrack.type !== 'youtube') return;
+    const handler = (e) => {
+      try {
+        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+        if (data?.event === 'infoDelivery' && data.info) {
+          if (data.info.currentTime != null) setYtProgress(data.info.currentTime);
+          if (data.info.duration != null && data.info.duration > 0) setYtDuration(data.info.duration);
+        }
+        // Video ended → auto next
+        if (data?.event === 'onStateChange' && data.info === 0) {
+          if (repeatRef.current === 'one') { seekYt(0); }
+          else { setTimeout(ytNext, 600); }
+        }
+      } catch(_) {}
+    };
+    window.addEventListener('message', handler);
+    // Poll current time every 800ms
+    const poll = setInterval(() => {
+      try { ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'listening' }), '*'); } catch(_) {}
+    }, 800);
+    return () => { window.removeEventListener('message', handler); clearInterval(poll); };
+  }, [embedTrack, seekYt, ytNext]);
 
   // ── Chat scroll
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior:'smooth' }); }, [messages]);
@@ -1705,8 +1789,8 @@ export default function App() {
               </div>
             )}
 
-            {/* Ring — shows YouTube thumbnail when YT is active */}
-            <OrbitalRing size={ringSize} pct={embedTrack?.type==='youtube'?0:pct} color={embedTrack?.type==='youtube'?'#ff4444':track.color} progress={embedTrack?.type==='youtube'?0:progress} duration={embedTrack?.type==='youtube'?0:duration} isPlaying={playing} cover={embedTrack?.type==='youtube'?(embedTrack.thumbnail||getCover(track)):getCover(track)} title={embedTrack?.type==='youtube'?embedTrack.title:track.title} onSeek={embedTrack?.type==='youtube'?null:seekByPct} isLite={isLite}/>
+            {/* Ring — shows YouTube thumbnail + seek when YT is active */}
+            <OrbitalRing size={ringSize} pct={embedTrack?.type==='youtube'?(ytDuration>0?ytProgress/ytDuration:0):pct} color={embedTrack?.type==='youtube'?'#ff4444':track.color} progress={embedTrack?.type==='youtube'?ytProgress:progress} duration={embedTrack?.type==='youtube'?ytDuration:duration} isPlaying={playing} cover={embedTrack?.type==='youtube'?(embedTrack.thumbnail||getCover(track)):getCover(track)} title={embedTrack?.type==='youtube'?embedTrack.title:track.title} onSeek={embedTrack?.type==='youtube'?seekYt:seekByPct} isLite={isLite}/>
 
             {/* Track info */}
             <div style={{ textAlign:'center', marginTop:'clamp(8px,1.8vh,16px)', width:'100%', maxWidth:320, padding:'0 8px' }}>
@@ -1725,24 +1809,27 @@ export default function App() {
 
             {/* Main controls: Shuffle | Prev | Play | Next | Repeat */}
             <div style={{ display:'flex', alignItems:'center', gap:'clamp(4px,2vw,10px)', marginTop:'clamp(10px,2vh,16px)' }}>
-              <button onClick={()=>setShuffle(s=>!s)} style={{ ...btn, color:shuffle?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', position:'relative', padding:'clamp(5px,1.2vw,8px)', opacity:embedTrack?.type==='youtube'?0.3:1, pointerEvents:embedTrack?.type==='youtube'?'none':'auto' }}>
+              <button onClick={()=>{ if(embedTrack?.type==='youtube'){setShuffle(s=>!s);if(!shuffle)ytShuffle();}else setShuffle(s=>!s); }} style={{ ...btn, color:shuffle?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', position:'relative', padding:'clamp(5px,1.2vw,8px)' }}>
                 <Shuffle size={18}/>
-                {shuffle&&!embedTrack&&<div style={{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:track.color }}/>}
+                {shuffle&&<div style={{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:embedTrack?.type==='youtube'?'#ff4444':track.color }}/>}
               </button>
-              <button onClick={()=>!embedTrack&&goPrev()} style={{ ...btn, padding:'clamp(5px,1.2vw,8px)', opacity:embedTrack?.type==='youtube'?0.3:1, pointerEvents:embedTrack?.type==='youtube'?'none':'auto' }}><SkipBack size={22} fill="currentColor"/></button>
+              <button onClick={()=>embedTrack?.type==='youtube'?ytPrev():goPrev()} style={{ ...btn, padding:'clamp(5px,1.2vw,8px)' }}><SkipBack size={22} fill="currentColor"/></button>
               <button onClick={()=>setPlaying(p=>!p)} style={{ width:'clamp(48px,13vw,56px)', height:'clamp(48px,13vw,56px)', borderRadius:'50%', border:'none', background:'white', color:'#07071a', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow: isLite ? `0 2px 8px rgba(0,0,0,0.4)` : `0 0 22px ${embedTrack?.type==='youtube'?'#ff444490':track.color+'90'},0 4px 20px rgba(0,0,0,0.4)`, transition:'transform 0.1s,box-shadow 0.3s', flexShrink:0 }}>
                 {playing?<Pause size={21} fill="currentColor"/>:<Play size={21} fill="currentColor" style={{ marginLeft:3 }}/>}
               </button>
-              <button onClick={()=>!embedTrack&&goNext()} style={{ ...btn, padding:'clamp(5px,1.2vw,8px)', opacity:embedTrack?.type==='youtube'?0.3:1, pointerEvents:embedTrack?.type==='youtube'?'none':'auto' }}><SkipForward size={22} fill="currentColor"/></button>
-              <button onClick={cycleRepeat} style={{ ...btn, color:repeat!=='off'?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', position:'relative', padding:'clamp(5px,1.2vw,8px)', opacity:embedTrack?.type==='youtube'?0.3:1, pointerEvents:embedTrack?.type==='youtube'?'none':'auto' }}>
+              <button onClick={()=>embedTrack?.type==='youtube'?ytNext():goNext()} style={{ ...btn, padding:'clamp(5px,1.2vw,8px)' }}><SkipForward size={22} fill="currentColor"/></button>
+              <button onClick={cycleRepeat} style={{ ...btn, color:repeat!=='off'?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', position:'relative', padding:'clamp(5px,1.2vw,8px)' }}>
                 {repeat==='one'?<Repeat1 size={18}/>:<Repeat size={18}/>}
-                {repeat!=='off'&&!embedTrack&&<div style={{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:track.color }}/>}
+                {repeat!=='off'&&<div style={{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:embedTrack?.type==='youtube'?'#ff4444':track.color }}/>}
               </button>
             </div>
 
             {/* Secondary: Like | Mute | Volume slider | Settings | Close YT */}
             <div style={{ display:'flex', alignItems:'center', gap:4, marginTop:'clamp(3px,0.8vh,7px)', width:'100%', maxWidth:290 }}>
-              <button onClick={()=>setLiked(l=>({...l,[track.id]:!l[track.id]}))} style={{ ...btn, color:liked[track.id]?'#f472b6':'rgba(255,255,255,0.3)', padding:6 }}><Heart size={17} fill={liked[track.id]?'#f472b6':'none'}/></button>
+              {embedTrack?.type==='youtube'
+                ? <button onClick={likeYtTrack} style={{ ...btn, color:liked[`yt_${embedTrack.videoId}`]?'#f472b6':'rgba(255,255,255,0.3)', padding:6 }}><Heart size={17} fill={liked[`yt_${embedTrack.videoId}`]?'#f472b6':'none'}/></button>
+                : <button onClick={()=>setLiked(l=>({...l,[track.id]:!l[track.id]}))} style={{ ...btn, color:liked[track.id]?'#f472b6':'rgba(255,255,255,0.3)', padding:6 }}><Heart size={17} fill={liked[track.id]?'#f472b6':'none'}/></button>
+              }
               <button onClick={()=>setMuted(m=>!m)} style={{ ...btn, color:muted?'#ef4444':'rgba(255,255,255,0.3)', padding:6 }}>{muted?<VolumeX size={17}/>:<Volume2 size={17}/>}</button>
               <input type="range" min="0" max="1" step="0.01" value={muted?0:volume} onChange={e=>{setVolume(+e.target.value);setMuted(false)}} style={{ flex:1, accentColor:embedTrack?.type==='youtube'?'#ff4444':track.color, height:3 }}/>
               {embedTrack?.type==='youtube'
@@ -1750,6 +1837,25 @@ export default function App() {
                 : <button onClick={()=>setShowSettings(true)} style={{ ...btn, color:eqEnabled||sleepTimer?track.color:'rgba(255,255,255,0.3)', padding:6 }}><Settings size={17}/></button>
               }
             </div>
+
+            {/* YouTube playlist picker — shown when YT track is liked */}
+            {embedTrack?.type==='youtube' && liked[`yt_${embedTrack.videoId}`] && (
+              <div style={{ width:'100%', maxWidth:290, marginTop:8, padding:'8px 10px', borderRadius:12, background:'rgba(255,68,68,0.08)', border:'1px solid rgba(255,68,68,0.2)', animation:'fadeUp 0.2s ease' }}>
+                <div style={{ fontSize:10, fontWeight:700, color:'#ff6b6b', marginBottom:6, textTransform:'uppercase', letterSpacing:'0.08em' }}>Tambah ke Playlist</div>
+                <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
+                  {playlists.map(pl => {
+                    const ytId = `yt_${embedTrack.videoId}`;
+                    const inPl = pl.songIds.includes(ytId);
+                    return (
+                      <button key={pl.id} onClick={()=>inPl?removeFromPlaylist(pl.id,ytId):addToPlaylist(pl.id,ytId)}
+                        style={{ padding:'4px 10px', borderRadius:999, border:`1px solid ${inPl?'#ff4444':'rgba(255,255,255,0.15)'}`, background:inPl?'rgba(255,68,68,0.2)':'rgba(255,255,255,0.05)', color:inPl?'#fca5a5':'rgba(255,255,255,0.6)', fontSize:10, fontWeight:700, cursor:'pointer' }}>
+                        {inPl?'✓ ':''}{pl.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* AI Insight — only for normal tracks */}
             {!embedTrack && (
@@ -1845,8 +1951,8 @@ export default function App() {
                             {/* Results */}
                             {results.length > 0 && (
                               <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:5 }}>
-                                {results.map(v => (
-                                  <div key={v.id} onClick={() => playYouTube(v)}
+                                {results.map((v, vi) => (
+                                  <div key={v.id} onClick={() => playYouTube(v, results, vi)}
                                     style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 8px', borderRadius:10, cursor:'pointer', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)' }}>
                                     <img src={v.thumb} style={{ width:48, height:36, borderRadius:6, objectFit:'cover', flexShrink:0 }}/>
                                     <div style={{ flex:1, minWidth:0 }}>
