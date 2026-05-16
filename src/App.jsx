@@ -12,9 +12,64 @@ import {
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════
-//  MUSIC SOURCES — lagu gratis dari berbagai sumber
+//  STREAMING PLATFORMS — search & redirect ke platform
 // ═══════════════════════════════════════════════════════
-const MUSIC_SOURCES = [
+const STREAMING_PLATFORMS = [
+  {
+    id: 'ytmusic',
+    name: 'YouTube Music',
+    icon: '🔴',
+    embedType: 'youtube',   // in-app embed via YouTube iframe
+    description: 'Cari & putar langsung dalam app via YouTube',
+    color: '#FF0000',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Youtube_Music_icon.svg/240px-Youtube_Music_icon.svg.png',
+    searchUrl: (q) => `https://music.youtube.com/search?q=${encodeURIComponent(q)}`,
+    openUrl: 'https://music.youtube.com',
+    hint: 'Cari judul lagu, artis, album…',
+  },
+  {
+    id: 'soundcloud',
+    name: 'SoundCloud',
+    icon: '🟠',
+    embedType: 'soundcloud', // in-app embed via SoundCloud widget
+    description: 'Cari & putar track SoundCloud dalam app',
+    color: '#ff5500',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Antu_soundcloud.svg/240px-Antu_soundcloud.svg.png',
+    searchUrl: (q) => `https://soundcloud.com/search?q=${encodeURIComponent(q)}`,
+    openUrl: 'https://soundcloud.com',
+    hint: 'Cari track, artis, genre…',
+  },
+  {
+    id: 'spotify',
+    name: 'Spotify',
+    icon: '🟢',
+    embedType: 'redirect',   // open in browser (API key needed for embed)
+    description: 'Buka pencarian di Spotify (perlu app/browser)',
+    color: '#1DB954',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Spotify_logo_without_text.svg/168px-Spotify_logo_without_text.svg.png',
+    searchUrl: (q) => `https://open.spotify.com/search/${encodeURIComponent(q)}`,
+    openUrl: 'https://open.spotify.com',
+    hint: 'Cari lagu, artis, album…',
+  },
+  {
+    id: 'applemusic',
+    name: 'Apple Music',
+    icon: '🎵',
+    embedType: 'redirect',   // open in browser
+    description: 'Buka pencarian di Apple Music',
+    color: '#fc3c44',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Apple_Music_icon.svg/240px-Apple_Music_icon.svg.png',
+    searchUrl: (q) => `https://music.apple.com/search?term=${encodeURIComponent(q)}`,
+    openUrl: 'https://music.apple.com',
+    hint: 'Cari lagu, artis, album…',
+  },
+];
+
+// ── Tetap ada MUSIC_SOURCES kosong agar kode lain tidak error
+const MUSIC_SOURCES = [];
+
+// ── Placeholder supaya SONGS tetap ada
+const _PLACEHOLDER_SONGS = [
   {
     id: 'soundhelix',
     name: 'SoundHelix',
@@ -114,13 +169,24 @@ const MUSIC_SOURCES = [
       { id:'km7',  title:'Hitman',                artist:'Kevin MacLeod', album:'Electronic',  cover:'https://images.unsplash.com/photo-1545569341-9eb8b30979d9?w=400&h=400&fit=crop', src:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Hitman.mp3',                color:'#64748b', bg:'rgba(100,116,139,0.15)', mood:'dark, tense, thriller' },
       { id:'km8',  title:'Local Forecast',        artist:'Kevin MacLeod', album:'Jazz',        cover:'https://images.unsplash.com/photo-1501854140801-50d01698950b?w=400&h=400&fit=crop', src:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Local%20Forecast.mp3',     color:'#22c55e', bg:'rgba(34,197,94,0.15)',   mood:'easy, breezy, morning news' },
       { id:'km9',  title:'Pixel Peeker Polka',    artist:'Kevin MacLeod', album:'Folk',        cover:'https://images.unsplash.com/photo-1526478806334-5fd488fcaabc?w=400&h=400&fit=crop', src:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Pixel%20Peeker%20Polka%20-%20slower.mp3', color:'#fbbf24', bg:'rgba(251,191,36,0.15)', mood:'folk, bouncy, fun' },
-      { id:'km10', title:'Fluidscape',            artist:'Kevin MacLeod', album:'Ambient',     cover:'https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?w=400&h=400&fit=crop', src:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Fluidscape.mp3',            color:'#06b6d4', bg:'rgba(6,182,212,0.15)',   mood:'calm, fluid, spa-like' },
     ]
   },
 ];
 
-// Default songs (sumber pertama, SoundHelix 4 pertama)
-const SONGS = MUSIC_SOURCES[0].songs.slice(0, 4);
+// Default placeholder track — ditampilkan sebelum lagu dari Drive/lokal diputar
+const SONGS = [
+  {
+    id: 'placeholder',
+    title: 'Pilih Lagu',
+    artist: 'Cari di platform streaming atau upload dari Drive',
+    album: '',
+    cover: 'https://images.unsplash.com/photo-1464802686167-b939a6910659?w=400&h=400&fit=crop',
+    src: '',
+    color: '#3b82f6',
+    bg: 'rgba(59,130,246,0.15)',
+    mood: '',
+  }
+];
 
 // Helper: semua lagu dari semua sumber yang sudah di-load
 // ═══════════════════════════════════════════════════════
@@ -614,7 +680,7 @@ function SongRow({ s, i, track, playing, liked, setLiked, play, isDrive, onRemov
 // ═══════════════════════════════════════════════════════
 //  SETTINGS PANEL  (EQ, Crossfade, Sleep Timer)
 // ═══════════════════════════════════════════════════════
-function SettingsPanel({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setEqPreset, eqGains, setEqGains, crossfade, setCrossfade, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, dataSaver, toggleDataSaver }) {
+function SettingsPanel({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setEqPreset, eqGains, setEqGains, crossfade, setCrossfade, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, dataSaver, toggleDataSaver, pwaPrompt, pwaInstalled, installPwa }) {
   const coverRef = useRef(null);
   return (
     <div style={{ position:'fixed', inset:0, zIndex:100, background:'rgba(0,0,0,0.75)', ...(isLite ? {} : { backdropFilter:'blur(8px)' }), display:'flex', alignItems:'flex-end', animation:'fadeUp 0.25s ease' }} onClick={e=>e.target===e.currentTarget&&onClose()}>
@@ -726,6 +792,46 @@ function SettingsPanel({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setE
           )}
         </div>
 
+        {/* ── INSTALL APP (PWA) */}
+        <div style={{ marginTop:28 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+            <span style={{ fontSize:16 }}>📲</span>
+            <div>
+              <div style={{ fontWeight:800, fontSize:14 }}>Install Sebagai App</div>
+              <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>Desktop & Mobile — tanpa toko aplikasi</div>
+            </div>
+          </div>
+          {pwaInstalled ? (
+            <div style={{ padding:'10px 14px', borderRadius:12, background:'rgba(99,102,241,0.1)', border:'1px solid rgba(99,102,241,0.25)', display:'flex', alignItems:'center', gap:10 }}>
+              <span style={{ fontSize:20 }}>✅</span>
+              <div>
+                <div style={{ fontSize:13, fontWeight:700, color:'#a5b4fc' }}>Sudah terinstall!</div>
+                <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:2 }}>Buka dari layar utama atau app launcher</div>
+              </div>
+            </div>
+          ) : pwaPrompt ? (
+            <button onClick={installPwa} style={{ width:'100%', padding:'12px 0', borderRadius:14, border:'none', background:'linear-gradient(135deg,#6366f1,#a855f7)', color:'white', fontSize:13, fontWeight:800, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+              <span style={{ fontSize:16 }}>📲</span>Install Sekarang
+            </button>
+          ) : (
+            <div style={{ padding:'10px 14px', borderRadius:12, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)', marginBottom:6 }}>Cara install manual:</div>
+              <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                {[
+                  ['📱 Chrome Android', 'Menu ⋮ → Tambahkan ke Layar Utama'],
+                  ['🍎 Safari iOS', 'Tap 🔗 → Tambahkan ke Layar Utama'],
+                  ['🖥️ Chrome Desktop', 'Klik ikon ⬇️ di address bar'],
+                  ['🖥️ Edge Desktop', 'Klik ikon ... → Apps → Install'],
+                ].map(([platform, step]) => (
+                  <div key={platform} style={{ fontSize:11, color:'rgba(255,255,255,0.4)' }}>
+                    <span style={{ color:'rgba(255,255,255,0.65)' }}>{platform}:</span> {step}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* ── FOTO COVER GLOBAL */}
         <div style={{ marginTop:28 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
@@ -831,27 +937,82 @@ export default function App() {
     const n = !v; localStorage.setItem('sn_datasaver', n ? '1' : '0'); return n;
   });
 
-  // ── Sumber musik yang sudah di-load
-  const [loadedSources, setLoadedSources] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('sn_loaded_sources') || '["soundhelix"]'); } catch { return ['soundhelix']; }
-  });
-  const [loadingSource, setLoadingSource] = useState(null);
+  // ── Built-in songs dihapus; semua musik dicari di platform eksternal
+  const builtinSongs = [];
 
-  const builtinSongs = MUSIC_SOURCES
-    .filter(src => loadedSources.includes(src.id))
-    .flatMap(src => src.songs);
+  // ── Embed player state
+  const [embedTrack, setEmbedTrack]         = useState(null);
+  const [embedMinimized, setEmbedMinimized] = useState(false);
 
-  const loadSource = (srcId) => {
-    if (loadedSources.includes(srcId)) return;
-    setLoadingSource(srcId);
-    // Simulasi loading sebentar (songs sudah ada di memori, tidak perlu fetch)
-    setTimeout(() => {
-      const next = [...loadedSources, srcId];
-      setLoadedSources(next);
-      localStorage.setItem('sn_loaded_sources', JSON.stringify(next));
-      setLoadingSource(null);
-    }, 600);
+  // ── YouTube search state (keyed by platform id)
+  const [ytQuery,   setYtQuery]   = useState({});
+  const [ytResults, setYtResults] = useState({});
+  const [ytLoading, setYtLoading] = useState({});
+  const [ytError,   setYtError]   = useState({});
+
+  // ── SoundCloud widget state
+  const [scQuery,  setScQuery]  = useState({});
+  const [scWidget, setScWidget] = useState({}); // { [platformId]: activeQuery }
+
+  // ── Redirect platforms search
+  const [platformSearch, setPlatformSearch] = useState({});
+
+  // Public Piped API instances (YouTube search, no key needed)
+  const PIPED_INSTANCES = [
+    'https://pipedapi.kavin.rocks',
+    'https://api.piped.projectsegfault.net',
+    'https://piped-api.garudalinux.org',
+    'https://api.piped.yt',
+  ];
+
+  const openPlatformSearch = (platform, query) => {
+    const q = (query || platformSearch[platform.id] || '').trim();
+    if (!q) { window.open(platform.openUrl, '_blank'); return; }
+    window.open(platform.searchUrl(q), '_blank');
   };
+
+  const searchYouTube = async (platformId, query) => {
+    if (!query.trim()) return;
+    setYtLoading(p => ({...p, [platformId]: true}));
+    setYtError(p => ({...p, [platformId]: null}));
+    setYtResults(p => ({...p, [platformId]: []}));
+    let success = false;
+    for (const base of PIPED_INSTANCES) {
+      try {
+        const ctrl = new AbortController();
+        const tid  = setTimeout(() => ctrl.abort(), 6000);
+        const res  = await fetch(`${base}/search?q=${encodeURIComponent(query)}&filter=music_songs`, { signal: ctrl.signal });
+        clearTimeout(tid);
+        if (!res.ok) continue;
+        const data  = await res.json();
+        const items = (data.items || []).filter(i => i.url && i.url.includes('watch')).slice(0, 10);
+        setYtResults(p => ({...p, [platformId]: items}));
+        success = true;
+        break;
+      } catch { /* try next */ }
+    }
+    if (!success) setYtError(p => ({...p, [platformId]: 'Gagal memuat. Periksa koneksi & coba lagi.'}));
+    setYtLoading(p => ({...p, [platformId]: false}));
+  };
+
+  const playYouTube = (item) => {
+    const match   = (item.url || '').match(/[?&]v=([^&]+)/);
+    const videoId = match ? match[1] : item.url?.replace('/watch?v=','');
+    if (!videoId) return;
+    const secs = item.duration || 0;
+    const dur  = secs > 0 ? `${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}` : '';
+    setEmbedTrack({ type:'youtube', videoId, title:item.title, artist:item.uploaderName||'YouTube', thumbnail:item.thumbnail, duration:dur });
+    setEmbedMinimized(false);
+  };
+
+  const playSoundCloud = (platformId, query) => {
+    if (!query.trim()) return;
+    setScWidget(p => ({...p, [platformId]: query}));
+    setEmbedTrack({ type:'soundcloud', query, title:`SoundCloud: "${query}"`, artist:'SoundCloud', thumbnail:null });
+    setEmbedMinimized(false);
+  };
+
+  const closeEmbed = () => setEmbedTrack(null);
 
   // ── Core playback
   const [track, setTrack]       = useState(SONGS[0]);
@@ -965,6 +1126,24 @@ export default function App() {
       const s=document.createElement('script'); s.id='gis-script'; s.src='https://accounts.google.com/gsi/client'; s.async=true; document.head.appendChild(s);
     }
   }, []);
+
+  // ── PWA Install prompt
+  const [pwaPrompt, setPwaPrompt] = useState(null);
+  const [pwaInstalled, setPwaInstalled] = useState(false);
+  useEffect(() => {
+    const handler = e => { e.preventDefault(); setPwaPrompt(e); };
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', () => { setPwaInstalled(true); setPwaPrompt(null); });
+    // Cek apakah sudah diinstall (standalone mode)
+    if (window.matchMedia('(display-mode: standalone)').matches) setPwaInstalled(true);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+  const installPwa = async () => {
+    if (!pwaPrompt) return;
+    pwaPrompt.prompt();
+    const { outcome } = await pwaPrompt.userChoice;
+    if (outcome === 'accepted') { setPwaInstalled(true); setPwaPrompt(null); }
+  };
 
   // ── Auto-restore Drive songs if we have a saved valid token
   useEffect(() => {
@@ -1202,11 +1381,18 @@ export default function App() {
     if (!vibeInput.trim()||vibeLoading) return;
     if (dataSaver) { setVibeInput('🌿 Hemat Data aktif — Vibe Search dinonaktifkan'); return; }
     setVL(true);
-    const songList = builtinSongs.slice(0,8).map((s,i)=>`${i+1}=${s.title}(${s.mood.split(',')[0].trim()})`).join(' ');
-    const r = await askAI(`Vibe: ${vibeInput}`, `Pilih lagu dari list. Balas HANYA satu angka. ${songList}`);
-    const idx = parseInt(r.trim()) - 1;
-    const found = builtinSongs[idx];
-    if (found) { play(found); setVibeInput(`✨ Cocok: ${found.title}`); } setVL(false);
+    // Vibe Search sekarang merekomendasikan platform streaming
+    const customList = customSongs.slice(0,8).map((s,i)=>`${i+1}=${s.title}(${s.artist})`).join(' ');
+    if (customList) {
+      const r = await askAI(`Vibe: ${vibeInput}`, `Pilih lagu dari list. Balas HANYA satu angka. ${customList}`);
+      const idx = parseInt(r.trim()) - 1;
+      const found = customSongs[idx];
+      if (found) { play(found); setVibeInput(`✨ Cocok: ${found.title}`); setVL(false); return; }
+    }
+    // Jika tidak ada lagu lokal, rekomendasikan pencarian ke platform
+    const r = await askAI(`Pengguna ingin musik dengan vibe: "${vibeInput}". Rekomendasikan 1 judul lagu + artis yang cocok. Format: JUDUL - ARTIS`, `Jawab singkat, hanya judul dan artis.`);
+    setVibeInput(`✨ Coba cari: ${r.trim()}`);
+    setVL(false);
   };
 
   // ── Playlists
@@ -1330,6 +1516,18 @@ export default function App() {
             <div style={{ width:5, height:5, borderRadius:'50%', background:hasKey()?'#22c55e':'#ef4444', animation:hasKey()?'pulse 2s infinite':'none' }}/>
             <span style={{ fontSize:9, fontWeight:700, color:hasKey()?'#86efac':'#fca5a5' }}>{hasKey()?'AI':'Offline'}</span>
           </div>
+          {/* PWA Install button */}
+          {!pwaInstalled && pwaPrompt && (
+            <button onClick={installPwa} style={{ display:'flex', alignItems:'center', gap:4, padding:'4px 9px', borderRadius:999, border:'1px solid rgba(99,102,241,0.5)', background:'rgba(99,102,241,0.15)', color:'#a5b4fc', fontSize:9, fontWeight:700, cursor:'pointer', letterSpacing:'0.03em' }}>
+              <span style={{ fontSize:11 }}>📲</span>Install App
+            </button>
+          )}
+          {pwaInstalled && (
+            <div style={{ display:'flex', alignItems:'center', gap:3, padding:'4px 8px', borderRadius:999, background:'rgba(99,102,241,0.1)', border:'1px solid rgba(99,102,241,0.3)' }}>
+              <span style={{ fontSize:10 }}>✅</span>
+              <span style={{ fontSize:9, fontWeight:700, color:'#a5b4fc' }}>Installed</span>
+            </div>
+          )}
           {/* Hemat Data badge */}
           {dataSaver && (
             <div style={{ display:'flex', alignItems:'center', gap:4, padding:'4px 8px', borderRadius:999, background:'rgba(16,185,129,0.12)', border:'1px solid rgba(16,185,129,0.35)' }}>
@@ -1480,57 +1678,145 @@ export default function App() {
             {/* List */}
             <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column', gap:5, paddingBottom:16 }}>
 
-              {/* ── SUMBER MUSIK */}
-              {!searchQuery && (
-                <div style={{ marginBottom:10 }}>
-                  <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.15em', marginBottom:8 }}>
-                    🎵 Sumber Musik
-                  </div>
-                  <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                    {MUSIC_SOURCES.map(src => {
-                      const isLoaded = loadedSources.includes(src.id);
-                      const isLoading = loadingSource === src.id;
-                      return (
-                        <div key={src.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:14, background: isLoaded ? `${src.color}15` : 'rgba(255,255,255,0.03)', border:`1px solid ${isLoaded ? src.color+'40' : 'rgba(255,255,255,0.08)'}`, transition:'all 0.2s' }}>
-                          <div style={{ width:38, height:38, borderRadius:10, background: isLoaded ? `${src.color}25` : 'rgba(255,255,255,0.06)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>
-                            {src.icon}
+              {/* ── STREAMING PLATFORMS */}
+              <div style={{ marginBottom:10 }}>
+                <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.15em', marginBottom:10 }}>
+                  🎵 Platform Streaming
+                </div>
+                <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                  {STREAMING_PLATFORMS.map(platform => {
+                    const isYT = platform.embedType === 'youtube';
+                    const isSC = platform.embedType === 'soundcloud';
+                    const isRedirect = platform.embedType === 'redirect';
+                    const ytQ = ytQuery[platform.id] || '';
+                    const scQ = scQuery[platform.id] || '';
+                    const results = ytResults[platform.id] || [];
+                    const loading = ytLoading[platform.id];
+                    const error   = ytError[platform.id];
+                    const activeWidget = scWidget[platform.id];
+                    return (
+                      <div key={platform.id} style={{ borderRadius:16, background:`${platform.color}0e`, border:`1px solid ${platform.color}30`, overflow:'hidden' }}>
+                        {/* ── Platform header */}
+                        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px 8px' }}>
+                          <div style={{ width:36, height:36, borderRadius:10, background:`${platform.color}20`, display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', flexShrink:0 }}>
+                            <img src={platform.logo} alt={platform.name} style={{ width:22, height:22, objectFit:'contain' }} onError={e=>{e.target.style.display='none';}}/>
                           </div>
                           <div style={{ flex:1, minWidth:0 }}>
-                            <div style={{ fontWeight:700, fontSize:13, color: isLoaded ? 'white' : 'rgba(255,255,255,0.7)' }}>{src.name}</div>
-                            <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{src.description}</div>
-                            {isLoaded && <div style={{ fontSize:10, color:src.color, marginTop:1 }}>{src.songs.length} lagu tersedia</div>}
-                          </div>
-                          {isLoaded ? (
-                            <div style={{ display:'flex', alignItems:'center', gap:4, padding:'4px 8px', borderRadius:999, background:`${src.color}20`, border:`1px solid ${src.color}40` }}>
-                              <CheckCircle size={11} style={{ color:src.color }}/>
-                              <span style={{ fontSize:10, fontWeight:700, color:src.color }}>Loaded</span>
+                            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                              <span style={{ fontWeight:700, fontSize:13, color:'white' }}>{platform.name}</span>
+                              {(isYT||isSC) && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:999, background:`${platform.color}25`, color:platform.color }}>IN-APP ▶</span>}
+                              {isRedirect && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:999, background:'rgba(255,255,255,0.07)', color:'rgba(255,255,255,0.35)' }}>REDIRECT</span>}
                             </div>
-                          ) : (
-                            <button onClick={()=>loadSource(src.id)} disabled={!!loadingSource} style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:999, border:`1px solid ${src.color}60`, background:`${src.color}15`, color:src.color, fontSize:11, fontWeight:700, cursor:loadingSource?'default':'pointer', opacity:loadingSource&&!isLoading?0.5:1, flexShrink:0 }}>
-                              {isLoading ? <Loader2 size={12} style={{ animation:'spin 1s linear infinite' }}/> : <Plus size={12}/>}
-                              {isLoading ? 'Loading…' : 'Muat'}
-                            </button>
-                          )}
+                            <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{platform.description}</div>
+                          </div>
+                          <button onClick={()=>window.open(platform.openUrl,'_blank')} style={{ padding:'4px 8px', borderRadius:999, border:`1px solid ${platform.color}40`, background:'transparent', color:platform.color, fontSize:10, fontWeight:700, cursor:'pointer', flexShrink:0 }}>↗</button>
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
 
-              {/* ── DAFTAR LAGU per sumber */}
-              {MUSIC_SOURCES.filter(src => loadedSources.includes(src.id)).map(src => {
-                const songs = src.songs.filter(s => !q || s.title.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q) || s.album.toLowerCase().includes(q));
-                if (songs.length === 0) return null;
-                return (
-                  <div key={src.id}>
-                    <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.15em', marginBottom:4, marginTop:searchQuery?0:4, display:'flex', alignItems:'center', gap:6 }}>
-                      <span>{src.icon}</span> {src.name} ({songs.length})
-                    </div>
-                    {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} play={play} playlists={playlists} addToPlaylist={addToPlaylist}/>)}
-                  </div>
-                );
-              })}
+                        {/* ── YouTube: search bar + results list */}
+                        {isYT && (
+                          <div style={{ padding:'0 10px 10px' }}>
+                            <div style={{ display:'flex', gap:6 }}>
+                              <div style={{ flex:1, display:'flex', alignItems:'center', gap:6, background:'rgba(0,0,0,0.3)', borderRadius:999, padding:'6px 12px', border:`1px solid ${platform.color}25` }}>
+                                <Search size={11} style={{ color:platform.color, flexShrink:0 }}/>
+                                <input type="text" placeholder={platform.hint} value={ytQ}
+                                  onChange={e => setYtQuery(p=>({...p,[platform.id]:e.target.value}))}
+                                  onKeyDown={e => { if(e.key==='Enter') searchYouTube(platform.id, ytQ); }}
+                                  style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'white', fontSize:12, minWidth:0 }}/>
+                                {ytQ && <button onClick={()=>setYtQuery(p=>({...p,[platform.id]:''}))} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.3)', cursor:'pointer', fontSize:14, lineHeight:1, padding:0 }}>×</button>}
+                              </div>
+                              <button onClick={() => searchYouTube(platform.id, ytQ)} disabled={loading||!ytQ.trim()}
+                                style={{ padding:'6px 12px', borderRadius:999, border:'none', background: ytQ.trim()?platform.color:'rgba(255,255,255,0.1)', color:'white', fontSize:11, fontWeight:700, cursor: ytQ.trim()?'pointer':'default', flexShrink:0, display:'flex', alignItems:'center', gap:4, opacity: loading?0.7:1 }}>
+                                {loading ? <Loader2 size={11} style={{ animation:'spin 1s linear infinite' }}/> : <Search size={11}/>}
+                                {loading ? 'Mencari…' : 'Cari'}
+                              </button>
+                            </div>
+                            {error && <div style={{ marginTop:8, fontSize:11, color:'#fca5a5', padding:'6px 10px', borderRadius:8, background:'rgba(239,68,68,0.1)' }}>{error}</div>}
+                            {results.length > 0 && (
+                              <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:3 }}>
+                                {results.map((item, i) => {
+                                  const match = (item.url||'').match(/[?&]v=([^&]+)/);
+                                  const vid = match ? match[1] : (item.url||'').replace('/watch?v=','');
+                                  const isActive = embedTrack?.type==='youtube' && embedTrack?.videoId===vid;
+                                  const secs = item.duration||0;
+                                  const dur = secs>0 ? `${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}` : '';
+                                  return (
+                                    <button key={i} onClick={() => playYouTube(item)}
+                                      style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 8px', borderRadius:10, background: isActive?`${platform.color}25`:'rgba(255,255,255,0.04)', border:`1px solid ${isActive?platform.color+'50':'transparent'}`, cursor:'pointer', width:'100%', textAlign:'left', transition:'all 0.15s' }}>
+                                      <div style={{ width:48, height:34, borderRadius:6, overflow:'hidden', flexShrink:0, background:'rgba(255,255,255,0.06)', position:'relative' }}>
+                                        {item.thumbnail ? <img src={item.thumbnail} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/> : <Music size={12} style={{ color:'rgba(255,255,255,0.3)', margin:'auto', display:'block', marginTop:10 }}/>}
+                                        {isActive && <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.45)', display:'flex', alignItems:'center', justifyContent:'center' }}><div style={{ width:14, height:14, borderRadius:999, background:'white', display:'flex', alignItems:'center', justifyContent:'center' }}><Play size={7} style={{ color:'#111', marginLeft:1 }}/></div></div>}
+                                      </div>
+                                      <div style={{ flex:1, minWidth:0 }}>
+                                        <div style={{ fontSize:12, fontWeight:600, color: isActive?'white':'rgba(255,255,255,0.85)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{item.title}</div>
+                                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginTop:1 }}>{item.uploaderName}{dur&&` · ${dur}`}</div>
+                                      </div>
+                                      <div style={{ width:28, height:28, borderRadius:999, background: isActive?platform.color:`${platform.color}20`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, transition:'all 0.15s' }}>
+                                        <Play size={10} style={{ color: isActive?'white':platform.color, marginLeft:1 }}/>
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* ── SoundCloud: search bar + embedded widget */}
+                        {isSC && (
+                          <div style={{ padding:'0 10px 10px' }}>
+                            <div style={{ display:'flex', gap:6 }}>
+                              <div style={{ flex:1, display:'flex', alignItems:'center', gap:6, background:'rgba(0,0,0,0.3)', borderRadius:999, padding:'6px 12px', border:`1px solid ${platform.color}25` }}>
+                                <Search size={11} style={{ color:platform.color, flexShrink:0 }}/>
+                                <input type="text" placeholder={platform.hint} value={scQ}
+                                  onChange={e => setScQuery(p=>({...p,[platform.id]:e.target.value}))}
+                                  onKeyDown={e => { if(e.key==='Enter') playSoundCloud(platform.id, scQ); }}
+                                  style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'white', fontSize:12, minWidth:0 }}/>
+                                {scQ && <button onClick={()=>setScQuery(p=>({...p,[platform.id]:''}))} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.3)', cursor:'pointer', fontSize:14, lineHeight:1, padding:0 }}>×</button>}
+                              </div>
+                              <button onClick={() => playSoundCloud(platform.id, scQ)} disabled={!scQ.trim()}
+                                style={{ padding:'6px 12px', borderRadius:999, border:'none', background: scQ.trim()?platform.color:'rgba(255,255,255,0.1)', color:'white', fontSize:11, fontWeight:700, cursor: scQ.trim()?'pointer':'default', flexShrink:0, display:'flex', alignItems:'center', gap:4 }}>
+                                <Play size={11}/> Putar
+                              </button>
+                            </div>
+                            {activeWidget && (
+                              <div style={{ marginTop:8, borderRadius:10, overflow:'hidden', border:`1px solid ${platform.color}30` }}>
+                                <iframe key={activeWidget}
+                                  src={`https://w.soundcloud.com/player/?url=https%3A%2F%2Fsoundcloud.com%2Fsearch%2Fsounds%3Fq%3D${encodeURIComponent(activeWidget)}&color=%23ff5500&auto_play=true&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=false`}
+                                  width="100%" height="166" frameBorder="0" allow="autoplay" scrolling="no"
+                                  style={{ display:'block', background:'#1a1a2e' }}/>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* ── Redirect platforms */}
+                        {isRedirect && (
+                          <div style={{ padding:'0 10px 10px' }}>
+                            <div style={{ display:'flex', gap:6 }}>
+                              <div style={{ flex:1, display:'flex', alignItems:'center', gap:6, background:'rgba(0,0,0,0.3)', borderRadius:999, padding:'6px 12px', border:`1px solid ${platform.color}25` }}>
+                                <Search size={11} style={{ color:platform.color, flexShrink:0 }}/>
+                                <input type="text" placeholder={platform.hint}
+                                  value={platformSearch[platform.id] || ''}
+                                  onChange={e => setPlatformSearch(p=>({...p,[platform.id]:e.target.value}))}
+                                  onKeyDown={e => { if(e.key==='Enter') openPlatformSearch(platform); }}
+                                  style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'white', fontSize:12, minWidth:0 }}/>
+                              </div>
+                              <button onClick={() => openPlatformSearch(platform)}
+                                style={{ padding:'6px 12px', borderRadius:999, border:'none', background:`${platform.color}cc`, color:'white', fontSize:11, fontWeight:700, cursor:'pointer', flexShrink:0, display:'flex', alignItems:'center', gap:4 }}>
+                                Buka ↗
+                              </button>
+                            </div>
+                            <div style={{ marginTop:6, fontSize:10, color:'rgba(255,255,255,0.22)', paddingLeft:2 }}>
+                              ⓘ Dibuka di browser — {platform.name} memerlukan login.
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
 
               {/* Drive songs */}
               {(googleUser||customSongs.length>0)&&(
@@ -1853,8 +2139,56 @@ export default function App() {
         onSave={editingPl ? updatePlaylist : createPlaylist}
         isLite={isLite}
       />}
-      {showSettings&&<SettingsPanel onClose={()=>setShowSettings(false)} color={track.color} eqEnabled={eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset} setEqPreset={setEqPreset} eqGains={eqGains} setEqGains={setEqGains} crossfade={crossfade} setCrossfade={setCrossfade} sleepTimer={sleepTimer} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover} setGlobalCover={setGlobalCover} isLite={isLite} dataSaver={dataSaver} toggleDataSaver={toggleDataSaver}/>}
+      {showSettings&&<SettingsPanel onClose={()=>setShowSettings(false)} color={track.color} eqEnabled={eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset} setEqPreset={setEqPreset} eqGains={eqGains} setEqGains={setEqGains} crossfade={crossfade} setCrossfade={setCrossfade} sleepTimer={sleepTimer} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover} setGlobalCover={setGlobalCover} isLite={isLite} dataSaver={dataSaver} toggleDataSaver={toggleDataSaver} pwaPrompt={pwaPrompt} pwaInstalled={pwaInstalled} installPwa={installPwa}/>}
       {showUpload&&<UploadModal onClose={()=>!uploading&&setShowUpload(false)} onUpload={handleUpload} uploading={uploading} uploadProgress={uploadProgress} color={track.color} isLite={isLite}/>}
+
+      {/* ══ YOUTUBE EMBED FLOATING PANEL ══ */}
+      {embedTrack && embedTrack.type === 'youtube' && (
+        <div style={{
+          position:'fixed', left:0, right:0, bottom:0, zIndex:500,
+          background:'rgba(7,7,26,0.97)', backdropFilter:'blur(20px)',
+          borderTop:'1px solid rgba(255,0,0,0.3)',
+          boxShadow:'0 -8px 32px rgba(0,0,0,0.6)',
+          animation:'fadeUp 0.3s ease',
+        }}>
+          {/* Mini bar (always visible) */}
+          <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderBottom: embedMinimized?'none':'1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ width:36, height:36, borderRadius:8, overflow:'hidden', flexShrink:0, background:'#111' }}>
+              {embedTrack.thumbnail
+                ? <img src={embedTrack.thumbnail} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                : <div style={{ width:'100%', height:'100%', background:'rgba(255,0,0,0.2)', display:'flex', alignItems:'center', justifyContent:'center' }}><Play size={14} style={{ color:'#ff4444' }}/></div>
+              }
+            </div>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontSize:12, fontWeight:700, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{embedTrack.title}</div>
+              <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)', marginTop:1 }}>{embedTrack.artist}{embedTrack.duration&&` · ${embedTrack.duration}`} · YouTube</div>
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <button onClick={()=>setEmbedMinimized(v=>!v)}
+                style={{ width:28, height:28, borderRadius:999, background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.12)', color:'rgba(255,255,255,0.6)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12 }}>
+                {embedMinimized ? '▲' : '▼'}
+              </button>
+              <button onClick={closeEmbed}
+                style={{ width:28, height:28, borderRadius:999, background:'rgba(239,68,68,0.15)', border:'1px solid rgba(239,68,68,0.3)', color:'#fca5a5', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <X size={12}/>
+              </button>
+            </div>
+          </div>
+          {/* YouTube iframe */}
+          {!embedMinimized && (
+            <div style={{ position:'relative', width:'100%', paddingBottom:'56.25%', height:0, background:'#000' }}>
+              <iframe
+                key={embedTrack.videoId}
+                src={`https://www.youtube.com/embed/${embedTrack.videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
+                title={embedTrack.title}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                style={{ position:'absolute', top:0, left:0, width:'100%', height:'100%', border:'none' }}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       <style>{`
         *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
