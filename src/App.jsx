@@ -2935,15 +2935,14 @@ export default function App() {
               </button>
             );
           })}
-          <div style={{ flex:1, position:'relative' }}>
-            {/* ── JAM — position absolute di tengah sidebar, tidak terpengaruh perubahan tinggi */}
-            <div style={{ position:'absolute', top:'50%', left:14, transform:'translateY(-50%)', userSelect:'none' }}>
-              <div style={{ fontSize:'clamp(20px,1.6vw,26px)', fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
-                {nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false })}
-              </div>
-              <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', fontWeight:600, marginTop:4, letterSpacing:'0.04em', textTransform:'uppercase' }}>
-                {nowTime.toLocaleDateString('id-ID',{ weekday:'long', day:'numeric', month:'long' })}
-              </div>
+          <div style={{ flex:1 }}/>
+          {/* ── JAM — fixed di tengah vertikal sidebar, selalu sejajar ring */}
+          <div style={{ position:'fixed', left:0, width:196, top:'50%', transform:'translateY(-50%)', padding:'0 16px', userSelect:'none', pointerEvents:'none', zIndex:5 }}>
+            <div style={{ fontSize:24, fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+              {nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false })}
+            </div>
+            <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', fontWeight:600, marginTop:4, letterSpacing:'0.04em', textTransform:'uppercase' }}>
+              {nowTime.toLocaleDateString('id-ID',{ weekday:'long', day:'numeric', month:'long' })}
             </div>
           </div>
           <button onClick={()=>setShowSettings(true)} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:12, border:'none', cursor:'pointer', background:'transparent', color:'rgba(255,255,255,0.3)', width:'100%', fontSize:13 }}>
@@ -3057,21 +3056,19 @@ export default function App() {
 
             {/* ── Mobile: jam kiri atas + ring tengah | Desktop: ring tengah saja */}
             {!isDesktop ? (
-              <div style={{ position:'relative', width:'100%', height:ringSize, display:'flex', justifyContent:'center', alignItems:'center' }}>
-                {/* Jam — absolute pojok kiri, tidak overlap ring */}
-                <div style={{ position:'absolute', left:4, top:0, userSelect:'none', maxWidth:`calc(50% - ${ringSize/2}px + 10px)` }}>
-                  <div style={{ fontSize:'clamp(16px,4.5vw,22px)', fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+              <div style={{ position:'relative', width:'100%', display:'flex', justifyContent:'center' }}>
+                {/* Jam mobile — pojok kiri, tidak overlap ring */}
+                <div style={{ position:'absolute', left:0, top:8, userSelect:'none' }}>
+                  <div style={{ fontSize:20, fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
                     {nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false })}
                   </div>
-                  <div style={{ fontSize:'clamp(7px,1.8vw,9px)', color:'rgba(255,255,255,0.35)', fontWeight:600, marginTop:3, letterSpacing:'0.04em', textTransform:'uppercase', whiteSpace:'nowrap' }}>
+                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', fontWeight:600, marginTop:3, letterSpacing:'0.04em', textTransform:'uppercase', whiteSpace:'nowrap' }}>
                     {nowTime.toLocaleDateString('id-ID',{ weekday:'short', day:'numeric', month:'short' })}
                   </div>
                 </div>
-                {/* Ring — tetap di tengah */}
                 <OrbitalRing size={ringSize} pct={embedTrack?.type==='youtube'?(ytDuration>0?ytProgress/ytDuration:0):pct} color={embedTrack?.type==='youtube'?'#ff4444':track.color} progress={embedTrack?.type==='youtube'?ytProgress:progress} duration={embedTrack?.type==='youtube'?ytDuration:duration} isPlaying={playing} cover={embedTrack?.type==='youtube'?(embedTrack.thumbnail||getCover(track)):getCover(track)} title={embedTrack?.type==='youtube'?embedTrack.title:track.title} onSeek={embedTrack?.type==='youtube'?seekYt:seekByPct} isLite={isLite}/>
               </div>
             ) : (
-              /* Desktop: ring saja di tengah (jam sudah di sidebar) */
               <OrbitalRing size={ringSize} pct={embedTrack?.type==='youtube'?(ytDuration>0?ytProgress/ytDuration:0):pct} color={embedTrack?.type==='youtube'?'#ff4444':track.color} progress={embedTrack?.type==='youtube'?ytProgress:progress} duration={embedTrack?.type==='youtube'?ytDuration:duration} isPlaying={playing} cover={embedTrack?.type==='youtube'?(embedTrack.thumbnail||getCover(track)):getCover(track)} title={embedTrack?.type==='youtube'?embedTrack.title:track.title} onSeek={embedTrack?.type==='youtube'?seekYt:seekByPct} isLite={isLite}/>
             )}
 
