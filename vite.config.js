@@ -56,9 +56,11 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       output: {
+        // lucide-react depends on React internals, so it must live in the
+        // same chunk as react/react-dom to avoid a Temporal Dead Zone (TDZ)
+        // "Cannot access 'X' before initialization" crash at runtime.
         manualChunks: {
-          vendor: ['react', 'react-dom'],
-          icons: ['lucide-react']
+          vendor: ['react', 'react-dom', 'lucide-react']
         }
       }
     }
