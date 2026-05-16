@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="lg1" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#60a5fa"/>
+      <stop offset="100%" stop-color="#c084fc"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <!-- Dark background circle -->
+  <circle cx="256" cy="256" r="248" fill="#07071e"/>
+  <!-- Outer border gradient -->
+  <circle cx="256" cy="256" r="248" stroke="url(#lg1)" stroke-width="8" fill="none" opacity="0.5"/>
+  <!-- Orbit ring dashed -->
+  <circle cx="256" cy="256" r="168" stroke="url(#lg1)" stroke-width="28" fill="none"
+    stroke-dasharray="736 320" stroke-linecap="round"
+    transform="rotate(-60 256 256)"/>
+  <!-- Glowing dot on orbit -->
+  <circle cx="374.4" cy="150.4" r="35.2" fill="white" filter="url(#glow)"/>
+  <!-- 4-pointed star / spark in center -->
+  <path d="M256 152 L273.6 238.4 L360 256 L273.6 273.6 L256 360 L238.4 273.6 L152 256 L238.4 238.4 Z"
+    fill="white" opacity="0.95" filter="url(#glow)"/>
+  <!-- Tiny accent stars -->
+  <circle cx="120" cy="136" r="14.4" fill="white" opacity="0.55"/>
+  <circle cx="392" cy="384" r="11.2" fill="white" opacity="0.45"/>
+  <circle cx="144" cy="376" r="9.6" fill="#60a5fa" opacity="0.7"/>
+</svg>
