@@ -3015,15 +3015,21 @@ export default function App() {
           {/* ── SETTINGS PANEL — inline dalam player */}
           {showSettings&&<SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} eqEnabled={!!eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset||"Normal"} setEqPreset={setEqPreset} eqGains={Array.isArray(eqGains)&&eqGains.length===5?eqGains:[0,0,0,0,0]} setEqGains={setEqGains} crossfade={typeof crossfade==="number"?crossfade:0} setCrossfade={setCrossfade} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns}/>}
 
-          <div style={{ minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', padding:'clamp(14px,3vh,28px) 20px clamp(12px,2vh,20px)', position:'relative' }}>
+          <div style={{ minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', padding:'clamp(10px,2.5vh,20px) 20px clamp(10px,2vh,18px)' }}>
 
-            {/* ── JAM — pojok kiri atas dalam player, di bawah logo */}
-            <div style={{ position:'absolute', top:0, left:0, pointerEvents:'none', userSelect:'none', lineHeight:1 }}>
-              <div style={{ fontSize:'clamp(22px,6vw,32px)', fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', background:`linear-gradient(135deg,white 60%,${track.color})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', lineHeight:1 }}>
-                {nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false })}
+            {/* ── JAM — baris penuh di atas ring, rata kiri, terintegrasi dalam flow */}
+            <div style={{ width:'100%', maxWidth:320, display:'flex', alignItems:'flex-end', justifyContent:'space-between', marginBottom:'clamp(8px,1.5vh,14px)', userSelect:'none' }}>
+              <div>
+                <div style={{ fontSize:'clamp(26px,7vw,36px)', fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 55%,${track.color})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+                  {nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false })}
+                </div>
+                <div style={{ fontSize:'clamp(10px,2.5vw,12px)', color:'rgba(255,255,255,0.38)', fontWeight:600, marginTop:3, letterSpacing:'0.05em', textTransform:'uppercase' }}>
+                  {nowTime.toLocaleDateString('id-ID',{ weekday:'long', day:'numeric', month:'long' })}
+                </div>
               </div>
-              <div style={{ fontSize:'clamp(9px,2.2vw,11px)', color:'rgba(255,255,255,0.35)', fontWeight:600, marginTop:3, letterSpacing:'0.04em', textTransform:'uppercase' }}>
-                {nowTime.toLocaleDateString('id-ID',{ weekday:'short', day:'numeric', month:'short' })}
+              {/* Badge mode di sebelah kanan jam */}
+              <div style={{ fontSize:9, fontWeight:800, padding:'3px 8px', borderRadius:999, background: isLite ? 'rgba(16,185,129,0.15)' : `${track.color}18`, border:`1px solid ${isLite ? 'rgba(16,185,129,0.35)' : track.color+'35'}`, color: isLite ? '#6ee7b7' : track.color, letterSpacing:'0.06em', textTransform:'uppercase', flexShrink:0, marginLeft:8 }}>
+                {isLite ? '⚡ Lite' : '✨ Pro'}
               </div>
             </div>
 
@@ -3045,7 +3051,7 @@ export default function App() {
             <OrbitalRing size={ringSize} pct={embedTrack?.type==='youtube'?(ytDuration>0?ytProgress/ytDuration:0):pct} color={embedTrack?.type==='youtube'?'#ff4444':track.color} progress={embedTrack?.type==='youtube'?ytProgress:progress} duration={embedTrack?.type==='youtube'?ytDuration:duration} isPlaying={playing} cover={embedTrack?.type==='youtube'?(embedTrack.thumbnail||getCover(track)):getCover(track)} title={embedTrack?.type==='youtube'?embedTrack.title:track.title} onSeek={embedTrack?.type==='youtube'?seekYt:seekByPct} isLite={isLite}/>
 
             {/* Track info */}
-            <div style={{ textAlign:'center', marginTop:'clamp(8px,1.8vh,16px)', width:'100%', maxWidth:320, padding:'0 8px' }}>
+            <div style={{ textAlign:'center', marginTop:'clamp(6px,1.4vh,12px)', width:'100%', maxWidth:320, padding:'0 4px' }}>
               {embedTrack?.type==='youtube' ? (
                 <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:999, marginBottom:4, background:'rgba(255,0,0,0.12)', border:'1px solid rgba(255,0,0,0.25)' }}>
                   <span style={{ fontSize:9, fontWeight:800, color:'#ff6b6b', textTransform:'uppercase', letterSpacing:'0.1em' }}>▶ YouTube</span>
@@ -3060,7 +3066,7 @@ export default function App() {
             </div>
 
             {/* Main controls: Shuffle | Prev | Play | Next | Repeat */}
-            <div style={{ display:'flex', alignItems:'center', gap:'clamp(6px,2.5vw,14px)', marginTop:'clamp(12px,2vh,18px)' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:'clamp(6px,2.5vw,14px)', marginTop:'clamp(10px,1.8vh,16px)' }}>
               <button onClick={()=>{ if(embedTrack?.type==='youtube'){ setShuffle(s=>{ const next=!s; if(next){ setRepeat('off'); ytShuffle(); } return next; }); } else { setShuffle(s=>{ const next=!s; if(next) setRepeat("off"); return next; }); } }} style={{ ...btn, color:shuffle?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', position:'relative', padding:'clamp(5px,1.2vw,8px)' }}>
                 <Shuffle size={18}/>
                 {shuffle&&<div style={{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:embedTrack?.type==='youtube'?'#ff4444':track.color }}/>}
@@ -3077,14 +3083,14 @@ export default function App() {
             </div>
 
             {/* ── Volume row */}
-            <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:'clamp(8px,1.5vh,14px)', width:'100%', maxWidth:320, padding:'8px 14px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:'clamp(6px,1.2vh,10px)', width:'100%', maxWidth:320, padding:'7px 14px', borderRadius:12, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)' }}>
               <button onClick={()=>setMuted(m=>!m)} style={{ ...btn, color:muted?'#ef4444':'rgba(255,255,255,0.38)', padding:4, flexShrink:0 }}>{muted?<VolumeX size={16}/>:<Volume2 size={16}/>}</button>
               <input type="range" min="0" max="1" step="0.01" value={muted?0:volume} onChange={e=>{setVolume(+e.target.value);setMuted(false)}} style={{ flex:1, accentColor:embedTrack?.type==='youtube'?'#ff4444':track.color, height:3, cursor:'pointer' }}/>
               <span style={{ fontSize:10, color:'rgba(255,255,255,0.28)', fontWeight:700, minWidth:28, textAlign:'right', fontFamily:'monospace', flexShrink:0 }}>{muted?'0':Math.round(volume*100)}%</span>
             </div>
 
             {/* ── Action buttons row */}
-            <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:8, width:'100%', maxWidth:320 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:6, width:'100%', maxWidth:320 }}>
               {/* Like */}
               {embedTrack?.type==='youtube'
                 ? <button onClick={likeYtTrack} title="Suka" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:liked[`yt_${embedTrack.videoId}`]?'rgba(244,114,182,0.12)':'rgba(255,255,255,0.05)', border:`1px solid ${liked[`yt_${embedTrack.videoId}`]?'rgba(244,114,182,0.3)':'rgba(255,255,255,0.08)'}`, color:liked[`yt_${embedTrack.videoId}`]?'#f472b6':'rgba(255,255,255,0.35)' }}><Heart size={16} fill={liked[`yt_${embedTrack.videoId}`]?'#f472b6':'none'}/></button>
