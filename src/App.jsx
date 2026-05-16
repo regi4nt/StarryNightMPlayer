@@ -1863,7 +1863,21 @@ export default function App() {
   // ── AI
   const [insight, setInsight]   = useState('');
   const [insightLoading, setIL] = useState(false);
-  const [messages, setMessages] = useState([{ from:'ai', text:'Halo! Saya Starry AI 🌟 Tanya apa saja tentang musik yang sedang diputar!' }]);
+  const [messages, setMessages] = useState(() => {
+    const greetings = [
+      'Halo! 👋 Lagi ngapain nih? Mau ngobrol santai atau cari lagu yang pas buat suasana sekarang?',
+      'Hai~ aku Starry ✨ Bisa cerita apa aja ke aku — soal musik, hari ini, atau sekadar pengen ngobrol 😊',
+      'Selamat datang! 🌙 Lagi seneng, galau, atau cuma pengen teman menemani? Aku di sini kok',
+      'Heyy! Mau request lagu, curhat, atau tanya apa pun — aku siap dengerin 🎶',
+      'Halo! Ada yang bisa aku bantu? Mau ngobrolin musik, nyari lagu sesuai mood, atau sekadar ngobrol juga bisa 🌟',
+      'Hai! Aku Starry — teman dengerin musik sekaligus teman ngobrol kamu 💫 Mau mulai dari mana?',
+      'Heyy, lagi mood apa nih? Aku bisa cariin lagu yang pas, atau kita ngobrol dulu juga gapapa 😄',
+      'Selamat malam~ ✨ (atau pagi, atau siang!) Mau cerita apa hari ini?',
+      'Halo! Bosen? Seneng? Galau? Apapun itu, aku siap temenin 🎵',
+      'Hai! Jangan sungkan ya — mau nanya soal lagu, minta rekomendasi, atau pengen ngobrol santai aja, semua boleh 🌠',
+    ];
+    return [{ from:'ai', text: greetings[Math.floor(Math.random() * greetings.length)] }];
+  });
   const [input, setInput]       = useState('');
   const [chatLoading, setCL]    = useState(false);
   const [vibeInput, setVibeInput] = useState('');
@@ -2594,7 +2608,7 @@ export default function App() {
     const msg=input; setInput(''); setMessages(p=>[...p,{from:'user',text:msg}]); setCL(true);
     const r = await askAI(
       msg,
-      `Kamu Starry AI, asisten musik yang ramah dan berpengetahuan luas. Jawab dalam Bahasa Indonesia, singkat (maks 80 kata), dan relevan. Konteks: pengguna sedang mendengarkan "${embedTrack ? (embedTrack.title || track.title) : track.title}" oleh ${embedTrack ? (embedTrack.artist || track.artist) : track.artist}${track.mood ? ' (mood: ' + track.mood + ')' : ''}${embedTrack ? ' via streaming' : ''}. Jika ditanya sesuatu di luar musik, tetap bantu tapi arahkan ke konteks musik.`
+      `Kamu Starry AI — teman ngobrol yang hangat, seru, dan serba bisa. Kepribadianmu: santai, friendly, sedikit playful, tapi tetap bisa serius kalau diperlukan. Bahasa Indonesia kasual/gaul, bukan formal. Jawab singkat dan natural (maks 100 kata), jangan kaku seperti chatbot. Kamu bisa ngobrol soal apa saja: musik, cerita harian, perasaan, rekomendasi film/buku/tempat, trivia, jokes, motivasi, atau sekadar temani. Konteks saat ini: pengguna lagi dengerin "${embedTrack ? (embedTrack.title || track.title) : track.title}" oleh ${embedTrack ? (embedTrack.artist || track.artist) : track.artist}${track.mood ? ' (mood: ' + track.mood + ')' : ''} — bisa jadi bahan obrolan tapi jangan dipaksakan kalau topiknya beda.`
     );
     setMessages(p=>[...p,{from:'ai',text:r}]);
     setCL(false);
@@ -3015,21 +3029,15 @@ export default function App() {
           {/* ── SETTINGS PANEL — inline dalam player */}
           {showSettings&&<SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} eqEnabled={!!eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset||"Normal"} setEqPreset={setEqPreset} eqGains={Array.isArray(eqGains)&&eqGains.length===5?eqGains:[0,0,0,0,0]} setEqGains={setEqGains} crossfade={typeof crossfade==="number"?crossfade:0} setCrossfade={setCrossfade} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns}/>}
 
-          <div style={{ minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', padding:'clamp(10px,2.5vh,20px) 20px clamp(10px,2vh,18px)' }}>
+          <div style={{ minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', padding:'clamp(10px,2.5vh,20px) 16px clamp(10px,2vh,18px)' }}>
 
-            {/* ── JAM — baris penuh di atas ring, rata kiri, terintegrasi dalam flow */}
-            <div style={{ width:'100%', maxWidth:320, display:'flex', alignItems:'flex-end', justifyContent:'space-between', marginBottom:'clamp(8px,1.5vh,14px)', userSelect:'none' }}>
-              <div>
-                <div style={{ fontSize:'clamp(26px,7vw,36px)', fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 55%,${track.color})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
-                  {nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false })}
-                </div>
-                <div style={{ fontSize:'clamp(10px,2.5vw,12px)', color:'rgba(255,255,255,0.38)', fontWeight:600, marginTop:3, letterSpacing:'0.05em', textTransform:'uppercase' }}>
-                  {nowTime.toLocaleDateString('id-ID',{ weekday:'long', day:'numeric', month:'long' })}
-                </div>
+            {/* ── JAM — rata kiri, tanpa card, tanpa badge mode */}
+            <div style={{ width:'100%', maxWidth:340, marginBottom:'clamp(8px,1.5vh,14px)', paddingLeft:2, userSelect:'none', flexShrink:0 }}>
+              <div style={{ fontSize:'clamp(20px,5.5vw,28px)', fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+                {nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false })}
               </div>
-              {/* Badge mode di sebelah kanan jam */}
-              <div style={{ fontSize:9, fontWeight:800, padding:'3px 8px', borderRadius:999, background: isLite ? 'rgba(16,185,129,0.15)' : `${track.color}18`, border:`1px solid ${isLite ? 'rgba(16,185,129,0.35)' : track.color+'35'}`, color: isLite ? '#6ee7b7' : track.color, letterSpacing:'0.06em', textTransform:'uppercase', flexShrink:0, marginLeft:8 }}>
-                {isLite ? '⚡ Lite' : '✨ Pro'}
+              <div style={{ fontSize:'clamp(9px,2.2vw,11px)', color:'rgba(255,255,255,0.35)', fontWeight:600, marginTop:3, letterSpacing:'0.04em', textTransform:'uppercase' }}>
+                {nowTime.toLocaleDateString('id-ID',{ weekday:'long', day:'numeric', month:'long' })}
               </div>
             </div>
 
@@ -3051,7 +3059,7 @@ export default function App() {
             <OrbitalRing size={ringSize} pct={embedTrack?.type==='youtube'?(ytDuration>0?ytProgress/ytDuration:0):pct} color={embedTrack?.type==='youtube'?'#ff4444':track.color} progress={embedTrack?.type==='youtube'?ytProgress:progress} duration={embedTrack?.type==='youtube'?ytDuration:duration} isPlaying={playing} cover={embedTrack?.type==='youtube'?(embedTrack.thumbnail||getCover(track)):getCover(track)} title={embedTrack?.type==='youtube'?embedTrack.title:track.title} onSeek={embedTrack?.type==='youtube'?seekYt:seekByPct} isLite={isLite}/>
 
             {/* Track info */}
-            <div style={{ textAlign:'center', marginTop:'clamp(6px,1.4vh,12px)', width:'100%', maxWidth:320, padding:'0 4px' }}>
+            <div style={{ textAlign:'center', marginTop:'clamp(8px,1.6vh,14px)', width:'100%', maxWidth:340, padding:'0 6px' }}>
               {embedTrack?.type==='youtube' ? (
                 <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:999, marginBottom:4, background:'rgba(255,0,0,0.12)', border:'1px solid rgba(255,0,0,0.25)' }}>
                   <span style={{ fontSize:9, fontWeight:800, color:'#ff6b6b', textTransform:'uppercase', letterSpacing:'0.1em' }}>▶ YouTube</span>
@@ -3066,7 +3074,7 @@ export default function App() {
             </div>
 
             {/* Main controls: Shuffle | Prev | Play | Next | Repeat */}
-            <div style={{ display:'flex', alignItems:'center', gap:'clamp(6px,2.5vw,14px)', marginTop:'clamp(10px,1.8vh,16px)' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:'clamp(6px,2.5vw,14px)', marginTop:'clamp(12px,2vh,18px)' }}>
               <button onClick={()=>{ if(embedTrack?.type==='youtube'){ setShuffle(s=>{ const next=!s; if(next){ setRepeat('off'); ytShuffle(); } return next; }); } else { setShuffle(s=>{ const next=!s; if(next) setRepeat("off"); return next; }); } }} style={{ ...btn, color:shuffle?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', position:'relative', padding:'clamp(5px,1.2vw,8px)' }}>
                 <Shuffle size={18}/>
                 {shuffle&&<div style={{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:embedTrack?.type==='youtube'?'#ff4444':track.color }}/>}
@@ -3083,34 +3091,34 @@ export default function App() {
             </div>
 
             {/* ── Volume row */}
-            <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:'clamp(6px,1.2vh,10px)', width:'100%', maxWidth:320, padding:'7px 14px', borderRadius:12, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:'clamp(8px,1.4vh,12px)', width:'100%', maxWidth:340, padding:'4px 2px' }}>
               <button onClick={()=>setMuted(m=>!m)} style={{ ...btn, color:muted?'#ef4444':'rgba(255,255,255,0.38)', padding:4, flexShrink:0 }}>{muted?<VolumeX size={16}/>:<Volume2 size={16}/>}</button>
               <input type="range" min="0" max="1" step="0.01" value={muted?0:volume} onChange={e=>{setVolume(+e.target.value);setMuted(false)}} style={{ flex:1, accentColor:embedTrack?.type==='youtube'?'#ff4444':track.color, height:3, cursor:'pointer' }}/>
               <span style={{ fontSize:10, color:'rgba(255,255,255,0.28)', fontWeight:700, minWidth:28, textAlign:'right', fontFamily:'monospace', flexShrink:0 }}>{muted?'0':Math.round(volume*100)}%</span>
             </div>
 
             {/* ── Action buttons row */}
-            <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:6, width:'100%', maxWidth:320 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:8, width:'100%', maxWidth:340 }}>
               {/* Like */}
               {embedTrack?.type==='youtube'
-                ? <button onClick={likeYtTrack} title="Suka" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:liked[`yt_${embedTrack.videoId}`]?'rgba(244,114,182,0.12)':'rgba(255,255,255,0.05)', border:`1px solid ${liked[`yt_${embedTrack.videoId}`]?'rgba(244,114,182,0.3)':'rgba(255,255,255,0.08)'}`, color:liked[`yt_${embedTrack.videoId}`]?'#f472b6':'rgba(255,255,255,0.35)' }}><Heart size={16} fill={liked[`yt_${embedTrack.videoId}`]?'#f472b6':'none'}/></button>
-                : <button onClick={()=>setLiked(l=>({...l,[track.id]:!l[track.id]}))} title="Suka" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:liked[track.id]?'rgba(244,114,182,0.12)':'rgba(255,255,255,0.05)', border:`1px solid ${liked[track.id]?'rgba(244,114,182,0.3)':'rgba(255,255,255,0.08)'}`, color:liked[track.id]?'#f472b6':'rgba(255,255,255,0.35)' }}><Heart size={16} fill={liked[track.id]?'#f472b6':'none'}/></button>
+                ? <button onClick={likeYtTrack} title="Suka" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:'none', border:'none', color:liked[`yt_${embedTrack.videoId}`]?'#f472b6':'rgba(255,255,255,0.35)' }}><Heart size={16} fill={liked[`yt_${embedTrack.videoId}`]?'#f472b6':'none'}/></button>
+                : <button onClick={()=>setLiked(l=>({...l,[track.id]:!l[track.id]}))} title="Suka" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:'none', border:'none', color:liked[track.id]?'#f472b6':'rgba(255,255,255,0.35)' }}><Heart size={16} fill={liked[track.id]?'#f472b6':'none'}/></button>
               }
               {/* Queue */}
-              <button onClick={()=>setShowQueue(q=>!q)} title="Antrean" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:showQueue?(embedTrack?.type==='youtube'?'rgba(255,68,68,0.12)':`${track.color}18`):'rgba(255,255,255,0.05)', border:`1px solid ${showQueue?(embedTrack?.type==='youtube'?'rgba(255,68,68,0.3)':track.color+'40'):'rgba(255,255,255,0.08)'}`, color:showQueue?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):'rgba(255,255,255,0.35)' }}>
+              <button onClick={()=>setShowQueue(q=>!q)} title="Antrean" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:'none', border:'none', color:showQueue?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):'rgba(255,255,255,0.35)' }}>
                 <ListMusic size={16}/>
               </button>
               {/* Settings */}
-              <button onClick={()=>setShowSettings(true)} title="Pengaturan" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:(eqEnabled||sleepTimer)?(embedTrack?.type==='youtube'?'rgba(255,68,68,0.12)':`${track.color}18`):'rgba(255,255,255,0.05)', border:`1px solid ${(eqEnabled||sleepTimer)?(embedTrack?.type==='youtube'?'rgba(255,68,68,0.3)':track.color+'40'):'rgba(255,255,255,0.08)'}`, color:(eqEnabled||sleepTimer)?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):'rgba(255,255,255,0.35)' }}><Settings size={16}/></button>
+              <button onClick={()=>setShowSettings(true)} title="Pengaturan" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:'none', border:'none', color:(eqEnabled||sleepTimer)?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):'rgba(255,255,255,0.35)' }}><Settings size={16}/></button>
               {/* Fullscreen */}
-              <button onClick={()=>setFullscreen(f=>!f)} title={fullscreen?'Keluar Layar Penuh':'Layar Penuh'} style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:fullscreen?(embedTrack?.type==='youtube'?'rgba(255,68,68,0.12)':`${track.color}18`):'rgba(255,255,255,0.05)', border:`1px solid ${fullscreen?(embedTrack?.type==='youtube'?'rgba(255,68,68,0.3)':track.color+'40'):'rgba(255,255,255,0.08)'}`, color:fullscreen?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):'rgba(255,255,255,0.35)' }}>
+              <button onClick={()=>setFullscreen(f=>!f)} title={fullscreen?'Keluar Layar Penuh':'Layar Penuh'} style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:'none', border:'none', color:fullscreen?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):'rgba(255,255,255,0.35)' }}>
                 {fullscreen?<Minimize2 size={16}/>:<Maximize2 size={16}/>}
               </button>
             </div>
 
             {/* YouTube playlist picker — shown when YT track is liked */}
             {embedTrack?.type==='youtube' && liked[`yt_${embedTrack.videoId}`] && (
-              <div style={{ width:'100%', maxWidth:320, marginTop:10, padding:'10px 14px', borderRadius:14, background:'rgba(255,68,68,0.07)', border:'1px solid rgba(255,68,68,0.18)' }}>
+              <div style={{ width:'100%', maxWidth:340, marginTop:10, padding:'10px 14px', borderRadius:14, background:'rgba(255,68,68,0.07)', border:'1px solid rgba(255,68,68,0.18)' }}>
                 <div style={{ fontSize:10, fontWeight:700, color:'#ff6b6b', marginBottom:6, textTransform:'uppercase', letterSpacing:'0.08em' }}>Tambah ke Playlist</div>
                 <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
                   {playlists.map(pl => {
@@ -3129,7 +3137,7 @@ export default function App() {
 
             {/* ── AI Insight — only for normal tracks */}
             {!embedTrack && (
-              <div style={{ width:'100%', maxWidth:320, marginTop:'clamp(10px,1.8vh,16px)', paddingBottom:'clamp(16px,2.5vh,24px)' }}>
+              <div style={{ width:'100%', maxWidth:340, marginTop:'clamp(10px,1.8vh,16px)', paddingBottom:'clamp(16px,2.5vh,24px)' }}>
                 {!insight?(
                   <button onClick={getInsight} disabled={insightLoading} style={{ width:'100%', padding:'8px 0', borderRadius:12, border:'none', background:track.bg, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, opacity:insightLoading?0.6:1 }}>
                     {insightLoading?<><Zap size={12} style={{ animation:'spin 0.8s linear infinite' }}/>Meramal...</>:<><Sparkles size={12}/>Wawasan Kosmik ✨</>}
