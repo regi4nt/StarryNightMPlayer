@@ -478,7 +478,7 @@ const hasKey = () => PROVIDERS.length > 0;
 const _driveCache = { token: null, songs: null, ts: 0 };
 const DRIVE_CACHE_TTL = 5 * 60 * 1000; // 5 menit
 
-// Cari atau buat folder "Starry Night Music" di Drive
+// Cari folder "Starry Night Music" (hanya untuk upload — TIDAK membuat otomatis)
 async function driveGetFolderId(token) {
   const q = encodeURIComponent(`mimeType='application/vnd.google-apps.folder' and name='${DRIVE_FOLDER}' and trashed=false`);
   const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&pageSize=1`, {
@@ -486,8 +486,13 @@ async function driveGetFolderId(token) {
   });
   if (!res.ok) throw new Error(`Folder search error ${res.status}`);
   const data = await res.json();
-  if (data.files && data.files.length > 0) return data.files[0].id;
-  // Folder belum ada — buat baru
+  return (data.files && data.files.length > 0) ? data.files[0].id : null;
+}
+
+// Buat folder "Starry Night Music" jika belum ada (dipanggil saat upload saja)
+async function driveEnsureFolder(token) {
+  const existing = await driveGetFolderId(token);
+  if (existing) return existing;
   const create = await fetch('https://www.googleapis.com/drive/v3/files', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -498,67 +503,108 @@ async function driveGetFolderId(token) {
   return folder.id;
 }
 
-// Ambil semua file audio di folder "Starry Night Music" dengan pagination + cache
+// Ekstensi audio yang valid (untuk filter octet-stream / MIME tidak dikenal)
+const AUDIO_EXTS = ['.mp3','.m4a','.aac','.ogg','.oga','.wav','.flac','.opus','.wma','.aiff','.aif','.webm','.3gp','.3gpp'];
+function isAudioExt(name) {
+  const lower = (name||'').toLowerCase();
+  return AUDIO_EXTS.some(e => lower.endsWith(e));
+}
+
+// MIME type tambahan yang Google Drive kadang assign ke file audio
+const AUDIO_MIME_EXTRAS = new Set([
+  'application/octet-stream',
+  'application/mpeg',
+  'application/mp3',
+  'application/x-mp3',
+  'application/x-mpeg',
+  'application/ogg',
+  'application/x-ogg',
+  'video/mp4',      // M4A sering mis-MIME sebagai video/mp4
+  'video/webm',     // opus/webm audio mis-MIME
+]);
+
+// Ambil SEMUA file audio dari seluruh Google Drive (bukan hanya satu folder)
+// Query diperluas: audio/* + MIME alternatif + octet-stream dengan ekstensi audio
 async function driveListSongs(token, forceRefresh = false) {
   const now = Date.now();
-  // Invalidate cache if token changed or TTL expired
   if (!forceRefresh && _driveCache.token === token && _driveCache.songs
       && (now - _driveCache.ts) < DRIVE_CACHE_TTL) {
     return _driveCache.songs;
   }
-  // If token changed, force refresh regardless
-  if (_driveCache.token && _driveCache.token !== token) {
-    forceRefresh = true;
-  }
-  // Cari folder dulu
-  let folderId;
-  try { folderId = await driveGetFolderId(token); }
-  catch(e) { throw new Error('Gagal cari folder: ' + e.message); }
+  if (_driveCache.token && _driveCache.token !== token) forceRefresh = true;
 
   const fields = 'nextPageToken,files(id,name,mimeType,appProperties,size)';
-  const makeUrl = (pt) => {
-    const q = encodeURIComponent(`'${folderId}' in parents and mimeType contains 'audio/' and trashed=false`);
-    return `https://www.googleapis.com/drive/v3/files?q=${q}&fields=${fields}&pageSize=1000&orderBy=name${pt?'&pageToken='+pt:''}`;
-  };
+
+  // Query luas: audio/* + video/mp4 (M4A mis-MIME) + video/webm (opus mis-MIME)
+  // + application/octet-stream (upload manual tanpa deteksi MIME)
+  // + application/mpeg dan varian (upload dari browser tertentu)
+  // Tidak dibatasi ke folder — cari seluruh Drive agar file lama juga muncul
+  const RAW_Q =
+    "trashed=false and (" +
+      "mimeType contains 'audio/' or " +
+      "mimeType = 'video/mp4' or " +
+      "mimeType = 'video/webm' or " +
+      "mimeType = 'application/octet-stream' or " +
+      "mimeType = 'application/mpeg' or " +
+      "mimeType = 'application/ogg'" +
+    ")";
+
+  const makeUrl = (pt) =>
+    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(RAW_Q)}` +
+    `&fields=${fields}&pageSize=1000&orderBy=name${pt ? '&pageToken=' + pt : ''}`;
+
   const headers = { Authorization: `Bearer ${token}` };
-  const first = await fetch(makeUrl(''), { headers });
-  if (!first.ok) throw new Error(`Drive list error ${first.status}`);
-  const firstData = await first.json();
+
+  let resp;
+  try { resp = await fetch(makeUrl(''), { headers }); }
+  catch(e) { throw new Error('Koneksi gagal: ' + e.message); }
+  if (resp.status === 401 || resp.status === 403) throw new Error(`${resp.status} token expired`);
+  if (!resp.ok) throw new Error(`Drive list error ${resp.status}`);
+
+  const firstData = await resp.json();
   let allFiles = [...(firstData.files || [])];
-  if (firstData.nextPageToken) {
-    let tokens = [firstData.nextPageToken];
-    while (tokens.length) {
-      const pages = await Promise.all(
-        tokens.map(pt => fetch(makeUrl(pt), { headers }).then(r => r.json()))
-      );
-      tokens = [];
-      pages.forEach(p => {
-        allFiles = allFiles.concat(p.files || []);
-        if (p.nextPageToken) tokens.push(p.nextPageToken);
-      });
-    }
+
+  // Pagination
+  let nextToken = firstData.nextPageToken;
+  while (nextToken) {
+    const page = await fetch(makeUrl(nextToken), { headers });
+    if (!page.ok) break;
+    const pd = await page.json();
+    allFiles = allFiles.concat(pd.files || []);
+    nextToken = pd.nextPageToken;
   }
-  const songs = allFiles.map(f => {
-    const ap  = f.appProperties || {};
-    const ci  = randItem(SONG_COLORS);
+
+  // Filter: audio/* selalu lolos; MIME lain lolos hanya jika nama file punya ekstensi audio
+  const audioFiles = allFiles.filter(f => {
+    const mime = f.mimeType || '';
+    if (mime.startsWith('audio/')) return true;
+    // MIME alternatif (video/mp4, application/mpeg, dll.) — wajib punya ekstensi audio
+    if (AUDIO_MIME_EXTRAS.has(mime)) return isAudioExt(f.name);
+    return false;
+  });
+
+  const songs = audioFiles.map(f => {
+    const ap = f.appProperties || {};
+    const ci = randItem(SONG_COLORS);
     return {
-      id:     `drive_${f.id}`,
+      id:      `drive_${f.id}`,
       driveId: f.id,
-      title:  ap.title  || f.name.replace(/\.[^/.]+$/, ''),
-      artist: ap.artist || 'Unknown',
-      album:  ap.album  || 'Google Drive',
-      cover:  ap.cover  || randItem(COVERS),
-      color:  ap.color  || ci.color,
-      bg:     ap.bg     || ci.bg,
-      mood:   'personal, custom',
+      title:   ap.title  || f.name.replace(/\.[^/.]+$/, ''),
+      artist:  ap.artist || 'Google Drive',
+      album:   ap.album  || 'Drive',
+      cover:   ap.cover  || randItem(COVERS),
+      color:   ap.color  || ci.color,
+      bg:      ap.bg     || ci.bg,
+      mood:    'personal, custom',
       isDrive: true,
-      src: null,
+      src:     null,
+      mimeType: f.mimeType,
     };
   });
-  _driveCache.token   = token;
-  _driveCache.songs   = songs;
-  _driveCache.ts      = now;
-  _driveCache.folderId = folderId;
+
+  _driveCache.token  = token;
+  _driveCache.songs  = songs;
+  _driveCache.ts     = now;
   return songs;
 }
 // Cache in-memory (sesi ini) + Cache API (persisten antar refresh)
@@ -707,7 +753,7 @@ async function drivePrefetch(driveId, token) {
   try { await driveStreamBlob(driveId, token); } catch { /* silent fail */ }
 }
 async function driveUploadSong(file, meta, token) {
-  const folderId=await driveGetFolderId(token), ci=randItem(SONG_COLORS), cover=randItem(COVERS);
+  const folderId=await driveEnsureFolder(token), ci=randItem(SONG_COLORS), cover=randItem(COVERS);
   const metadata={ name:file.name, parents:[folderId], appProperties:{ title:meta.title||file.name.replace(/\.[^/.]+$/,''), artist:meta.artist||'Unknown', album:meta.album||'My Songs', cover, color:ci.color, bg:ci.bg } };
   const form=new FormData();
   form.append('metadata', new Blob([JSON.stringify(metadata)],{type:'application/json'}));
@@ -1383,7 +1429,9 @@ export default function App() {
   const [spError,    setSpError]    = useState(null);
   const [spTrack,    setSpTrack]    = useState(null); // selected for preview/open
   const [spPlaying,  setSpPlaying]  = useState(false);
-  const spPreviewRef = useRef(null); // Audio element for 30s preview
+  const spPreviewRef  = useRef(null); // Audio element for 30s preview
+  const spEqSrcRef    = useRef(null); // MediaElementSourceNode untuk EQ Spotify
+  const spPlayingRef  = useRef(false); // track spPlaying dalam closure sleep timer
   const spHasKey = !!(SP_CLIENT_ID && SP_CLIENT_SECRET);
 
   const doSpotifySearch = async (q) => {
@@ -1397,14 +1445,55 @@ export default function App() {
 
   const playSpotifyPreview = (track) => {
     if (!track.previewUrl) { window.open(track.spotifyUrl, '_blank'); return; }
-    if (spPreviewRef.current) { spPreviewRef.current.pause(); spPreviewRef.current = null; }
-    if (spTrack?.id === track.id && spPlaying) { setSpPlaying(false); return; }
-    const audio = new Audio(track.previewUrl);
-    audio.volume = 0.8;
-    audio.play().then(() => { setSpPlaying(true); setSpTrack(track); }).catch(() => {});
-    audio.onended = () => setSpPlaying(false);
-    spPreviewRef.current = audio;
-    setSpTrack(track);
+
+    // Toggle pause jika lagu yang sama
+    if (spTrack?.id === track.id && spPlaying) {
+      if (spPreviewRef.current) spPreviewRef.current.pause();
+      setSpPlaying(false); return;
+    }
+
+    const cf = crossfadeRef.current;
+
+    // Fungsi yang benar-benar mulai audio baru + koneksi ke EQ chain
+    const startNew = () => {
+      if (spPreviewRef.current) { spPreviewRef.current.pause(); spPreviewRef.current = null; }
+      spEqSrcRef.current = null; // reset src node lama
+
+      const audio = new Audio(track.previewUrl);
+      // crossOrigin diperlukan agar Web Audio API bisa mengakses stream cross-origin
+      audio.crossOrigin = 'anonymous';
+      audio.volume = 0.8;
+
+      // ── Hubungkan ke Web Audio chain (EQ) jika ctx sudah tersedia
+      ensureAudioCtx();
+      if (audioCtxRef.current && eqNodesRef.current.length) {
+        try {
+          const src = audioCtxRef.current.createMediaElementSource(audio);
+          src.connect(eqNodesRef.current[0]); // masuk ke EQ → masterGain → destination
+          spEqSrcRef.current = src;
+        } catch (e) { console.warn('Spotify EQ connect:', e); }
+      }
+
+      // Crossfade fade-in via masterGain
+      if (cf > 0 && masterGainRef.current && audioCtxRef.current) {
+        const g = masterGainRef.current.gain;
+        const t2 = audioCtxRef.current.currentTime;
+        g.cancelScheduledValues(t2); g.setValueAtTime(0, t2); g.linearRampToValueAtTime(1, t2 + cf);
+      }
+
+      audio.play().then(() => { setSpPlaying(true); setSpTrack(track); }).catch(() => {});
+      audio.onended = () => setSpPlaying(false);
+      spPreviewRef.current = audio;
+      setSpTrack(track);
+    };
+
+    // Crossfade fade-out dari preview yang sedang jalan, lalu mulai baru
+    if (cf > 0 && spPlaying && spPreviewRef.current && masterGainRef.current && audioCtxRef.current) {
+      const gain = masterGainRef.current.gain;
+      const now  = audioCtxRef.current.currentTime;
+      gain.cancelScheduledValues(now); gain.setValueAtTime(gain.value, now); gain.linearRampToValueAtTime(0, now + cf);
+      setTimeout(startNew, cf * 1000);
+    } else { startNew(); }
   };
 
   const doSoundCloudSearch = async (platformId, q) => {
@@ -1602,15 +1691,42 @@ export default function App() {
     const dur   = secs > 0 ? `${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}` : '';
     const thumb = item.thumbnail || `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
     const ytTrack = { type:'youtube', videoId, title:item.title, artist:item.uploaderName||item.author||'YouTube', thumbnail:thumb, duration:dur, durationSecs:secs };
-    setEmbedTrack(ytTrack);
-    setYtProgress(0); setYtDuration(secs||0);
-    if (queue) { ytQueueRef.current = queue; ytQueueIdxRef.current = queueIdx ?? queue.findIndex(v=>(v.videoId||v.url?.includes(videoId))===videoId); }
-    setEmbedMinimized(false);
-    // Pause normal audio player, set playing state for UI
-    if (audioRef.current) { audioRef.current.pause(); }
-    setPlaying(true);
-    // Otomatis pindah ke player saat lagu stream diputar
-    setTab('player');
+
+    const cf = crossfadeRef.current;
+    const doSwitch = () => {
+      setEmbedTrack(ytTrack);
+      setYtProgress(0); setYtDuration(secs||0);
+      if (queue) { ytQueueRef.current = queue; ytQueueIdxRef.current = queueIdx ?? queue.findIndex(v=>(v.videoId||v.url?.includes(videoId))===videoId); }
+      setEmbedMinimized(false);
+      if (audioRef.current) { audioRef.current.pause(); }
+      setPlaying(true);
+      setTab('player');
+    };
+
+    // ── Crossfade YouTube: fade volume out → switch → fade in baru
+    if (cf > 0 && embedTrack?.type === 'youtube' && ytIframeRef.current) {
+      const STEPS  = 12;
+      const stepMs = (cf * 1000) / STEPS;
+      let step = 0;
+      const fadeOut = setInterval(() => {
+        step++;
+        const vol = Math.max(0, Math.round(100 * (1 - step / STEPS)));
+        try { ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'command', func:'setVolume', args:[vol] }), '*'); } catch(_) {}
+        if (step >= STEPS) {
+          clearInterval(fadeOut);
+          doSwitch();
+          setTimeout(() => {
+            let si = 0;
+            const fadeIn = setInterval(() => {
+              si++;
+              const vi = Math.min(100, Math.round(100 * (si / STEPS)));
+              try { ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'command', func:'setVolume', args:[vi] }), '*'); } catch(_) {}
+              if (si >= STEPS) clearInterval(fadeIn);
+            }, stepMs);
+          }, 400);
+        }
+      }, stepMs);
+    } else { doSwitch(); }
   };
 
   const playSoundCloud = (platformId, query) => {
@@ -1710,6 +1826,9 @@ export default function App() {
   const [muted, setMuted]       = useState(false);
   const [liked, setLiked]       = useState({});
   const [tab, setTab]           = useState(() => localStorage.getItem('sn_tab') || 'player');
+
+  // ── Jam live (update setiap detik)
+  const [nowTime, setNowTime] = useState(() => new Date());
 
   // ── New playback features
   const [shuffle, setShuffle] = useState(() => localStorage.getItem('sn_shuffle') === 'true');
@@ -1819,6 +1938,13 @@ export default function App() {
   useEffect(() => { repeatRef.current   = repeat;    }, [repeat]);
   useEffect(() => { tokenRef.current    = accessToken; }, [accessToken]);
   useEffect(() => { crossfadeRef.current = crossfade; }, [crossfade]);
+  useEffect(() => { spPlayingRef.current = spPlaying; }, [spPlaying]);
+
+  // ── Jam live — update setiap detik
+  useEffect(() => {
+    const tick = setInterval(() => setNowTime(new Date()), 1000);
+    return () => clearInterval(tick);
+  }, []);
 
   // ── Persist preferences to localStorage
   useEffect(() => { localStorage.setItem('sn_tab', tab); if (tab !== 'player') setFullscreen(false); }, [tab]);
@@ -1912,23 +2038,35 @@ export default function App() {
   const loadDriveSongs = useCallback(async (tok, force = false) => {
     if (!tok) return;
     setLoadingDrive(true);
+    setDriveError('');
     try {
       const songs = await driveListSongs(tok, force);
       setCustomSongs(songs);
-      setDriveError('');
+      // Beri info jika Drive tidak memiliki file audio sama sekali
+      if (songs.length === 0) {
+        setDriveError(
+          'Tidak ada file audio ditemukan di Google Drive. ' +
+          'Pastikan file .mp3 .m4a .wav .flac .ogg sudah ada, lalu ketuk ikon ↻ untuk refresh.',
+        );
+      } else {
+        setDriveError('');
+      }
     } catch (e) {
-      // 401/403/400 → token expired, try silent refresh
-      if (e.message.includes('401') || e.message.includes('403') || e.message.includes('400')) {
+      // 401/403 → token expired → silent refresh sekali
+      if (e.message.includes('401') || e.message.includes('403') || e.message.includes('token expired')) {
         try {
           const newTok = await silentRefreshToken();
           const songs  = await driveListSongs(newTok, true);
           setCustomSongs(songs);
-          setDriveError('');
+          setDriveError(songs.length === 0
+            ? 'Tidak ada file audio di Drive. Pastikan ada file .mp3 .m4a .wav .flac .ogg.'
+            : '');
         } catch {
           setDriveError('Sesi Google berakhir. Ketuk Login untuk lanjut.');
         }
       } else {
-        // Network error or other — keep existing songs if any, just log
+        // Network / other error — tampilkan pesan singkat
+        setDriveError('Gagal memuat Drive: ' + e.message);
         console.warn('Drive list error:', e.message);
       }
     } finally {
@@ -1937,20 +2075,22 @@ export default function App() {
   }, [silentRefreshToken]);
 
   useEffect(() => {
-    const savedToken = (() => {
-      try { const s=JSON.parse(localStorage.getItem('sn_google_token')||'null'); return s&&s.expiry>Date.now()?s.token:null; }
-      catch{return null;}
-    })();
-    // Selalu force=true saat pertama load — in-memory cache kosong setelah reload
-    if (savedToken) loadDriveSongs(savedToken, true);
-    else {
-      // Token expired → coba silent refresh otomatis
-      const saved = (() => { try { return JSON.parse(localStorage.getItem('sn_google_token')||'null'); } catch { return null; } })();
-      if (saved && googleUser) {
-        silentRefreshToken()
-          .then(tok => loadDriveSongs(tok, true))
-          .catch(() => {});
-      }
+    // Baca raw saved (termasuk yang sudah expired) untuk keperluan silent refresh
+    const rawSaved = (() => { try { return JSON.parse(localStorage.getItem('sn_google_token')||'null'); } catch { return null; } })();
+    const savedToken = rawSaved && rawSaved.expiry > Date.now() ? rawSaved.token : null;
+
+    if (savedToken) {
+      // Token masih valid — langsung muat lagu (force=true karena in-memory cache kosong setelah reload)
+      loadDriveSongs(savedToken, true);
+    } else if (googleUser) {
+      // Token expired (atau tidak ada) tapi user pernah login → coba silent refresh otomatis
+      // Menangani kasus: token expired saat tab ditutup, lalu dibuka lagi
+      silentRefreshToken()
+        .then(tok => loadDriveSongs(tok, true))
+        .catch(() => {
+          // Silent refresh gagal (misal: session Google habis) → tampilkan pesan login
+          setDriveError('Sesi Google berakhir. Ketuk tombol Login untuk melanjutkan.');
+        });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -2198,9 +2338,26 @@ export default function App() {
     sleepIntervalRef.current = setInterval(() => {
       const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
       setSleepTimer(p => ({ ...p, remaining }));
-      if (remaining <= 0) { clearInterval(sleepIntervalRef.current); setSleepTimer(null); setPlaying(false); }
+      if (remaining <= 0) {
+        clearInterval(sleepIntervalRef.current);
+        setSleepTimer(null);
+        // ── Hentikan semua sumber audio: lokal/Drive + YouTube + Spotify + SoundCloud
+        setPlaying(false);
+        // Spotify preview
+        if (spPreviewRef.current) { spPreviewRef.current.pause(); spPreviewRef.current = null; }
+        setSpPlaying(false);
+        // SoundCloud embed — tutup widget agar iframe berhenti autoplay
+        setScWidget({});
+        // Fade out masterGain dengan mulus sebelum berhenti (jika Web Audio aktif)
+        if (masterGainRef.current && audioCtxRef.current) {
+          const g = masterGainRef.current.gain;
+          const now = audioCtxRef.current.currentTime;
+          g.cancelScheduledValues(now); g.setValueAtTime(g.value, now); g.linearRampToValueAtTime(0, now + 1.5);
+          setTimeout(() => { if (masterGainRef.current) masterGainRef.current.gain.value = 1; }, 2000);
+        }
+      }
     }, 1000);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const cancelSleepTimer = useCallback(() => { if (sleepIntervalRef.current) clearInterval(sleepIntervalRef.current); setSleepTimer(null); }, []);
 
   // ── PLAY (with crossfade support + Drive auto token refresh)
@@ -2717,6 +2874,12 @@ export default function App() {
 
       {driveError&&<div style={{ position:'relative', zIndex:10, flexShrink:0, padding:'6px 16px', background:'rgba(239,68,68,0.15)', borderBottom:'1px solid rgba(239,68,68,0.25)', display:'flex', alignItems:'center', gap:8 }}>
         <span style={{ fontSize:11, color:'#fca5a5', flex:1 }}>{driveError}</span>
+        {/* Tombol Refresh — muncul jika ada token aktif (lagu tidak ditemukan / error jaringan) */}
+        {tokenRef.current && !driveError.includes('Sesi') && !driveError.includes('Login') && (
+          <button onClick={()=>{ setDriveError(''); loadDriveSongs(tokenRef.current, true); }}
+            style={{ padding:'3px 8px', borderRadius:999, border:'1px solid rgba(239,68,68,0.4)', background:'rgba(239,68,68,0.2)', color:'#fca5a5', fontSize:10, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>↺ Refresh</button>
+        )}
+        {/* Tombol Login Ulang — muncul jika sesi expired */}
         {(driveError.includes('Sesi') || driveError.includes('401') || driveError.includes('Login')) && (
           <button onClick={()=>{ setDriveError(''); handleGoogleLogin(); }} style={{ padding:'3px 8px', borderRadius:999, border:'1px solid rgba(239,68,68,0.4)', background:'rgba(239,68,68,0.2)', color:'#fca5a5', fontSize:10, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>Login Ulang</button>
         )}
@@ -2852,7 +3015,18 @@ export default function App() {
           {/* ── SETTINGS PANEL — inline dalam player */}
           {showSettings&&<SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} eqEnabled={!!eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset||"Normal"} setEqPreset={setEqPreset} eqGains={Array.isArray(eqGains)&&eqGains.length===5?eqGains:[0,0,0,0,0]} setEqGains={setEqGains} crossfade={typeof crossfade==="number"?crossfade:0} setCrossfade={setCrossfade} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns}/>}
 
-          <div style={{ minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', padding:'clamp(14px,3vh,28px) 20px clamp(12px,2vh,20px)' }}>
+          <div style={{ minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', padding:'clamp(14px,3vh,28px) 20px clamp(12px,2vh,20px)', position:'relative' }}>
+
+            {/* ── JAM — pojok kiri atas dalam player, di bawah logo */}
+            <div style={{ position:'absolute', top:0, left:0, pointerEvents:'none', userSelect:'none', lineHeight:1 }}>
+              <div style={{ fontSize:'clamp(22px,6vw,32px)', fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', background:`linear-gradient(135deg,white 60%,${track.color})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', lineHeight:1 }}>
+                {nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false })}
+              </div>
+              <div style={{ fontSize:'clamp(9px,2.2vw,11px)', color:'rgba(255,255,255,0.35)', fontWeight:600, marginTop:3, letterSpacing:'0.04em', textTransform:'uppercase' }}>
+                {nowTime.toLocaleDateString('id-ID',{ weekday:'short', day:'numeric', month:'short' })}
+              </div>
+            </div>
+
             {loadingTrack&&!embedTrack&&(
               <div style={{ position:'fixed', inset:0, zIndex:20, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'rgba(7,7,26,0.85)', ...(isLite ? {} : { backdropFilter:'blur(6px)' }), gap:12 }}>
                 <Loader2 size={30} style={{ color:track.color, animation:'spin 1s linear infinite' }}/>
@@ -2865,22 +3039,7 @@ export default function App() {
               </div>
             )}
 
-            {/* Unified top-right button: fullscreen → exit fullscreen, else → close stream */}
-            {(fullscreen || embedTrack) && (
-              <div style={{ position:'fixed', top:14, right:14, zIndex:20 }}>
-                {fullscreen ? (
-                  <button onClick={()=>setFullscreen(false)}
-                    style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:999, border:'1px solid rgba(255,255,255,0.15)', background:'rgba(7,7,26,0.82)', color:'rgba(255,255,255,0.6)', fontSize:11, fontWeight:700, cursor:'pointer' }}>
-                    <Minimize2 size={13}/> Keluar
-                  </button>
-                ) : embedTrack ? (
-                  <button onClick={()=>{ closeEmbed(); setShowSettings(false); }}
-                    style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:999, border:'1px solid rgba(255,68,68,0.35)', background:'rgba(7,7,26,0.82)', color:'#fca5a5', fontSize:11, fontWeight:700, cursor:'pointer' }}>
-                    <X size={13}/> Tutup
-                  </button>
-                ) : null}
-              </div>
-            )}
+            {/* floating action button moved to root level */}
 
             {/* Ring — shows YouTube thumbnail + seek when YT is active */}
             <OrbitalRing size={ringSize} pct={embedTrack?.type==='youtube'?(ytDuration>0?ytProgress/ytDuration:0):pct} color={embedTrack?.type==='youtube'?'#ff4444':track.color} progress={embedTrack?.type==='youtube'?ytProgress:progress} duration={embedTrack?.type==='youtube'?ytDuration:duration} isPlaying={playing} cover={embedTrack?.type==='youtube'?(embedTrack.thumbnail||getCover(track)):getCover(track)} title={embedTrack?.type==='youtube'?embedTrack.title:track.title} onSeek={embedTrack?.type==='youtube'?seekYt:seekByPct} isLite={isLite}/>
@@ -2985,12 +3144,17 @@ export default function App() {
 
             {/* Header */}
             <div style={{ marginBottom:12 }}>
-              <div style={{ fontWeight:800, fontSize:15 }}>Platform Streaming</div>
-              <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:2 }}>Putar langsung dari platform favoritmu</div>
+              <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                <div style={{ fontWeight:800, fontSize:15 }}>Platform Streaming</div>
+                {eqEnabled && <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:999, background:`${track.color}25`, color:track.color, letterSpacing:'0.04em' }}>EQ ON</span>}
+                {crossfade > 0 && <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:999, background:'rgba(99,102,241,0.18)', color:'#a5b4fc', letterSpacing:'0.04em' }}>CF {crossfade}s</span>}
+                {sleepTimer && <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:999, background:'rgba(251,191,36,0.15)', color:'#fbbf24', letterSpacing:'0.04em' }}>💤 {fmtSec(sleepTimer.remaining)}</span>}
+              </div>
+              <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:2 }}>Putar langsung dari platform favoritmu{eqEnabled?' · EQ aktif (Spotify)':''}</div>
             </div>
 
             {/* List */}
-            <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column', gap:5, paddingBottom:16 }}>
+            <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column', gap:5, paddingBottom:'max(80px, calc(72px + env(safe-area-inset-bottom)))' }}>
 
               {/* ── STREAMING PLATFORMS */}
               <div style={{ marginBottom:10 }}>
@@ -3486,10 +3650,27 @@ export default function App() {
                     <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'10px 16px 16px', display:'flex', flexDirection:'column', gap:5 }}>
                       {loadingDrive&&<div style={{ textAlign:'center', padding:'32px 0' }}><Loader2 size={28} style={{ color:'#38bdf8', animation:'spin 1s linear infinite', margin:'0 auto', display:'block' }}/><div style={{ fontSize:12, color:'rgba(255,255,255,0.35)', marginTop:8 }}>Memuat dari Drive…</div></div>}
                       {!loadingDrive&&songs.length===0&&(
-                        <div style={{ textAlign:'center', padding:'40px 20px' }}>
-                          <Cloud size={44} style={{color:'rgba(255,255,255,0.1)',display:'block',margin:'0 auto 12px'}}/>
-                          <div style={{ fontSize:13, color:'rgba(255,255,255,0.3)' }}>Belum ada lagu di Drive</div>
-                          {!googleUser && <div style={{ fontSize:11, color:'rgba(255,255,255,0.2)', marginTop:4 }}>Login Google untuk melihat lagu</div>}
+                        <div style={{ textAlign:'center', padding:'32px 20px' }}>
+                          <Cloud size={44} style={{color:'rgba(255,255,255,0.1)',display:'block',margin:'0 auto 14px'}}/>
+                          {googleUser ? (
+                            <>
+                              <div style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.5)', marginBottom:8 }}>Tidak ada file audio ditemukan</div>
+                              <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', lineHeight:1.7, marginBottom:16 }}>
+                                Drive kamu tidak memiliki file audio yang terdeteksi.<br/>
+                                Pastikan file berekstensi <span style={{color:'#38bdf8'}}>.mp3 .m4a .flac .wav .ogg</span><br/>
+                                di folder mana pun di Google Drive kamu.
+                              </div>
+                              <button onClick={()=>loadDriveSongs(tokenRef.current, true)}
+                                style={{ padding:'8px 18px', borderRadius:999, border:'1px solid rgba(56,189,248,0.35)', background:'rgba(14,165,233,0.12)', color:'#38bdf8', fontSize:12, fontWeight:700, cursor:'pointer', marginBottom:10 }}>
+                                ↺ Coba Refresh
+                              </button>
+                              <div style={{ fontSize:10, color:'rgba(255,255,255,0.2)', marginTop:4 }}>
+                                Atau ketuk "Unggah Lagu ke Drive" di atas untuk menambah lagu
+                              </div>
+                            </>
+                          ) : (
+                            <div style={{ fontSize:13, color:'rgba(255,255,255,0.3)' }}>Login Google untuk melihat lagu</div>
+                          )}
                         </div>
                       )}
                       {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} play={play} isDrive isCached={cachedDriveIds.has(s.driveId)} onRemove={id=>setCustomSongs(p=>p.filter(x=>x.id!==id))} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite}/>)}
@@ -3821,6 +4002,34 @@ export default function App() {
               );
             })}
           </nav>
+        </div>
+      )}
+
+      {/* ══ ROOT-LEVEL FLOATING ACTION BUTTON
+           Diletakkan di sini (sibling header & bottom-nav) agar position:fixed
+           tidak terkunci di dalam ancestor overflow:hidden */}
+      {(fullscreen || embedTrack) && (
+        <div style={{
+          position: 'fixed',
+          // Ketika fullscreen: pojok kanan atas penuh. Ketika normal: di bawah header (~52px) + gap.
+          top: fullscreen ? 14 : 54,
+          right: 14,
+          zIndex: 200,
+          display: 'flex',
+          gap: 6,
+        }}>
+          {fullscreen && (
+            <button onClick={()=>setFullscreen(false)}
+              style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 14px', borderRadius:999, border:'1px solid rgba(255,255,255,0.18)', background:'rgba(7,7,26,0.88)', backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)', color:'rgba(255,255,255,0.75)', fontSize:11, fontWeight:700, cursor:'pointer', boxShadow:'0 2px 12px rgba(0,0,0,0.5)' }}>
+              <Minimize2 size={13}/> Keluar
+            </button>
+          )}
+          {!fullscreen && embedTrack && (
+            <button onClick={()=>{ closeEmbed(); setShowSettings(false); }}
+              style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 14px', borderRadius:999, border:'1px solid rgba(255,68,68,0.4)', background:'rgba(7,7,26,0.92)', backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)', color:'#fca5a5', fontSize:11, fontWeight:700, cursor:'pointer', boxShadow:'0 2px 12px rgba(0,0,0,0.5)' }}>
+              <X size={13}/> Tutup Stream
+            </button>
+          )}
         </div>
       )}
 
