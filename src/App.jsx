@@ -1282,14 +1282,11 @@ export default function App() {
   const [volume, setVolume]     = useState(0.75);
   const [muted, setMuted]       = useState(false);
   const [liked, setLiked]       = useState({});
-  const [tab, setTabRaw]           = useState(() => localStorage.getItem('sn_tab') || 'player');
-  const setTab = (t) => { setTabRaw(t); localStorage.setItem('sn_tab', t); };
+  const [tab, setTab]           = useState(() => localStorage.getItem('sn_tab') || 'player');
 
   // ── New playback features
-  const [shuffle, setShuffleRaw] = useState(() => localStorage.getItem('sn_shuffle') === 'true');
-  const setShuffle = (v) => { const val = typeof v === 'function' ? v(shuffle) : v; setShuffleRaw(val); localStorage.setItem('sn_shuffle', val); };
-  const [repeat, setRepeatRaw]   = useState(() => localStorage.getItem('sn_repeat') || 'off');
-  const setRepeat = (v) => { const val = typeof v === 'function' ? v(repeat) : v; setRepeatRaw(val); localStorage.setItem('sn_repeat', val); };
+  const [shuffle, setShuffle] = useState(() => localStorage.getItem('sn_shuffle') === 'true');
+  const [repeat, setRepeat]   = useState(() => localStorage.getItem('sn_repeat') || 'off');
   const [crossfade, setCrossfade] = useState(0);
   const [history, setHistory]   = useState([]);
 
@@ -1384,6 +1381,11 @@ export default function App() {
   useEffect(() => { repeatRef.current   = repeat;    }, [repeat]);
   useEffect(() => { tokenRef.current    = accessToken; }, [accessToken]);
   useEffect(() => { crossfadeRef.current = crossfade; }, [crossfade]);
+
+  // ── Persist preferences to localStorage
+  useEffect(() => { localStorage.setItem('sn_tab', tab); }, [tab]);
+  useEffect(() => { localStorage.setItem('sn_shuffle', shuffle); }, [shuffle]);
+  useEffect(() => { localStorage.setItem('sn_repeat', repeat); }, [repeat]);
 
   // ── Load GIS
   useEffect(() => {
