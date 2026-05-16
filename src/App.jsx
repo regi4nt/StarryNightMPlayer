@@ -1390,6 +1390,27 @@ export default function App() {
   useEffect(() => { localStorage.setItem('sn_shuffle', shuffle); }, [shuffle]);
   useEffect(() => { localStorage.setItem('sn_repeat', repeat); }, [repeat]);
 
+  // ── Silent token refresh — dipindah ke sini agar tersedia sebelum useEffect lain
+  const silentRefreshToken = useCallback(() => new Promise((resolve, reject) => {
+    if (!window.google || !GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes('GANTI_DENGAN')) {
+      return reject(new Error('Google API tidak tersedia'));
+    }
+    try {
+      const client = window.google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID, scope: GOOGLE_SCOPES,
+        prompt: '',        // no user interaction required
+        callback: resp => {
+          if (resp.error) return reject(new Error(resp.error));
+          const tok = resp.access_token;
+          setAccessToken(tok); tokenRef.current = tok;
+          localStorage.setItem('sn_google_token', JSON.stringify({ token: tok, expiry: Date.now() + 3500 * 1000 }));
+          resolve(tok);
+        }
+      });
+      client.requestAccessToken({ prompt: '' });
+    } catch(e) { reject(e); }
+  }), []);
+
   // ── Load GIS
   useEffect(() => {
     if (!document.getElementById('gis-script')) {
@@ -1869,26 +1890,6 @@ export default function App() {
     });
     client.requestAccessToken();
   }, []);
-  // ── Silent token refresh — called automatically when Drive returns 401/403
-  const silentRefreshToken = useCallback(() => new Promise((resolve, reject) => {
-    if (!window.google || !GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes('GANTI_DENGAN')) {
-      return reject(new Error('Google API tidak tersedia'));
-    }
-    try {
-      const client = window.google.accounts.oauth2.initTokenClient({
-        client_id: GOOGLE_CLIENT_ID, scope: GOOGLE_SCOPES,
-        prompt: '',        // no user interaction required
-        callback: resp => {
-          if (resp.error) return reject(new Error(resp.error));
-          const tok = resp.access_token;
-          setAccessToken(tok); tokenRef.current = tok;
-          localStorage.setItem('sn_google_token', JSON.stringify({ token: tok, expiry: Date.now() + 3500 * 1000 }));
-          resolve(tok);
-        }
-      });
-      client.requestAccessToken({ prompt: '' });
-    } catch(e) { reject(e); }
-  }), []);
   const handleGoogleLogout = useCallback(() => {
     if (accessToken&&window.google) window.google.accounts.oauth2.revoke(accessToken,()=>{});
     setGoogleUser(null); setAccessToken(null); tokenRef.current=null; setCustomSongs([]); setDriveError('');
