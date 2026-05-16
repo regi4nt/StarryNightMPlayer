@@ -925,7 +925,7 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
 // ═══════════════════════════════════════════════════════
 const btn = { background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.5)', padding:8, display:'flex', transition:'color 0.2s', borderRadius:8 };
 
-function SongRow({ s, i, track, playing, liked, setLiked, play, isDrive, onRemove, playlists, addToPlaylist, isLite }) {
+function SongRow({ s, i, track, playing, liked, setLiked, play, isDrive, isCached, onRemove, playlists, addToPlaylist, isLite }) {
   const isActive = track.id === s.id;
   return (
     <div style={{ display:'flex', alignItems:'center', gap:12, padding:'9px 12px', borderRadius:14, cursor:'pointer', background:isActive?s.bg:'rgba(255,255,255,0.04)', border:`1px solid ${isActive?s.color+'50':'transparent'}` }} onClick={()=>play(s)}>
@@ -937,7 +937,11 @@ function SongRow({ s, i, track, playing, liked, setLiked, play, isDrive, onRemov
         : <img src={s.cover} alt={s.title} loading="lazy" decoding="async" style={{ width:42, height:42, borderRadius:10, objectFit:'cover', flexShrink:0 }}/>}
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ fontWeight:700, fontSize:13, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:isActive?'white':'rgba(255,255,255,0.85)' }}>{s.title}</div>
-        <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:2 }}>{s.artist} · {s.album}{isDrive&&<span style={{ color:s.color, marginLeft:4 }}>· Drive</span>}</div>
+        <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:2, display:'flex', alignItems:'center', gap:4 }}>
+          <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.artist} · {s.album}</span>
+          {isDrive && <span style={{ color:s.color, flexShrink:0 }}>· Drive</span>}
+          {isCached && <span style={{ flexShrink:0, fontSize:9, fontWeight:800, color:'#4ade80', background:'rgba(74,222,128,0.12)', padding:'1px 5px', borderRadius:999 }}>✓ Offline</span>}
+        </div>
       </div>
       <div style={{ display:'flex', gap:2 }}>
         {onRemove&&<button onClick={e=>{e.stopPropagation();onRemove(s.id)}} style={{ ...btn, color:'rgba(255,255,255,0.2)', padding:6 }}><Trash2 size={14}/></button>}
@@ -1014,7 +1018,7 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
   const safeGains = Array.isArray(eqGains) && eqGains.length === 5 ? eqGains : [0,0,0,0,0];
   return (
     <div style={{ position:'absolute', inset:0, zIndex:150, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(4px)', display:'flex', alignItems:'flex-end' }} onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="scrollbar-hide" style={{ width:'100%', maxHeight:'82%', overflowY:'auto', overflowX:'hidden', background:'#0d0d24', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'20px 20px 0 0', padding:'0 0 32px' }}>
+      <div className="scrollbar-hide" style={{ width:'100%', maxHeight:'75%', overflowY:'auto', overflowX:'hidden', background:'#0d0d24', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'20px 20px 0 0', padding:'0 0 32px' }}>
         {/* Drag handle */}
         <div style={{ width:36, height:4, borderRadius:999, background:'rgba(255,255,255,0.15)', margin:'12px auto 0' }}/>
         {/* Header */}
@@ -1631,8 +1635,17 @@ export default function App() {
 
   // ── YouTube queue navigation
   const ytNext = useCallback(() => {
-    const q = ytQueueRef.current; if (!q.length) return;
+    const q = ytQueueRef.current;
     if (repeatRef.current === 'one') { seekYt(0); return; }
+    // Single video (queue kosong) — tetap support repeat all & shuffle
+    if (!q.length) {
+      if (repeatRef.current === 'all' || shuffleRef.current) {
+        seekYt(0); // restart video yang sama
+      } else {
+        setPlaying(false);
+      }
+      return;
+    }
     if (shuffleRef.current) {
       // Acak: pilih lagu lain secara random dari queue
       const others = q.filter((_, i) => i !== ytQueueIdxRef.current);
@@ -1755,6 +1768,11 @@ export default function App() {
   });
   const [customSongs, setCustomSongs]   = useState([]);
   const [loadingDrive, setLoadingDrive] = useState(false);
+  const [isOnline, setIsOnline]         = useState(() => navigator.onLine);
+  const [cachedDriveIds, setCachedDriveIds] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('sn_cached_drive_ids') || '[]')); }
+    catch { return new Set(); }
+  });
   const [showUpload, setShowUpload]     = useState(false);
   const [uploading, setUploading]       = useState(false);
   const [uploadProgress, setUploadProg] = useState(0);
@@ -1855,6 +1873,43 @@ export default function App() {
     const { outcome } = await pwaPrompt.userChoice;
     if (outcome === 'accepted') { setPwaInstalled(true); setPwaPrompt(null); }
   };
+
+  // ── Online / Offline detection
+  useEffect(() => {
+    const goOnline  = () => setIsOnline(true);
+    const goOffline = () => setIsOnline(false);
+    window.addEventListener('online',  goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => { window.removeEventListener('online', goOnline); window.removeEventListener('offline', goOffline); };
+  }, []);
+
+  // ── Restore Drive song metadata from localStorage when offline (no token needed)
+  useEffect(() => {
+    if (isOnline) return; // Hanya saat offline
+    try {
+      const saved = JSON.parse(localStorage.getItem('sn_drive_meta') || '[]');
+      if (saved.length > 0 && customSongs.length === 0) {
+        // Tandai semua sebagai perlu re-fetch src (akan cek cache saat diputar)
+        setCustomSongs(saved.map(s => ({ ...s, src: null })));
+      }
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOnline]);
+
+  // ── Simpan Drive song metadata ke localStorage setiap kali berubah (untuk offline recovery)
+  useEffect(() => {
+    if (customSongs.length === 0) return;
+    try {
+      // Simpan hanya metadata (bukan src blob URL yang tidak persisten)
+      const meta = customSongs.map(({ src: _src, ...rest }) => rest);
+      localStorage.setItem('sn_drive_meta', JSON.stringify(meta));
+    } catch {}
+  }, [customSongs]);
+
+  // ── Sync cachedDriveIds ke localStorage
+  useEffect(() => {
+    try { localStorage.setItem('sn_cached_drive_ids', JSON.stringify([...cachedDriveIds])); } catch {}
+  }, [cachedDriveIds]);
 
   // ── Auto-restore Drive songs if we have a saved valid token
   const loadDriveSongs = useCallback(async (tok, force = false) => {
@@ -2025,8 +2080,12 @@ export default function App() {
     const onDurChange = () => { if (a.duration && isFinite(a.duration)) setDuration(a.duration); };
     const onEnd   = () => {
       if (repeatRef.current === 'one') { a.currentTime = 0; a.play().catch(()=>{}); return; }
-      if (repeatRef.current === 'all' || repeatRef.current === 'off') {
+      if (repeatRef.current === 'all' || shuffleRef.current) {
+        // Repeat all atau shuffle → lanjut ke lagu berikutnya
         if (goNextRef.current) goNextRef.current();
+      } else {
+        // repeat=off → hanya lanjut jika shuffle aktif, otherwise berhenti
+        setPlaying(false);
       }
     };
     // Error / stall — pastikan loading state tidak terjebak selamanya
@@ -2153,6 +2212,41 @@ export default function App() {
     if (t.isDrive && !t.src) {
       setLoadingTrack(true);
       setDriveDownProg(0);
+
+      // ── Cek cache dulu (bisa diputar offline tanpa token)
+      try {
+        const cachedBlob = await cacheGet(t.driveId);
+        if (cachedBlob) {
+          const url = URL.createObjectURL(cachedBlob);
+          _blobCache.set(t.driveId + ':cached', url);
+          setCustomSongs(prev => prev.map(s => s.id === t.id ? { ...s, src: url } : s));
+          td = { ...t, src: url };
+          setDriveError('');
+          setLoadingTrack(false);
+          setDriveDownProg(0);
+          // Langsung lanjut ke playback (skip fetch)
+          if (track.id === td.id) { setPlaying(p => !p); return; }
+          const cf = crossfadeRef.current;
+          const doSwitchCached = () => {
+            if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = td.src; audioRef.current.load(); }
+            setTrack(td); setProgress(0); setDuration(0); setPlaying(true);
+            setTab('player');
+          };
+          if (cf > 0 && masterGainRef.current && audioCtxRef.current) {
+            const ctx = audioCtxRef.current; const gain = masterGainRef.current.gain; const now = ctx.currentTime;
+            gain.cancelScheduledValues(now); gain.setValueAtTime(gain.value, now); gain.linearRampToValueAtTime(0, now + cf);
+            setTimeout(() => { doSwitchCached(); setTimeout(() => { if(masterGainRef.current&&audioCtxRef.current){const g=masterGainRef.current.gain;const t2=audioCtxRef.current.currentTime;g.cancelScheduledValues(t2);g.setValueAtTime(0,t2);g.linearRampToValueAtTime(1,t2+cf);} }, 50); }, cf * 1000);
+          } else { doSwitchCached(); }
+          return;
+        }
+      } catch {}
+
+      // ── Tidak ada cache — perlu download dari Drive (harus online + token)
+      if (!navigator.onLine) {
+        setDriveError('Lagu ini belum diunduh. Hubungkan internet lalu putar sekali untuk menyimpan offline.');
+        setLoadingTrack(false); setDriveDownProg(0); return;
+      }
+
       // Pro mode: gunakan driveDownloadBlob (full blob) agar durasi & progress bar terbaca
       // Lite mode: tetap stream via MediaSource (hemat bandwidth, tapi no progress bar)
       const tryLoad = async (tok) => {
@@ -2165,13 +2259,17 @@ export default function App() {
             const url = await driveDownloadBlob(t.driveId, tok);
             clearInterval(progInterval);
             setDriveDownProg(100);
+            // Tandai sebagai cached
+            setCachedDriveIds(prev => new Set([...prev, t.driveId]));
             return url;
           } catch(e) {
             clearInterval(progInterval);
             throw e;
           }
         } else {
-          return driveStreamBlob(t.driveId, tok);
+          const url = await driveStreamBlob(t.driveId, tok);
+          setCachedDriveIds(prev => new Set([...prev, t.driveId]));
+          return url;
         }
       };
       // Safety timeout: 90 detik
@@ -2291,10 +2389,14 @@ export default function App() {
   const getLyrics = async () => {
     setLL(true);
     setLyrics('');
+    // Use stream info if YouTube/SoundCloud active, otherwise use local track
+    const activeTitle  = embedTrack ? (embedTrack.title  || track.title)  : track.title;
+    const activeArtist = embedTrack ? (embedTrack.artist || track.artist) : track.artist;
+    const activeMood   = track.mood || '';
     // Try to fetch real lyrics from lyrics.ovh API first
     try {
-      const artist = encodeURIComponent(track.artist.replace(/[^\w\s]/gi,'').trim());
-      const title  = encodeURIComponent(track.title.replace(/[^\w\s]/gi,'').trim());
+      const artist = encodeURIComponent(activeArtist.replace(/[^\w\s]/gi,'').trim());
+      const title  = encodeURIComponent(activeTitle.replace(/[^\w\s]/gi,'').trim());
       const resp = await fetch(`https://api.lyrics.ovh/v1/${artist}/${title}`);
       if (resp.ok) {
         const data = await resp.json();
@@ -2306,9 +2408,9 @@ export default function App() {
       }
     } catch(_) {}
     // Fallback: generate AI lyrics if real lyrics not found
-    const moodCtx = track.mood ? `Mood/vibe: ${track.mood}.` : '';
+    const moodCtx = activeMood ? `Mood/vibe: ${activeMood}.` : '';
     const r = await askAI(
-      `Tulis lirik lagu orisinal yang INDAH dan PUITIS untuk:\nJudul: "${track.title}"\nArtis: ${track.artist}\n${moodCtx}\n\nFormat WAJIB:\n[Verse 1]\n(2-4 baris lirik)\n\n[Pre-Chorus]\n(1-2 baris)\n\n[Chorus]\n(2-4 baris, catchy & memorable)\n\n[Verse 2]\n(2-4 baris)\n\n[Chorus]\n(2-4 baris)\n\n[Bridge]\n(2-3 baris emosional)\n\n[Outro]\n(1-2 baris penutup)\n\nGunakan bahasa Indonesia yang puitis. Maksimal 180 kata.`,
+      `Tulis lirik lagu orisinal yang INDAH dan PUITIS untuk:\nJudul: "${activeTitle}"\nArtis: ${activeArtist}\n${moodCtx}\n\nFormat WAJIB:\n[Verse 1]\n(2-4 baris lirik)\n\n[Pre-Chorus]\n(1-2 baris)\n\n[Chorus]\n(2-4 baris, catchy & memorable)\n\n[Verse 2]\n(2-4 baris)\n\n[Chorus]\n(2-4 baris)\n\n[Bridge]\n(2-3 baris emosional)\n\n[Outro]\n(1-2 baris penutup)\n\nGunakan bahasa Indonesia yang puitis. Maksimal 180 kata.`,
       'Kamu penulis lirik profesional kelas dunia. Tulis HANYA lirik saja, tanpa intro, penjelasan, atau komentar. Mulai langsung dengan [Verse 1].'
     );
     setLyrics(r);
@@ -2319,8 +2421,10 @@ export default function App() {
   const getInsight = async () => {
     if (isLite) { setInsight('⚡ Mode Lite aktif — fitur AI dinonaktifkan.'); return; }
     setIL(true);
+    const activeTitle  = embedTrack ? (embedTrack.title  || track.title)  : track.title;
+    const activeArtist = embedTrack ? (embedTrack.artist || track.artist) : track.artist;
     const r = await askAI(
-      `Lagu: "${track.title}" oleh ${track.artist}. Vibe/mood: ${track.mood || 'unknown'}.\n\nBuat 1 kalimat puitis singkat yang menangkap esensi lagu ini. Gunakan metafora tentang bintang, alam semesta, atau alam. Maksimal 20 kata. Bahasa Indonesia.`,
+      `Lagu: "${activeTitle}" oleh ${activeArtist}. Vibe/mood: ${track.mood || 'unknown'}.\n\nBuat 1 kalimat puitis singkat yang menangkap esensi lagu ini. Gunakan metafora tentang bintang, alam semesta, atau alam. Maksimal 20 kata. Bahasa Indonesia.`,
       'Kamu penyair. Balas HANYA kalimat puitis saja, tanpa tanda petik, tanpa penjelasan.'
     );
     setInsight(r);
@@ -2336,7 +2440,7 @@ export default function App() {
     const msg=input; setInput(''); setMessages(p=>[...p,{from:'user',text:msg}]); setCL(true);
     const r = await askAI(
       msg,
-      `Kamu Starry AI, asisten musik yang ramah dan berpengetahuan luas. Jawab dalam Bahasa Indonesia, singkat (maks 80 kata), dan relevan. Konteks: pengguna sedang mendengarkan "${track.title}" oleh ${track.artist}${track.mood ? ` (mood: ${track.mood})` : ''}. Jika ditanya sesuatu di luar musik, tetap bantu tapi arahkan ke konteks musik.`
+      `Kamu Starry AI, asisten musik yang ramah dan berpengetahuan luas. Jawab dalam Bahasa Indonesia, singkat (maks 80 kata), dan relevan. Konteks: pengguna sedang mendengarkan "${embedTrack ? (embedTrack.title || track.title) : track.title}" oleh ${embedTrack ? (embedTrack.artist || track.artist) : track.artist}${track.mood ? ` (mood: ${track.mood})` : ''}${embedTrack ? ' via streaming' : ''}. Jika ditanya sesuatu di luar musik, tetap bantu tapi arahkan ke konteks musik.\`
     );
     setMessages(p=>[...p,{from:'ai',text:r}]);
     setCL(false);
@@ -2599,6 +2703,21 @@ export default function App() {
         </div>
       </header>}
 
+      {/* ── Offline banner */}
+      {!isOnline && (
+        <div style={{ position:'relative', zIndex:11, flexShrink:0, padding:'6px 16px', background:'rgba(234,179,8,0.12)', borderBottom:'1px solid rgba(234,179,8,0.25)', display:'flex', alignItems:'center', gap:8 }}>
+          <span style={{ fontSize:16 }}>📡</span>
+          <span style={{ fontSize:11, color:'#fde68a', flex:1, fontWeight:600 }}>
+            Offline — Lagu yang sudah diunduh tetap bisa diputar
+          </span>
+          {cachedDriveIds.size > 0 && (
+            <span style={{ fontSize:10, color:'rgba(253,230,138,0.6)', whiteSpace:'nowrap' }}>
+              {cachedDriveIds.size} lagu tersimpan
+            </span>
+          )}
+        </div>
+      )}
+
       {driveError&&<div style={{ position:'relative', zIndex:10, flexShrink:0, padding:'6px 16px', background:'rgba(239,68,68,0.15)', borderBottom:'1px solid rgba(239,68,68,0.25)', display:'flex', alignItems:'center', gap:8 }}>
         <span style={{ fontSize:11, color:'#fca5a5', flex:1 }}>{driveError}</span>
         {(driveError.includes('Sesi') || driveError.includes('401') || driveError.includes('Login')) && (
@@ -2658,7 +2777,7 @@ export default function App() {
           {/* ── QUEUE PANEL — inline dalam player, bukan full layar */}
           {showQueue && (
             <div style={{ position:'absolute', inset:0, zIndex:100, background:'rgba(0,0,0,0.55)', ...(isLite?{}:{backdropFilter:'blur(6px)'}), display:'flex', alignItems:'flex-end', animation:isLite?'none':'fadeUp 0.2s ease' }} onClick={e=>e.target===e.currentTarget&&setShowQueue(false)}>
-            <div style={{ width:'100%', maxHeight:'72%', display:'flex', flexDirection:'column', background:'#0d0d24', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'20px 20px 0 0', animation:isLite?'none':'slideUp 0.25s cubic-bezier(0.34,1.56,0.64,1)' }}>
+            <div style={{ width:'100%', maxHeight:'75%', display:'flex', flexDirection:'column', background:'#0d0d24', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'20px 20px 0 0', animation:isLite?'none':'slideUp 0.25s cubic-bezier(0.34,1.56,0.64,1)' }}>
               {/* Queue header */}
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 18px 12px', borderBottom:'1px solid rgba(255,255,255,0.07)', flexShrink:0 }}>
                 <div style={{ width:36, height:4, borderRadius:999, background:'rgba(255,255,255,0.15)', position:'absolute', left:'50%', transform:'translateX(-50%)', top:10 }}/>
@@ -2750,12 +2869,22 @@ export default function App() {
               </div>
             )}
 
-            {/* Fullscreen exit button */}
-            {fullscreen && (
-              <button onClick={()=>setFullscreen(false)}
-                style={{ position:'fixed', top:14, right:14, zIndex:20, display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:999, border:'1px solid rgba(255,255,255,0.15)', background:'rgba(7,7,26,0.75)', backdropFilter:'blur(10px)', color:'rgba(255,255,255,0.6)', fontSize:11, fontWeight:700, cursor:'pointer' }}>
-                <Minimize2 size={13}/> Keluar
-              </button>
+            {/* Fullscreen exit button + Close YT — unified floating top-right */}
+            {(fullscreen || embedTrack) && (
+              <div style={{ position:'fixed', top:14, right:14, zIndex:20, display:'flex', alignItems:'center', gap:6 }}>
+                {embedTrack && (
+                  <button onClick={()=>{ closeEmbed(); setShowSettings(false); if(fullscreen) setFullscreen(false); }}
+                    style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:999, border:'1px solid rgba(255,68,68,0.35)', background:'rgba(7,7,26,0.82)', backdropFilter:'blur(10px)', color:'#fca5a5', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                    <X size={13}/> Tutup
+                  </button>
+                )}
+                {fullscreen && (
+                  <button onClick={()=>setFullscreen(false)}
+                    style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:999, border:'1px solid rgba(255,255,255,0.15)', background:'rgba(7,7,26,0.82)', backdropFilter:'blur(10px)', color:'rgba(255,255,255,0.6)', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                    <Minimize2 size={13}/> Keluar
+                  </button>
+                )}
+              </div>
             )}
 
             {/* Ring — shows YouTube thumbnail + seek when YT is active */}
@@ -2793,8 +2922,8 @@ export default function App() {
               </button>
             </div>
 
-            {/* Secondary: Like | Queue | Mute | Volume slider | Settings | Close YT */}
-            <div style={{ display:'flex', alignItems:'center', gap:4, marginTop:'clamp(3px,0.8vh,7px)', width:'100%', maxWidth:290 }}>
+            {/* Secondary: Like | Queue | Mute | Volume | Settings | Fullscreen */}
+            <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:'clamp(6px,1.2vh,10px)', width:'100%', maxWidth:300, padding:'6px 10px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)' }}>
               {embedTrack?.type==='youtube'
                 ? <button onClick={likeYtTrack} style={{ ...btn, color:liked[`yt_${embedTrack.videoId}`]?'#f472b6':'rgba(255,255,255,0.3)', padding:6 }}><Heart size={17} fill={liked[`yt_${embedTrack.videoId}`]?'#f472b6':'none'}/></button>
                 : <button onClick={()=>setLiked(l=>({...l,[track.id]:!l[track.id]}))} style={{ ...btn, color:liked[track.id]?'#f472b6':'rgba(255,255,255,0.3)', padding:6 }}><Heart size={17} fill={liked[track.id]?'#f472b6':'none'}/></button>
@@ -2810,9 +2939,6 @@ export default function App() {
               <button onClick={()=>setFullscreen(f=>!f)} style={{ ...btn, color:fullscreen?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', padding:6 }} title={fullscreen?'Keluar Layar Penuh':'Layar Penuh'}>
                 {fullscreen?<Minimize2 size={17}/>:<Maximize2 size={17}/>}
               </button>
-              {embedTrack?.type==='youtube' && (
-                <button onClick={()=>{ closeEmbed(); setShowSettings(false); }} style={{ ...btn, color:'#fca5a5', padding:6 }} title="Tutup YouTube"><X size={16}/></button>
-              )}
             </div>
 
             {/* YouTube playlist picker — shown when YT track is liked */}
@@ -3362,7 +3488,7 @@ export default function App() {
                           {!googleUser && <div style={{ fontSize:11, color:'rgba(255,255,255,0.2)', marginTop:4 }}>Login Google untuk melihat lagu</div>}
                         </div>
                       )}
-                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} play={play} isDrive onRemove={id=>setCustomSongs(p=>p.filter(x=>x.id!==id))} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite}/>)}
+                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} play={play} isDrive isCached={cachedDriveIds.has(s.driveId)} onRemove={id=>setCustomSongs(p=>p.filter(x=>x.id!==id))} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite}/>)}
                     </div>
                   </div>
                 );
@@ -3556,12 +3682,19 @@ export default function App() {
               /* ── LYRICS VIEW inside AI tab */
               <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'16px 20px 24px' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14 }}>
-                  {isLite
-                    ? <div style={{ width:40, height:40, borderRadius:10, background:track.bg, display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={18} color={track.color}/></div>
-                    : <img src={getCover(track)} style={{ width:40, height:40, borderRadius:10, objectFit:'cover' }}/>}
+                  {embedTrack?.type==='youtube'
+                    ? <div style={{ width:40, height:40, borderRadius:10, overflow:'hidden', flexShrink:0, background:'rgba(255,68,68,0.15)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                        {embedTrack.thumbnail ? <img src={embedTrack.thumbnail} style={{ width:'100%', height:'100%', objectFit:'cover' }}/> : <span style={{ fontSize:18 }}>▶</span>}
+                      </div>
+                    : isLite
+                      ? <div style={{ width:40, height:40, borderRadius:10, background:track.bg, display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={18} color={track.color}/></div>
+                      : <img src={getCover(track)} style={{ width:40, height:40, borderRadius:10, objectFit:'cover', flexShrink:0 }}/>}
                   <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontWeight:800, fontSize:14, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{track.title}</div>
-                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)' }}>{track.artist}</div>
+                    <div style={{ fontWeight:800, fontSize:14, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{embedTrack ? (embedTrack.title || track.title) : track.title}</div>
+                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', display:'flex', alignItems:'center', gap:4 }}>
+                      {embedTrack && <span style={{ fontSize:9, fontWeight:800, color:'#ff6b6b', background:'rgba(255,68,68,0.12)', padding:'1px 5px', borderRadius:999 }}>▶ STREAM</span>}
+                      {embedTrack ? (embedTrack.artist || 'YouTube') : track.artist}
+                    </div>
                   </div>
                   <button onClick={getLyrics} disabled={lyricsLoading} style={{ padding:'7px 14px', borderRadius:999, border:'none', background:track.color, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', opacity:lyricsLoading?0.6:1, display:'flex', alignItems:'center', gap:6, flexShrink:0 }}>
                     {lyricsLoading?<><Loader2 size={13} style={{ animation:'spin 1s linear infinite' }}/>Cari...</>:<><Sparkles size={13}/>{lyrics?'Refresh':'Tampilkan Lirik'}</>}

@@ -33,15 +33,33 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
         runtimeCaching: [
           {
+            // Lagu builtin (SoundHelix, Bensound, dll) — cache setelah pertama diputar
             urlPattern: /\.(mp3|wav|ogg|flac|m4a)$/i,
-            handler: 'NetworkOnly'
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'audio-cache',
+              expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] }
+            }
           },
           {
+            // Cover art Unsplash
             urlPattern: /^https:\/\/images\.unsplash\.com\//,
             handler: 'CacheFirst',
             options: {
               cacheName: 'cover-art-cache',
-              expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 * 7 }
+              expiration: { maxEntries: 80, maxAgeSeconds: 60 * 60 * 24 * 14 },
+              cacheableResponse: { statuses: [0, 200] }
+            }
+          },
+          {
+            // YouTube thumbnails
+            urlPattern: /^https:\/\/i\.ytimg\.com\//,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'yt-thumb-cache',
+              expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 7 },
+              cacheableResponse: { statuses: [0, 200] }
             }
           }
         ]
