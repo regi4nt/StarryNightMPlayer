@@ -2935,9 +2935,9 @@ export default function App() {
               </button>
             );
           })}
-          <div style={{ flex:1, display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'flex-start', padding:'0 14px' }}>
-            {/* ── JAM — di pojok kiri sidebar, sejajar dengan Orbital Ring */}
-            <div style={{ userSelect:'none' }}>
+          <div style={{ flex:1, position:'relative' }}>
+            {/* ── JAM — position absolute di tengah sidebar, tidak terpengaruh perubahan tinggi */}
+            <div style={{ position:'absolute', top:'50%', left:14, transform:'translateY(-50%)', userSelect:'none' }}>
               <div style={{ fontSize:'clamp(20px,1.6vw,26px)', fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
                 {nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false })}
               </div>
@@ -3055,16 +3055,16 @@ export default function App() {
 
             {/* floating action button moved to root level */}
 
-            {/* ── Mobile: jam absolute kiri + ring tetap tengah | Desktop: ring tengah saja */}
+            {/* ── Mobile: jam kiri atas + ring tengah | Desktop: ring tengah saja */}
             {!isDesktop ? (
-              <div style={{ position:'relative', width:'100%', display:'flex', justifyContent:'center', alignItems:'center' }}>
-                {/* Jam — absolute kiri, sejajar tengah ring */}
-                <div style={{ position:'absolute', left:2, top:'50%', transform:'translateY(-50%)', userSelect:'none' }}>
-                  <div style={{ fontSize:'clamp(18px,5vw,24px)', fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+              <div style={{ position:'relative', width:'100%', height:ringSize, display:'flex', justifyContent:'center', alignItems:'center' }}>
+                {/* Jam — absolute pojok kiri, tidak overlap ring */}
+                <div style={{ position:'absolute', left:4, top:0, userSelect:'none', maxWidth:`calc(50% - ${ringSize/2}px + 10px)` }}>
+                  <div style={{ fontSize:'clamp(16px,4.5vw,22px)', fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
                     {nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false })}
                   </div>
-                  <div style={{ fontSize:'clamp(8px,2vw,10px)', color:'rgba(255,255,255,0.35)', fontWeight:600, marginTop:3, letterSpacing:'0.04em', textTransform:'uppercase' }}>
-                    {nowTime.toLocaleDateString('id-ID',{ weekday:'long', day:'numeric', month:'long' })}
+                  <div style={{ fontSize:'clamp(7px,1.8vw,9px)', color:'rgba(255,255,255,0.35)', fontWeight:600, marginTop:3, letterSpacing:'0.04em', textTransform:'uppercase', whiteSpace:'nowrap' }}>
+                    {nowTime.toLocaleDateString('id-ID',{ weekday:'short', day:'numeric', month:'short' })}
                   </div>
                 </div>
                 {/* Ring — tetap di tengah */}
