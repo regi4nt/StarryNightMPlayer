@@ -12,15 +12,117 @@ import {
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════
-//  SONGS
+//  MUSIC SOURCES — lagu gratis dari berbagai sumber
 // ═══════════════════════════════════════════════════════
-const SONGS = [
-  { id:1, title:"Deep Space Night",   artist:"SoundHelix", album:"Vol. 1", cover:"https://images.unsplash.com/photo-1464802686167-b939a6910659?w=400&h=400&fit=crop", src:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", color:"#3b82f6", bg:"rgba(59,130,246,0.15)",  mood:"calm, expansive, mysterious" },
-  { id:2, title:"Lunar Reflection",   artist:"SoundHelix", album:"Vol. 2", cover:"https://images.unsplash.com/photo-1532693322450-2cb5c511067d?w=400&h=400&fit=crop", src:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3", color:"#a855f7", bg:"rgba(168,85,247,0.15)", mood:"melancholic, bright, reflective" },
-  { id:3, title:"Nebula Pulse",        artist:"SoundHelix", album:"Vol. 3", cover:"https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=400&h=400&fit=crop", src:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3", color:"#6366f1", bg:"rgba(99,102,241,0.15)",  mood:"energetic, rhythmic, futuristic" },
-  { id:4, title:"Aurora Glow",         artist:"SoundHelix", album:"Vol. 8", cover:"https://images.unsplash.com/photo-1531306728370-e2ebd9d7bb99?w=400&h=400&fit=crop", src:"https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3", color:"#14b8a6", bg:"rgba(20,184,166,0.15)",  mood:"uplifting, organic, vibrant" },
+const MUSIC_SOURCES = [
+  {
+    id: 'soundhelix',
+    name: 'SoundHelix',
+    icon: '🎛️',
+    description: 'Synthetic electronic & instrumental',
+    color: '#3b82f6',
+    songs: [
+      { id:'sh1', title:'Deep Space Night',    artist:'SoundHelix', album:'SoundHelix Vol.1',  cover:'https://images.unsplash.com/photo-1464802686167-b939a6910659?w=400&h=400&fit=crop', src:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',  color:'#3b82f6', bg:'rgba(59,130,246,0.15)',  mood:'calm, expansive, mysterious' },
+      { id:'sh2', title:'Lunar Reflection',    artist:'SoundHelix', album:'SoundHelix Vol.2',  cover:'https://images.unsplash.com/photo-1532693322450-2cb5c511067d?w=400&h=400&fit=crop', src:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',  color:'#a855f7', bg:'rgba(168,85,247,0.15)', mood:'melancholic, bright, reflective' },
+      { id:'sh3', title:'Nebula Pulse',         artist:'SoundHelix', album:'SoundHelix Vol.3',  cover:'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=400&h=400&fit=crop', src:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',  color:'#6366f1', bg:'rgba(99,102,241,0.15)',  mood:'energetic, rhythmic, futuristic' },
+      { id:'sh4', title:'Aurora Glow',          artist:'SoundHelix', album:'SoundHelix Vol.4',  cover:'https://images.unsplash.com/photo-1531306728370-e2ebd9d7bb99?w=400&h=400&fit=crop', src:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',  color:'#14b8a6', bg:'rgba(20,184,166,0.15)',  mood:'uplifting, organic, vibrant' },
+      { id:'sh5', title:'Cosmic Drive',         artist:'SoundHelix', album:'SoundHelix Vol.5',  cover:'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=400&h=400&fit=crop', src:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3',  color:'#f59e0b', bg:'rgba(245,158,11,0.15)',  mood:'driving, powerful, intense' },
+      { id:'sh6', title:'Starfield Journey',    artist:'SoundHelix', album:'SoundHelix Vol.6',  cover:'https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?w=400&h=400&fit=crop', src:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3',  color:'#ec4899', bg:'rgba(236,72,153,0.15)',  mood:'romantic, dreamy, soft' },
+      { id:'sh7', title:'Orbital Drift',        artist:'SoundHelix', album:'SoundHelix Vol.7',  cover:'https://images.unsplash.com/photo-1502134249126-9f3755a50d78?w=400&h=400&fit=crop', src:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3',  color:'#22c55e', bg:'rgba(34,197,94,0.15)',   mood:'fresh, hopeful, upbeat' },
+      { id:'sh8', title:'Midnight Frequency',   artist:'SoundHelix', album:'SoundHelix Vol.8',  cover:'https://images.unsplash.com/photo-1545569341-9eb8b30979d9?w=400&h=400&fit=crop', src:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3',  color:'#ef4444', bg:'rgba(239,68,68,0.15)',   mood:'energetic, intense, bold' },
+      { id:'sh9', title:'Solar Wind',           artist:'SoundHelix', album:'SoundHelix Vol.9',  cover:'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=400&h=400&fit=crop', src:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3',  color:'#0ea5e9', bg:'rgba(14,165,233,0.15)',  mood:'airy, wide, expansive' },
+      { id:'sh10',title:'Quantum Echo',         artist:'SoundHelix', album:'SoundHelix Vol.10', cover:'https://images.unsplash.com/photo-1614728894747-a83421e2b9c9?w=400&h=400&fit=crop', src:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3', color:'#8b5cf6', bg:'rgba(139,92,246,0.15)',  mood:'mysterious, deep, immersive' },
+      { id:'sh11',title:'Event Horizon',        artist:'SoundHelix', album:'SoundHelix Vol.11', cover:'https://images.unsplash.com/photo-1543722530-d2c3201371e7?w=400&h=400&fit=crop', src:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3', color:'#f97316', bg:'rgba(249,115,22,0.15)',  mood:'cinematic, grand, epic' },
+      { id:'sh12',title:'Hyperspace',           artist:'SoundHelix', album:'SoundHelix Vol.12', cover:'https://images.unsplash.com/photo-1462332420958-a05d1e002413?w=400&h=400&fit=crop', src:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3', color:'#06b6d4', bg:'rgba(6,182,212,0.15)',   mood:'fast, electrifying, neon' },
+      { id:'sh13',title:'Dark Matter',          artist:'SoundHelix', album:'SoundHelix Vol.13', cover:'https://images.unsplash.com/photo-1484589065579-248aad0d8b13?w=400&h=400&fit=crop', src:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-13.mp3', color:'#64748b', bg:'rgba(100,116,139,0.15)', mood:'dark, brooding, cinematic' },
+      { id:'sh14',title:'Pulsar Rhythm',        artist:'SoundHelix', album:'SoundHelix Vol.14', cover:'https://images.unsplash.com/photo-1531907700752-62799b2a3e84?w=400&h=400&fit=crop', src:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-14.mp3', color:'#d946ef', bg:'rgba(217,70,239,0.15)',  mood:'groovy, funky, bouncy' },
+      { id:'sh15',title:'Void Signal',          artist:'SoundHelix', album:'SoundHelix Vol.15', cover:'https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?w=400&h=400&fit=crop', src:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3', color:'#10b981', bg:'rgba(16,185,129,0.15)',  mood:'calm, organic, ambient' },
+      { id:'sh16',title:'Warp Gate',            artist:'SoundHelix', album:'SoundHelix Vol.16', cover:'https://images.unsplash.com/photo-1516339901601-2e1b62dc0c45?w=400&h=400&fit=crop', src:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-16.mp3', color:'#3b82f6', bg:'rgba(59,130,246,0.15)',  mood:'energetic, tense, build-up' },
+      { id:'sh17',title:'Andromeda Call',       artist:'SoundHelix', album:'SoundHelix Vol.17', cover:'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop', src:'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-17.mp3', color:'#a855f7', bg:'rgba(168,85,247,0.15)', mood:'ethereal, floating, spiritual' },
+    ]
+  },
+  {
+    id: 'bensound',
+    name: 'Bensound',
+    icon: '🎸',
+    description: 'Cinematic, jazz & acoustic royalty-free',
+    color: '#f59e0b',
+    songs: [
+      { id:'bs1',  title:'Ukulele',           artist:'Bensound', album:'Acoustic',   cover:'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=400&h=400&fit=crop', src:'https://www.bensound.com/bensound-music/bensound-ukulele.mp3',           color:'#f59e0b', bg:'rgba(245,158,11,0.15)',  mood:'happy, light, playful' },
+      { id:'bs2',  title:'Sunny',             artist:'Bensound', album:'Acoustic',   cover:'https://images.unsplash.com/photo-1504898770365-14faca6a7320?w=400&h=400&fit=crop', src:'https://www.bensound.com/bensound-music/bensound-sunny.mp3',             color:'#fbbf24', bg:'rgba(251,191,36,0.15)',  mood:'sunny, cheerful, warm' },
+      { id:'bs3',  title:'Acoustic Breeze',   artist:'Bensound', album:'Acoustic',   cover:'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=400&h=400&fit=crop', src:'https://www.bensound.com/bensound-music/bensound-acousticbreeze.mp3',    color:'#22c55e', bg:'rgba(34,197,94,0.15)',   mood:'breeze, peaceful, acoustic' },
+      { id:'bs4',  title:'Creative Minds',    artist:'Bensound', album:'Corporate',  cover:'https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&h=400&fit=crop', src:'https://www.bensound.com/bensound-music/bensound-creativeminds.mp3',     color:'#3b82f6', bg:'rgba(59,130,246,0.15)',  mood:'inspiring, motivated, creative' },
+      { id:'bs5',  title:'Epic',              artist:'Bensound', album:'Cinematic',  cover:'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400&h=400&fit=crop', src:'https://www.bensound.com/bensound-music/bensound-epic.mp3',             color:'#ef4444', bg:'rgba(239,68,68,0.15)',   mood:'epic, powerful, cinematic' },
+      { id:'bs6',  title:'Once Again',        artist:'Bensound', album:'Cinematic',  cover:'https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?w=400&h=400&fit=crop', src:'https://www.bensound.com/bensound-music/bensound-onceagain.mp3',        color:'#8b5cf6', bg:'rgba(139,92,246,0.15)',  mood:'reflective, emotional, nostalgic' },
+      { id:'bs7',  title:'Jazz Comedy',       artist:'Bensound', album:'Jazz',       cover:'https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=400&h=400&fit=crop', src:'https://www.bensound.com/bensound-music/bensound-jazzcomedy.mp3',      color:'#f97316', bg:'rgba(249,115,22,0.15)',  mood:'fun, jazzy, upbeat' },
+      { id:'bs8',  title:'Jazzy Frenchy',     artist:'Bensound', album:'Jazz',       cover:'https://images.unsplash.com/photo-1470019693664-1d202d2c0907?w=400&h=400&fit=crop', src:'https://www.bensound.com/bensound-music/bensound-jazzyfrenchy.mp3',    color:'#ec4899', bg:'rgba(236,72,153,0.15)',  mood:'french, romantic, charming' },
+      { id:'bs9',  title:'Memories',          artist:'Bensound', album:'Cinematic',  cover:'https://images.unsplash.com/photo-1501854140801-50d01698950b?w=400&h=400&fit=crop', src:'https://www.bensound.com/bensound-music/bensound-memories.mp3',        color:'#14b8a6', bg:'rgba(20,184,166,0.15)',  mood:'nostalgic, tender, beautiful' },
+      { id:'bs10', title:'Tenderness',        artist:'Bensound', album:'Romantic',   cover:'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=400&h=400&fit=crop', src:'https://www.bensound.com/bensound-music/bensound-tenderness.mp3',      color:'#a855f7', bg:'rgba(168,85,247,0.15)', mood:'soft, tender, intimate' },
+      { id:'bs11', title:'Relaxing',          artist:'Bensound', album:'Ambient',    cover:'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=400&fit=crop', src:'https://www.bensound.com/bensound-music/bensound-relaxing.mp3',        color:'#06b6d4', bg:'rgba(6,182,212,0.15)',   mood:'calm, relaxing, serene' },
+      { id:'bs12', title:'Cute',              artist:'Bensound', album:'Acoustic',   cover:'https://images.unsplash.com/photo-1490750967868-88df5691cc8b?w=400&h=400&fit=crop', src:'https://www.bensound.com/bensound-music/bensound-cute.mp3',             color:'#f43f5e', bg:'rgba(244,63,94,0.15)',   mood:'cute, sweet, positive' },
+    ]
+  },
+  {
+    id: 'musopen',
+    name: 'Musopen',
+    icon: '🎻',
+    description: 'Klasik & orkestra bebas hak cipta',
+    color: '#8b5cf6',
+    songs: [
+      { id:'mo1', title:'Moonlight Sonata Mvt.1',   artist:'Beethoven',   album:'Piano Sonatas',      cover:'https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?w=400&h=400&fit=crop', src:'https://musopen.org/music/download/1326/', color:'#8b5cf6', bg:'rgba(139,92,246,0.15)',  mood:'melancholic, contemplative, moonlit' },
+      { id:'mo2', title:'Für Elise',                artist:'Beethoven',   album:'Bagatelles',         cover:'https://images.unsplash.com/photo-1507838153414-b4b713384a76?w=400&h=400&fit=crop', src:'https://musopen.org/music/download/219/',  color:'#a855f7', bg:'rgba(168,85,247,0.15)', mood:'delicate, flowing, classical' },
+      { id:'mo3', title:'Clair de Lune',             artist:'Debussy',     album:'Suite Bergamasque',  cover:'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop', src:'https://musopen.org/music/download/734/',  color:'#06b6d4', bg:'rgba(6,182,212,0.15)',   mood:'dreamy, impressionist, moonlight' },
+      { id:'mo4', title:'Canon in D',               artist:'Pachelbel',   album:'Chamber Music',      cover:'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=400&h=400&fit=crop', src:'https://musopen.org/music/download/878/',  color:'#f59e0b', bg:'rgba(245,158,11,0.15)',  mood:'elegant, timeless, ceremonial' },
+      { id:'mo5', title:'Symphony No.5 Mvt.1',      artist:'Beethoven',   album:'Symphonies',         cover:'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=400&h=400&fit=crop', src:'https://musopen.org/music/download/587/',  color:'#ef4444', bg:'rgba(239,68,68,0.15)',   mood:'dramatic, powerful, triumphant' },
+      { id:'mo6', title:'The Four Seasons - Spring', artist:'Vivaldi',     album:'The Four Seasons',   cover:'https://images.unsplash.com/photo-1490750967868-88df5691cc8b?w=400&h=400&fit=crop', src:'https://musopen.org/music/download/2864/', color:'#22c55e', bg:'rgba(34,197,94,0.15)',   mood:'joyful, vibrant, seasonal' },
+      { id:'mo7', title:'Gymnopédie No.1',           artist:'Erik Satie',  album:'Gymnopédies',        cover:'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=400&h=400&fit=crop', src:'https://musopen.org/music/download/1241/', color:'#14b8a6', bg:'rgba(20,184,166,0.15)',  mood:'slow, peaceful, introspective' },
+      { id:'mo8', title:'Waltz of the Snowflakes',   artist:'Tchaikovsky', album:'The Nutcracker',     cover:'https://images.unsplash.com/photo-1544511916-0148ccdeb877?w=400&h=400&fit=crop', src:'https://musopen.org/music/download/2212/', color:'#0ea5e9', bg:'rgba(14,165,233,0.15)',  mood:'magical, whimsical, festive' },
+    ]
+  },
+  {
+    id: 'pixabay',
+    name: 'Pixabay Music',
+    icon: '🎧',
+    description: 'Lo-fi, chill & electronic beats',
+    color: '#ec4899',
+    songs: [
+      { id:'px1',  title:'Lofi Study',           artist:'Pixabay', album:'Lo-Fi Chill',  cover:'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=400&fit=crop', src:'https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3', color:'#ec4899', bg:'rgba(236,72,153,0.15)',  mood:'focus, calm, study' },
+      { id:'px2',  title:'Ambient Piano',         artist:'Pixabay', album:'Ambient',      cover:'https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?w=400&h=400&fit=crop', src:'https://cdn.pixabay.com/audio/2022/01/18/audio_d0c6ff1fbe.mp3', color:'#8b5cf6', bg:'rgba(139,92,246,0.15)',  mood:'ambient, peaceful, reflective' },
+      { id:'px3',  title:'Chill Hip Hop Beat',    artist:'Pixabay', album:'Hip-Hop',      cover:'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop', src:'https://cdn.pixabay.com/audio/2022/03/15/audio_9b3d8ca61a.mp3', color:'#f97316', bg:'rgba(249,115,22,0.15)',  mood:'chill, urban, laid-back' },
+      { id:'px4',  title:'Corporate Upbeat',      artist:'Pixabay', album:'Corporate',    cover:'https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&h=400&fit=crop', src:'https://cdn.pixabay.com/audio/2022/08/04/audio_2dde668d05.mp3', color:'#3b82f6', bg:'rgba(59,130,246,0.15)',  mood:'energetic, professional, upbeat' },
+      { id:'px5',  title:'Acoustic Guitar Folk',  artist:'Pixabay', album:'Acoustic',     cover:'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=400&h=400&fit=crop', src:'https://cdn.pixabay.com/audio/2022/03/10/audio_270f49c370.mp3', color:'#22c55e', bg:'rgba(34,197,94,0.15)',   mood:'natural, warm, campfire' },
+      { id:'px6',  title:'Cinematic Adventure',   artist:'Pixabay', album:'Cinematic',    cover:'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400&h=400&fit=crop', src:'https://cdn.pixabay.com/audio/2022/10/16/audio_f8cef61ac1.mp3', color:'#ef4444', bg:'rgba(239,68,68,0.15)',   mood:'adventure, cinematic, heroic' },
+      { id:'px7',  title:'Tropical House Vibes',  artist:'Pixabay', album:'Electronic',   cover:'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=400&fit=crop', src:'https://cdn.pixabay.com/audio/2022/08/31/audio_2f79e5f0ba.mp3', color:'#14b8a6', bg:'rgba(20,184,166,0.15)',  mood:'tropical, summer, fresh' },
+      { id:'px8',  title:'Deep Electronic',       artist:'Pixabay', album:'Electronic',   cover:'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&h=400&fit=crop', src:'https://cdn.pixabay.com/audio/2022/07/25/audio_ba1e4c90af.mp3', color:'#06b6d4', bg:'rgba(6,182,212,0.15)',   mood:'deep, electronic, nightclub' },
+      { id:'px9',  title:'Inspiring Morning',     artist:'Pixabay', album:'Motivational', cover:'https://images.unsplash.com/photo-1504898770365-14faca6a7320?w=400&h=400&fit=crop', src:'https://cdn.pixabay.com/audio/2022/10/25/audio_2a5e65caaa.mp3', color:'#fbbf24', bg:'rgba(251,191,36,0.15)',  mood:'inspiring, morning, fresh start' },
+      { id:'px10', title:'Sad Piano',             artist:'Pixabay', album:'Emotional',    cover:'https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?w=400&h=400&fit=crop', src:'https://cdn.pixabay.com/audio/2022/10/25/audio_c21f3d8049.mp3', color:'#64748b', bg:'rgba(100,116,139,0.15)', mood:'sad, emotional, introspective' },
+    ]
+  },
+  {
+    id: 'incompetech',
+    name: 'Incompetech',
+    icon: '🎺',
+    description: 'Kevin MacLeod — ratusan genre bebas',
+    color: '#14b8a6',
+    songs: [
+      { id:'km1',  title:'Cipher',               artist:'Kevin MacLeod', album:'Electronic',  cover:'https://images.unsplash.com/photo-1462331420958-a05d1e002413?w=400&h=400&fit=crop', src:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Cipher.mp3',               color:'#14b8a6', bg:'rgba(20,184,166,0.15)',  mood:'mysterious, electronic, dark' },
+      { id:'km2',  title:'Cephalopod',            artist:'Kevin MacLeod', album:'Ambient',     cover:'https://images.unsplash.com/photo-1484589065579-248aad0d8b13?w=400&h=400&fit=crop', src:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Cephalopod.mp3',            color:'#0ea5e9', bg:'rgba(14,165,233,0.15)',  mood:'floating, underwater, ambient' },
+      { id:'km3',  title:'Sneaky Snitch',         artist:'Kevin MacLeod', album:'Comedy',      cover:'https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=400&h=400&fit=crop', src:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Sneaky%20Snitch.mp3',       color:'#f97316', bg:'rgba(249,115,22,0.15)',  mood:'sneaky, jazzy, comedic' },
+      { id:'km4',  title:'Scheming Weasel',       artist:'Kevin MacLeod', album:'Comedy',      cover:'https://images.unsplash.com/photo-1470019693664-1d202d2c0907?w=400&h=400&fit=crop', src:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Scheming%20Weasel.mp3',     color:'#ec4899', bg:'rgba(236,72,153,0.15)',  mood:'cartoonish, playful, mischievous' },
+      { id:'km5',  title:'Intended Force',        artist:'Kevin MacLeod', album:'Cinematic',   cover:'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=400&h=400&fit=crop', src:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Intended%20Force.mp3',      color:'#ef4444', bg:'rgba(239,68,68,0.15)',   mood:'epic, forceful, action' },
+      { id:'km6',  title:'Hyperfun',              artist:'Kevin MacLeod', album:'Electronic',  cover:'https://images.unsplash.com/photo-1416339134316-0e91dc9ded92?w=400&h=400&fit=crop', src:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Hyperfun.mp3',              color:'#a855f7', bg:'rgba(168,85,247,0.15)', mood:'upbeat, silly, hyper' },
+      { id:'km7',  title:'Hitman',                artist:'Kevin MacLeod', album:'Electronic',  cover:'https://images.unsplash.com/photo-1545569341-9eb8b30979d9?w=400&h=400&fit=crop', src:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Hitman.mp3',                color:'#64748b', bg:'rgba(100,116,139,0.15)', mood:'dark, tense, thriller' },
+      { id:'km8',  title:'Local Forecast',        artist:'Kevin MacLeod', album:'Jazz',        cover:'https://images.unsplash.com/photo-1501854140801-50d01698950b?w=400&h=400&fit=crop', src:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Local%20Forecast.mp3',     color:'#22c55e', bg:'rgba(34,197,94,0.15)',   mood:'easy, breezy, morning news' },
+      { id:'km9',  title:'Pixel Peeker Polka',    artist:'Kevin MacLeod', album:'Folk',        cover:'https://images.unsplash.com/photo-1526478806334-5fd488fcaabc?w=400&h=400&fit=crop', src:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Pixel%20Peeker%20Polka%20-%20slower.mp3', color:'#fbbf24', bg:'rgba(251,191,36,0.15)', mood:'folk, bouncy, fun' },
+      { id:'km10', title:'Fluidscape',            artist:'Kevin MacLeod', album:'Ambient',     cover:'https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?w=400&h=400&fit=crop', src:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Fluidscape.mp3',            color:'#06b6d4', bg:'rgba(6,182,212,0.15)',   mood:'calm, fluid, spa-like' },
+    ]
+  },
 ];
 
+// Default songs (sumber pertama, SoundHelix 4 pertama)
+const SONGS = MUSIC_SOURCES[0].songs.slice(0, 4);
+
+// Helper: semua lagu dari semua sumber yang sudah di-load
 // ═══════════════════════════════════════════════════════
 //  GOOGLE DRIVE
 // ═══════════════════════════════════════════════════════
@@ -512,7 +614,7 @@ function SongRow({ s, i, track, playing, liked, setLiked, play, isDrive, onRemov
 // ═══════════════════════════════════════════════════════
 //  SETTINGS PANEL  (EQ, Crossfade, Sleep Timer)
 // ═══════════════════════════════════════════════════════
-function SettingsPanel({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setEqPreset, eqGains, setEqGains, crossfade, setCrossfade, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite }) {
+function SettingsPanel({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setEqPreset, eqGains, setEqGains, crossfade, setCrossfade, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, dataSaver, toggleDataSaver }) {
   const coverRef = useRef(null);
   return (
     <div style={{ position:'fixed', inset:0, zIndex:100, background:'rgba(0,0,0,0.75)', ...(isLite ? {} : { backdropFilter:'blur(8px)' }), display:'flex', alignItems:'flex-end', animation:'fadeUp 0.25s ease' }} onClick={e=>e.target===e.currentTarget&&onClose()}>
@@ -589,6 +691,37 @@ function SettingsPanel({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setE
             <div style={{ padding:'12px 14px', borderRadius:12, background:`${color}15`, border:`1px solid ${color}30`, textAlign:'center' }}>
               <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)' }}>Musik berhenti dalam</div>
               <div style={{ fontSize:24, fontWeight:900, color, fontFamily:'monospace', marginTop:4 }}>{fmtSec(sleepTimer.remaining)}</div>
+            </div>
+          )}
+        </div>
+
+        {/* ── HEMAT DATA */}
+        <div style={{ marginTop:28 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <span style={{ fontSize:16 }}>🌿</span>
+              <div>
+                <div style={{ fontWeight:800, fontSize:14 }}>Hemat Data</div>
+                <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>Nonaktifkan cover, AI, dan buffer audio</div>
+              </div>
+            </div>
+            <div onClick={toggleDataSaver} style={{ width:44, height:24, borderRadius:999, background:dataSaver?'#10b981':'rgba(255,255,255,0.1)', cursor:'pointer', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
+              <div style={{ position:'absolute', top:3, left:dataSaver?22:3, width:18, height:18, borderRadius:'50%', background:'white', transition:'left 0.2s', boxShadow:'0 1px 4px rgba(0,0,0,0.3)' }}/>
+            </div>
+          </div>
+          {dataSaver && (
+            <div style={{ borderRadius:12, background:'rgba(16,185,129,0.08)', border:'1px solid rgba(16,185,129,0.2)', padding:'10px 14px', display:'flex', flexDirection:'column', gap:5 }}>
+              {[
+                ['🚫 Cover art', 'Gambar album tidak dimuat dari internet'],
+                ['🚫 Buffer audio', 'Audio hanya dimuat saat diputar (preload: none)'],
+                ['🚫 Prefetch Drive', 'Lagu Drive tidak di-cache sebelum diputar'],
+                ['🚫 AI & Insight', 'Starry AI, Vibe Search, dan Insight dinonaktifkan'],
+              ].map(([icon, desc])=>(
+                <div key={icon} style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <span style={{ fontSize:11 }}>{icon}</span>
+                  <span style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>{desc}</span>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -692,6 +825,34 @@ export default function App() {
   const [isLite, setIsLite] = useState(() => localStorage.getItem('sn_mode') === 'lite');
   const toggleMode = () => setIsLite(v => { const n=!v; localStorage.setItem('sn_mode', n?'lite':'pro'); return n; });
 
+  // ── Hemat Data: blokir cover image, preload audio, prefetch Drive, & AI calls
+  const [dataSaver, setDataSaver] = useState(() => localStorage.getItem('sn_datasaver') === '1');
+  const toggleDataSaver = () => setDataSaver(v => {
+    const n = !v; localStorage.setItem('sn_datasaver', n ? '1' : '0'); return n;
+  });
+
+  // ── Sumber musik yang sudah di-load
+  const [loadedSources, setLoadedSources] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('sn_loaded_sources') || '["soundhelix"]'); } catch { return ['soundhelix']; }
+  });
+  const [loadingSource, setLoadingSource] = useState(null);
+
+  const builtinSongs = MUSIC_SOURCES
+    .filter(src => loadedSources.includes(src.id))
+    .flatMap(src => src.songs);
+
+  const loadSource = (srcId) => {
+    if (loadedSources.includes(srcId)) return;
+    setLoadingSource(srcId);
+    // Simulasi loading sebentar (songs sudah ada di memori, tidak perlu fetch)
+    setTimeout(() => {
+      const next = [...loadedSources, srcId];
+      setLoadedSources(next);
+      localStorage.setItem('sn_loaded_sources', JSON.stringify(next));
+      setLoadingSource(null);
+    }, 600);
+  };
+
   // ── Core playback
   const [track, setTrack]       = useState(SONGS[0]);
   const [playing, setPlaying]   = useState(false);
@@ -736,9 +897,18 @@ export default function App() {
   const [vibeInput, setVibeInput] = useState('');
   const [vibeLoading, setVL]    = useState(false);
 
-  // ── Google Drive
-  const [googleUser, setGoogleUser]     = useState(null);
-  const [accessToken, setAccessToken]   = useState(null);
+  // ── Google Drive — restore session from localStorage if token still valid
+  const [googleUser, setGoogleUser]     = useState(() => {
+    try { return JSON.parse(localStorage.getItem('sn_google_user') || 'null'); } catch { return null; }
+  });
+  const [accessToken, setAccessToken]   = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('sn_google_token') || 'null');
+      if (saved && saved.expiry > Date.now()) return saved.token;
+      localStorage.removeItem('sn_google_token');
+      return null;
+    } catch { return null; }
+  });
   const [customSongs, setCustomSongs]   = useState([]);
   const [loadingDrive, setLoadingDrive] = useState(false);
   const [showUpload, setShowUpload]     = useState(false);
@@ -753,7 +923,7 @@ export default function App() {
   const coverInputRef = useRef(null);
 
   // Helper: ambil cover aktif (globalCover override semua)
-  const getCover = useCallback((song) => globalCover || song?.cover || '', [globalCover]);
+  const getCover = useCallback((song) => dataSaver ? (globalCover || '') : (globalCover || song?.cover || ''), [globalCover, dataSaver]);
 
   // ── Playlists
   const [playlists, setPlaylists]         = useState([
@@ -767,6 +937,7 @@ export default function App() {
 
   // ── Responsive
   const [ringSize, setRingSize] = useState(260);
+  const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 768);
 
   // ── Refs
   const audioRef      = useRef(null);
@@ -780,7 +951,7 @@ export default function App() {
   const cfGainRef     = useRef(null); // crossfade gain
   const crossfadeRef  = useRef(0);
 
-  const allSongs = [...SONGS, ...customSongs];
+  const allSongs = [...builtinSongs, ...customSongs];
 
   // ── Keep refs in sync
   useEffect(() => { shuffleRef.current  = shuffle;   }, [shuffle]);
@@ -795,16 +966,31 @@ export default function App() {
     }
   }, []);
 
-  // ── Responsive ring
+  // ── Auto-restore Drive songs if we have a saved valid token
+  useEffect(() => {
+    const savedToken = (() => { try { const s=JSON.parse(localStorage.getItem('sn_google_token')||'null'); return s&&s.expiry>Date.now()?s.token:null; } catch{return null;} })();
+    if (savedToken && !customSongs.length) {
+      setLoadingDrive(true);
+      driveListSongs(savedToken).then(songs => { setCustomSongs(songs); setLoadingDrive(false); }).catch(()=>setLoadingDrive(false));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Responsive ring + desktop detection
   useEffect(() => {
     const calc = () => {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      // Measure all fixed UI elements:
-      // header ~50 + tabbar ~60 + trackInfo ~55 + controls ~58 + secControls ~46 + insight ~42 + gaps ~36 = ~347
-      const overhead = 347;
-      const available = Math.min(vh - overhead, vw - 48);
-      setRingSize(Math.max(185, Math.min(310, available)));
+      const desktop = vw >= 768;
+      setIsDesktop(desktop);
+      if (desktop) {
+        const available = Math.min(vh - 340, 300);
+        setRingSize(Math.max(200, Math.min(270, available)));
+      } else {
+        const overhead = 347;
+        const available = Math.min(vh - overhead, vw - 48);
+        setRingSize(Math.max(185, Math.min(310, available)));
+      }
     };
     calc();
     window.addEventListener('resize', calc);
@@ -818,7 +1004,7 @@ export default function App() {
     if (prev) { prev.pause(); prev.src = ''; }
     const a = new Audio(track.src);
     a.volume = muted ? 0 : volume;
-    a.preload = 'auto';
+    a.preload = dataSaver ? 'none' : 'auto'; // hemat data: jangan buffer sebelum diputar
     audioRef.current = a;
     if (wasPlaying) {
       a.play().catch(e => { console.warn('autoplay blocked:', e); setPlaying(false); });
@@ -889,11 +1075,11 @@ export default function App() {
     setHistory(prev => { const f=prev.filter(s=>s.id!==track.id); return [track,...f].slice(0,15); });
     setLyrics(''); setInsight('');
     // Prefetch lagu berikutnya di background
-    const allSongs = [...SONGS, ...customSongs];
+    const allSongs = [...builtinSongs, ...customSongs];
     const idx = allSongs.findIndex(s => s.id === track.id);
     const next = allSongs[(idx + 1) % allSongs.length];
     if (next?.isDrive && next?.driveId && tokenRef.current) {
-      drivePrefetch(next.driveId, tokenRef.current);
+      if (!dataSaver) drivePrefetch(next.driveId, tokenRef.current); // hemat data: skip prefetch
     }
   }, [track.id, customSongs]);
 
@@ -960,7 +1146,7 @@ export default function App() {
 
   // ── NEXT / PREV
   const goNext = useCallback(() => {
-    const songs = [...SONGS, ...customSongs];
+    const songs = [...builtinSongs, ...customSongs];
     if (repeatRef.current==='one') { if(audioRef.current){audioRef.current.currentTime=0;audioRef.current.play();} return; }
     if (shuffleRef.current) {
       const others = songs.filter(s=>s.id!==track.id);
@@ -973,7 +1159,7 @@ export default function App() {
 
   const goPrev = useCallback(() => {
     if (progress > 3) { if(audioRef.current){audioRef.current.currentTime=0;setProgress(0);} return; }
-    const songs = [...SONGS, ...customSongs];
+    const songs = [...builtinSongs, ...customSongs];
     const i = songs.findIndex(s=>s.id===track.id);
     play(songs[(i-1+songs.length)%songs.length]);
   }, [track, play, customSongs, progress]);
@@ -996,20 +1182,30 @@ export default function App() {
 
   // ── AI
   const getInsight = async () => {
+    if (dataSaver) { setInsight('🌿 Hemat Data aktif — fitur AI dinonaktifkan.'); return; }
     setIL(true);
     const r = await askAI(`Buat 1 kalimat puitis untuk "${track.title}" vibe ${track.mood}. Sebutkan bintang/alam semesta.`, 'Maks 20 kata. Kalimat puitis saja, tanpa tanda petik.');
     setInsight(r); setIL(false);
   };
   const sendChat = async () => {
     if (!input.trim()) return;
+    if (dataSaver) {
+      const msg=input; setInput('');
+      setMessages(p=>[...p,{from:'user',text:msg},{from:'ai',text:'🌿 Mode Hemat Data aktif — AI chat dinonaktifkan untuk menghemat kuota internet.'}]);
+      return;
+    }
     const msg=input; setInput(''); setMessages(p=>[...p,{from:'user',text:msg}]); setCL(true);
     const r = await askAI(msg, `Kamu Starry AI, asisten musik ramah. Jawab singkat maks 80 kata. Diputar: "${track.title}" oleh ${track.artist}.`);
     setMessages(p=>[...p,{from:'ai',text:r}]); setCL(false);
   };
   const searchVibe = async () => {
-    if (!vibeInput.trim()||vibeLoading) return; setVL(true);
-    const r = await askAI(`Vibe: ${vibeInput}`, 'Pilih lagu dari list. Balas HANYA angka 1-4. 1=Deep Space Night(tenang) 2=Lunar Reflection(melankolis) 3=Nebula Pulse(energik) 4=Aurora Glow(semangat)');
-    const found = SONGS.find(s=>s.id===parseInt(r.trim()));
+    if (!vibeInput.trim()||vibeLoading) return;
+    if (dataSaver) { setVibeInput('🌿 Hemat Data aktif — Vibe Search dinonaktifkan'); return; }
+    setVL(true);
+    const songList = builtinSongs.slice(0,8).map((s,i)=>`${i+1}=${s.title}(${s.mood.split(',')[0].trim()})`).join(' ');
+    const r = await askAI(`Vibe: ${vibeInput}`, `Pilih lagu dari list. Balas HANYA satu angka. ${songList}`);
+    const idx = parseInt(r.trim()) - 1;
+    const found = builtinSongs[idx];
     if (found) { play(found); setVibeInput(`✨ Cocok: ${found.title}`); } setVL(false);
   };
 
@@ -1052,9 +1248,11 @@ export default function App() {
       callback: async resp => {
         if (resp.error) return setDriveError('Login gagal: '+resp.error);
         const tok=resp.access_token; setAccessToken(tok); tokenRef.current=tok;
+        // Simpan token ke localStorage (berlaku ~58 menit)
+        localStorage.setItem('sn_google_token', JSON.stringify({ token: tok, expiry: Date.now() + 3500 * 1000 }));
         try {
           const u=await (await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{ headers:{ Authorization:`Bearer ${tok}` } })).json();
-          setGoogleUser(u); setDriveError(''); setLoadingDrive(true);
+          setGoogleUser(u); localStorage.setItem('sn_google_user', JSON.stringify(u)); setDriveError(''); setLoadingDrive(true);
           setCustomSongs(await driveListSongs(tok, true)); setLoadingDrive(false);
         } catch(e) { setDriveError('Gagal memuat Drive: '+e.message); setLoadingDrive(false); }
       }
@@ -1064,6 +1262,7 @@ export default function App() {
   const handleGoogleLogout = useCallback(() => {
     if (accessToken&&window.google) window.google.accounts.oauth2.revoke(accessToken,()=>{});
     setGoogleUser(null); setAccessToken(null); tokenRef.current=null; setCustomSongs([]); setDriveError('');
+    localStorage.removeItem('sn_google_token'); localStorage.removeItem('sn_google_user');
   }, [accessToken]);
   const handleUpload = useCallback(async (file, meta) => {
     if (!accessToken) return alert('Login Google dulu!');
@@ -1081,8 +1280,7 @@ export default function App() {
   // ── Search filter
   const q = searchQuery.toLowerCase();
   const filteredSongs = allSongs.filter(s => !q || s.title.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q) || s.album.toLowerCase().includes(q));
-  const filteredBuiltin = filteredSongs.filter(s => !s.isDrive);
-  const filteredCustom  = filteredSongs.filter(s =>  s.isDrive);
+  const filteredCustom = filteredSongs.filter(s => s.isDrive);
 
   // ── Active playlist songs
   const activePlSongs = activePl
@@ -1132,6 +1330,13 @@ export default function App() {
             <div style={{ width:5, height:5, borderRadius:'50%', background:hasKey()?'#22c55e':'#ef4444', animation:hasKey()?'pulse 2s infinite':'none' }}/>
             <span style={{ fontSize:9, fontWeight:700, color:hasKey()?'#86efac':'#fca5a5' }}>{hasKey()?'AI':'Offline'}</span>
           </div>
+          {/* Hemat Data badge */}
+          {dataSaver && (
+            <div style={{ display:'flex', alignItems:'center', gap:4, padding:'4px 8px', borderRadius:999, background:'rgba(16,185,129,0.12)', border:'1px solid rgba(16,185,129,0.35)' }}>
+              <span style={{ fontSize:11 }}>🌿</span>
+              <span style={{ fontSize:9, fontWeight:700, color:'#6ee7b7' }}>Hemat</span>
+            </div>
+          )}
           {/* Google */}
           {googleUser ? (
             <div style={{ display:'flex', alignItems:'center', gap:5 }}>
@@ -1148,8 +1353,28 @@ export default function App() {
 
       {driveError&&<div style={{ position:'relative', zIndex:10, flexShrink:0, padding:'6px 16px', background:'rgba(239,68,68,0.15)', borderBottom:'1px solid rgba(239,68,68,0.25)', display:'flex', alignItems:'center', gap:8 }}><span style={{ fontSize:11, color:'#fca5a5', flex:1 }}>{driveError}</span><button onClick={()=>setDriveError('')} style={{ ...btn, padding:2, color:'#fca5a5' }}><X size={13}/></button></div>}
 
-      {/* ══ CONTENT */}
-      <main style={{ flex:1, overflow:'hidden', position:'relative', zIndex:5 }}>
+      {/* ══ CONTENT — flex row wrapper for desktop sidebar layout */}
+      <div style={{ flex:1, overflow:'hidden', display:'flex', flexDirection:'row', position:'relative', zIndex:5 }}>
+
+      {/* Desktop left sidebar nav */}
+      {isDesktop && (
+        <div style={{ width:196, flexShrink:0, borderRight:'1px solid rgba(255,255,255,0.07)', background:'rgba(0,0,0,0.18)', display:'flex', flexDirection:'column', padding:'10px 8px 16px', gap:3 }}>
+          {tabs.map(t=>{
+            const active=tab===t.id;
+            return (
+              <button key={t.id} onClick={()=>setTab(t.id)} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:12, border:'none', cursor:'pointer', background:active?`${track.color}20`:'transparent', color:active?track.color:'rgba(255,255,255,0.4)', transition:'all 0.15s', textAlign:'left', width:'100%', fontSize:13, fontWeight:active?700:500 }}>
+                {t.icon}<span>{t.label}</span>
+              </button>
+            );
+          })}
+          <div style={{ flex:1 }}/>
+          <button onClick={()=>setShowSettings(true)} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:12, border:'none', cursor:'pointer', background:'transparent', color:'rgba(255,255,255,0.3)', width:'100%', fontSize:13 }}>
+            <Settings size={17}/><span>Pengaturan</span>
+          </button>
+        </div>
+      )}
+
+      <main style={{ flex:1, overflow:'hidden', position:'relative' }}>
 
         {/* ─── PLAYER TAB */}
         {tab==='player'&&(
@@ -1254,9 +1479,58 @@ export default function App() {
 
             {/* List */}
             <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column', gap:5, paddingBottom:16 }}>
-              {/* Built-in songs */}
-              <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.15em', marginBottom:4 }}>🎵 Lagu Bawaan ({filteredBuiltin.length})</div>
-              {filteredBuiltin.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} play={play} playlists={playlists} addToPlaylist={addToPlaylist}/>)}
+
+              {/* ── SUMBER MUSIK */}
+              {!searchQuery && (
+                <div style={{ marginBottom:10 }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.15em', marginBottom:8 }}>
+                    🎵 Sumber Musik
+                  </div>
+                  <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                    {MUSIC_SOURCES.map(src => {
+                      const isLoaded = loadedSources.includes(src.id);
+                      const isLoading = loadingSource === src.id;
+                      return (
+                        <div key={src.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:14, background: isLoaded ? `${src.color}15` : 'rgba(255,255,255,0.03)', border:`1px solid ${isLoaded ? src.color+'40' : 'rgba(255,255,255,0.08)'}`, transition:'all 0.2s' }}>
+                          <div style={{ width:38, height:38, borderRadius:10, background: isLoaded ? `${src.color}25` : 'rgba(255,255,255,0.06)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>
+                            {src.icon}
+                          </div>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontWeight:700, fontSize:13, color: isLoaded ? 'white' : 'rgba(255,255,255,0.7)' }}>{src.name}</div>
+                            <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{src.description}</div>
+                            {isLoaded && <div style={{ fontSize:10, color:src.color, marginTop:1 }}>{src.songs.length} lagu tersedia</div>}
+                          </div>
+                          {isLoaded ? (
+                            <div style={{ display:'flex', alignItems:'center', gap:4, padding:'4px 8px', borderRadius:999, background:`${src.color}20`, border:`1px solid ${src.color}40` }}>
+                              <CheckCircle size={11} style={{ color:src.color }}/>
+                              <span style={{ fontSize:10, fontWeight:700, color:src.color }}>Loaded</span>
+                            </div>
+                          ) : (
+                            <button onClick={()=>loadSource(src.id)} disabled={!!loadingSource} style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:999, border:`1px solid ${src.color}60`, background:`${src.color}15`, color:src.color, fontSize:11, fontWeight:700, cursor:loadingSource?'default':'pointer', opacity:loadingSource&&!isLoading?0.5:1, flexShrink:0 }}>
+                              {isLoading ? <Loader2 size={12} style={{ animation:'spin 1s linear infinite' }}/> : <Plus size={12}/>}
+                              {isLoading ? 'Loading…' : 'Muat'}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* ── DAFTAR LAGU per sumber */}
+              {MUSIC_SOURCES.filter(src => loadedSources.includes(src.id)).map(src => {
+                const songs = src.songs.filter(s => !q || s.title.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q) || s.album.toLowerCase().includes(q));
+                if (songs.length === 0) return null;
+                return (
+                  <div key={src.id}>
+                    <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.15em', marginBottom:4, marginTop:searchQuery?0:4, display:'flex', alignItems:'center', gap:6 }}>
+                      <span>{src.icon}</span> {src.name} ({songs.length})
+                    </div>
+                    {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} play={play} playlists={playlists} addToPlaylist={addToPlaylist}/>)}
+                  </div>
+                );
+              })}
 
               {/* Drive songs */}
               {(googleUser||customSongs.length>0)&&(
@@ -1554,19 +1828,22 @@ export default function App() {
           </div>
         )}
       </main>
+      </div>{/* end flex row wrapper */}
 
-      {/* ══ TAB BAR */}
-      <nav style={{ position:'relative', zIndex:10, flexShrink:0, display:'flex', alignItems:'center', background:'rgba(7,7,26,0.95)', ...(isLite ? {} : { backdropFilter:'blur(20px)' }), borderTop:'1px solid rgba(255,255,255,0.08)', padding:'6px 8px 10px', paddingBottom:'max(10px,env(safe-area-inset-bottom))' }}>
-        {tabs.map(t=>{
-          const active=tab===t.id;
-          return (
-            <button key={t.id} onClick={()=>setTab(t.id)} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:2, padding:'5px 0', background:'none', border:'none', cursor:'pointer', color:active?track.color:'rgba(255,255,255,0.35)', transition:'color 0.2s' }}>
-              <div style={{ padding:'3px 12px', borderRadius:999, background:active?`${track.color}22`:'transparent', transition:'background 0.2s' }}>{t.icon}</div>
-              <span style={{ fontSize:9, fontWeight:active?700:500, letterSpacing:'0.02em' }}>{t.label}</span>
-            </button>
-          );
-        })}
-      </nav>
+      {/* ══ TAB BAR — Mobile only */}
+      {!isDesktop && (
+        <nav style={{ position:'relative', zIndex:10, flexShrink:0, display:'flex', alignItems:'center', background:'rgba(7,7,26,0.95)', ...(isLite ? {} : { backdropFilter:'blur(20px)' }), borderTop:'1px solid rgba(255,255,255,0.08)', padding:'6px 8px 10px', paddingBottom:'max(10px,env(safe-area-inset-bottom))' }}>
+          {tabs.map(t=>{
+            const active=tab===t.id;
+            return (
+              <button key={t.id} onClick={()=>setTab(t.id)} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:2, padding:'5px 0', background:'none', border:'none', cursor:'pointer', color:active?track.color:'rgba(255,255,255,0.35)', transition:'color 0.2s' }}>
+                <div style={{ padding:'3px 12px', borderRadius:999, background:active?`${track.color}22`:'transparent', transition:'background 0.2s' }}>{t.icon}</div>
+                <span style={{ fontSize:9, fontWeight:active?700:500, letterSpacing:'0.02em' }}>{t.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+      )}
 
       {/* ══ MODALS */}
       {showPlModal&&<PlaylistModal
@@ -1576,7 +1853,7 @@ export default function App() {
         onSave={editingPl ? updatePlaylist : createPlaylist}
         isLite={isLite}
       />}
-      {showSettings&&<SettingsPanel onClose={()=>setShowSettings(false)} color={track.color} eqEnabled={eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset} setEqPreset={setEqPreset} eqGains={eqGains} setEqGains={setEqGains} crossfade={crossfade} setCrossfade={setCrossfade} sleepTimer={sleepTimer} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover} setGlobalCover={setGlobalCover} isLite={isLite}/>}
+      {showSettings&&<SettingsPanel onClose={()=>setShowSettings(false)} color={track.color} eqEnabled={eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset} setEqPreset={setEqPreset} eqGains={eqGains} setEqGains={setEqGains} crossfade={crossfade} setCrossfade={setCrossfade} sleepTimer={sleepTimer} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover} setGlobalCover={setGlobalCover} isLite={isLite} dataSaver={dataSaver} toggleDataSaver={toggleDataSaver}/>}
       {showUpload&&<UploadModal onClose={()=>!uploading&&setShowUpload(false)} onUpload={handleUpload} uploading={uploading} uploadProgress={uploadProgress} color={track.color} isLite={isLite}/>}
 
       <style>{`
