@@ -2437,7 +2437,7 @@ export default function App() {
     const msg=input; setInput(''); setMessages(p=>[...p,{from:'user',text:msg}]); setCL(true);
     const r = await askAI(
       msg,
-      `Kamu Starry AI, asisten musik yang ramah dan berpengetahuan luas. Jawab dalam Bahasa Indonesia, singkat (maks 80 kata), dan relevan. Konteks: pengguna sedang mendengarkan "${embedTrack ? (embedTrack.title || track.title) : track.title}" oleh ${embedTrack ? (embedTrack.artist || track.artist) : track.artist}${track.mood ? ` (mood: ${track.mood})` : ''}${embedTrack ? ' via streaming' : ''}. Jika ditanya sesuatu di luar musik, tetap bantu tapi arahkan ke konteks musik.\`
+      `Kamu Starry AI, asisten musik yang ramah dan berpengetahuan luas. Jawab dalam Bahasa Indonesia, singkat (maks 80 kata), dan relevan. Konteks: pengguna sedang mendengarkan "${embedTrack ? (embedTrack.title || track.title) : track.title}" oleh ${embedTrack ? (embedTrack.artist || track.artist) : track.artist}${track.mood ? ' (mood: ' + track.mood + ')' : ''}${embedTrack ? ' via streaming' : ''}. Jika ditanya sesuatu di luar musik, tetap bantu tapi arahkan ke konteks musik.`
     );
     setMessages(p=>[...p,{from:'ai',text:r}]);
     setCL(false);
