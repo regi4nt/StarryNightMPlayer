@@ -700,6 +700,8 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
 // ═══════════════════════════════════════════════════════
 //  SONG ROW
 // ═══════════════════════════════════════════════════════
+const btn = { background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.5)', padding:8, display:'flex', transition:'color 0.2s', borderRadius:8 };
+
 function SongRow({ s, i, track, playing, liked, setLiked, play, isDrive, onRemove, playlists, addToPlaylist }) {
   const isActive = track.id === s.id;
   return (
@@ -2763,4 +2765,4 @@ export default function App() {
   );
 }
 
-const btn = { background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.5)', padding:8, display:'flex', transition:'color 0.2s', borderRadius:8 };
+
