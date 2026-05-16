@@ -670,6 +670,37 @@ async function driveStreamBlob(driveId, token) {
   return url;
 }
 
+// Download full blob (no MediaSource) — dipakai mode Pro agar durasi & progress bar bisa terbaca
+async function driveDownloadBlob(driveId, token) {
+  const cacheKey = driveId;
+  const memKey   = `${driveId}:${token.slice(-12)}`;
+
+  if (_blobCache.has(memKey)) return _blobCache.get(memKey);
+
+  const cachedBlob = await cacheGet(cacheKey);
+  if (cachedBlob) {
+    const url = URL.createObjectURL(cachedBlob);
+    _blobCache.set(memKey, url);
+    return url;
+  }
+
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${driveId}?alt=media&acknowledgeAbuse=true`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (res.status === 401 || res.status === 403) throw new Error(`${res.status}`);
+  if (!res.ok) throw new Error(`Drive ${res.status}`);
+
+  const blob = await res.blob();
+  const url  = URL.createObjectURL(blob);
+  for (const [k, v] of _blobCache) {
+    if (k.startsWith(driveId + ':') && k !== memKey) { URL.revokeObjectURL(v); _blobCache.delete(k); }
+  }
+  _blobCache.set(memKey, url);
+  cachePut(cacheKey, blob);
+  return url;
+}
+
 // Pre-fetch lagu berikutnya di background agar instant saat diklik
 async function drivePrefetch(driveId, token) {
   if (!driveId || !token || _blobCache.has(`${driveId}:${token.slice(-12)}`)) return;
@@ -737,8 +768,10 @@ function PlaylistModal({ onClose, onSave, allSongs, existing, isLite }) {
             {allSongs.map(s => {
               const on = selected.has(s.id);
               return (
-                <div key={s.id} onClick={()=>toggle(s.id)} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:12, cursor:'pointer', background:on?s.bg:'rgba(255,255,255,0.03)', border:`1px solid ${on?s.color+'50':'rgba(255,255,255,0.08)'}`, transition:'all 0.15s' }}>
-                  <img src={s.cover} loading="lazy" decoding="async" style={{ width:34, height:34, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
+                <div key={s.id} onClick={()=>toggle(s.id)} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:12, cursor:'pointer', background:on?s.bg:'rgba(255,255,255,0.03)', border:`1px solid ${on?s.color+'50':'rgba(255,255,255,0.08)'}` }}>
+                  {isLite
+                    ? <div style={{ width:34, height:34, borderRadius:8, background:s.bg||'rgba(255,255,255,0.07)', flexShrink:0 }}/>
+                    : <img src={s.cover} loading="lazy" decoding="async" style={{ width:34, height:34, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>}
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ fontWeight:700, fontSize:13, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:on?'white':'rgba(255,255,255,0.8)' }}>{s.title}</div>
                     <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>{s.artist}</div>
@@ -852,7 +885,9 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
     <div style={{ position:'relative', width:size, height:size, flexShrink:0 }}>
       {/* Album art */}
       <div style={{ position:'absolute', top:cy-artR, left:cx-artR, width:artR*2, height:artR*2, borderRadius:'50%', overflow:'hidden', border:'3px solid rgba(255,255,255,0.13)', boxShadow:isLite?'none':`0 0 40px -8px ${color}90`, animation:(!isLite && isPlaying)?'spin20 20s linear infinite':'none', zIndex:2 }}>
-        <img src={cover} alt={title} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+        {isLite
+          ? <div style={{ width:'100%', height:'100%', background:color+'33', display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={artR*0.6} color={color}/></div>
+          : <img src={cover} alt={title} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>}
       </div>
       {/* SVG ring — mouse drag + click */}
       <svg ref={svgRef} width={size} height={size}
@@ -863,10 +898,10 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
         {/* Track */}
         <circle cx={cx} cy={cy} r={ringR} stroke="rgba(255,255,255,0.09)" strokeWidth="3.5" fill="none"/>
         {/* Progress arc */}
-        <circle cx={cx} cy={cy} r={ringR} stroke={color} strokeWidth="4.5" fill="none"
+        <circle className="progress-arc" cx={cx} cy={cy} r={ringR} stroke={color} strokeWidth="4.5" fill="none"
           strokeDasharray={circ} strokeDashoffset={circ-circ*pct} strokeLinecap="round"
           transform={`rotate(-90 ${cx} ${cy})`}
-          style={{ transition: dragging.current?'none':'stroke-dashoffset 0.35s linear', filter:`drop-shadow(0 0 6px ${color})` }}/>
+          style={{ transition: dragging.current?'none':'stroke-dashoffset 0.35s linear', filter:isLite?'none':`drop-shadow(0 0 6px ${color})` }}/>
         {/* 0:00 tick */}
         <line x1={cx} y1={cy-ringR-7} x2={cx} y2={cy-ringR+7} stroke="rgba(255,255,255,0.18)" strokeWidth="2.5" strokeLinecap="round"/>
         {/* Dot glow */}
@@ -890,14 +925,16 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
 // ═══════════════════════════════════════════════════════
 const btn = { background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.5)', padding:8, display:'flex', transition:'color 0.2s', borderRadius:8 };
 
-function SongRow({ s, i, track, playing, liked, setLiked, play, isDrive, onRemove, playlists, addToPlaylist }) {
+function SongRow({ s, i, track, playing, liked, setLiked, play, isDrive, onRemove, playlists, addToPlaylist, isLite }) {
   const isActive = track.id === s.id;
   return (
-    <div style={{ display:'flex', alignItems:'center', gap:12, padding:'9px 12px', borderRadius:14, cursor:'pointer', background:isActive?s.bg:'rgba(255,255,255,0.04)', border:`1px solid ${isActive?s.color+'50':'transparent'}`, transition:'all 0.2s' }} onClick={()=>play(s)}>
+    <div style={{ display:'flex', alignItems:'center', gap:12, padding:'9px 12px', borderRadius:14, cursor:'pointer', background:isActive?s.bg:'rgba(255,255,255,0.04)', border:`1px solid ${isActive?s.color+'50':'transparent'}` }} onClick={()=>play(s)}>
       <div style={{ width:28, height:28, borderRadius:8, flexShrink:0, background:isActive?s.color:'rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:800, color:isActive?'white':'rgba(255,255,255,0.4)' }}>
-        {isActive&&playing ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end' }}>{[12,6,10].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:'white', borderRadius:1, animation:`bounce 0.8s ease-in-out ${j*0.15}s infinite` }}/>))}</div> : isDrive?<Cloud size={12}/>:i+1}
+        {isActive&&playing ? (isLite ? <Music size={12} color="white"/> : <div style={{ display:'flex', gap:1.5, alignItems:'flex-end' }}>{[12,6,10].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:'white', borderRadius:1, animation:`bounce 0.8s ease-in-out ${j*0.15}s infinite` }}/>))}</div>) : isDrive?<Cloud size={12}/>:i+1}
       </div>
-      <img src={s.cover} alt={s.title} loading="lazy" decoding="async" style={{ width:42, height:42, borderRadius:10, objectFit:'cover', flexShrink:0 }}/>
+      {isLite
+        ? <div style={{ width:42, height:42, borderRadius:10, background:s.bg||'rgba(255,255,255,0.07)', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={16} color={s.color}/></div>
+        : <img src={s.cover} alt={s.title} loading="lazy" decoding="async" style={{ width:42, height:42, borderRadius:10, objectFit:'cover', flexShrink:0 }}/>}
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ fontWeight:700, fontSize:13, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:isActive?'white':'rgba(255,255,255,0.85)' }}>{s.title}</div>
         <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:2 }}>{s.artist} · {s.album}{isDrive&&<span style={{ color:s.color, marginLeft:4 }}>· Drive</span>}</div>
@@ -930,19 +967,64 @@ function SongRow({ s, i, track, playing, liked, setLiked, play, isDrive, onRemov
 }
 
 // ═══════════════════════════════════════════════════════
-//  SETTINGS PANEL  (EQ, Crossfade, Sleep Timer)
+//  ERROR BOUNDARY — cegah white screen saat settings crash
 // ═══════════════════════════════════════════════════════
-function SettingsPanel({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setEqPreset, eqGains, setEqGains, crossfade, setCrossfade, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns }) {
-  const dataSaver = isLite; // Lite = hemat data
-  const toggleDataSaver = toggleMode;
-  const coverRef = useRef(null);
+class SettingsErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(error, info) { console.error('SettingsPanel error:', error, info); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(0,0,0,0.85)', display:'flex', alignItems:'flex-end' }}>
+          <div style={{ width:'100%', background:'#0d0d24', borderRadius:'24px 24px 0 0', padding:'28px 20px 40px', border:'1px solid rgba(239,68,68,0.3)' }}>
+            <div style={{ width:36, height:4, borderRadius:999, background:'rgba(255,255,255,0.15)', margin:'0 auto 20px' }}/>
+            <div style={{ textAlign:'center', padding:'12px 0' }}>
+              <div style={{ fontSize:28, marginBottom:12 }}>⚠️</div>
+              <div style={{ fontWeight:800, fontSize:15, color:'#fca5a5', marginBottom:6 }}>Pengaturan gagal dimuat</div>
+              <div style={{ fontSize:12, color:'rgba(255,255,255,0.45)', marginBottom:20 }}>
+                {String(this.state.error?.message || 'Unknown error')}
+              </div>
+              <button onClick={()=>{ this.setState({hasError:false,error:null}); this.props.onClose(); }}
+                style={{ padding:'10px 24px', borderRadius:12, border:'none', background:'rgba(239,68,68,0.25)', color:'#fca5a5', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// ── Komponen SettingsPanel dengan Error Boundary
+function SettingsPanel(props) {
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:100, background:'rgba(0,0,0,0.75)', ...(isLite ? {} : { backdropFilter:'blur(8px)' }), display:'flex', alignItems:'flex-end', animation:'fadeUp 0.25s ease' }} onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div style={{ width:'100%', maxHeight:'92dvh', overflowY:'auto', background:'#0d0d24', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'24px 24px 0 0', padding:'20px 20px 36px' }}>
-        <div style={{ width:36, height:4, borderRadius:999, background:'rgba(255,255,255,0.15)', margin:'0 auto 20px' }}/>
+    <SettingsErrorBoundary onClose={props.onClose}>
+      <SettingsPanelInner {...props}/>
+    </SettingsErrorBoundary>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setEqPreset, eqGains, setEqGains, crossfade, setCrossfade, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns }) {
+  const coverRef = useRef(null);
+  // Defensive: eqGains harus selalu array 5 elemen
+  const safeGains = Array.isArray(eqGains) && eqGains.length === 5 ? eqGains : [0,0,0,0,0];
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:150, background:'rgba(0,0,0,0.78)', display:'flex', alignItems:'flex-end' }} onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="scrollbar-hide" style={{ width:'100%', maxHeight:'92dvh', overflowY:'auto', overflowX:'hidden', background:'#0d0d24', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'24px 24px 0 0', padding:'0 0 env(safe-area-inset-bottom,40px)', paddingBottom:'max(40px,env(safe-area-inset-bottom))' }}>
+        {/* Drag handle */}
+        <div style={{ width:36, height:4, borderRadius:999, background:'rgba(255,255,255,0.15)', margin:'12px auto 0' }}/>
+        {/* Header */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 18px 0', marginBottom:6 }}>
+          <div style={{ fontWeight:900, fontSize:15, letterSpacing:'-0.02em' }}>Pengaturan</div>
+          <button onClick={onClose} style={{ width:28, height:28, borderRadius:999, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.7)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:14 }}>×</button>
+        </div>
 
         {/* ── EQUALIZER */}
-        <div style={{ marginBottom:28 }}>
+        <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
             <div style={{ display:'flex', alignItems:'center', gap:8 }}>
               <SlidersHorizontal size={16} style={{ color }}/>
@@ -962,21 +1044,21 @@ function SettingsPanel({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setE
           </div>
 
           {/* 5-band sliders */}
-          <div style={{ opacity:eqEnabled?1:0.35, transition:'opacity 0.2s' }}>
+          <div style={{ opacity:eqEnabled?1:0.35 }}>
             {EQ_FREQS.map((_, i)=>(
               <div key={i} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
                 <span style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.4)', width:36, textAlign:'right', fontFamily:'monospace' }}>{EQ_LABELS[i]}</span>
-                <input type="range" min="-10" max="10" step="0.5" value={eqGains[i]} disabled={!eqEnabled}
-                  onChange={e=>setEqGains(g=>g.map((v,j)=>j===i?+e.target.value:v))}
+                <input type="range" min="-10" max="10" step="0.5" value={safeGains[i]} disabled={!eqEnabled}
+                  onChange={e=>setEqGains(g=>(Array.isArray(g)?g:[0,0,0,0,0]).map((v,j)=>j===i?+e.target.value:v))}
                   style={{ flex:1, accentColor:color, height:4 }}/>
-                <span style={{ fontSize:10, fontWeight:700, color:eqGains[i]>0?color:eqGains[i]<0?'#ef4444':'rgba(255,255,255,0.35)', width:28, textAlign:'left', fontFamily:'monospace' }}>{eqGains[i]>0?'+':''}{eqGains[i]}</span>
+                <span style={{ fontSize:10, fontWeight:700, color:safeGains[i]>0?color:safeGains[i]<0?'#ef4444':'rgba(255,255,255,0.35)', width:28, textAlign:'left', fontFamily:'monospace' }}>{safeGains[i]>0?'+':''}{safeGains[i]}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* ── CROSSFADE */}
-        <div style={{ marginBottom:28 }}>
+        <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
             <Zap size={16} style={{ color }}/>
             <span style={{ fontWeight:800, fontSize:14 }}>Crossfade</span>
@@ -990,7 +1072,7 @@ function SettingsPanel({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setE
         </div>
 
         {/* ── SLEEP TIMER */}
-        <div>
+        <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
             <Moon size={16} style={{ color }}/>
             <span style={{ fontWeight:800, fontSize:14 }}>Sleep Timer</span>
@@ -1016,7 +1098,7 @@ function SettingsPanel({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setE
         </div>
 
         {/* ── MODE LITE / PRO */}
-        <div style={{ marginTop:28 }}>
+        <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
             <div style={{ display:'flex', alignItems:'center', gap:8 }}>
               <span style={{ fontSize:16 }}>{isLite ? '⚡' : '✨'}</span>
@@ -1055,7 +1137,7 @@ function SettingsPanel({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setE
         </div>
 
         {/* ── INSTALL APP (PWA) */}
-        <div style={{ marginTop:28 }}>
+        <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
             <span style={{ fontSize:16 }}>📲</span>
             <div>
@@ -1095,7 +1177,7 @@ function SettingsPanel({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setE
         </div>
 
         {/* ── FOTO COVER GLOBAL */}
-        <div style={{ marginTop:28 }}>
+        <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
             <Music size={16} style={{ color }}/>
             <span style={{ fontWeight:800, fontSize:14 }}>Foto Cover Semua Lagu</span>
@@ -1141,7 +1223,7 @@ function SettingsPanel({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setE
         </div>
 
         {/* ── DNS SETTINGS */}
-        <div style={{ marginTop:28 }}>
+        <div style={{ padding:'16px 18px 20px' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
             <span style={{ fontSize:16 }}>🌐</span>
             <div>
@@ -1677,6 +1759,7 @@ export default function App() {
   const [uploading, setUploading]       = useState(false);
   const [uploadProgress, setUploadProg] = useState(0);
   const [loadingTrack, setLoadingTrack] = useState(false);
+  const [driveDownProg, setDriveDownProg] = useState(0); // 0-100, only in Pro mode
   const [driveError, setDriveError]     = useState('');
 
   // ── Custom cover global (satu foto untuk semua lagu)
@@ -1806,7 +1889,17 @@ export default function App() {
       try { const s=JSON.parse(localStorage.getItem('sn_google_token')||'null'); return s&&s.expiry>Date.now()?s.token:null; }
       catch{return null;}
     })();
-    if (savedToken) loadDriveSongs(savedToken);
+    // Selalu force=true saat pertama load — in-memory cache kosong setelah reload
+    if (savedToken) loadDriveSongs(savedToken, true);
+    else {
+      // Token expired → coba silent refresh otomatis
+      const saved = (() => { try { return JSON.parse(localStorage.getItem('sn_google_token')||'null'); } catch { return null; } })();
+      if (saved && googleUser) {
+        silentRefreshToken()
+          .then(tok => loadDriveSongs(tok, true))
+          .catch(() => {});
+      }
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1819,20 +1912,20 @@ export default function App() {
       const saved = (() => {
         try { return JSON.parse(localStorage.getItem('sn_google_token')||'null'); } catch { return null; }
       })();
-      // Jika token hampir/sudah expired (<2 menit sisa), force refresh
+      // Token hampir/sudah expired (<2 menit) → silent refresh dulu
       if (saved && saved.expiry - Date.now() < 2 * 60 * 1000) {
         silentRefreshToken()
           .then(newTok => loadDriveSongs(newTok, true))
           .catch(() => setDriveError('Sesi Google berakhir. Ketuk Login untuk lanjut.'));
-      } else if (saved && customSongs.length === 0) {
-        // Songs belum termuat (mis. pertama kali buka tab)
-        loadDriveSongs(tok);
+      } else {
+        // Selalu reload ulang saat halaman aktif kembali (tangkap perubahan file di Drive)
+        loadDriveSongs(tok, true);
       }
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customSongs.length]);
+  }, []);
 
   // ── Responsive ring + desktop detection
   useEffect(() => {
@@ -2059,14 +2152,34 @@ export default function App() {
     let td = { ...t };
     if (t.isDrive && !t.src) {
       setLoadingTrack(true);
-      // Safety timeout: 60 detik untuk fallback full-blob download (MediaSource streaming tidak perlu ini)
+      setDriveDownProg(0);
+      // Pro mode: gunakan driveDownloadBlob (full blob) agar durasi & progress bar terbaca
+      // Lite mode: tetap stream via MediaSource (hemat bandwidth, tapi no progress bar)
+      const tryLoad = async (tok) => {
+        if (!isLite) {
+          // Simulasi progress saat download (75% selama download, lalu 100% setelah selesai)
+          const progInterval = setInterval(() => {
+            setDriveDownProg(p => p < 88 ? p + 4 : p);
+          }, 250);
+          try {
+            const url = await driveDownloadBlob(t.driveId, tok);
+            clearInterval(progInterval);
+            setDriveDownProg(100);
+            return url;
+          } catch(e) {
+            clearInterval(progInterval);
+            throw e;
+          }
+        } else {
+          return driveStreamBlob(t.driveId, tok);
+        }
+      };
+      // Safety timeout: 90 detik
       const safetyTimer = setTimeout(() => {
         setLoadingTrack(false);
+        setDriveDownProg(0);
         setDriveError('Timeout: koneksi lambat. Coba lagi atau periksa koneksi internet.');
-      }, 60000);
-      const tryLoad = async (tok) => {
-        return driveStreamBlob(t.driveId, tok);
-      };
+      }, 90000);
       try {
         let tok = tokenRef.current;
         if (!tok) throw new Error('Login Google dulu');
@@ -2081,7 +2194,7 @@ export default function App() {
               url = await tryLoad(tok);
             } catch(re) {
               setDriveError('Sesi Google berakhir. Ketuk tombol Login untuk lanjut.');
-              clearTimeout(safetyTimer); setLoadingTrack(false); return;
+              clearTimeout(safetyTimer); setLoadingTrack(false); setDriveDownProg(0); return;
             }
           } else { throw e; }
         }
@@ -2090,9 +2203,11 @@ export default function App() {
         setDriveError('');
       } catch(e) {
         setDriveError('Gagal memutar: ' + e.message);
-        clearTimeout(safetyTimer); setLoadingTrack(false); return;
+        clearTimeout(safetyTimer); setLoadingTrack(false); setDriveDownProg(0); return;
       }
-      clearTimeout(safetyTimer); setLoadingTrack(false);
+      clearTimeout(safetyTimer);
+      setTimeout(() => setDriveDownProg(0), 600);
+      setLoadingTrack(false);
     }
 
     if (track.id === td.id) { setPlaying(p=>!p); return; }
@@ -2430,19 +2545,20 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [track, embedTrack, playing, volume, muted, shuffle, repeat, tab, showQueue, showSettings, duration, ytDuration, goNext, goPrev, ytNext, ytPrev, cycleRepeat]);
 
+  // tabs = only non-player tabs (Stream, Playlist, AI)
+  // Player is accessed via the mini now-playing bar above the tab bar
   const tabs = [
-    { id:'player',   icon:<Compass size={17}/>,   label:'Player' },
     { id:'stream',   icon:<Radio size={17}/>,       label:'Stream' },
     { id:'playlist', icon:<FolderOpen size={17}/>, label:'Playlist' },
     { id:'ai',       icon:<Bot size={17}/>,        label:'AI' },
   ];
 
   return (
-    <div style={{ height:'100dvh', width:'100vw', overflow:'hidden', background:'#07071a', color:'#f1f5f9', fontFamily:"'Segoe UI',system-ui,sans-serif", display:'flex', flexDirection:'column', userSelect:'none', WebkitTapHighlightColor:'transparent' }}>
+    <div className={isLite ? 'lite-mode' : ''} style={{ height:'100dvh', width:'100vw', overflow:'hidden', background:'#07071a', color:'#f1f5f9', fontFamily:"'Segoe UI',system-ui,sans-serif", display:'flex', flexDirection:'column', userSelect:'none', WebkitTapHighlightColor:'transparent' }}>
 
       {/* BG — Pro only */}
       {!isLite && <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, background:`radial-gradient(ellipse at 60% 10%,${track.color}20 0%,transparent 60%)`, transition:'background 2s ease' }}/>}
-      {!isLite && <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, overflow:'hidden' }}><div className="stars"/></div>}
+      {!isLite && <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, overflow:'hidden' }}><div className="stars"/><div className="starsB"/><div className="starsC"/></div>}
 
       {/* ══ HEADER */}
       {!fullscreen && <header style={{ position:'relative', zIndex:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 14px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
@@ -2497,6 +2613,27 @@ export default function App() {
       {/* Desktop left sidebar nav */}
       {isDesktop && !fullscreen && (
         <div style={{ width:196, flexShrink:0, borderRight:'1px solid rgba(255,255,255,0.07)', background:'rgba(0,0,0,0.18)', display:'flex', flexDirection:'column', padding:'10px 8px 16px', gap:3 }}>
+          {/* Player nav item — always at top */}
+          <button onClick={()=>setTab('player')} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:12, border:'none', cursor:'pointer', background:tab==='player'?`${track.color}20`:'transparent', color:tab==='player'?track.color:'rgba(255,255,255,0.4)', transition:'all 0.15s', textAlign:'left', width:'100%', fontSize:13, fontWeight:tab==='player'?700:500 }}>
+            <Compass size={17}/><span>Player</span>
+          </button>
+          <div style={{ height:1, background:'rgba(255,255,255,0.06)', margin:'4px 6px' }}/>
+          {/* Mini now-playing card — desktop sidebar */}
+          {tab !== 'player' && (
+            <div onClick={()=>setTab('player')} style={{ margin:'0 0 8px', padding:'9px 10px', borderRadius:12, background:embedTrack?'rgba(255,68,68,0.1)':`${track.color}12`, border:`1px solid ${embedTrack?'rgba(255,68,68,0.3)':track.color+'30'}`, cursor:'pointer', display:'flex', alignItems:'center', gap:8 }}>
+              {embedTrack
+                ? <div style={{ width:30, height:30, borderRadius:7, background:'rgba(255,68,68,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:12 }}>▶</div>
+                : isLite
+                  ? <div style={{ width:30, height:30, borderRadius:7, background:track.bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Music size={13} color={track.color}/></div>
+                  : <img src={getCover(track)} style={{ width:30, height:30, borderRadius:7, objectFit:'cover', flexShrink:0 }}/>
+              }
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:11, fontWeight:700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'rgba(255,255,255,0.9)' }}>{embedTrack ? embedTrack.title : track.title}</div>
+                <div style={{ fontSize:9, color:'rgba(255,255,255,0.38)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{embedTrack ? (embedTrack.type==='youtube'?'YouTube':'SoundCloud') : track.artist}</div>
+              </div>
+              {playing && <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:11, flexShrink:0 }}>{[9,5,7].map((h,i)=>(<div key={i} style={{ width:2.5, height:h, background:embedTrack?'#ff4444':track.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${i*0.15}s infinite` }}/>))}</div>}
+            </div>
+          )}
           {tabs.map(t=>{
             const active=tab===t.id;
             return (
@@ -2518,11 +2655,13 @@ export default function App() {
         {tab==='player'&&(
           <div className="scrollbar-hide" style={{ height:'100%', overflowY:'auto', position:'relative' }}>
 
-          {/* ── QUEUE OVERLAY PANEL — slides in from bottom inside player */}
+          {/* ── QUEUE OVERLAY PANEL — bottom sheet modal */}
           {showQueue && (
-            <div style={{ position:'absolute', inset:0, zIndex:15, background:'rgba(7,7,26,0.96)', backdropFilter:'blur(12px)', display:'flex', flexDirection:'column', animation:'slideUp 0.28s cubic-bezier(0.34,1.56,0.64,1)' }}>
+            <div style={{ position:'fixed', inset:0, zIndex:100, background:'rgba(0,0,0,0.7)', ...(isLite?{}:{backdropFilter:'blur(8px)'}), display:'flex', alignItems:'flex-end', animation:isLite?'none':'fadeUp 0.25s ease' }} onClick={e=>e.target===e.currentTarget&&setShowQueue(false)}>
+            <div style={{ width:'100%', maxHeight:'78dvh', display:'flex', flexDirection:'column', background:'#0d0d24', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'24px 24px 0 0', animation:isLite?'none':'slideUp 0.28s cubic-bezier(0.34,1.56,0.64,1)' }}>
               {/* Queue header */}
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 18px 12px', borderBottom:'1px solid rgba(255,255,255,0.07)', flexShrink:0 }}>
+                <div style={{ width:36, height:4, borderRadius:999, background:'rgba(255,255,255,0.15)', position:'absolute', left:'50%', transform:'translateX(-50%)', top:10 }}/>
                 <div style={{ display:'flex', alignItems:'center', gap:9 }}>
                   <div style={{ width:30, height:30, borderRadius:9, background:embedTrack?.type==='youtube'?'rgba(255,68,68,0.2)':`${track.color}22`, border:`1px solid ${embedTrack?.type==='youtube'?'rgba(255,68,68,0.4)':track.color+'40'}`, display:'flex', alignItems:'center', justifyContent:'center' }}>
                     <ListMusic size={15} style={{ color:embedTrack?.type==='youtube'?'#ff6b6b':track.color }}/>
@@ -2577,7 +2716,9 @@ export default function App() {
                         <div key={s.id} onClick={()=>{ setTrack(s); setProgress(0); setDuration(0); setPlaying(true); setShowQueue(false); }}
                           style={{ display:'flex', alignItems:'center', gap:11, padding:'9px 18px', background:isCur?`${track.color}12`:'transparent', cursor:'pointer', transition:'background 0.15s' }}>
                           <div style={{ width:20, textAlign:'center', fontSize:10, color:'rgba(255,255,255,0.25)', fontWeight:600, flexShrink:0 }}>{isCur ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12, justifyContent:'center' }}>{[9,5,7].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:track.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${j*0.15}s infinite` }}/>))}</div> : curIdx+i+1}</div>
-                          <img src={getCover(s)} loading="lazy" decoding="async" style={{ width:38, height:38, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
+                          {isLite
+                            ? <div style={{ width:38, height:38, borderRadius:8, background:s.bg||'rgba(255,255,255,0.08)', flexShrink:0 }}/>
+                            : <img src={getCover(s)} loading="lazy" decoding="async" style={{ width:38, height:38, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>}
                           <div style={{ flex:1, minWidth:0 }}>
                             <div style={{ fontSize:12, fontWeight:isCur?700:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:isCur?track.color:'rgba(255,255,255,0.88)' }}>{s.title}</div>
                             <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:2 }}>{s.artist}</div>
@@ -2590,13 +2731,19 @@ export default function App() {
                 }
               </div>
             </div>
+            </div>
           )}
 
-          <div style={{ minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'clamp(4px,1.5vh,12px) 20px clamp(4px,1vh,8px)', animation:'fadeUp 0.4s ease' }}>
+          <div style={{ minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'clamp(4px,1.5vh,12px) 20px clamp(4px,1vh,8px)' }}>
             {loadingTrack&&!embedTrack&&(
               <div style={{ position:'fixed', inset:0, zIndex:20, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'rgba(7,7,26,0.85)', ...(isLite ? {} : { backdropFilter:'blur(6px)' }), gap:12 }}>
                 <Loader2 size={30} style={{ color:track.color, animation:'spin 1s linear infinite' }}/>
-                <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)' }}>Memuat dari Google Drive…</div>
+                <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)' }}>{isLite ? 'Memuat dari Google Drive…' : `Mengunduh lagu… ${driveDownProg > 0 ? driveDownProg + '%' : ''}`}</div>
+                {!isLite && driveDownProg > 0 && (
+                  <div style={{ width:200, height:5, borderRadius:999, background:'rgba(255,255,255,0.1)', overflow:'hidden' }}>
+                    <div style={{ height:'100%', borderRadius:999, background:track.color, width:`${driveDownProg}%`, transition:'width 0.25s ease' }}/>
+                  </div>
+                )}
               </div>
             )}
 
@@ -2703,7 +2850,7 @@ export default function App() {
           </div>
         )}
         {tab==='stream'&&(
-          <div style={{ height:'100%', display:'flex', flexDirection:'column', padding:'14px 16px 0', animation:'fadeUp 0.4s ease' }}>
+          <div style={{ height:'100%', display:'flex', flexDirection:'column', padding:'14px 16px 0' }}>
 
             {/* Header */}
             <div style={{ marginBottom:12 }}>
@@ -3026,7 +3173,7 @@ export default function App() {
 
         {/* ─── PLAYLIST TAB */}
         {tab==='playlist'&&(
-          <div style={{ height:'100%', display:'flex', flexDirection:'column', animation:'fadeUp 0.4s ease' }}>
+          <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
 
             {/* ── Playlist list view */}
             {plView==='list'&&(
@@ -3212,7 +3359,7 @@ export default function App() {
                           {!googleUser && <div style={{ fontSize:11, color:'rgba(255,255,255,0.2)', marginTop:4 }}>Login Google untuk melihat lagu</div>}
                         </div>
                       )}
-                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} play={play} isDrive onRemove={id=>setCustomSongs(p=>p.filter(x=>x.id!==id))} playlists={playlists} addToPlaylist={addToPlaylist}/>)}
+                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} play={play} isDrive onRemove={id=>setCustomSongs(p=>p.filter(x=>x.id!==id))} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite}/>)}
                     </div>
                   </div>
                 );
@@ -3255,7 +3402,9 @@ export default function App() {
                           <div style={{ width:26, height:26, borderRadius:6, background:'rgba(245,158,11,0.15)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                             <span style={{ fontSize:10, fontWeight:700, color:'#fbbf24' }}>{i+1}</span>
                           </div>
-                          <img src={s.cover} loading="lazy" decoding="async" style={{ width:36, height:36, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
+                          {isLite
+                            ? <div style={{ width:36, height:36, borderRadius:8, background:s.bg||'rgba(255,255,255,0.07)', flexShrink:0 }}/>
+                            : <img src={s.cover} loading="lazy" decoding="async" style={{ width:36, height:36, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>}
                           <div style={{ flex:1, minWidth:0 }}>
                             <div style={{ fontSize:13, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:track.id===s.id?s.color:'rgba(255,255,255,0.85)' }}>{s.title}</div>
                             <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{s.artist}</div>
@@ -3294,7 +3443,7 @@ export default function App() {
                       </div>
                     </div>
                     <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'10px 16px 16px', display:'flex', flexDirection:'column', gap:5 }}>
-                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} play={play} isDrive={s.isDrive} playlists={playlists} addToPlaylist={addToPlaylist}/>)}
+                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} play={play} isDrive={s.isDrive} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite}/>)}
                     </div>
                   </div>
                 );
@@ -3338,7 +3487,9 @@ export default function App() {
                       return (
                         <div key={s.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:12, cursor:'pointer', background:isActive?s.bg:'rgba(255,255,255,0.02)', border:`1px solid ${isActive?s.color+'50':'rgba(255,255,255,0.06)'}`, transition:'all 0.15s' }}>
                           <div onClick={()=>play(s)} style={{ display:'flex', alignItems:'center', gap:10, flex:1, minWidth:0 }}>
-                            <img src={s.cover} loading="lazy" decoding="async" style={{ width:36, height:36, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
+                              {isLite
+                              ? <div style={{ width:36, height:36, borderRadius:8, background:s.bg||'rgba(255,255,255,0.07)', flexShrink:0 }}/>
+                              : <img src={s.cover} loading="lazy" decoding="async" style={{ width:36, height:36, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>}
                             <div style={{ flex:1, minWidth:0 }}>
                               <div style={{ fontWeight:700, fontSize:13, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:isActive?'white':'rgba(255,255,255,0.85)' }}>{s.title}</div>
                               <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{s.artist} · {s.album}</div>
@@ -3365,12 +3516,12 @@ export default function App() {
 
         {/* ─── AI TAB */}
         {tab==='ai'&&(
-          <div style={{ height:'100%', display:'flex', flexDirection:'column', animation:'fadeUp 0.4s ease' }}>
+          <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
 
             {/* ── AI Header: title + status + now playing */}
             <div style={{ padding:'14px 16px 0', flexShrink:0 }}>
               {/* Row 1: icon + title + status */}
-              <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
                 <div style={{ width:36, height:36, borderRadius:12, background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 0 16px #6366f160' }}><Bot size={18} style={{ color:'white' }}/></div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontWeight:800, fontSize:14 }}>Starry AI</div>
@@ -3381,34 +3532,16 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Row 2: now-playing pill */}
-              <div style={{ padding:'8px 11px', borderRadius:12, background:embedTrack ? 'rgba(255,68,68,0.08)' : track.bg, border:`1px solid ${embedTrack ? 'rgba(255,68,68,0.25)' : track.color+'28'}`, display:'flex', alignItems:'center', gap:9, marginBottom:12 }}>
-                {embedTrack ? (
-                  embedTrack.thumbnail
-                    ? <img src={embedTrack.thumbnail} style={{ width:32, height:32, borderRadius:8, objectFit:'cover', flexShrink:0 }} onError={e=>{e.target.style.display='none'}}/>
-                    : <div style={{ width:32, height:32, borderRadius:8, background:'rgba(255,68,68,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:14 }}>{embedTrack.type==='soundcloud'?'☁️':'▶'}</div>
-                ) : (
-                  <img src={getCover(track)} style={{ width:32, height:32, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
-                )}
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:12, fontWeight:700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{embedTrack ? embedTrack.title : track.title}</div>
-                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginTop:1 }}>
-                    {embedTrack ? (embedTrack.type==='youtube' ? '▶ YouTube' : '☁️ SoundCloud') : track.artist}
-                  </div>
-                </div>
-                <div style={{ display:'flex', gap:2, alignItems:'flex-end', height:13, flexShrink:0 }}>
-                  {playing&&[11,6,9].map((h,i)=>(<div key={i} style={{ width:3, height:h, background:embedTrack?'#ff4444':track.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${i*0.15}s infinite` }}/>))}
-                </div>
-              </div>
 
-              {/* Row 3: sub-nav tabs */}
-              <div style={{ display:'flex', gap:6, marginBottom:0, borderBottom:'1px solid rgba(255,255,255,0.06)', paddingBottom:0 }}>
+
+              {/* Sub-nav tabs — centered */}
+              <div style={{ display:'flex', justifyContent:'center', gap:0, marginBottom:0, borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
                 {[
-                  { id:'chat', label:'💬 Chat', icon:null },
-                  { id:'lyrics', label:'🎵 Lirik', icon:null },
+                  { id:'chat', label:'💬 Chat' },
+                  { id:'lyrics', label:'🎵 Lirik' },
                 ].map(({id, label})=>(
                   <button key={id} onClick={()=>setAiSubView(id)}
-                    style={{ padding:'7px 14px', borderRadius:0, border:'none', background:'none', color:aiSubView===id?'white':'rgba(255,255,255,0.4)', fontSize:12, fontWeight:aiSubView===id?800:600, cursor:'pointer', borderBottom:aiSubView===id?`2px solid ${track.color}`:'2px solid transparent', transition:'all 0.2s', marginBottom:-1 }}>
+                    style={{ padding:'9px 32px', borderRadius:0, border:'none', background:'none', color:aiSubView===id?'white':'rgba(255,255,255,0.4)', fontSize:13, fontWeight:aiSubView===id?800:600, cursor:'pointer', borderBottom:aiSubView===id?`2px solid ${track.color}`:'2px solid transparent', transition:'all 0.2s', marginBottom:-1 }}>
                     {label}
                   </button>
                 ))}
@@ -3420,7 +3553,9 @@ export default function App() {
               /* ── LYRICS VIEW inside AI tab */
               <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'16px 20px 24px' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14 }}>
-                  <img src={getCover(track)} style={{ width:40, height:40, borderRadius:10, objectFit:'cover' }}/>
+                  {isLite
+                    ? <div style={{ width:40, height:40, borderRadius:10, background:track.bg, display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={18} color={track.color}/></div>
+                    : <img src={getCover(track)} style={{ width:40, height:40, borderRadius:10, objectFit:'cover' }}/>}
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ fontWeight:800, fontSize:14, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{track.title}</div>
                     <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)' }}>{track.artist}</div>
@@ -3480,26 +3615,7 @@ export default function App() {
               </div>
             )}
 
-            {/* Chips area — mood + AI chips sekaligus — only in chat view */}
-            {aiSubView==='chat'&&messages.length===1&&!vibeInput&&(
-              <div style={{ padding:'0 16px 8px', display:'flex', flexDirection:'column', gap:6 }}>
-                {/* Mood chips */}
-                <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
-                  {['😌 santai','⚡ semangat','😢 melankolis','🌙 malam','☀️ pagi ceria','💪 workout','🎉 party','💕 romantis'].map(mood=>(
-                    <button key={mood} onClick={()=>{ setVibeInput(mood); setTimeout(()=>{ if(!vibeLoading) searchVibe(); },0); }}
-                      style={{ padding:'4px 10px', borderRadius:999, border:`1px solid ${track.color}35`, background:`${track.color}12`, color:'rgba(255,255,255,0.75)', fontSize:10, fontWeight:600, cursor:'pointer' }}>
-                      {mood}
-                    </button>
-                  ))}
-                </div>
-                {/* AI quick chips */}
-                <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
-                  {['🎵 Ceritakan lagu ini','💫 Rekomendasikan lagu mirip','🎸 Fakta menarik artis ini','📝 Buat puisi dari lagu ini'].map((q,i)=>(
-                    <button key={i} onClick={()=>setInput(q)} style={{ padding:'4px 10px', borderRadius:999, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.04)', color:'rgba(255,255,255,0.65)', fontSize:10, fontWeight:600, cursor:'pointer' }}>{q}</button>
-                  ))}
-                </div>
-              </div>
-            )}
+
 
             {/* Input area — only in chat view */}
             {aiSubView==='chat'&&(
@@ -3531,19 +3647,61 @@ export default function App() {
       </main>
       </div>{/* end flex row wrapper */}
 
-      {/* ══ TAB BAR — Mobile only */}
+      {/* ══ BOTTOM NAV — Mobile only */}
       {!isDesktop && !fullscreen && (
-        <nav style={{ position:'relative', zIndex:10, flexShrink:0, display:'flex', alignItems:'center', background:'rgba(7,7,26,0.95)', ...(isLite ? {} : { backdropFilter:'blur(20px)' }), borderTop:'1px solid rgba(255,255,255,0.08)', padding:'6px 8px 10px', paddingBottom:'max(10px,env(safe-area-inset-bottom))' }}>
-          {tabs.map(t=>{
-            const active=tab===t.id;
-            return (
-              <button key={t.id} onClick={()=>setTab(t.id)} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:2, padding:'5px 0', background:'none', border:'none', cursor:'pointer', color:active?track.color:'rgba(255,255,255,0.35)', transition:'color 0.2s' }}>
-                <div style={{ padding:'3px 12px', borderRadius:999, background:active?`${track.color}22`:'transparent', transition:'background 0.2s' }}>{t.icon}</div>
-                <span style={{ fontSize:9, fontWeight:active?700:500, letterSpacing:'0.02em' }}>{t.label}</span>
-              </button>
-            );
-          })}
-        </nav>
+        <div style={{ position:'relative', zIndex:10, flexShrink:0, display:'flex', flexDirection:'column', background:'rgba(7,7,26,0.97)', ...(isLite ? {} : { backdropFilter:'blur(20px)' }), borderTop:'1px solid rgba(255,255,255,0.08)' }}>
+
+          {/* Mini Now-Playing Bar — visible when NOT on player tab */}
+          {tab !== 'player' && (
+            <div onClick={()=>setTab('player')} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 14px 6px', cursor:'pointer', borderBottom:'1px solid rgba(255,255,255,0.06)', background: embedTrack ? 'rgba(255,68,68,0.07)' : `${track.color}0a` }}>
+              {/* Cover / icon */}
+              {embedTrack
+                ? <div style={{ width:36, height:36, borderRadius:9, background:'rgba(255,68,68,0.18)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:14 }}>▶</div>
+                : isLite
+                  ? <div style={{ width:36, height:36, borderRadius:9, background:track.bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Music size={15} color={track.color}/></div>
+                  : <img src={getCover(track)} style={{ width:36, height:36, borderRadius:9, objectFit:'cover', flexShrink:0 }}/>
+              }
+              {/* Track info */}
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:13, fontWeight:700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'rgba(255,255,255,0.95)' }}>
+                  {embedTrack ? embedTrack.title : track.title}
+                </div>
+                <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                  {embedTrack ? (embedTrack.type==='youtube' ? '▶ YouTube' : '☁️ SoundCloud') : `${track.artist} — Ketuk untuk player`}
+                </div>
+              </div>
+              {/* Playback indicator + play/pause hint */}
+              <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
+                {playing
+                  ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:14 }}>{[10,5,8].map((h,i)=>(<div key={i} style={{ width:3, height:h, background:embedTrack?'#ff4444':track.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${i*0.15}s infinite` }}/>))}</div>
+                  : <div style={{ width:6, height:6, borderRadius:'50%', background:'rgba(255,255,255,0.2)' }}/>
+                }
+                <Compass size={14} style={{ color:'rgba(255,255,255,0.25)' }}/>
+              </div>
+            </div>
+          )}
+
+          {/* Tab bar — Stream, Playlist, AI */}
+          <nav style={{ display:'flex', alignItems:'center', padding:'6px 8px', paddingBottom:'max(8px,env(safe-area-inset-bottom))' }}>
+            {/* Player shortcut button — leftmost, compact */}
+            <button onClick={()=>setTab('player')} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2, padding:'5px 10px', background:'none', border:'none', cursor:'pointer', color:tab==='player'?track.color:'rgba(255,255,255,0.35)', transition:'color 0.2s', flexShrink:0 }}>
+              <div style={{ padding:'3px 10px', borderRadius:999, background:tab==='player'?`${track.color}22`:'transparent', transition:'background 0.2s' }}><Compass size={17}/></div>
+              <span style={{ fontSize:9, fontWeight:tab==='player'?700:500, letterSpacing:'0.02em' }}>Player</span>
+            </button>
+            {/* Divider */}
+            <div style={{ width:1, height:24, background:'rgba(255,255,255,0.08)', margin:'0 2px', flexShrink:0 }}/>
+            {/* Stream, Playlist, AI */}
+            {tabs.map(t=>{
+              const active=tab===t.id;
+              return (
+                <button key={t.id} onClick={()=>setTab(t.id)} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:2, padding:'5px 0', background:'none', border:'none', cursor:'pointer', color:active?track.color:'rgba(255,255,255,0.35)', transition:'color 0.2s' }}>
+                  <div style={{ padding:'3px 12px', borderRadius:999, background:active?`${track.color}22`:'transparent', transition:'background 0.2s' }}>{t.icon}</div>
+                  <span style={{ fontSize:9, fontWeight:active?700:500, letterSpacing:'0.02em' }}>{t.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
       )}
 
       {/* ══ MODALS */}
@@ -3554,7 +3712,7 @@ export default function App() {
         onSave={editingPl ? updatePlaylist : createPlaylist}
         isLite={isLite}
       />}
-      {showSettings&&<SettingsPanel onClose={()=>setShowSettings(false)} color={track.color} eqEnabled={eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset} setEqPreset={setEqPreset} eqGains={eqGains} setEqGains={setEqGains} crossfade={crossfade} setCrossfade={setCrossfade} sleepTimer={sleepTimer} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover} setGlobalCover={setGlobalCover} isLite={isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt} pwaInstalled={pwaInstalled} installPwa={installPwa} customDns={customDns} setCustomDns={setCustomDns}/>}
+      {showSettings&&<SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} eqEnabled={!!eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset||"Normal"} setEqPreset={setEqPreset} eqGains={Array.isArray(eqGains)&&eqGains.length===5?eqGains:[0,0,0,0,0]} setEqGains={setEqGains} crossfade={typeof crossfade==="number"?crossfade:0} setCrossfade={setCrossfade} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns}/>}
       {showUpload&&<UploadModal onClose={()=>!uploading&&setShowUpload(false)} onUpload={handleUpload} uploading={uploading} uploadProgress={uploadProgress} color={track.color} isLite={isLite}/>}
 
       {/* ══ YOUTUBE HIDDEN AUDIO IFRAME — persistent, single instance ══ */}
@@ -3577,17 +3735,23 @@ export default function App() {
         @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
         @keyframes slideUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
         @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.6;transform:scale(0.9)}}
-        .stars{position:absolute;width:200%;height:200%;background-image:radial-gradient(1px 1px at 15px 25px,rgba(255,255,255,0.6),transparent),radial-gradient(1.5px 1.5px at 90px 130px,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 180px 70px,rgba(255,255,255,0.5),transparent),radial-gradient(2px 2px at 280px 220px,rgba(255,255,255,0.3),transparent),radial-gradient(1px 1px at 40px 180px,rgba(255,255,255,0.5),transparent),radial-gradient(1.5px 1.5px at 160px 30px,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 240px 100px,rgba(255,255,255,0.3),transparent),radial-gradient(2px 2px at 60px 260px,rgba(255,255,255,0.2),transparent);background-size:300px 300px;animation:starMove 120s linear infinite}
-        @keyframes starMove{from{transform:translate(0,0)}to{transform:translate(-300px,-300px)}}
+        @keyframes twinkle{0%,100%{opacity:0.9}50%{opacity:0.35}}
+        @keyframes twinkleB{0%,100%{opacity:0.55}50%{opacity:1}}
+        @keyframes twinkleC{0%,100%{opacity:0.7}40%{opacity:0.2}80%{opacity:0.9}}
+        .stars,.starsB,.starsC{position:absolute;inset:0;will-change:opacity}
+        .stars{background-image:radial-gradient(1px 1px at 8% 12%,rgba(255,255,255,0.7),transparent),radial-gradient(1.5px 1.5px at 31% 45%,rgba(255,255,255,0.5),transparent),radial-gradient(1px 1px at 62% 23%,rgba(255,255,255,0.6),transparent),radial-gradient(2px 2px at 78% 67%,rgba(255,255,255,0.35),transparent),radial-gradient(1px 1px at 14% 71%,rgba(255,255,255,0.5),transparent),radial-gradient(1px 1px at 88% 18%,rgba(255,255,255,0.45),transparent),radial-gradient(1.5px 1.5px at 47% 89%,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 55% 55%,rgba(255,255,255,0.3),transparent);animation:twinkle 4s ease-in-out infinite}
+        .starsB{background-image:radial-gradient(1px 1px at 23% 6%,rgba(255,255,255,0.5),transparent),radial-gradient(1.5px 1.5px at 70% 38%,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 5% 52%,rgba(255,255,255,0.55),transparent),radial-gradient(2px 2px at 91% 81%,rgba(255,255,255,0.3),transparent),radial-gradient(1px 1px at 38% 77%,rgba(255,255,255,0.45),transparent),radial-gradient(1px 1px at 66% 9%,rgba(255,255,255,0.35),transparent),radial-gradient(1.5px 1.5px at 18% 93%,rgba(255,255,255,0.3),transparent);animation:twinkleB 5.5s ease-in-out 1.8s infinite}
+        .starsC{background-image:radial-gradient(1px 1px at 42% 31%,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 83% 54%,rgba(255,255,255,0.5),transparent),radial-gradient(1.5px 1.5px at 11% 28%,rgba(255,255,255,0.35),transparent),radial-gradient(1px 1px at 75% 92%,rgba(255,255,255,0.3),transparent),radial-gradient(2px 2px at 29% 63%,rgba(255,255,255,0.25),transparent),radial-gradient(1px 1px at 58% 4%,rgba(255,255,255,0.5),transparent);animation:twinkleC 7s ease-in-out 3.2s infinite}
         .scrollbar-hide::-webkit-scrollbar{display:none}
         .scrollbar-hide{-ms-overflow-style:none;scrollbar-width:none}
         input::placeholder{color:rgba(148,163,184,0.35)}
         input[type=range]{cursor:pointer;height:4px;border-radius:999px}
         ${isLite ? `
-          .lite-no-anim *{animation-duration:0.01ms!important;animation-iteration-count:1!important;transition-duration:0.1s!important}
-          input[type=range]::-webkit-slider-thumb{box-shadow:none!important;-webkit-box-shadow:none!important}
-          input[type=range]::-moz-range-thumb{box-shadow:none!important}
-          input[type=range]::-ms-thumb{box-shadow:none!important}
+          .lite-mode *{animation:none!important;transition:none!important}
+          .lite-mode .progress-arc{transition:stroke-dashoffset 0.35s linear!important}
+          .lite-mode input[type=range]::-webkit-slider-thumb{box-shadow:none!important}
+          .lite-mode input[type=range]::-moz-range-thumb{box-shadow:none!important}
+          .lite-mode input[type=range]::-ms-thumb{box-shadow:none!important}
         ` : ''}
       `}</style>
     </div>
