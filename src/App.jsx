@@ -43,25 +43,13 @@ const STREAMING_PLATFORMS = [
     id: 'spotify',
     name: 'Spotify',
     icon: '🟢',
-    embedType: 'redirect',
-    description: 'Buka pencarian di Spotify (perlu app/browser)',
+    embedType: 'spotify',
+    description: 'Cari & preview track via Spotify',
     color: '#1DB954',
     logo: null,
     searchUrl: (q) => `https://open.spotify.com/search/${encodeURIComponent(q)}`,
     openUrl: 'https://open.spotify.com',
-    hint: 'Cari lagu, artis, album…',
-  },
-  {
-    id: 'applemusic',
-    name: 'Apple Music',
-    icon: '🎵',
-    embedType: 'redirect',
-    description: 'Buka pencarian di Apple Music',
-    color: '#fc3c44',
-    logo: null,
-    searchUrl: (q) => `https://music.apple.com/search?term=${encodeURIComponent(q)}`,
-    openUrl: 'https://music.apple.com',
-    hint: 'Cari lagu, artis, album…',
+    hint: 'Cari judul lagu, artis, album…',
   },
 ];
 
@@ -90,12 +78,6 @@ function PlatformLogo({ id, size = 22 }) {
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect width="24" height="24" rx="12" fill="#1DB954"/>
       <path d="M17.9 10.9C14.7 9 9.35 8.8 6.3 9.75c-.5.15-1-.15-1.15-.6-.15-.5.15-1 .6-1.15C9.65 6.8 15.5 7 19.1 9.15c.45.25.6.85.35 1.3-.25.35-.85.5-1.55.45zM17.75 13.55c-.2.35-.65.45-1 .25-2.65-1.6-6.65-2.05-9.75-1.1-.4.1-.8-.1-.9-.5-.1-.4.1-.8.5-.9 3.55-1.1 7.95-.55 11 1.3.3.15.4.6.15.95zM16.6 16.1c-.15.3-.5.4-.8.25-2.3-1.4-5.2-1.7-8.6-.95-.35.1-.65-.15-.75-.45-.1-.35.15-.65.45-.75 3.75-.85 6.95-.5 9.5 1.1.35.15.4.5.2.8z" fill="white"/>
-    </svg>
-  );
-  if (id === 'applemusic') return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="24" height="24" rx="6" fill="#fc3c44"/>
-      <path d="M16 6H10v8.5c-.5-.32-1.1-.5-1.75-.5C6.45 14 5 15.34 5 17s1.45 3 3.25 3S11.5 18.66 11.5 17V9.5H16V6z" fill="white"/>
     </svg>
   );
   return <span style={{ fontSize: size * 0.75 }}>🎵</span>;
@@ -325,6 +307,58 @@ const PROVIDERS = [
 ];
 
 let slotIdx = 0;
+
+// ═══════════════════════════════════════════════════════
+//  SPOTIFY — Client Credentials token + search
+// ═══════════════════════════════════════════════════════
+const SP_CLIENT_ID     = import.meta.env.VITE_SPOTIFY_CLIENT_ID     || '';
+const SP_CLIENT_SECRET = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET || '';
+
+let _spToken = null;
+let _spTokenExp = 0;
+
+async function getSpotifyToken() {
+  if (_spToken && Date.now() < _spTokenExp) return _spToken;
+  if (!SP_CLIENT_ID || !SP_CLIENT_SECRET) return null;
+  try {
+    const res = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': 'Basic ' + btoa(`${SP_CLIENT_ID}:${SP_CLIENT_SECRET}`),
+      },
+      body: 'grant_type=client_credentials',
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    _spToken = data.access_token;
+    _spTokenExp = Date.now() + (data.expires_in - 60) * 1000;
+    return _spToken;
+  } catch { return null; }
+}
+
+async function searchSpotify(query, limit = 10) {
+  const token = await getSpotifyToken();
+  if (!token) return null;
+  try {
+    const res = await fetch(
+      `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=${limit}&market=ID`,
+      { headers: { 'Authorization': `Bearer ${token}` } }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return (data.tracks?.items || []).map(t => ({
+      id: t.id,
+      title: t.name,
+      artist: t.artists.map(a => a.name).join(', '),
+      album: t.album.name,
+      cover: t.album.images?.[1]?.url || t.album.images?.[0]?.url || '',
+      duration: t.duration_ms,
+      previewUrl: t.preview_url,
+      spotifyUrl: t.external_urls?.spotify || '',
+    }));
+  } catch { return null; }
+}
 
 async function askAI(user, system='', tries=0) {
   if (!PROVIDERS.length) return '⚠️ Belum ada API key. Isi di Vercel Environment Variables.';
@@ -1031,6 +1065,23 @@ export default function App() {
 
   // ── Redirect platforms search
   const [platformSearch, setPlatformSearch] = useState({});
+
+  // ── Spotify in-app search state
+  const [spQuery,   setSpQuery]   = useState('');
+  const [spResults, setSpResults] = useState([]);
+  const [spLoading, setSpLoading] = useState(false);
+  const [spError,   setSpError]   = useState(null);
+  const [spTrack,   setSpTrack]   = useState(null); // currently previewing
+  const spHasKey = !!(SP_CLIENT_ID && SP_CLIENT_SECRET);
+
+  const doSpotifySearch = async (q) => {
+    if (!q.trim()) return;
+    setSpLoading(true); setSpError(null); setSpResults([]);
+    const items = await searchSpotify(q);
+    if (items && items.length > 0) setSpResults(items);
+    else setSpError('Tidak ada hasil. Coba kata kunci lain.');
+    setSpLoading(false);
+  };
 
   const openPlatformSearch = (platform, query) => {
     const q = (query || platformSearch[platform.id] || '').trim();
@@ -2122,6 +2173,7 @@ export default function App() {
                     const isYT = platform.embedType === 'youtube';
                     const isSC = platform.embedType === 'soundcloud';
                     const isRedirect = platform.embedType === 'redirect';
+                    const isSpotify = platform.embedType === 'spotify';
                     const ytQ = ytQuery[platform.id] || '';
                     const scQ = scQuery[platform.id] || '';
                     const results = ytResults[platform.id] || [];
@@ -2138,7 +2190,7 @@ export default function App() {
                           <div style={{ flex:1, minWidth:0 }}>
                             <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                               <span style={{ fontWeight:700, fontSize:13, color:'white' }}>{platform.name}</span>
-                              {(isYT||isSC) && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:999, background:`${platform.color}25`, color:platform.color }}>IN-APP ▶</span>}
+                              {(isYT||isSC||isSpotify) && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:999, background:`${platform.color}25`, color:platform.color }}>IN-APP ▶</span>}
                               {isRedirect && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:999, background:'rgba(255,255,255,0.07)', color:'rgba(255,255,255,0.35)' }}>REDIRECT</span>}
                             </div>
                             <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{platform.description}</div>
@@ -2255,28 +2307,162 @@ export default function App() {
                           </div>
                         )}
 
-                        {/* ── Redirect platforms */}
-                        {isRedirect && (
-                          <div style={{ padding:'0 10px 10px' }}>
-                            <div style={{ display:'flex', gap:6 }}>
-                              <div style={{ flex:1, display:'flex', alignItems:'center', gap:6, background:'rgba(0,0,0,0.3)', borderRadius:999, padding:'6px 12px', border:`1px solid ${platform.color}25` }}>
-                                <Search size={11} style={{ color:platform.color, flexShrink:0 }}/>
-                                <input type="text" placeholder={platform.hint}
-                                  value={platformSearch[platform.id] || ''}
-                                  onChange={e => setPlatformSearch(p=>({...p,[platform.id]:e.target.value}))}
-                                  onKeyDown={e => { if(e.key==='Enter') openPlatformSearch(platform); }}
-                                  style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'white', fontSize:12, minWidth:0 }}/>
+                        {/* ── Spotify in-app search */}
+                        {isSpotify && (
+                          <div style={{ padding:'0 10px 12px' }}>
+                            {!spHasKey ? (
+                              <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', padding:'8px 4px', lineHeight:1.6 }}>
+                                ⚠️ Tambahkan <code style={{ background:'rgba(255,255,255,0.08)', padding:'1px 5px', borderRadius:4 }}>VITE_SPOTIFY_CLIENT_ID</code> dan <code style={{ background:'rgba(255,255,255,0.08)', padding:'1px 5px', borderRadius:4 }}>VITE_SPOTIFY_CLIENT_SECRET</code> di environment variables Vercel.<br/>
+                                <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noreferrer" style={{ color:'#1DB954', fontWeight:700 }}>Daftar gratis di developer.spotify.com →</a>
                               </div>
-                              <button onClick={() => openPlatformSearch(platform)}
-                                style={{ padding:'6px 12px', borderRadius:999, border:'none', background:`${platform.color}cc`, color:'white', fontSize:11, fontWeight:700, cursor:'pointer', flexShrink:0, display:'flex', alignItems:'center', gap:4 }}>
-                                Buka ↗
-                              </button>
-                            </div>
-                            <div style={{ marginTop:6, fontSize:10, color:'rgba(255,255,255,0.22)', paddingLeft:2 }}>
-                              ⓘ Dibuka di browser — {platform.name} memerlukan login.
-                            </div>
+                            ) : (
+                              <>
+                                {/* Search bar */}
+                                <div style={{ display:'flex', gap:6, marginBottom:8 }}>
+                                  <div style={{ flex:1, display:'flex', alignItems:'center', gap:6, background:'rgba(0,0,0,0.3)', borderRadius:999, padding:'6px 12px', border:'1px solid #1DB95430' }}>
+                                    <Search size={11} style={{ color:'#1DB954', flexShrink:0 }}/>
+                                    <input type="text" placeholder="Cari judul lagu, artis, album…"
+                                      value={spQuery}
+                                      onChange={e => setSpQuery(e.target.value)}
+                                      onKeyDown={e => { if(e.key==='Enter') doSpotifySearch(spQuery); }}
+                                      style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'white', fontSize:12, minWidth:0 }}/>
+                                    {spQuery && (
+                                      <button onClick={() => { setSpQuery(''); setSpResults([]); setSpError(null); setSpTrack(null); }}
+                                        style={{ background:'none', border:'none', color:'rgba(255,255,255,0.3)', cursor:'pointer', padding:0, display:'flex' }}>
+                                        <X size={13}/>
+                                      </button>
+                                    )}
+                                  </div>
+                                  <button onClick={() => doSpotifySearch(spQuery)} disabled={spLoading}
+                                    style={{ padding:'6px 14px', borderRadius:999, border:'none', background: spLoading ? 'rgba(29,185,84,0.4)' : '#1DB954cc', color:'white', fontSize:11, fontWeight:700, cursor: spLoading ? 'default' : 'pointer', flexShrink:0 }}>
+                                    {spLoading ? '…' : 'Cari'}
+                                  </button>
+                                </div>
+
+                                {/* Chips */}
+                                {!spResults.length && !spLoading && (
+                                  <div style={{ display:'flex', flexWrap:'wrap', gap:5, marginBottom:8 }}>
+                                    {[
+                                      { label:'Top Global', q:'top global hits 2025' },
+                                      { label:'Pop Indonesia', q:'pop indonesia terbaru' },
+                                      { label:'K-Pop', q:'kpop 2025' },
+                                      { label:'Lo-fi Chill', q:'lofi chill beats' },
+                                      { label:'Indie', q:'indie 2025' },
+                                      { label:'R&B', q:'rnb 2025' },
+                                    ].map(chip => (
+                                      <button key={chip.q}
+                                        onClick={() => { setSpQuery(chip.q); doSpotifySearch(chip.q); }}
+                                        style={{ fontSize:10, padding:'3px 9px', borderRadius:999, background:'#1DB95415', border:'1px solid #1DB95430', color:'rgba(255,255,255,0.65)', cursor:'pointer' }}>
+                                        {chip.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {/* Error */}
+                                {spError && <div style={{ fontSize:11, color:'rgba(255,100,100,0.8)', marginBottom:6 }}>{spError}</div>}
+
+                                {/* Preview embed */}
+                                {spTrack && (
+                                  <div style={{ marginBottom:8, borderRadius:10, overflow:'hidden', border:'1px solid #1DB95430' }}>
+                                    <iframe
+                                      key={spTrack.id}
+                                      src={`https://open.spotify.com/embed/track/${spTrack.id}?utm_source=generator&theme=0`}
+                                      width="100%" height="80" frameBorder="0"
+                                      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                                      style={{ display:'block' }}
+                                    />
+                                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'5px 10px', background:'rgba(0,0,0,0.4)' }}>
+                                      <span style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>⏱ Preview 30 detik · Full track butuh Spotify Premium</span>
+                                      <button onClick={() => window.open(spTrack.spotifyUrl, '_blank')}
+                                        style={{ fontSize:10, color:'#1DB954', background:'none', border:'none', cursor:'pointer', fontWeight:700 }}>
+                                        Buka Spotify ↗
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Results list */}
+                                {spResults.length > 0 && (
+                                  <div style={{ display:'flex', flexDirection:'column', gap:4, maxHeight:260, overflowY:'auto' }}>
+                                    {spResults.map(t => {
+                                      const mins = Math.floor(t.duration/60000);
+                                      const secs = String(Math.floor((t.duration%60000)/1000)).padStart(2,'0');
+                                      const isActive = spTrack?.id === t.id;
+                                      return (
+                                        <div key={t.id} onClick={() => setSpTrack(t)}
+                                          style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 8px', borderRadius:8, cursor:'pointer', background: isActive ? '#1DB95420' : 'rgba(255,255,255,0.03)', border: isActive ? '1px solid #1DB95440' : '1px solid transparent', transition:'all 0.15s' }}>
+                                          <div style={{ position:'relative', flexShrink:0 }}>
+                                            <img src={t.cover} alt={t.title}
+                                              style={{ width:36, height:36, borderRadius:6, objectFit:'cover', display:'block' }}
+                                              onError={e => { e.target.style.display='none'; }}/>
+                                            {isActive && (
+                                              <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.5)', borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                                                <span style={{ fontSize:14 }}>▶</span>
+                                              </div>
+                                            )}
+                                          </div>
+                                          <div style={{ flex:1, minWidth:0 }}>
+                                            <div style={{ fontSize:12, fontWeight:600, color: isActive ? '#1DB954' : 'rgba(255,255,255,0.85)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.title}</div>
+                                            <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.artist}</div>
+                                          </div>
+                                          <div style={{ fontSize:10, color:'rgba(255,255,255,0.3)', flexShrink:0 }}>{mins}:{secs}</div>
+                                          {!t.previewUrl && <span style={{ fontSize:9, color:'rgba(255,255,255,0.2)', flexShrink:0 }}>no preview</span>}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </>
+                            )}
                           </div>
                         )}
+
+                        {/* ── Redirect platforms */}
+                        {isRedirect && (() => {
+                          const chips = {}[platform.id] || [];
+                          const q = platformSearch[platform.id] || '';
+                          return (
+                            <div style={{ padding:'0 10px 12px' }}>
+                              {/* Search bar */}
+                              <div style={{ display:'flex', gap:6 }}>
+                                <div style={{ flex:1, display:'flex', alignItems:'center', gap:6, background:'rgba(0,0,0,0.3)', borderRadius:999, padding:'6px 12px', border:`1px solid ${platform.color}30` }}>
+                                  <Search size={11} style={{ color:platform.color, flexShrink:0 }}/>
+                                  <input type="text" placeholder={platform.hint}
+                                    value={q}
+                                    onChange={e => setPlatformSearch(p=>({...p,[platform.id]:e.target.value}))}
+                                    onKeyDown={e => { if(e.key==='Enter') openPlatformSearch(platform); }}
+                                    style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'white', fontSize:12, minWidth:0 }}/>
+                                  {q && (
+                                    <button onClick={() => setPlatformSearch(p=>({...p,[platform.id]:''}))}
+                                      style={{ background:'none', border:'none', color:'rgba(255,255,255,0.3)', cursor:'pointer', padding:0, display:'flex' }}>
+                                      <X size={13}/>
+                                    </button>
+                                  )}
+                                </div>
+                                <button onClick={() => openPlatformSearch(platform)}
+                                  style={{ padding:'6px 14px', borderRadius:999, border:'none', background:`${platform.color}cc`, color:'white', fontSize:11, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
+                                  Cari ↗
+                                </button>
+                              </div>
+                              {/* Chips */}
+                              {chips.length > 0 && (
+                                <div style={{ display:'flex', flexWrap:'wrap', gap:5, marginTop:8 }}>
+                                  {chips.map(chip => (
+                                    <button key={chip.q}
+                                      onClick={() => { setPlatformSearch(p=>({...p,[platform.id]:chip.q})); window.open(platform.searchUrl(chip.q), '_blank'); }}
+                                      style={{ fontSize:10, padding:'3px 9px', borderRadius:999, background:`${platform.color}15`, border:`1px solid ${platform.color}30`, color:'rgba(255,255,255,0.65)', cursor:'pointer' }}>
+                                      {chip.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                              <div style={{ marginTop:7, fontSize:10, color:'rgba(255,255,255,0.2)', paddingLeft:2 }}>
+                                ↗ Dibuka di browser — {platform.name} tidak mendukung embed.
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     );
                   })}
