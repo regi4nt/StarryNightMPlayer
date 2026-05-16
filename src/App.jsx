@@ -275,6 +275,21 @@ const INVIDIOUS_INSTANCES = [
 
 // ── Provider definitions
 const PROVIDERS = [
+  // OpenAI (ChatGPT) — format OpenAI standard
+  ...([
+    import.meta.env.VITE_OPENAI_API_KEY,
+  ].filter(k => k && k.length > 10).flatMap(k => [
+    { provider:'OpenAI', key:k, model:'gpt-4o-mini',    endpoint:'https://api.openai.com/v1/chat/completions', isOpenAI:true, extra:{} },
+    { provider:'OpenAI', key:k, model:'gpt-4o',          endpoint:'https://api.openai.com/v1/chat/completions', isOpenAI:true, extra:{} },
+    { provider:'OpenAI', key:k, model:'gpt-3.5-turbo',  endpoint:'https://api.openai.com/v1/chat/completions', isOpenAI:true, extra:{} },
+  ])),
+  // Anthropic (Claude) — format Anthropic native (isOpenAI:false)
+  ...([
+    import.meta.env.VITE_ANTHROPIC_API_KEY,
+  ].filter(k => k && k.length > 10).flatMap(k => [
+    { provider:'Claude', key:k, model:'claude-haiku-4-5-20251001', endpoint:'https://api.anthropic.com/v1/messages', isOpenAI:false, extra:{ 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' } },
+    { provider:'Claude', key:k, model:'claude-sonnet-4-5',         endpoint:'https://api.anthropic.com/v1/messages', isOpenAI:false, extra:{ 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' } },
+  ])),
   // OpenRouter — beberapa key & model gratis sebagai slot
   ...([
     import.meta.env.VITE_OPENROUTER_KEY_1,
@@ -393,28 +408,54 @@ async function askAI(user, system='', tries=0) {
   if (tries >= PROVIDERS.length) { slotIdx = 0; return 'Semua provider sibuk, coba lagi nanti.'; }
   const slot = PROVIDERS[slotIdx % PROVIDERS.length];
   try {
-    const res = await fetch(slot.endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${slot.key}`,
-        ...slot.extra,
-      },
-      body: JSON.stringify({
-        model: slot.model,
-        max_tokens: 500,
-        messages: [
-          ...(system ? [{ role:'system', content:system }] : []),
-          { role:'user', content:user },
-        ],
-      }),
-    });
-    const data = await res.json();
-    if (res.status === 429 || res.status === 503 || res.status === 401 || data.error) {
-      slotIdx = (slotIdx + 1) % PROVIDERS.length;
-      return askAI(user, system, tries + 1);
+    let res, data, txt;
+    if (!slot.isOpenAI) {
+      // ── Format Anthropic native (Claude)
+      res = await fetch(slot.endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': slot.key,
+          ...slot.extra,
+        },
+        body: JSON.stringify({
+          model: slot.model,
+          max_tokens: 500,
+          ...(system ? { system } : {}),
+          messages: [{ role:'user', content:user }],
+        }),
+      });
+      data = await res.json();
+      if (res.status === 429 || res.status === 503 || res.status === 401 || data.error) {
+        slotIdx = (slotIdx + 1) % PROVIDERS.length;
+        return askAI(user, system, tries + 1);
+      }
+      txt = data.content?.[0]?.text;
+    } else {
+      // ── Format OpenAI-compatible (OpenAI, OpenRouter, Gemini, Groq, dll.)
+      res = await fetch(slot.endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${slot.key}`,
+          ...slot.extra,
+        },
+        body: JSON.stringify({
+          model: slot.model,
+          max_tokens: 500,
+          messages: [
+            ...(system ? [{ role:'system', content:system }] : []),
+            { role:'user', content:user },
+          ],
+        }),
+      });
+      data = await res.json();
+      if (res.status === 429 || res.status === 503 || res.status === 401 || data.error) {
+        slotIdx = (slotIdx + 1) % PROVIDERS.length;
+        return askAI(user, system, tries + 1);
+      }
+      txt = data.choices?.[0]?.message?.content;
     }
-    const txt = data.choices?.[0]?.message?.content;
     if (!txt) { slotIdx = (slotIdx + 1) % PROVIDERS.length; return askAI(user, system, tries + 1); }
     return txt.trim();
   } catch {
@@ -806,7 +847,7 @@ function SongRow({ s, i, track, playing, liked, setLiked, play, isDrive, onRemov
 // ═══════════════════════════════════════════════════════
 //  SETTINGS PANEL  (EQ, Crossfade, Sleep Timer)
 // ═══════════════════════════════════════════════════════
-function SettingsPanel({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setEqPreset, eqGains, setEqGains, crossfade, setCrossfade, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, dataSaver, toggleDataSaver, pwaPrompt, pwaInstalled, installPwa }) {
+function SettingsPanel({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setEqPreset, eqGains, setEqGains, crossfade, setCrossfade, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, dataSaver, toggleDataSaver, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns }) {
   const coverRef = useRef(null);
   return (
     <div style={{ position:'fixed', inset:0, zIndex:100, background:'rgba(0,0,0,0.75)', ...(isLite ? {} : { backdropFilter:'blur(8px)' }), display:'flex', alignItems:'flex-end', animation:'fadeUp 0.25s ease' }} onClick={e=>e.target===e.currentTarget&&onClose()}>
@@ -1004,6 +1045,60 @@ function SettingsPanel({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setE
           )}
         </div>
 
+        {/* ── DNS SETTINGS */}
+        <div style={{ marginTop:28 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+            <span style={{ fontSize:16 }}>🌐</span>
+            <div>
+              <div style={{ fontWeight:800, fontSize:14 }}>DNS Kustom</div>
+              <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>Ganti DNS untuk mempercepat atau membuka blokir</div>
+            </div>
+          </div>
+          {/* Preset DNS buttons */}
+          <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:12 }}>
+            {[
+              { label:'Default', value:'', desc:'DNS bawaan ISP' },
+              { label:'Google', value:'8.8.8.8', desc:'Google DNS — cepat & stabil' },
+              { label:'Cloudflare', value:'1.1.1.1', desc:'Cloudflare — privasi & cepat' },
+              { label:'OpenDNS', value:'208.67.222.222', desc:'OpenDNS — keamanan ekstra' },
+              { label:'Quad9', value:'9.9.9.9', desc:'Quad9 — blokir malware' },
+            ].map(opt => (
+              <button key={opt.label} onClick={() => { setCustomDns(opt.value); localStorage.setItem('sn_custom_dns', opt.value); }}
+                style={{ padding:'6px 12px', borderRadius:999, border:'none', fontSize:11, fontWeight:700, cursor:'pointer',
+                  background: customDns === opt.value ? color : 'rgba(255,255,255,0.08)',
+                  color: customDns === opt.value ? 'white' : 'rgba(255,255,255,0.55)',
+                  transition:'all 0.15s' }}
+                title={opt.desc}>{opt.label}</button>
+            ))}
+          </div>
+          {/* Custom DNS input */}
+          <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+            <input
+              type="text"
+              placeholder="Masukkan IP DNS kustom, mis. 1.1.1.1"
+              value={customDns}
+              onChange={e => setCustomDns(e.target.value)}
+              onBlur={e => localStorage.setItem('sn_custom_dns', e.target.value)}
+              style={{ flex:1, padding:'9px 12px', borderRadius:12, border:`1px solid rgba(255,255,255,0.12)`, background:'rgba(255,255,255,0.06)', color:'white', fontSize:12, outline:'none', fontFamily:'monospace' }}
+            />
+            {customDns && (
+              <button onClick={() => { setCustomDns(''); localStorage.removeItem('sn_custom_dns'); }}
+                style={{ padding:'9px 12px', borderRadius:12, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.1)', color:'#fca5a5', fontSize:11, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
+                Reset
+              </button>
+            )}
+          </div>
+          <div style={{ marginTop:8, padding:'10px 12px', borderRadius:10, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', lineHeight:1.6 }}>
+              ⓘ Pengaturan DNS di browser terbatas. Untuk DNS penuh, ubah juga di:<br/>
+              <span style={{ color:'rgba(255,255,255,0.5)' }}>Wi-Fi/Ethernet → TCP/IP → DNS Server</span>
+              {customDns && (
+                <span> — Aktif: <span style={{ color, fontFamily:'monospace' }}>{customDns}</span></span>
+              )}
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );
@@ -1062,6 +1157,7 @@ export default function App() {
 
   // ── Hemat Data: blokir cover image, preload audio, prefetch Drive, & AI calls
   const [dataSaver, setDataSaver] = useState(() => localStorage.getItem('sn_datasaver') === '1');
+  const [customDns, setCustomDns] = useState(() => localStorage.getItem('sn_custom_dns') || '');
   const toggleDataSaver = () => setDataSaver(v => {
     const n = !v; localStorage.setItem('sn_datasaver', n ? '1' : '0'); return n;
   });
@@ -1282,6 +1378,15 @@ export default function App() {
 
   const searchYouTube = async (platformId, query) => {
     if (!query.trim()) return;
+
+    // Deteksi URL YouTube → langsung play
+    const ytUrlMatch = query.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+    if (ytUrlMatch) {
+      const videoId = ytUrlMatch[1];
+      playYouTube({ videoId, title: query, uploaderName: 'YouTube', duration: 0, thumbnail: `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg` }, [], 0);
+      return;
+    }
+
     setYtLoading(p => ({...p, [platformId]: true}));
     setYtError(p => ({...p, [platformId]: null}));
     setYtResults(p => ({...p, [platformId]: []}));
@@ -1322,7 +1427,8 @@ export default function App() {
     // Pause normal audio player, set playing state for UI
     if (audioRef.current) { audioRef.current.pause(); }
     setPlaying(true);
-    // Stay on current tab — do NOT switch to player
+    // Otomatis pindah ke player saat lagu stream diputar
+    setTab('player');
   };
 
   const playSoundCloud = (platformId, query) => {
@@ -1346,11 +1452,24 @@ export default function App() {
   const ytNext = useCallback(() => {
     const q = ytQueueRef.current; if (!q.length) return;
     if (repeatRef.current === 'one') { seekYt(0); return; }
-    let idx;
-    if (shuffleRef.current) { idx = Math.floor(Math.random()*q.length); }
-    else { idx = (ytQueueIdxRef.current + 1) % q.length; }
-    ytQueueIdxRef.current = idx;
-    playYouTube(q[idx], q, idx);
+    if (shuffleRef.current) {
+      // Acak: pilih lagu lain secara random dari queue
+      const others = q.filter((_, i) => i !== ytQueueIdxRef.current);
+      const pool = others.length ? others : q;
+      const picked = pool[Math.floor(Math.random() * pool.length)];
+      const idx = q.indexOf(picked);
+      ytQueueIdxRef.current = idx;
+      playYouTube(q[idx], q, idx);
+      return;
+    }
+    const nextIdx = ytQueueIdxRef.current + 1;
+    if (nextIdx >= q.length) {
+      // Sudah lagu terakhir, tidak ada repeat all → berhenti
+      setPlaying(false);
+      return;
+    }
+    ytQueueIdxRef.current = nextIdx;
+    playYouTube(q[nextIdx], q, nextIdx);
   }, [seekYt]); // eslint-disable-line
 
   const ytPrev = useCallback(() => {
@@ -1419,6 +1538,10 @@ export default function App() {
 
   // ── Queue / search
   const [searchQuery, setSearchQuery]   = useState('');
+
+  // ── AI
+  const [aiSubView, setAiSubView] = useState('chat'); // 'chat' | 'lyrics'
+  const [showQueue, setShowQueue] = useState(false);
 
   // ── AI
   const [insight, setInsight]   = useState('');
@@ -1545,31 +1668,65 @@ export default function App() {
   };
 
   // ── Auto-restore Drive songs if we have a saved valid token
+  const loadDriveSongs = useCallback(async (tok, force = false) => {
+    if (!tok) return;
+    setLoadingDrive(true);
+    try {
+      const songs = await driveListSongs(tok, force);
+      setCustomSongs(songs);
+      setDriveError('');
+    } catch (e) {
+      // 401/403/400 → token expired, try silent refresh
+      if (e.message.includes('401') || e.message.includes('403') || e.message.includes('400')) {
+        try {
+          const newTok = await silentRefreshToken();
+          const songs  = await driveListSongs(newTok, true);
+          setCustomSongs(songs);
+          setDriveError('');
+        } catch {
+          setDriveError('Sesi Google berakhir. Ketuk Login untuk lanjut.');
+        }
+      } else {
+        // Network error or other — keep existing songs if any, just log
+        console.warn('Drive list error:', e.message);
+      }
+    } finally {
+      setLoadingDrive(false);
+    }
+  }, [silentRefreshToken]);
+
   useEffect(() => {
     const savedToken = (() => {
       try { const s=JSON.parse(localStorage.getItem('sn_google_token')||'null'); return s&&s.expiry>Date.now()?s.token:null; }
       catch{return null;}
     })();
-    if (savedToken && !customSongs.length) {
-      setLoadingDrive(true);
-      driveListSongs(savedToken)
-        .then(songs => { setCustomSongs(songs); setDriveError(''); setLoadingDrive(false); })
-        .catch(async (e) => {
-          // Token might be expired — try silent refresh once
-          if (e.message.includes('401') || e.message.includes('403') || e.message.includes('400')) {
-            try {
-              const newTok = await silentRefreshToken();
-              const songs = await driveListSongs(newTok, true);
-              setCustomSongs(songs); setDriveError(''); setLoadingDrive(false);
-            } catch {
-              setDriveError('Sesi Google berakhir. Ketuk Login untuk lanjut.');
-              setLoadingDrive(false);
-            }
-          } else { setLoadingDrive(false); }
-        });
-    }
+    if (savedToken) loadDriveSongs(savedToken);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Re-fetch Drive songs when tab becomes visible again (catches expired tokens)
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      const tok = tokenRef.current;
+      if (!tok) return;
+      const saved = (() => {
+        try { return JSON.parse(localStorage.getItem('sn_google_token')||'null'); } catch { return null; }
+      })();
+      // Jika token hampir/sudah expired (<2 menit sisa), force refresh
+      if (saved && saved.expiry - Date.now() < 2 * 60 * 1000) {
+        silentRefreshToken()
+          .then(newTok => loadDriveSongs(newTok, true))
+          .catch(() => setDriveError('Sesi Google berakhir. Ketuk Login untuk lanjut.'));
+      } else if (saved && customSongs.length === 0) {
+        // Songs belum termuat (mis. pertama kali buka tab)
+        loadDriveSongs(tok);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customSongs.length]);
 
   // ── Responsive ring + desktop detection
   useEffect(() => {
@@ -1717,8 +1874,13 @@ export default function App() {
         }
         // Video ended → auto next
         if (data?.event === 'onStateChange' && data.info === 0) {
-          if (repeatRef.current === 'one') { seekYt(0); }
-          else { setTimeout(ytNext, 600); }
+          if (repeatRef.current === 'one') {
+            // Restart lagu yang sama
+            try { ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'command', func:'seekTo', args:[0, true] }), '*'); } catch(_) {}
+            setTimeout(() => {
+              try { ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'command', func:'playVideo', args:'' }), '*'); } catch(_) {}
+            }, 200);
+          } else { setTimeout(ytNext, 600); }
         }
       } catch(_) {}
     };
@@ -1810,6 +1972,7 @@ export default function App() {
     const doSwitch = () => {
       if (audioRef.current) { audioRef.current.pause(); audioRef.current.src=td.src; audioRef.current.load(); }
       setTrack(td); setProgress(0); setDuration(0); setPlaying(true);
+      setTab('player'); // otomatis pindah ke player saat lagu baru diputar
     };
 
     // Crossfade fade-out
@@ -1861,7 +2024,24 @@ export default function App() {
   const seekByPct = useCallback((p) => { if(audioRef.current&&duration){audioRef.current.currentTime=p*duration;setProgress(p*duration);} }, [duration]);
 
   // ── REPEAT cycle
-  const cycleRepeat = () => setRepeat(r => r==='off'?'all':r==='all'?'one':'off');
+  // Di stream (embedTrack YouTube): hanya off ↔ one (repeat 1 lagu)
+  // Di player biasa (Drive/lokal): off → all → one → off
+  // Keduanya: mengaktifkan repeat → matikan shuffle, dan sebaliknya
+  const cycleRepeat = () => {
+    if (embedTrack?.type === 'youtube') {
+      setRepeat(r => {
+        const next = r === 'off' ? 'one' : 'off';
+        if (next === 'one') setShuffle(false);
+        return next;
+      });
+    } else {
+      setRepeat(r => {
+        const next = r==='off'?'all':r==='all'?'one':'off';
+        if (next !== 'off') setShuffle(false); // matikan shuffle saat repeat aktif
+        return next;
+      });
+    }
+  };
 
   // ── LYRICS
   const getLyrics = async () => {
@@ -1987,17 +2167,17 @@ export default function App() {
       callback: async resp => {
         if (resp.error) return setDriveError('Login gagal: '+resp.error);
         const tok=resp.access_token; setAccessToken(tok); tokenRef.current=tok;
-        // Simpan token ke localStorage (berlaku ~58 menit)
         localStorage.setItem('sn_google_token', JSON.stringify({ token: tok, expiry: Date.now() + 3500 * 1000 }));
         try {
           const u=await (await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{ headers:{ Authorization:`Bearer ${tok}` } })).json();
-          setGoogleUser(u); localStorage.setItem('sn_google_user', JSON.stringify(u)); setDriveError(''); setLoadingDrive(true);
-          setCustomSongs(await driveListSongs(tok, true)); setLoadingDrive(false);
-        } catch(e) { setDriveError('Gagal memuat Drive: '+e.message); setLoadingDrive(false); }
+          setGoogleUser(u); localStorage.setItem('sn_google_user', JSON.stringify(u));
+        } catch(e) { setDriveError('Gagal ambil info user: '+e.message); }
+        // Gunakan loadDriveSongs agar error handling konsisten
+        await loadDriveSongs(tok, true);
       }
     });
     client.requestAccessToken();
-  }, []);
+  }, [loadDriveSongs]);
   const handleGoogleLogout = useCallback(() => {
     if (accessToken&&window.google) window.google.accounts.oauth2.revoke(accessToken,()=>{});
     setGoogleUser(null); setAccessToken(null); tokenRef.current=null; setCustomSongs([]); setDriveError('');
@@ -2030,7 +2210,6 @@ export default function App() {
     { id:'player',   icon:<Compass size={17}/>,   label:'Player' },
     { id:'stream',   icon:<Radio size={17}/>,       label:'Stream' },
     { id:'playlist', icon:<FolderOpen size={17}/>, label:'Playlist' },
-    { id:'lyrics',   icon:<Mic2 size={17}/>,       label:'Lirik' },
     { id:'ai',       icon:<Bot size={17}/>,        label:'AI' },
   ];
 
@@ -2064,6 +2243,7 @@ export default function App() {
               <span style={{ fontSize:10, fontWeight:700, color:'#fbbf24', fontFamily:'monospace' }}>{fmtSec(sleepTimer.remaining)}</span>
             </div>
           )}
+
           {/* Hemat Data toggle button */}
           <button onClick={toggleDataSaver} style={{ display:'flex', alignItems:'center', gap:4, padding:'4px 8px', borderRadius:999, border:`1px solid ${dataSaver?'rgba(16,185,129,0.4)':'rgba(255,255,255,0.15)'}`, background:dataSaver?'rgba(16,185,129,0.15)':'rgba(255,255,255,0.06)', cursor:'pointer' }} title={dataSaver ? 'Mode Hemat Data aktif — ketuk untuk nonaktifkan' : 'Aktifkan Mode Hemat Data'}>
             <span style={{ fontSize:11 }}>{dataSaver ? '🌿' : '📶'}</span>
@@ -2145,7 +2325,7 @@ export default function App() {
 
             {/* Main controls: Shuffle | Prev | Play | Next | Repeat */}
             <div style={{ display:'flex', alignItems:'center', gap:'clamp(4px,2vw,10px)', marginTop:'clamp(10px,2vh,16px)' }}>
-              <button onClick={()=>{ if(embedTrack?.type==='youtube'){setShuffle(s=>!s);if(!shuffle)ytShuffle();}else setShuffle(s=>!s); }} style={{ ...btn, color:shuffle?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', position:'relative', padding:'clamp(5px,1.2vw,8px)' }}>
+              <button onClick={()=>{ if(embedTrack?.type==='youtube'){ setShuffle(s=>{ const next=!s; if(next){ setRepeat('off'); ytShuffle(); } return next; }); } else { setShuffle(s=>{ const next=!s; if(next) setRepeat("off"); return next; }); } }} style={{ ...btn, color:shuffle?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', position:'relative', padding:'clamp(5px,1.2vw,8px)' }}>
                 <Shuffle size={18}/>
                 {shuffle&&<div style={{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:embedTrack?.type==='youtube'?'#ff4444':track.color }}/>}
               </button>
@@ -2168,10 +2348,10 @@ export default function App() {
               }
               <button onClick={()=>setMuted(m=>!m)} style={{ ...btn, color:muted?'#ef4444':'rgba(255,255,255,0.3)', padding:6 }}>{muted?<VolumeX size={17}/>:<Volume2 size={17}/>}</button>
               <input type="range" min="0" max="1" step="0.01" value={muted?0:volume} onChange={e=>{setVolume(+e.target.value);setMuted(false)}} style={{ flex:1, accentColor:embedTrack?.type==='youtube'?'#ff4444':track.color, height:3 }}/>
-              {embedTrack?.type==='youtube'
-                ? <button onClick={closeEmbed} style={{ ...btn, color:'#fca5a5', padding:6 }} title="Tutup YouTube"><X size={16}/></button>
-                : <button onClick={()=>setShowSettings(true)} style={{ ...btn, color:eqEnabled||sleepTimer?track.color:'rgba(255,255,255,0.3)', padding:6 }}><Settings size={17}/></button>
-              }
+              <button onClick={()=>setShowSettings(true)} style={{ ...btn, color:eqEnabled||sleepTimer?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', padding:6 }} title="Pengaturan"><Settings size={17}/></button>
+              {embedTrack?.type==='youtube' && (
+                <button onClick={()=>{ closeEmbed(); setShowSettings(false); }} style={{ ...btn, color:'#fca5a5', padding:6 }} title="Tutup YouTube"><X size={16}/></button>
+              )}
             </div>
 
             {/* YouTube playlist picker — shown when YT track is liked */}
@@ -2193,21 +2373,87 @@ export default function App() {
               </div>
             )}
 
-            {/* AI Insight — only for normal tracks */}
-            {!embedTrack && (
-            <div style={{ width:'100%', maxWidth:300, marginTop:'clamp(6px,1.2vh,10px)', padding:'0 8px', paddingBottom:'clamp(8px,1.5vh,14px)' }}>
-              {!insight?(
-                <button onClick={getInsight} disabled={insightLoading} style={{ width:'100%', padding:'8px 0', borderRadius:12, border:'none', background:track.bg, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, opacity:insightLoading?0.6:1 }}>
-                  {insightLoading?<><Zap size={12} style={{ animation:'spin 0.8s linear infinite' }}/>Meramal...</>:<><Sparkles size={12}/>Wawasan Kosmik ✨</>}
-                </button>
-              ):(
-                <div onClick={()=>setInsight('')} style={{ padding:'9px 13px', borderRadius:12, background:track.bg, border:`1px solid ${track.color}40`, cursor:'pointer', animation:'fadeUp 0.3s ease' }}>
-                  <div style={{ fontSize:9, color:track.color, fontWeight:700, marginBottom:3, textTransform:'uppercase', letterSpacing:'0.1em' }}>✨ Wawasan Kosmik</div>
-                  <p style={{ margin:0, fontSize:12, color:'rgba(255,255,255,0.85)', fontStyle:'italic', lineHeight:1.6 }}>{insight}</p>
+            {/* Queue + AI Insight row */}
+            <div style={{ width:'100%', maxWidth:300, marginTop:'clamp(6px,1.2vh,10px)', padding:'0 8px', display:'flex', flexDirection:'column', gap:6, paddingBottom:'clamp(8px,1.5vh,14px)' }}>
+              {/* Antrean button */}
+              <button onClick={()=>setShowQueue(q=>!q)} style={{ width:'100%', padding:'8px 0', borderRadius:12, border:`1px solid ${showQueue?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.1)'}`, background:showQueue?(embedTrack?.type==='youtube'?'rgba(255,68,68,0.15)':`${track.color}22`):'rgba(255,255,255,0.04)', color:showQueue?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):'rgba(255,255,255,0.55)', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, transition:'all 0.2s' }}>
+                <ListMusic size={14}/>{showQueue ? 'Tutup Antrean' : 'Antrean'}
+              </button>
+
+              {/* Queue panel */}
+              {showQueue && (
+                <div style={{ borderRadius:12, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', overflow:'hidden', animation:'fadeUp 0.25s ease' }}>
+                  {embedTrack?.type==='youtube' ? (
+                    /* YT queue */
+                    ytQueueRef.current.length > 0 ? (
+                      <div className="scrollbar-hide" style={{ maxHeight:220, overflowY:'auto' }}>
+                        {ytQueueRef.current.map((item,i)=>{
+                          const isCur = i === ytQueueIdxRef.current;
+                          return (
+                            <div key={i} onClick={()=>playYouTube(item, ytQueueRef.current, i)}
+                              style={{ display:'flex', alignItems:'center', gap:9, padding:'8px 12px', background:isCur?'rgba(255,68,68,0.12)':'transparent', borderBottom:'1px solid rgba(255,255,255,0.04)', cursor:'pointer' }}>
+                              {item.thumbnail
+                                ? <img src={item.thumbnail} style={{ width:32, height:32, borderRadius:6, objectFit:'cover', flexShrink:0 }}/>
+                                : <div style={{ width:32, height:32, borderRadius:6, background:'rgba(255,68,68,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:12 }}>▶</div>}
+                              <div style={{ flex:1, minWidth:0 }}>
+                                <div style={{ fontSize:11, fontWeight:isCur?700:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:isCur?'#ff6b6b':'rgba(255,255,255,0.85)' }}>{item.title||item.url}</div>
+                                <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>{item.artist||'YouTube'}</div>
+                              </div>
+                              {isCur && <div style={{ display:'flex', gap:2, alignItems:'flex-end', height:12, flexShrink:0 }}>
+                                {[9,5,7].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:'#ff4444', borderRadius:1, animation:`bounce 0.8s ease-in-out ${j*0.15}s infinite` }}/>))}
+                              </div>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div style={{ padding:'18px 12px', textAlign:'center', fontSize:11, color:'rgba(255,255,255,0.3)' }}>Tidak ada antrean YouTube</div>
+                    )
+                  ) : (
+                    /* Normal song queue */
+                    <div className="scrollbar-hide" style={{ maxHeight:220, overflowY:'auto' }}>
+                      {(()=>{
+                        const q2 = [...builtinSongs, ...customSongs, ...ytSongs];
+                        const curIdx = q2.findIndex(s=>s.id===track.id);
+                        const upcoming = curIdx >= 0 ? q2.slice(curIdx) : q2;
+                        return upcoming.length === 0 ? (
+                          <div style={{ padding:'18px 12px', textAlign:'center', fontSize:11, color:'rgba(255,255,255,0.3)' }}>Antrean kosong</div>
+                        ) : upcoming.map((s,i)=>{
+                          const isCur = i===0;
+                          return (
+                            <div key={s.id} onClick={()=>{ setTrack(s); setProgress(0); setDuration(0); setPlaying(true); }}
+                              style={{ display:'flex', alignItems:'center', gap:9, padding:'8px 12px', background:isCur?`${track.color}15`:'transparent', borderBottom:'1px solid rgba(255,255,255,0.04)', cursor:'pointer' }}>
+                              <img src={getCover(s)} style={{ width:32, height:32, borderRadius:6, objectFit:'cover', flexShrink:0 }}/>
+                              <div style={{ flex:1, minWidth:0 }}>
+                                <div style={{ fontSize:11, fontWeight:isCur?700:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:isCur?track.color:'rgba(255,255,255,0.85)' }}>{s.title}</div>
+                                <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>{s.artist}</div>
+                              </div>
+                              {isCur && <div style={{ display:'flex', gap:2, alignItems:'flex-end', height:12, flexShrink:0 }}>
+                                {[9,5,7].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:track.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${j*0.15}s infinite` }}/>))}
+                              </div>}
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                  )}
                 </div>
               )}
+
+              {/* AI Insight — only for normal tracks */}
+              {!embedTrack && (
+                !insight?(
+                  <button onClick={getInsight} disabled={insightLoading} style={{ width:'100%', padding:'8px 0', borderRadius:12, border:'none', background:track.bg, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, opacity:insightLoading?0.6:1 }}>
+                    {insightLoading?<><Zap size={12} style={{ animation:'spin 0.8s linear infinite' }}/>Meramal...</>:<><Sparkles size={12}/>Wawasan Kosmik ✨</>}
+                  </button>
+                ):(
+                  <div onClick={()=>setInsight('')} style={{ padding:'9px 13px', borderRadius:12, background:track.bg, border:`1px solid ${track.color}40`, cursor:'pointer', animation:'fadeUp 0.3s ease' }}>
+                    <div style={{ fontSize:9, color:track.color, fontWeight:700, marginBottom:3, textTransform:'uppercase', letterSpacing:'0.1em' }}>✨ Wawasan Kosmik</div>
+                    <p style={{ margin:0, fontSize:12, color:'rgba(255,255,255,0.85)', fontStyle:'italic', lineHeight:1.6 }}>{insight}</p>
+                  </div>
+                )
+              )}
             </div>
-            )}
           </div>
           </div>
         )}
@@ -2335,76 +2581,49 @@ export default function App() {
                         {/* ── SoundCloud: full in-app search + embed + redirect */}
                         {isSC && (
                           <div style={{ padding:'0 10px 10px' }}>
-                            {/* Search bar */}
+                            {/* Search bar — bisa URL SoundCloud atau kata kunci */}
                             <div style={{ display:'flex', gap:6 }}>
                               <div style={{ flex:1, display:'flex', alignItems:'center', gap:6, background:'rgba(0,0,0,0.3)', borderRadius:999, padding:'6px 12px', border:`1px solid ${platform.color}25` }}>
                                 <Search size={11} style={{ color:platform.color, flexShrink:0 }}/>
-                                <input type="text" placeholder={platform.hint}
+                                <input type="text" placeholder="Cari atau paste URL SoundCloud…"
                                   value={scQuery[platform.id] || ''}
                                   onChange={e => setScQuery(p=>({...p,[platform.id]:e.target.value}))}
-                                  onKeyDown={e => { if(e.key==='Enter') { if(scHasKey) doSoundCloudSearch(platform.id, scQuery[platform.id]||''); else window.open(platform.searchUrl(scQuery[platform.id]||''), '_blank'); } }}
+                                  onKeyDown={e => {
+                                    if(e.key==='Enter') {
+                                      const q = (scQuery[platform.id]||'').trim();
+                                      if(q.includes('soundcloud.com/')) {
+                                        setScWidget(p=>({...p,[platform.id]:q}));
+                                      } else {
+                                        window.open(platform.searchUrl(q), '_blank');
+                                      }
+                                    }
+                                  }}
                                   style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'white', fontSize:12, minWidth:0 }}/>
                                 {scQuery[platform.id] && (
-                                  <button onClick={() => { setScQuery(p=>({...p,[platform.id]:''})); setScResults(p=>({...p,[platform.id]:[]})); }}
+                                  <button onClick={() => { setScQuery(p=>({...p,[platform.id]:''})); setScResults(p=>({...p,[platform.id]:[]})); setScWidget(p=>({...p,[platform.id]:null})); }}
                                     style={{ background:'none', border:'none', color:'rgba(255,255,255,0.3)', cursor:'pointer', padding:0, display:'flex' }}>
                                     <X size={13}/>
                                   </button>
                                 )}
                               </div>
                               <button
-                                onClick={() => { if(scHasKey) doSoundCloudSearch(platform.id, scQuery[platform.id]||''); else window.open(platform.searchUrl(scQuery[platform.id]||''), '_blank'); }}
-                                disabled={scLoading[platform.id]}
-                                style={{ padding:'6px 12px', borderRadius:999, border:'none', background:`${platform.color}cc`, color:'white', fontSize:11, fontWeight:700, cursor:'pointer', flexShrink:0, display:'flex', alignItems:'center', gap:4, opacity:scLoading[platform.id]?0.5:1 }}>
-                                {scLoading[platform.id] ? <Loader2 size={11} style={{ animation:'spin 1s linear infinite' }}/> : <Search size={11}/>}
-                                {scLoading[platform.id] ? 'Cari…' : (scHasKey ? 'Cari' : 'Cari ↗')}
+                                onClick={() => {
+                                  const q = (scQuery[platform.id]||'').trim();
+                                  if(q.includes('soundcloud.com/')) {
+                                    setScWidget(p=>({...p,[platform.id]:q}));
+                                  } else {
+                                    window.open(platform.searchUrl(q), '_blank');
+                                  }
+                                }}
+                                style={{ padding:'6px 12px', borderRadius:999, border:'none', background:`${platform.color}cc`, color:'white', fontSize:11, fontWeight:700, cursor:'pointer', flexShrink:0, display:'flex', alignItems:'center', gap:4 }}>
+                                <Search size={11}/> Cari
                               </button>
                             </div>
-
-                            {/* No API key hint */}
-                            {!scHasKey && (
-                              <div style={{ marginTop:6, fontSize:10, color:'rgba(255,255,255,0.25)', lineHeight:1.5 }}>
-                                ⓘ Tambah <code style={{ background:'rgba(255,255,255,0.08)', padding:'1px 4px', borderRadius:3 }}>VITE_SOUNDCLOUD_CLIENT_ID</code> untuk search in-app.{' '}
-                                <a href="https://soundcloud.com/you/apps" target="_blank" rel="noreferrer" style={{ color:platform.color }}>Daftar gratis →</a>
-                              </div>
-                            )}
 
                             {/* Error */}
                             {scError[platform.id] && <div style={{ fontSize:11, color:'#fca5a5', marginTop:6, padding:'6px 10px', borderRadius:8, background:'rgba(239,68,68,0.1)' }}>{scError[platform.id]}</div>}
 
-                            {/* Results list — same style as YouTube */}
-                            {(scResults[platform.id]||[]).length > 0 && (
-                              <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:4 }}>
-                                {(scResults[platform.id]||[]).map((v, vi) => {
-                                  const dur = v.duration > 0 ? `${Math.floor(v.duration/60)}:${String(v.duration%60).padStart(2,'0')}` : '';
-                                  const embedUrl = v.permalinkUrl;
-                                  const isActive = scWidget[platform.id] === embedUrl;
-                                  return (
-                                    <div key={v.id || vi}
-                                      style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background: isActive ? `${platform.color}15` : 'rgba(255,255,255,0.04)', border: isActive ? `1px solid ${platform.color}40` : '1px solid rgba(255,255,255,0.08)', transition:'background 0.15s' }}
-                                      onMouseEnter={e=>{ if(!isActive) e.currentTarget.style.background=`rgba(255,85,0,0.08)`; }}
-                                      onMouseLeave={e=>{ if(!isActive) e.currentTarget.style.background='rgba(255,255,255,0.04)'; }}>
-                                      {v.cover ? (
-                                        <img src={v.cover} alt="" style={{ width:36, height:36, borderRadius:8, objectFit:'cover', flexShrink:0 }} onError={e=>e.target.style.display='none'}/>
-                                      ) : (
-                                        <div style={{ width:36, height:36, borderRadius:8, background:`${platform.color}20`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                                          <Play size={13} style={{ color:platform.color, marginLeft:2 }}/>
-                                        </div>
-                                      )}
-                                      <div onClick={() => setScWidget(p=>({...p,[platform.id]: isActive ? null : embedUrl}))} style={{ flex:1, minWidth:0, cursor:'pointer' }}>
-                                        <div style={{ fontSize:12, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color: isActive ? platform.color : 'rgba(255,255,255,0.9)' }}>{v.title}</div>
-                                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{v.artist}{dur ? ` · ${dur}` : ''}</div>
-                                      </div>
-                                      <button onClick={e => { e.stopPropagation(); window.open(v.permalinkUrl, '_blank'); }}
-                                        title="Buka di SoundCloud"
-                                        style={{ background:'none', border:`1px solid ${platform.color}40`, borderRadius:6, color:platform.color, fontSize:10, fontWeight:700, padding:'3px 7px', cursor:'pointer', flexShrink:0, lineHeight:1.2 }}>↗</button>
-                                      <Play onClick={() => setScWidget(p=>({...p,[platform.id]: isActive ? null : embedUrl}))} size={13} style={{ color:platform.color, flexShrink:0, opacity:0.6, cursor:'pointer' }}/>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-
-                            {/* SoundCloud embed widget for selected track */}
+                            {/* SoundCloud embed widget */}
                             {scWidget[platform.id] && scWidget[platform.id].includes('soundcloud.com/') && (
                               <div style={{ marginTop:8, borderRadius:10, overflow:'hidden', border:`1px solid ${platform.color}30` }}>
                                 <iframe key={`sc-${scWidget[platform.id]}`}
@@ -2418,45 +2637,28 @@ export default function App() {
                                 </div>
                               </div>
                             )}
-
-                            {/* Paste URL manual fallback */}
-                            {!scHasKey && (
-                              <>
-                                <div style={{ display:'flex', alignItems:'center', gap:8, margin:'10px 0 6px' }}>
-                                  <div style={{ flex:1, height:1, background:'rgba(255,255,255,0.08)' }}/>
-                                  <span style={{ fontSize:9, color:'rgba(255,255,255,0.2)' }}>atau paste URL langsung</span>
-                                  <div style={{ flex:1, height:1, background:'rgba(255,255,255,0.08)' }}/>
-                                </div>
-                                <div style={{ display:'flex', gap:6 }}>
-                                  <div style={{ flex:1, display:'flex', alignItems:'center', gap:6, background:'rgba(0,0,0,0.3)', borderRadius:999, padding:'6px 10px', border:`1px solid ${platform.color}20` }}>
-                                    <Music size={10} style={{ color:platform.color, flexShrink:0 }}/>
-                                    <input type="text" placeholder="Paste URL track/playlist SoundCloud…"
-                                      value={scWidget[platform.id + '_url'] || ''}
-                                      onChange={e => setScWidget(p=>({...p,[platform.id+'_url']:e.target.value}))}
-                                      onKeyDown={e => { if(e.key==='Enter') setScWidget(p=>({...p,[platform.id]:p[platform.id+'_url']})); }}
-                                      style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'white', fontSize:11, minWidth:0 }}/>
-                                  </div>
-                                  <button onClick={() => setScWidget(p=>({...p,[platform.id]:p[platform.id+'_url']}))}
-                                    style={{ padding:'6px 10px', borderRadius:999, border:'none', background:`${platform.color}cc`, color:'white', fontSize:11, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
-                                    Embed
-                                  </button>
-                                </div>
-                              </>
-                            )}
                           </div>
                         )}
 
                         {/* ── Spotify: search in-app + 30s preview + redirect */}
                         {isSpotify && (
                           <div style={{ padding:'0 10px 12px' }}>
-                            {/* Search bar */}
+                            {/* Search bar — bisa kata kunci atau URL Spotify */}
                             <div style={{ display:'flex', gap:6, marginBottom:6 }}>
                               <div style={{ flex:1, display:'flex', alignItems:'center', gap:6, background:'rgba(0,0,0,0.3)', borderRadius:999, padding:'6px 12px', border:`1px solid ${platform.color}30` }}>
                                 <Search size={11} style={{ color:platform.color, flexShrink:0 }}/>
-                                <input type="text" placeholder={platform.hint}
+                                <input type="text" placeholder="Cari atau paste URL Spotify…"
                                   value={spQuery}
                                   onChange={e => setSpQuery(e.target.value)}
-                                  onKeyDown={e => { if(e.key==='Enter') { if(spHasKey) doSpotifySearch(spQuery); else window.open(platform.searchUrl(spQuery), '_blank'); } }}
+                                  onKeyDown={e => {
+                                    if(e.key==='Enter') {
+                                      const q = spQuery.trim();
+                                      if(q.includes('spotify.com/') || q.startsWith('spotify:')) {
+                                        window.open(q.startsWith('spotify:') ? `https://open.spotify.com/${q.replace('spotify:','').replace(/:/g,'/')}` : q, '_blank');
+                                      } else if(spHasKey) { doSpotifySearch(q); }
+                                      else { window.open(platform.searchUrl(q), '_blank'); }
+                                    }
+                                  }}
                                   style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'white', fontSize:12, minWidth:0 }}/>
                                 {spQuery && (
                                   <button onClick={() => { setSpQuery(''); setSpResults([]); setSpError(null); setSpTrack(null); setSpPlaying(false); if(spPreviewRef.current){spPreviewRef.current.pause();spPreviewRef.current=null;} }}
@@ -2465,22 +2667,20 @@ export default function App() {
                                   </button>
                                 )}
                               </div>
-                              <button onClick={() => { if(spHasKey) doSpotifySearch(spQuery); else window.open(platform.searchUrl(spQuery), '_blank'); }} disabled={spLoading}
+                              <button onClick={() => {
+                                  const q = spQuery.trim();
+                                  if(q.includes('spotify.com/') || q.startsWith('spotify:')) {
+                                    window.open(q.startsWith('spotify:') ? `https://open.spotify.com/${q.replace('spotify:','').replace(/:/g,'/')}` : q, '_blank');
+                                  } else if(spHasKey) { doSpotifySearch(q); }
+                                  else { window.open(platform.searchUrl(q), '_blank'); }
+                                }} disabled={spLoading}
                                 style={{ padding:'6px 12px', borderRadius:999, border:'none', background: spLoading ? `${platform.color}40` : `${platform.color}cc`, color:'white', fontSize:11, fontWeight:700, cursor: spLoading ? 'default' : 'pointer', flexShrink:0, display:'flex', alignItems:'center', gap:4 }}>
                                 {spLoading ? <Loader2 size={11} style={{ animation:'spin 1s linear infinite' }}/> : <Search size={11}/>}
-                                {spLoading ? 'Cari…' : (spHasKey ? 'Cari' : 'Cari ↗')}
+                                {spLoading ? 'Cari…' : 'Cari ↗'}
                               </button>
                             </div>
 
-                            {/* No API key hint */}
-                            {!spHasKey && (
-                              <div style={{ marginBottom:6, fontSize:10, color:'rgba(255,255,255,0.25)', lineHeight:1.5 }}>
-                                ⓘ Tambah <code style={{ background:'rgba(255,255,255,0.08)', padding:'1px 4px', borderRadius:3 }}>VITE_SPOTIFY_CLIENT_ID</code> + <code style={{ background:'rgba(255,255,255,0.08)', padding:'1px 4px', borderRadius:3 }}>SECRET</code> untuk search in-app.{' '}
-                                <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noreferrer" style={{ color:platform.color }}>Daftar gratis →</a>
-                              </div>
-                            )}
-
-                            {/* Quick chips */}
+                            {/* Quick chips → selalu buka Spotify web */}
                             {!spResults.length && !spLoading && (
                               <div style={{ display:'flex', flexWrap:'wrap', gap:5, marginBottom:6 }}>
                                 {[
@@ -2517,7 +2717,7 @@ export default function App() {
                                       onMouseEnter={e=>{ if(!isActive) e.currentTarget.style.background='rgba(29,185,84,0.07)'; }}
                                       onMouseLeave={e=>{ if(!isActive) e.currentTarget.style.background='rgba(255,255,255,0.04)'; }}>
                                       {/* Album art + play button */}
-                                      <div style={{ position:'relative', flexShrink:0, cursor:'pointer' }} onClick={() => playSpotifyPreview(t)}>
+                                      <div style={{ position:'relative', flexShrink:0, cursor:'pointer' }} onClick={() => hasPreview ? playSpotifyPreview(t) : window.open(t.spotifyUrl, '_blank')}>
                                         <img src={t.cover} alt={t.title}
                                           style={{ width:36, height:36, borderRadius:6, objectFit:'cover', display:'block' }}
                                           onError={e => { e.target.style.display='none'; }}/>
@@ -2526,11 +2726,11 @@ export default function App() {
                                           onMouseLeave={e=>{ if(!isActive) e.currentTarget.style.opacity=0; }}>
                                           {isActive && spPlaying
                                             ? <span style={{ fontSize:11, color:'white' }}>⏸</span>
-                                            : <Play size={12} style={{ color:'white', marginLeft:1 }}/>}
+                                            : hasPreview ? <Play size={12} style={{ color:'white', marginLeft:1 }}/> : <span style={{ fontSize:11 }}>↗</span>}
                                         </div>
                                       </div>
                                       {/* Title + artist */}
-                                      <div onClick={() => playSpotifyPreview(t)} style={{ flex:1, minWidth:0, cursor:'pointer' }}>
+                                      <div onClick={() => hasPreview ? playSpotifyPreview(t) : window.open(t.spotifyUrl, '_blank')} style={{ flex:1, minWidth:0, cursor:'pointer' }}>
                                         <div style={{ fontSize:12, fontWeight:600, color: isActive ? platform.color : 'rgba(255,255,255,0.88)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.title}</div>
                                         <div style={{ fontSize:10, color:'rgba(255,255,255,0.38)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.artist}</div>
                                       </div>
@@ -2789,7 +2989,7 @@ export default function App() {
                           <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:1 }}>{customSongs.length} lagu dari Google Drive</div>
                         </div>
                         {googleUser&&(
-                          <button onClick={async()=>{ setLoadingDrive(true); try{ setCustomSongs(await driveListSongs(tokenRef.current,true)); }catch(e){ setDriveError('Gagal refresh: '+e.message); } setLoadingDrive(false); }}
+                          <button onClick={()=>loadDriveSongs(tokenRef.current, true)}
                             style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', cursor:'pointer', color:'rgba(255,255,255,0.55)', fontSize:12, padding:'5px 10px', borderRadius:8, fontWeight:700 }}>
                             ↺ Refresh
                           </button>
@@ -2911,155 +3111,157 @@ export default function App() {
           </div>
         )}
 
-        {/* ─── LYRICS TAB */}
-        {tab==='lyrics'&&(
-          <div style={{ height:'100%', display:'flex', flexDirection:'column', animation:'fadeUp 0.4s ease' }}>
-            {/* Header */}
-            <div style={{ padding:'14px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                <img src={getCover(track)} style={{ width:40, height:40, borderRadius:10, objectFit:'cover' }}/>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontWeight:800, fontSize:14, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{track.title}</div>
-                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)' }}>{track.artist}</div>
-                </div>
-                <button onClick={getLyrics} disabled={lyricsLoading} style={{ padding:'7px 14px', borderRadius:999, border:'none', background:track.color, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', opacity:lyricsLoading?0.6:1, display:'flex', alignItems:'center', gap:6, flexShrink:0 }}>
-                  {lyricsLoading?<><Loader2 size={13} style={{ animation:'spin 1s linear infinite' }}/>Cari...</>:<><Sparkles size={13}/>{lyrics?'Refresh':'Tampilkan Lirik'}</>}
-                </button>
-              </div>
-            </div>
-
-            {/* Lyrics body */}
-            <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'20px 20px 24px' }}>
-              {!lyrics&&!lyricsLoading&&(
-                <div style={{ textAlign:'center', paddingTop:48 }}>
-                  <Mic2 size={48} style={{ color:'rgba(255,255,255,0.1)', margin:'0 auto 16px', display:'block' }}/>
-                  <div style={{ fontSize:15, fontWeight:700, color:'rgba(255,255,255,0.3)', marginBottom:8 }}>Lirik belum tersedia</div>
-                  <div style={{ fontSize:12, color:'rgba(255,255,255,0.2)' }}>Ketuk "Buat Lirik" untuk generate lirik AI</div>
-                </div>
-              )}
-              {lyricsLoading&&(
-                <div style={{ textAlign:'center', paddingTop:48 }}>
-                  <Loader2 size={40} style={{ color:track.color, margin:'0 auto 14px', display:'block', animation:'spin 1s linear infinite' }}/>
-                  <div style={{ fontSize:13, color:'rgba(255,255,255,0.4)' }}>Starry AI sedang menulis lirik…</div>
-                </div>
-              )}
-              {lyrics&&!lyricsLoading&&(
-                <div style={{ lineHeight:1.9 }}>
-                  {lyrics.split('\n').map((line, i) => {
-                    const isTag = line.startsWith('[') && line.endsWith(']');
-                    return (
-                      <div key={i} style={{
-                        fontSize: isTag ? 11 : 15,
-                        fontWeight: isTag ? 800 : 400,
-                        color: isTag ? track.color : 'rgba(255,255,255,0.9)',
-                        marginTop: isTag && i>0 ? 18 : 0,
-                        marginBottom: isTag ? 6 : 0,
-                        textTransform: isTag ? 'uppercase' : 'none',
-                        letterSpacing: isTag ? '0.12em' : 0,
-                        fontStyle: !isTag&&line ? 'normal' : 'normal',
-                      }}>
-                        {line || <br/>}
-                      </div>
-                    );
-                  })}
-                  <div style={{ marginTop:24, padding:'10px 14px', borderRadius:10, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)' }}>
-                    <div style={{ fontSize:10, color:'rgba(255,255,255,0.25)' }}>✨ Lirik dari database publik. Jika tidak tersedia, Starry AI akan membuatkan lirik berdasarkan judul dan mood lagu.</div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
         {/* ─── AI TAB */}
         {tab==='ai'&&(
           <div style={{ height:'100%', display:'flex', flexDirection:'column', animation:'fadeUp 0.4s ease' }}>
+            {/* Header */}
             <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
               <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                 <div style={{ width:32, height:32, borderRadius:10, background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center' }}><Bot size={17} style={{ color:'white' }}/></div>
                 <div style={{ flex:1 }}>
-                  <div style={{ fontWeight:800, fontSize:13 }}>Starry AI</div>
+                  <div style={{ fontWeight:800, fontSize:13 }}>{aiSubView==='lyrics' ? 'Lirik Lagu' : 'Starry AI'}</div>
                   <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:1 }}>
                     <div style={{ width:6, height:6, borderRadius:'50%', background:hasKey()?'#22c55e':'#ef4444', animation:hasKey()?'pulse 2s infinite':'none', flexShrink:0 }}/>
                     <span style={{ fontSize:10, color:hasKey()?'#86efac':'#fca5a5' }}>{hasKey() ? `Online · ${activeModel()}` : 'Offline — tambah API key'}</span>
                   </div>
                 </div>
-                {/* Hemat Data quick toggle */}
-                <button onClick={toggleDataSaver} style={{ display:'flex', alignItems:'center', gap:4, padding:'4px 8px', borderRadius:999, border:`1px solid ${dataSaver?'rgba(16,185,129,0.4)':'rgba(255,255,255,0.12)'}`, background:dataSaver?'rgba(16,185,129,0.15)':'rgba(255,255,255,0.05)', cursor:'pointer', flexShrink:0 }} title={dataSaver ? 'Nonaktifkan Hemat Data' : 'Aktifkan Hemat Data'}>
-                  <span style={{ fontSize:11 }}>{dataSaver ? '🌿' : '📶'}</span>
-                  <span style={{ fontSize:9, fontWeight:700, color:dataSaver?'#6ee7b7':'rgba(255,255,255,0.4)' }}>{dataSaver ? 'Hemat ON' : 'Hemat Data'}</span>
+                {/* Lirik toggle button */}
+                <button onClick={()=>setAiSubView(v=>v==='lyrics'?'chat':'lyrics')}
+                  style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:999, border:`1px solid ${aiSubView==='lyrics'?track.color:'rgba(255,255,255,0.15)'}`, background:aiSubView==='lyrics'?`${track.color}22`:'rgba(255,255,255,0.05)', color:aiSubView==='lyrics'?track.color:'rgba(255,255,255,0.6)', fontSize:11, fontWeight:700, cursor:'pointer', transition:'all 0.2s', flexShrink:0 }}>
+                  <Mic2 size={13}/>{aiSubView==='lyrics'?'AI Chat':'Lirik'}
                 </button>
               </div>
-              <div style={{ marginTop:8, padding:'7px 10px', borderRadius:10, background:track.bg, border:`1px solid ${track.color}30`, display:'flex', alignItems:'center', gap:8 }}>
-                <img src={getCover(track)} style={{ width:30, height:30, borderRadius:7, objectFit:'cover' }}/>
-                <div><div style={{ fontSize:11, fontWeight:700 }}>{track.title}</div><div style={{ fontSize:10, color:'rgba(255,255,255,0.4)' }}>Sedang diputar</div></div>
-                <div style={{ marginLeft:'auto', display:'flex', gap:2, alignItems:'flex-end', height:13 }}>
-                  {playing&&[11,6,9].map((h,i)=>(<div key={i} style={{ width:3, height:h, background:track.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${i*0.15}s infinite` }}/>))}
+              <div style={{ marginTop:8, padding:'7px 10px', borderRadius:10, background:embedTrack ? 'rgba(255,68,68,0.08)' : track.bg, border:`1px solid ${embedTrack ? 'rgba(255,68,68,0.3)' : track.color+'30'}`, display:'flex', alignItems:'center', gap:8 }}>
+                {embedTrack ? (
+                  embedTrack.thumbnail
+                    ? <img src={embedTrack.thumbnail} style={{ width:30, height:30, borderRadius:7, objectFit:'cover' }} onError={e=>{e.target.style.display='none'}}/>
+                    : <div style={{ width:30, height:30, borderRadius:7, background:'rgba(255,68,68,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:14 }}>{embedTrack.type==='soundcloud'?'☁️':'▶'}</div>
+                ) : (
+                  <img src={getCover(track)} style={{ width:30, height:30, borderRadius:7, objectFit:'cover' }}/>
+                )}
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:11, fontWeight:700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{embedTrack ? embedTrack.title : track.title}</div>
+                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)' }}>
+                    {embedTrack ? (embedTrack.type==='youtube' ? '▶ YouTube Stream' : embedTrack.type==='soundcloud' ? '☁️ SoundCloud Stream' : 'Stream') : 'Sedang diputar'}
+                  </div>
+                </div>
+                <div style={{ display:'flex', gap:2, alignItems:'flex-end', height:13, flexShrink:0 }}>
+                  {playing&&[11,6,9].map((h,i)=>(<div key={i} style={{ width:3, height:h, background:embedTrack?'#ff4444':track.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${i*0.15}s infinite` }}/>))}
                 </div>
               </div>
             </div>
-            <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'10px 16px', display:'flex', flexDirection:'column', gap:9 }}>
-              {/* ── Vibe result card */}
-              {vibeInput && vibeInput.startsWith('✨') && (
-                <div style={{ padding:'11px 13px', borderRadius:14, background:`${track.color}12`, border:`1px solid ${track.color}35` }}>
-                  <div style={{ fontSize:9, fontWeight:800, color:track.color, marginBottom:5, textTransform:'uppercase', letterSpacing:'0.12em' }}>🔮 Suasana Hati</div>
-                  <div style={{ fontSize:12, color:'rgba(255,255,255,0.85)', lineHeight:1.75, whiteSpace:'pre-line' }}>{vibeInput.replace(/^✨\s?/,'')}</div>
-                  <button onClick={()=>setVibeInput('')} style={{ marginTop:7, fontSize:10, color:track.color, background:'none', border:'none', cursor:'pointer', fontWeight:700, padding:0 }}>× Reset</button>
-                </div>
-              )}
-              {messages.map((m,i)=>(
-                <div key={i} style={{ display:'flex', justifyContent:m.from==='user'?'flex-end':'flex-start' }}>
-                  {m.from==='ai'&&<div style={{ width:22, height:22, borderRadius:7, flexShrink:0, background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center', marginRight:6, marginTop:2 }}><Bot size={11} style={{ color:'white' }}/></div>}
-                  <div style={{ maxWidth:'78%', padding:'9px 13px', fontSize:13, lineHeight:1.55, borderRadius:m.from==='user'?'16px 16px 4px 16px':'4px 16px 16px 16px', background:m.from==='user'?track.color:'rgba(255,255,255,0.07)', border:m.from==='user'?'none':'1px solid rgba(255,255,255,0.1)', color:'white' }}>{m.text}</div>
-                </div>
-              ))}
-              {chatLoading&&<div style={{ display:'flex', alignItems:'center', gap:6 }}><div style={{ width:22, height:22, borderRadius:7, background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center' }}><Bot size={11} style={{ color:'white' }}/></div><div style={{ padding:'9px 13px', borderRadius:'4px 16px 16px 16px', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.1)', display:'flex', gap:5 }}>{[0,0.15,0.3].map((d,i)=>(<div key={i} style={{ width:6, height:6, borderRadius:'50%', background:'#818cf8', animation:`bounce 0.8s ease-in-out ${d}s infinite` }}/>))}</div></div>}
-              <div ref={chatEndRef}/>
-            </div>
-            {messages.length===1&&chatMode==='chat'&&<div style={{ padding:'0 16px 8px', display:'flex', flexWrap:'wrap', gap:6 }}>{['🎵 Ceritakan lagu ini','💫 Rekomendasikan lagu mirip','🌙 Vibe & mood lagu ini','🎸 Fakta menarik artis ini','📝 Buat puisi dari lagu ini'].map((q,i)=>(<button key={i} onClick={()=>setInput(q)} style={{ padding:'5px 11px', borderRadius:999, border:'1px solid rgba(255,255,255,0.15)', background:'rgba(255,255,255,0.05)', color:'rgba(255,255,255,0.7)', fontSize:11, fontWeight:600, cursor:'pointer' }}>{q}</button>))}</div>}
 
-            {/* Mood chips — show when in mood mode and input empty */}
-            {chatMode==='mood'&&!vibeInput&&(
-              <div style={{ padding:'0 16px 8px', display:'flex', flexWrap:'wrap', gap:5 }}>
-                {['😌 santai','⚡ semangat','😢 melankolis','🌙 malam','☀️ pagi ceria','💪 workout','🎉 party','💕 romantis'].map(mood=>(
-                  <button key={mood} onClick={()=>{ setVibeInput(mood); }}
-                    style={{ padding:'5px 11px', borderRadius:999, border:`1px solid ${track.color}35`, background:`${track.color}12`, color:'rgba(255,255,255,0.75)', fontSize:11, fontWeight:600, cursor:'pointer' }}>
-                    {mood}
+            {/* Chat + Vibe result area OR Lyrics */}
+            {aiSubView==='lyrics' ? (
+              /* ── LYRICS VIEW inside AI tab */
+              <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'16px 20px 24px' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14 }}>
+                  <img src={getCover(track)} style={{ width:40, height:40, borderRadius:10, objectFit:'cover' }}/>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontWeight:800, fontSize:14, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{track.title}</div>
+                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)' }}>{track.artist}</div>
+                  </div>
+                  <button onClick={getLyrics} disabled={lyricsLoading} style={{ padding:'7px 14px', borderRadius:999, border:'none', background:track.color, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', opacity:lyricsLoading?0.6:1, display:'flex', alignItems:'center', gap:6, flexShrink:0 }}>
+                    {lyricsLoading?<><Loader2 size={13} style={{ animation:'spin 1s linear infinite' }}/>Cari...</>:<><Sparkles size={13}/>{lyrics?'Refresh':'Tampilkan Lirik'}</>}
                   </button>
+                </div>
+                {!lyrics&&!lyricsLoading&&(
+                  <div style={{ textAlign:'center', paddingTop:36 }}>
+                    <Mic2 size={48} style={{ color:'rgba(255,255,255,0.1)', margin:'0 auto 16px', display:'block' }}/>
+                    <div style={{ fontSize:15, fontWeight:700, color:'rgba(255,255,255,0.3)', marginBottom:8 }}>Lirik belum tersedia</div>
+                    <div style={{ fontSize:12, color:'rgba(255,255,255,0.2)' }}>Ketuk "Tampilkan Lirik" untuk generate lirik AI</div>
+                  </div>
+                )}
+                {lyricsLoading&&(
+                  <div style={{ textAlign:'center', paddingTop:36 }}>
+                    <Loader2 size={40} style={{ color:track.color, margin:'0 auto 14px', display:'block', animation:'spin 1s linear infinite' }}/>
+                    <div style={{ fontSize:13, color:'rgba(255,255,255,0.4)' }}>Starry AI sedang menulis lirik…</div>
+                  </div>
+                )}
+                {lyrics&&!lyricsLoading&&(
+                  <div style={{ lineHeight:1.9 }}>
+                    {lyrics.split('\n').map((line, i) => {
+                      const isTag = line.startsWith('[') && line.endsWith(']');
+                      return (
+                        <div key={i} style={{ fontSize:isTag?11:15, fontWeight:isTag?800:400, color:isTag?track.color:'rgba(255,255,255,0.9)', marginTop:isTag&&i>0?18:0, marginBottom:isTag?6:0, textTransform:isTag?'uppercase':'none', letterSpacing:isTag?'0.12em':0 }}>
+                          {line || <br/>}
+                        </div>
+                      );
+                    })}
+                    <div style={{ marginTop:24, padding:'10px 14px', borderRadius:10, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)' }}>
+                      <div style={{ fontSize:10, color:'rgba(255,255,255,0.25)' }}>✨ Lirik dari database publik. Jika tidak tersedia, Starry AI akan membuatkan lirik berdasarkan judul dan mood lagu.</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* ── CHAT VIEW */
+              <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'10px 16px', display:'flex', flexDirection:'column', gap:9 }}>
+                {/* Vibe result card */}
+                {vibeInput && vibeInput.startsWith('✨') && (
+                  <div style={{ padding:'11px 13px', borderRadius:14, background:`${track.color}12`, border:`1px solid ${track.color}35` }}>
+                    <div style={{ fontSize:9, fontWeight:800, color:track.color, marginBottom:5, textTransform:'uppercase', letterSpacing:'0.12em' }}>🔮 Suasana Hati</div>
+                    <div style={{ fontSize:12, color:'rgba(255,255,255,0.85)', lineHeight:1.75, whiteSpace:'pre-line' }}>{vibeInput.replace(/^✨\s?/,'')}</div>
+                    <button onClick={()=>setVibeInput('')} style={{ marginTop:7, fontSize:10, color:track.color, background:'none', border:'none', cursor:'pointer', fontWeight:700, padding:0 }}>× Reset</button>
+                  </div>
+                )}
+                {messages.map((m,i)=>(
+                  <div key={i} style={{ display:'flex', justifyContent:m.from==='user'?'flex-end':'flex-start' }}>
+                    {m.from==='ai'&&<div style={{ width:22, height:22, borderRadius:7, flexShrink:0, background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center', marginRight:6, marginTop:2 }}><Bot size={11} style={{ color:'white' }}/></div>}
+                    <div style={{ maxWidth:'78%', padding:'9px 13px', fontSize:13, lineHeight:1.55, borderRadius:m.from==='user'?'16px 16px 4px 16px':'4px 16px 16px 16px', background:m.from==='user'?track.color:'rgba(255,255,255,0.07)', border:m.from==='user'?'none':'1px solid rgba(255,255,255,0.1)', color:'white' }}>{m.text}</div>
+                  </div>
                 ))}
+                {chatLoading&&<div style={{ display:'flex', alignItems:'center', gap:6 }}><div style={{ width:22, height:22, borderRadius:7, background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center' }}><Bot size={11} style={{ color:'white' }}/></div><div style={{ padding:'9px 13px', borderRadius:'4px 16px 16px 16px', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.1)', display:'flex', gap:5 }}>{[0,0.15,0.3].map((d,i)=>(<div key={i} style={{ width:6, height:6, borderRadius:'50%', background:'#818cf8', animation:`bounce 0.8s ease-in-out ${d}s infinite` }}/>))}</div></div>}
+                <div ref={chatEndRef}/>
               </div>
             )}
 
-            <div style={{ padding:'8px 16px 14px', flexShrink:0, borderTop:'1px solid rgba(255,255,255,0.06)' }}>
-              {/* Mode toggle row */}
-              <div style={{ display:'flex', gap:5, marginBottom:8 }}>
-                <button onClick={()=>{ setChatMode('chat'); }}
-                  style={{ flex:1, padding:'5px 0', borderRadius:9, border:'none', background:chatMode==='chat'?`${track.color}25`:'rgba(255,255,255,0.05)', color:chatMode==='chat'?track.color:'rgba(255,255,255,0.35)', fontSize:11, fontWeight:700, cursor:'pointer', transition:'all 0.15s', display:'flex', alignItems:'center', justifyContent:'center', gap:5 }}>
-                  💬 Tanya AI
-                </button>
-                <button onClick={()=>{ setChatMode('mood'); setVibeInput(''); }}
-                  style={{ flex:1, padding:'5px 0', borderRadius:9, border:'none', background:chatMode==='mood'?`${track.color}25`:'rgba(255,255,255,0.05)', color:chatMode==='mood'?track.color:'rgba(255,255,255,0.35)', fontSize:11, fontWeight:700, cursor:'pointer', transition:'all 0.15s', display:'flex', alignItems:'center', justifyContent:'center', gap:5 }}>
-                  🔮 Suasana Hati
-                </button>
+            {/* Chips area — mood + AI chips sekaligus — only in chat view */}
+            {aiSubView==='chat'&&messages.length===1&&!vibeInput&&(
+              <div style={{ padding:'0 16px 8px', display:'flex', flexDirection:'column', gap:6 }}>
+                {/* Mood chips */}
+                <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
+                  {['😌 santai','⚡ semangat','😢 melankolis','🌙 malam','☀️ pagi ceria','💪 workout','🎉 party','💕 romantis'].map(mood=>(
+                    <button key={mood} onClick={()=>{ setVibeInput(mood); setTimeout(()=>{ if(!vibeLoading) searchVibe(); },0); }}
+                      style={{ padding:'4px 10px', borderRadius:999, border:`1px solid ${track.color}35`, background:`${track.color}12`, color:'rgba(255,255,255,0.75)', fontSize:10, fontWeight:600, cursor:'pointer' }}>
+                      {mood}
+                    </button>
+                  ))}
+                </div>
+                {/* AI quick chips */}
+                <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
+                  {['🎵 Ceritakan lagu ini','💫 Rekomendasikan lagu mirip','🎸 Fakta menarik artis ini','📝 Buat puisi dari lagu ini'].map((q,i)=>(
+                    <button key={i} onClick={()=>setInput(q)} style={{ padding:'4px 10px', borderRadius:999, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.04)', color:'rgba(255,255,255,0.65)', fontSize:10, fontWeight:600, cursor:'pointer' }}>{q}</button>
+                  ))}
+                </div>
               </div>
+            )}
+
+            {/* Input area — only in chat view */}
+            {aiSubView==='chat'&&(
+            <div style={{ padding:'8px 16px 14px', flexShrink:0, borderTop:'1px solid rgba(255,255,255,0.06)' }}>
               <div style={{ display:'flex', gap:8 }}>
                 <input
-                  value={chatMode==='mood' ? vibeInput : input}
-                  onChange={e=>{ chatMode==='mood' ? setVibeInput(e.target.value) : setInput(e.target.value); }}
-                  onKeyDown={e=>{ if(e.key==='Enter') chatMode==='mood' ? (!vibeLoading&&searchVibe()) : sendChat(); }}
-                  placeholder={chatMode==='mood' ? '"santai", "semangat pagi", "sedih tapi indah"…' : 'Tanya Starry AI...'}
-                  style={{ flex:1, background:'rgba(255,255,255,0.07)', border:`1px solid ${chatMode==='mood'?track.color+'40':'rgba(255,255,255,0.12)'}`, borderRadius:12, padding:'9px 13px', fontSize:13, color:'white', outline:'none' }}/>
-                <button
-                  onClick={()=>{ chatMode==='mood' ? (!vibeLoading&&searchVibe()) : sendChat(); }}
-                  disabled={(chatMode==='mood' ? (vibeLoading||!vibeInput.trim()) : (chatLoading||!input.trim()))}
-                  style={{ width:40, height:40, borderRadius:12, border:'none', background:(chatMode==='mood'?vibeInput.trim():input.trim())?track.color:'rgba(255,255,255,0.1)', color:'white', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity:(chatMode==='mood'?vibeLoading:chatLoading)?0.5:1, flexShrink:0, transition:'background 0.2s' }}>
-                  {(chatMode==='mood'?vibeLoading:chatLoading)
-                    ? <Loader2 size={15} style={{ animation:'spin 1s linear infinite' }}/>
-                    : chatMode==='mood' ? <span style={{fontSize:15}}>🔮</span> : <Send size={15}/>
-                  }
-                </button>
+                  value={vibeInput && !vibeInput.startsWith('✨') ? vibeInput : input}
+                  onChange={e=>{ const v=e.target.value; if(vibeInput&&!vibeInput.startsWith('✨')) setVibeInput(v); else setInput(v); }}
+                  onKeyDown={e=>{ if(e.key==='Enter'){ if(vibeInput&&!vibeInput.startsWith('✨')){ if(!vibeLoading) searchVibe(); } else sendChat(); } }}
+                  placeholder={vibeInput&&!vibeInput.startsWith('✨') ? '"santai", "semangat pagi", "sedih tapi indah"…' : 'Tanya AI atau ketik suasana hati…'}
+                  style={{ flex:1, background:'rgba(255,255,255,0.07)', border:`1px solid rgba(255,255,255,0.12)`, borderRadius:12, padding:'9px 13px', fontSize:13, color:'white', outline:'none' }}/>
+                {/* Mood send */}
+                {vibeInput&&!vibeInput.startsWith('✨') ? (
+                  <button onClick={()=>{ if(!vibeLoading) searchVibe(); }} disabled={vibeLoading||!vibeInput.trim()}
+                    style={{ width:40, height:40, borderRadius:12, border:'none', background:vibeInput.trim()?track.color:'rgba(255,255,255,0.1)', color:'white', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity:vibeLoading?0.5:1, flexShrink:0, transition:'background 0.2s' }}>
+                    {vibeLoading ? <Loader2 size={15} style={{ animation:'spin 1s linear infinite' }}/> : <span style={{fontSize:15}}>🔮</span>}
+                  </button>
+                ) : (
+                  <button onClick={sendChat} disabled={chatLoading||!input.trim()}
+                    style={{ width:40, height:40, borderRadius:12, border:'none', background:input.trim()?track.color:'rgba(255,255,255,0.1)', color:'white', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity:chatLoading?0.5:1, flexShrink:0, transition:'background 0.2s' }}>
+                    {chatLoading ? <Loader2 size={15} style={{ animation:'spin 1s linear infinite' }}/> : <Send size={15}/>}
+                  </button>
+                )}
               </div>
             </div>
+            )}
           </div>
         )}
       </main>
@@ -3088,7 +3290,7 @@ export default function App() {
         onSave={editingPl ? updatePlaylist : createPlaylist}
         isLite={isLite}
       />}
-      {showSettings&&<SettingsPanel onClose={()=>setShowSettings(false)} color={track.color} eqEnabled={eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset} setEqPreset={setEqPreset} eqGains={eqGains} setEqGains={setEqGains} crossfade={crossfade} setCrossfade={setCrossfade} sleepTimer={sleepTimer} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover} setGlobalCover={setGlobalCover} isLite={isLite} dataSaver={dataSaver} toggleDataSaver={toggleDataSaver} pwaPrompt={pwaPrompt} pwaInstalled={pwaInstalled} installPwa={installPwa}/>}
+      {showSettings&&<SettingsPanel onClose={()=>setShowSettings(false)} color={track.color} eqEnabled={eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset} setEqPreset={setEqPreset} eqGains={eqGains} setEqGains={setEqGains} crossfade={crossfade} setCrossfade={setCrossfade} sleepTimer={sleepTimer} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover} setGlobalCover={setGlobalCover} isLite={isLite} dataSaver={dataSaver} toggleDataSaver={toggleDataSaver} pwaPrompt={pwaPrompt} pwaInstalled={pwaInstalled} installPwa={installPwa} customDns={customDns} setCustomDns={setCustomDns}/>}
       {showUpload&&<UploadModal onClose={()=>!uploading&&setShowUpload(false)} onUpload={handleUpload} uploading={uploading} uploadProgress={uploadProgress} color={track.color} isLite={isLite}/>}
 
       {/* ══ YOUTUBE HIDDEN AUDIO IFRAME — persistent, single instance ══ */}
