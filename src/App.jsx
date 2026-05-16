@@ -740,7 +740,7 @@ function PlaylistModal({ onClose, onSave, allSongs, existing, isLite }) {
   });
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:100, background:'rgba(0,0,0,0.75)', ...(isLite ? {} : { backdropFilter:'blur(8px)' }), display:'flex', alignItems:'flex-end', animation:'fadeUp 0.25s ease' }} onClick={e=>e.target===e.currentTarget&&onClose()}>
+    <div style={{ position:'fixed', inset:0, zIndex:100, background:'rgba(0,0,0,0.75)', ...(isLite ? {} : { backdropFilter:'blur(8px)' }), display:'flex', alignItems:'flex-end' }} onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div style={{ width:'100%', maxHeight:'92dvh', overflowY:'auto', background:'#0f0f2a', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'24px 24px 0 0', padding:'20px 20px 32px' }}>
         <div style={{ width:36, height:4, borderRadius:999, background:'rgba(255,255,255,0.15)', margin:'0 auto 18px' }}/>
         <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:18 }}>
@@ -776,7 +776,7 @@ function PlaylistModal({ onClose, onSave, allSongs, existing, isLite }) {
                     <div style={{ fontWeight:700, fontSize:13, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:on?'white':'rgba(255,255,255,0.8)' }}>{s.title}</div>
                     <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>{s.artist}</div>
                   </div>
-                  <div style={{ width:20, height:20, borderRadius:'50%', border:`2px solid ${on?s.color:'rgba(255,255,255,0.2)'}`, background:on?s.color:'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, transition:'all 0.15s' }}>
+                  <div style={{ width:20, height:20, borderRadius:'50%', border:`2px solid ${on?s.color:'rgba(255,255,255,0.2)'}`, background:on?s.color:'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                     {on && <CheckCircle size={12} style={{color:'white'}}/>}
                   </div>
                 </div>
@@ -923,7 +923,7 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
 // ═══════════════════════════════════════════════════════
 //  SONG ROW
 // ═══════════════════════════════════════════════════════
-const btn = { background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.5)', padding:8, display:'flex', transition:'color 0.2s', borderRadius:8 };
+const btn = { background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.5)', padding:8, display:'flex', borderRadius:8 };
 
 function SongRow({ s, i, track, playing, liked, setLiked, play, isDrive, isCached, onRemove, playlists, addToPlaylist, isLite }) {
   const isActive = track.id === s.id;
@@ -1017,12 +1017,10 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
   // Defensive: eqGains harus selalu array 5 elemen
   const safeGains = Array.isArray(eqGains) && eqGains.length === 5 ? eqGains : [0,0,0,0,0];
   return (
-    <div style={{ position:'absolute', inset:0, zIndex:150, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(4px)', display:'flex', alignItems:'flex-end' }} onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="scrollbar-hide" style={{ width:'100%', maxHeight:'75%', overflowY:'auto', overflowX:'hidden', background:'#0d0d24', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'20px 20px 0 0', padding:'0 0 32px' }}>
-        {/* Drag handle */}
-        <div style={{ width:36, height:4, borderRadius:999, background:'rgba(255,255,255,0.15)', margin:'12px auto 0' }}/>
+    <div style={{ position:'absolute', inset:0, zIndex:150, background:'rgba(0,0,0,0.6)', ...(isLite?{}:{backdropFilter:'blur(4px)'}), display:'flex', alignItems:'stretch' }} onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="scrollbar-hide" style={{ width:'100%', height:'100%', overflowY:'auto', overflowX:'hidden', background:'#0d0d24', border:'none', borderRadius:0, padding:'0 0 32px' }}>
         {/* Header */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 18px 0', marginBottom:6 }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 18px 0', marginBottom:6 }}>
           <div style={{ fontWeight:900, fontSize:15, letterSpacing:'-0.02em' }}>Pengaturan</div>
           <button onClick={onClose} style={{ width:28, height:28, borderRadius:999, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.7)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:14 }}>×</button>
         </div>
@@ -1035,15 +1033,15 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
               <span style={{ fontWeight:800, fontSize:14 }}>Equalizer</span>
             </div>
             {/* Toggle */}
-            <div onClick={()=>setEqEnabled(v=>!v)} style={{ width:44, height:24, borderRadius:999, background:eqEnabled?color:'rgba(255,255,255,0.1)', cursor:'pointer', position:'relative', transition:'background 0.2s' }}>
-              <div style={{ position:'absolute', top:3, left:eqEnabled?22:3, width:18, height:18, borderRadius:'50%', background:'white', transition:'left 0.2s', boxShadow:'0 1px 4px rgba(0,0,0,0.3)' }}/>
+            <div onClick={()=>setEqEnabled(v=>!v)} style={{ width:44, height:24, borderRadius:999, background:eqEnabled?color:'rgba(255,255,255,0.1)', cursor:'pointer', position:'relative' }}>
+              <div style={{ position:'absolute', top:3, left:eqEnabled?22:3, width:18, height:18, borderRadius:'50%', background:'white', boxShadow:'0 1px 4px rgba(0,0,0,0.3)' }}/>
             </div>
           </div>
 
           {/* Preset pills */}
           <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:16 }}>
             {Object.keys(EQ_PRESETS).map(p=>(
-              <button key={p} onClick={()=>{ setEqPreset(p); setEqGains([...EQ_PRESETS[p]]); }} style={{ padding:'5px 12px', borderRadius:999, border:'none', fontSize:11, fontWeight:700, cursor:'pointer', background:eqPreset===p?color:'rgba(255,255,255,0.08)', color:eqPreset===p?'white':'rgba(255,255,255,0.5)', transition:'all 0.15s' }}>{p}</button>
+              <button key={p} onClick={()=>{ setEqPreset(p); setEqGains([...EQ_PRESETS[p]]); }} style={{ padding:'5px 12px', borderRadius:999, border:'none', fontSize:11, fontWeight:700, cursor:'pointer', background:eqPreset===p?color:'rgba(255,255,255,0.08)', color:eqPreset===p?'white':'rgba(255,255,255,0.5)' }}>{p}</button>
             ))}
           </div>
 
@@ -1090,7 +1088,7 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
           {!sleepTimer ? (
             <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
               {SLEEP_OPTIONS.map(o=>(
-                <button key={o.min} onClick={()=>{ startSleepTimer(o.min); onClose(); }} style={{ padding:'8px 14px', borderRadius:12, border:`1px solid rgba(255,255,255,0.12)`, background:'rgba(255,255,255,0.05)', color:'rgba(255,255,255,0.7)', fontSize:12, fontWeight:600, cursor:'pointer', transition:'all 0.15s' }}>{o.label}</button>
+                <button key={o.min} onClick={()=>{ startSleepTimer(o.min); onClose(); }} style={{ padding:'8px 14px', borderRadius:12, border:`1px solid rgba(255,255,255,0.12)`, background:'rgba(255,255,255,0.05)', color:'rgba(255,255,255,0.7)', fontSize:12, fontWeight:600, cursor:'pointer' }}>{o.label}</button>
               ))}
             </div>
           ) : (
@@ -1111,8 +1109,8 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
                 <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{isLite ? 'Hemat data · tanpa animasi · load cepat' : 'Animasi penuh · cover art · fitur AI'}</div>
               </div>
             </div>
-            <div onClick={toggleMode} style={{ width:44, height:24, borderRadius:999, background:isLite?'#10b981':'rgba(255,255,255,0.1)', cursor:'pointer', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
-              <div style={{ position:'absolute', top:3, left:isLite?22:3, width:18, height:18, borderRadius:'50%', background:'white', transition:'left 0.2s', boxShadow:'0 1px 4px rgba(0,0,0,0.3)' }}/>
+            <div onClick={toggleMode} style={{ width:44, height:24, borderRadius:999, background:isLite?'#10b981':'rgba(255,255,255,0.1)', cursor:'pointer', position:'relative', flexShrink:0 }}>
+              <div style={{ position:'absolute', top:3, left:isLite?22:3, width:18, height:18, borderRadius:'50%', background:'white', boxShadow:'0 1px 4px rgba(0,0,0,0.3)' }}/>
             </div>
           </div>
           <div style={{ borderRadius:12, background:isLite?'rgba(16,185,129,0.08)':'rgba(99,102,241,0.08)', border:`1px solid ${isLite?'rgba(16,185,129,0.2)':'rgba(99,102,241,0.2)'}`, padding:'10px 14px', display:'flex', flexDirection:'column', gap:5 }}>
@@ -1247,8 +1245,7 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
               <button key={opt.label} onClick={() => { setCustomDns(opt.value); localStorage.setItem('sn_custom_dns', opt.value); }}
                 style={{ padding:'6px 12px', borderRadius:999, border:'none', fontSize:11, fontWeight:700, cursor:'pointer',
                   background: customDns === opt.value ? color : 'rgba(255,255,255,0.08)',
-                  color: customDns === opt.value ? 'white' : 'rgba(255,255,255,0.55)',
-                  transition:'all 0.15s' }}
+                  color: customDns === opt.value ? 'white' : 'rgba(255,255,255,0.55)' }}
                 title={opt.desc}>{opt.label}</button>
             ))}
           </div>
@@ -1294,7 +1291,7 @@ function UploadModal({ onClose, onUpload, uploading, uploadProgress, color, isLi
   const handleFile=f=>{ if(!f||!f.type.startsWith('audio/')) return alert('Pilih file audio'); setFile(f); if(!title) setTitle(f.name.replace(/\.[^/.]+$/,'')); };
   const inp = { width:'100%', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:10, padding:'10px 12px', fontSize:13, color:'white', outline:'none', marginTop:6 };
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:100, background:'rgba(0,0,0,0.75)', ...(isLite ? {} : { backdropFilter:'blur(8px)' }), display:'flex', alignItems:'flex-end', animation:'fadeUp 0.25s ease' }} onClick={e=>e.target===e.currentTarget&&!uploading&&onClose()}>
+    <div style={{ position:'fixed', inset:0, zIndex:100, background:'rgba(0,0,0,0.75)', ...(isLite ? {} : { backdropFilter:'blur(8px)' }), display:'flex', alignItems:'flex-end' }} onClick={e=>e.target===e.currentTarget&&!uploading&&onClose()}>
       <div style={{ width:'100%', maxHeight:'92dvh', overflowY:'auto', background:'#0f0f2a', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'24px 24px 0 0', padding:'20px 20px 32px' }}>
         <div style={{ width:36, height:4, borderRadius:999, background:'rgba(255,255,255,0.15)', margin:'0 auto 18px' }}/>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
@@ -1304,7 +1301,7 @@ function UploadModal({ onClose, onUpload, uploading, uploadProgress, color, isLi
           </div>
           {!uploading&&<button onClick={onClose} style={{ ...btn, color:'rgba(255,255,255,0.5)' }}><X size={20}/></button>}
         </div>
-        <div onDragOver={e=>{e.preventDefault();setDragging(true)}} onDragLeave={()=>setDragging(false)} onDrop={e=>{e.preventDefault();setDragging(false);handleFile(e.dataTransfer.files[0])}} onClick={()=>!uploading&&fileRef.current?.click()} style={{ border:`2px dashed ${file?color:dragging?color:'rgba(255,255,255,0.15)'}`, borderRadius:16, padding:'24px 20px', textAlign:'center', cursor:uploading?'default':'pointer', background:file?`${color}10`:dragging?`${color}08`:'rgba(255,255,255,0.02)', transition:'all 0.2s', marginBottom:18 }}>
+        <div onDragOver={e=>{e.preventDefault();setDragging(true)}} onDragLeave={()=>setDragging(false)} onDrop={e=>{e.preventDefault();setDragging(false);handleFile(e.dataTransfer.files[0])}} onClick={()=>!uploading&&fileRef.current?.click()} style={{ border:`2px dashed ${file?color:dragging?color:'rgba(255,255,255,0.15)'}`, borderRadius:16, padding:'24px 20px', textAlign:'center', cursor:uploading?'default':'pointer', background:file?`${color}10`:dragging?`${color}08`:'rgba(255,255,255,0.02)', marginBottom:18 }}>
           <input ref={fileRef} type="file" accept="audio/*" style={{ display:'none' }} onChange={e=>handleFile(e.target.files[0])}/>
           {file ? (<><CheckCircle size={28} style={{ color, margin:'0 auto 8px', display:'block' }}/><div style={{ fontWeight:700, fontSize:13 }}>{file.name}</div><div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:2 }}>{(file.size/1024/1024).toFixed(1)} MB</div></>) : (<><Music size={28} style={{ color:'rgba(255,255,255,0.2)', margin:'0 auto 8px', display:'block' }}/><div style={{ fontWeight:700, fontSize:13 }}>{dragging?'Lepas di sini!':'Ketuk atau drag & drop'}</div><div style={{ fontSize:11, color:'rgba(255,255,255,0.35)' }}>MP3, M4A, WAV, FLAC, OGG</div></>)}
         </div>
@@ -1313,7 +1310,7 @@ function UploadModal({ onClose, onUpload, uploading, uploadProgress, color, isLi
             <div key={label}><label style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.4)', textTransform:'uppercase', letterSpacing:'0.1em' }}>{label}</label><input value={val} onChange={e=>set(e.target.value)} placeholder={ph} disabled={uploading} style={inp}/></div>
           ))}
         </div>
-        {uploading&&<div style={{ marginBottom:14 }}><div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}><span style={{ fontSize:12, color:'rgba(255,255,255,0.5)' }}>Mengupload…</span><span style={{ fontSize:12, color, fontWeight:700 }}>{uploadProgress}%</span></div><div style={{ height:5, borderRadius:999, background:'rgba(255,255,255,0.08)' }}><div style={{ height:'100%', borderRadius:999, width:`${uploadProgress}%`, background:`linear-gradient(90deg,${color},${color}aa)`, transition:'width 0.3s' }}/></div></div>}
+        {uploading&&<div style={{ marginBottom:14 }}><div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}><span style={{ fontSize:12, color:'rgba(255,255,255,0.5)' }}>Mengupload…</span><span style={{ fontSize:12, color, fontWeight:700 }}>{uploadProgress}%</span></div><div style={{ height:5, borderRadius:999, background:'rgba(255,255,255,0.08)' }}><div style={{ height:'100%', borderRadius:999, width:`${uploadProgress}%`, background:`linear-gradient(90deg,${color},${color}aa)` }}/></div></div>}
         <div style={{ display:'flex', gap:10 }}>
           {!uploading&&<button onClick={onClose} style={{ flex:1, padding:'12px 0', borderRadius:14, border:'1px solid rgba(255,255,255,0.12)', background:'transparent', color:'rgba(255,255,255,0.6)', fontSize:13, fontWeight:700, cursor:'pointer' }}>Batal</button>}
           <button onClick={()=>{ if(!file){alert('Pilih file dulu!');return;} onUpload(file,{title,artist,album}); }} disabled={uploading||!file} style={{ flex:2, padding:'12px 0', borderRadius:14, border:'none', background:!file?'rgba(255,255,255,0.08)':`linear-gradient(135deg,${color},#6366f1)`, color:'white', fontSize:13, fontWeight:800, cursor:uploading||!file?'default':'pointer', opacity:uploading?0.7:1, display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
@@ -2661,7 +2658,7 @@ export default function App() {
     <div className={isLite ? 'lite-mode' : ''} style={{ height:'100dvh', width:'100vw', overflow:'hidden', background:'#07071a', color:'#f1f5f9', fontFamily:"'Segoe UI',system-ui,sans-serif", display:'flex', flexDirection:'column', userSelect:'none', WebkitTapHighlightColor:'transparent' }}>
 
       {/* BG — Pro only */}
-      {!isLite && <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, background:`radial-gradient(ellipse at 60% 10%,${track.color}20 0%,transparent 60%)`, transition:'background 2s ease' }}/>}
+      {!isLite && <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, background:`radial-gradient(ellipse at 60% 10%,${track.color}20 0%,transparent 60%)` }}/>}
       {!isLite && <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, overflow:'hidden' }}><div className="stars"/><div className="starsB"/><div className="starsC"/></div>}
 
       {/* ══ HEADER */}
@@ -2733,7 +2730,7 @@ export default function App() {
       {isDesktop && !fullscreen && (
         <div style={{ width:196, flexShrink:0, borderRight:'1px solid rgba(255,255,255,0.07)', background:'rgba(0,0,0,0.18)', display:'flex', flexDirection:'column', padding:'10px 8px 16px', gap:3 }}>
           {/* Player nav item — always at top */}
-          <button onClick={()=>setTab('player')} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:12, border:'none', cursor:'pointer', background:tab==='player'?`${track.color}20`:'transparent', color:tab==='player'?track.color:'rgba(255,255,255,0.4)', transition:'all 0.15s', textAlign:'left', width:'100%', fontSize:13, fontWeight:tab==='player'?700:500 }}>
+          <button onClick={()=>setTab('player')} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:12, border:'none', cursor:'pointer', background:tab==='player'?`${track.color}20`:'transparent', color:tab==='player'?track.color:'rgba(255,255,255,0.4)', textAlign:'left', width:'100%', fontSize:13, fontWeight:tab==='player'?700:500 }}>
             <Compass size={17}/><span>Player</span>
           </button>
           <div style={{ height:1, background:'rgba(255,255,255,0.06)', margin:'4px 6px' }}/>
@@ -2756,7 +2753,7 @@ export default function App() {
           {tabs.map(t=>{
             const active=tab===t.id;
             return (
-              <button key={t.id} onClick={()=>setTab(t.id)} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:12, border:'none', cursor:'pointer', background:active?`${track.color}20`:'transparent', color:active?track.color:'rgba(255,255,255,0.4)', transition:'all 0.15s', textAlign:'left', width:'100%', fontSize:13, fontWeight:active?700:500 }}>
+              <button key={t.id} onClick={()=>setTab(t.id)} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:12, border:'none', cursor:'pointer', background:active?`${track.color}20`:'transparent', color:active?track.color:'rgba(255,255,255,0.4)', textAlign:'left', width:'100%', fontSize:13, fontWeight:active?700:500 }}>
                 {t.icon}<span>{t.label}</span>
               </button>
             );
@@ -2776,11 +2773,10 @@ export default function App() {
 
           {/* ── QUEUE PANEL — inline dalam player, bukan full layar */}
           {showQueue && (
-            <div style={{ position:'absolute', inset:0, zIndex:100, background:'rgba(0,0,0,0.55)', ...(isLite?{}:{backdropFilter:'blur(6px)'}), display:'flex', alignItems:'flex-end', animation:isLite?'none':'fadeUp 0.2s ease' }} onClick={e=>e.target===e.currentTarget&&setShowQueue(false)}>
-            <div style={{ width:'100%', maxHeight:'75%', display:'flex', flexDirection:'column', background:'#0d0d24', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'20px 20px 0 0', animation:isLite?'none':'slideUp 0.25s cubic-bezier(0.34,1.56,0.64,1)' }}>
+            <div style={{ position:'absolute', inset:0, zIndex:100, background:'rgba(0,0,0,0.55)', display:'flex', alignItems:'stretch' }} onClick={e=>e.target===e.currentTarget&&setShowQueue(false)}>
+            <div style={{ width:'100%', height:'100%', display:'flex', flexDirection:'column', background:'#0d0d24', border:'none', borderRadius:0 }}>
               {/* Queue header */}
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 18px 12px', borderBottom:'1px solid rgba(255,255,255,0.07)', flexShrink:0 }}>
-                <div style={{ width:36, height:4, borderRadius:999, background:'rgba(255,255,255,0.15)', position:'absolute', left:'50%', transform:'translateX(-50%)', top:10 }}/>
                 <div style={{ display:'flex', alignItems:'center', gap:9 }}>
                   <div style={{ width:30, height:30, borderRadius:9, background:embedTrack?.type==='youtube'?'rgba(255,68,68,0.2)':`${track.color}22`, border:`1px solid ${embedTrack?.type==='youtube'?'rgba(255,68,68,0.4)':track.color+'40'}`, display:'flex', alignItems:'center', justifyContent:'center' }}>
                     <ListMusic size={15} style={{ color:embedTrack?.type==='youtube'?'#ff6b6b':track.color }}/>
@@ -2802,7 +2798,7 @@ export default function App() {
                       const isCur = i === ytQueueIdxRef.current;
                       return (
                         <div key={i} onClick={()=>{playYouTube(item, ytQueueRef.current, i); setShowQueue(false);}}
-                          style={{ display:'flex', alignItems:'center', gap:11, padding:'9px 18px', background:isCur?'rgba(255,68,68,0.1)':'transparent', cursor:'pointer', transition:'background 0.15s' }}>
+                          style={{ display:'flex', alignItems:'center', gap:11, padding:'9px 18px', background:isCur?'rgba(255,68,68,0.1)':'transparent', cursor:'pointer' }}>
                           <div style={{ width:20, textAlign:'center', fontSize:10, color:'rgba(255,255,255,0.25)', fontWeight:600, flexShrink:0 }}>{isCur ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12, justifyContent:'center' }}>{[9,5,7].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:'#ff4444', borderRadius:1, animation:`bounce 0.8s ease-in-out ${j*0.15}s infinite` }}/>))}</div> : i+1}</div>
                           {item.thumbnail
                             ? <img src={item.thumbnail} style={{ width:38, height:38, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
@@ -2833,7 +2829,7 @@ export default function App() {
                       const isCur = i===0;
                       return (
                         <div key={s.id} onClick={()=>{ setTrack(s); setProgress(0); setDuration(0); setPlaying(true); setShowQueue(false); }}
-                          style={{ display:'flex', alignItems:'center', gap:11, padding:'9px 18px', background:isCur?`${track.color}12`:'transparent', cursor:'pointer', transition:'background 0.15s' }}>
+                          style={{ display:'flex', alignItems:'center', gap:11, padding:'9px 18px', background:isCur?`${track.color}12`:'transparent', cursor:'pointer' }}>
                           <div style={{ width:20, textAlign:'center', fontSize:10, color:'rgba(255,255,255,0.25)', fontWeight:600, flexShrink:0 }}>{isCur ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12, justifyContent:'center' }}>{[9,5,7].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:track.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${j*0.15}s infinite` }}/>))}</div> : curIdx+i+1}</div>
                           {isLite
                             ? <div style={{ width:38, height:38, borderRadius:8, background:s.bg||'rgba(255,255,255,0.08)', flexShrink:0 }}/>
@@ -2863,27 +2859,26 @@ export default function App() {
                 <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)' }}>{isLite ? 'Memuat dari Google Drive…' : `Mengunduh lagu… ${driveDownProg > 0 ? driveDownProg + '%' : ''}`}</div>
                 {!isLite && driveDownProg > 0 && (
                   <div style={{ width:200, height:5, borderRadius:999, background:'rgba(255,255,255,0.1)', overflow:'hidden' }}>
-                    <div style={{ height:'100%', borderRadius:999, background:track.color, width:`${driveDownProg}%`, transition:'width 0.25s ease' }}/>
+                    <div style={{ height:'100%', borderRadius:999, background:track.color, width:`${driveDownProg}%` }}/>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Fullscreen exit button + Close YT — unified floating top-right */}
+            {/* Unified top-right button: fullscreen → exit fullscreen, else → close stream */}
             {(fullscreen || embedTrack) && (
-              <div style={{ position:'fixed', top:14, right:14, zIndex:20, display:'flex', alignItems:'center', gap:6 }}>
-                {embedTrack && (
-                  <button onClick={()=>{ closeEmbed(); setShowSettings(false); if(fullscreen) setFullscreen(false); }}
-                    style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:999, border:'1px solid rgba(255,68,68,0.35)', background:'rgba(7,7,26,0.82)', backdropFilter:'blur(10px)', color:'#fca5a5', fontSize:11, fontWeight:700, cursor:'pointer' }}>
-                    <X size={13}/> Tutup
-                  </button>
-                )}
-                {fullscreen && (
+              <div style={{ position:'fixed', top:14, right:14, zIndex:20 }}>
+                {fullscreen ? (
                   <button onClick={()=>setFullscreen(false)}
-                    style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:999, border:'1px solid rgba(255,255,255,0.15)', background:'rgba(7,7,26,0.82)', backdropFilter:'blur(10px)', color:'rgba(255,255,255,0.6)', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                    style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:999, border:'1px solid rgba(255,255,255,0.15)', background:'rgba(7,7,26,0.82)', color:'rgba(255,255,255,0.6)', fontSize:11, fontWeight:700, cursor:'pointer' }}>
                     <Minimize2 size={13}/> Keluar
                   </button>
-                )}
+                ) : embedTrack ? (
+                  <button onClick={()=>{ closeEmbed(); setShowSettings(false); }}
+                    style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:999, border:'1px solid rgba(255,68,68,0.35)', background:'rgba(7,7,26,0.82)', color:'#fca5a5', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                    <X size={13}/> Tutup
+                  </button>
+                ) : null}
               </div>
             )}
 
@@ -2912,7 +2907,7 @@ export default function App() {
                 {shuffle&&<div style={{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:embedTrack?.type==='youtube'?'#ff4444':track.color }}/>}
               </button>
               <button onClick={()=>embedTrack?.type==='youtube'?ytPrev():goPrev()} style={{ ...btn, padding:'clamp(5px,1.2vw,8px)' }}><SkipBack size={22} fill="currentColor"/></button>
-              <button onClick={()=>{ if(!track.src&&!embedTrack) return; setPlaying(p=>!p); }} disabled={!track.src&&!embedTrack} style={{ width:'clamp(48px,13vw,56px)', height:'clamp(48px,13vw,56px)', borderRadius:'50%', border:'none', background:'white', color:'#07071a', cursor:(!track.src&&!embedTrack)?'default':'pointer', opacity:(!track.src&&!embedTrack)?0.4:1, display:'flex', alignItems:'center', justifyContent:'center', boxShadow: isLite ? `0 2px 8px rgba(0,0,0,0.4)` : `0 0 22px ${embedTrack?.type==='youtube'?'#ff444490':track.color+'90'},0 4px 20px rgba(0,0,0,0.4)`, transition:'transform 0.1s,box-shadow 0.3s', flexShrink:0 }}>
+              <button onClick={()=>{ if(!track.src&&!embedTrack) return; setPlaying(p=>!p); }} disabled={!track.src&&!embedTrack} style={{ width:'clamp(48px,13vw,56px)', height:'clamp(48px,13vw,56px)', borderRadius:'50%', border:'none', background:'white', color:'#07071a', cursor:(!track.src&&!embedTrack)?'default':'pointer', opacity:(!track.src&&!embedTrack)?0.4:1, display:'flex', alignItems:'center', justifyContent:'center', boxShadow: isLite ? `0 2px 8px rgba(0,0,0,0.4)` : `0 0 22px ${embedTrack?.type==='youtube'?'#ff444490':track.color+'90'},0 4px 20px rgba(0,0,0,0.4)`, flexShrink:0 }}>
                 {playing?<Pause size={21} fill="currentColor"/>:<Play size={21} fill="currentColor" style={{ marginLeft:3 }}/>}
               </button>
               <button onClick={()=>embedTrack?.type==='youtube'?ytNext():goNext()} style={{ ...btn, padding:'clamp(5px,1.2vw,8px)' }}><SkipForward size={22} fill="currentColor"/></button>
@@ -2943,7 +2938,7 @@ export default function App() {
 
             {/* YouTube playlist picker — shown when YT track is liked */}
             {embedTrack?.type==='youtube' && liked[`yt_${embedTrack.videoId}`] && (
-              <div style={{ width:'100%', maxWidth:290, marginTop:8, padding:'8px 10px', borderRadius:12, background:'rgba(255,68,68,0.08)', border:'1px solid rgba(255,68,68,0.2)', animation:'fadeUp 0.2s ease' }}>
+              <div style={{ width:'100%', maxWidth:290, marginTop:8, padding:'8px 10px', borderRadius:12, background:'rgba(255,68,68,0.08)', border:'1px solid rgba(255,68,68,0.2)' }}>
                 <div style={{ fontSize:10, fontWeight:700, color:'#ff6b6b', marginBottom:6, textTransform:'uppercase', letterSpacing:'0.08em' }}>Tambah ke Playlist</div>
                 <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
                   {playlists.map(pl => {
@@ -2968,7 +2963,7 @@ export default function App() {
                     {insightLoading?<><Zap size={12} style={{ animation:'spin 0.8s linear infinite' }}/>Meramal...</>:<><Sparkles size={12}/>Wawasan Kosmik ✨</>}
                   </button>
                 ):(
-                  <div onClick={()=>setInsight('')} style={{ padding:'9px 13px', borderRadius:12, background:track.bg, border:`1px solid ${track.color}40`, cursor:'pointer', animation:'fadeUp 0.3s ease' }}>
+                  <div onClick={()=>setInsight('')} style={{ padding:'9px 13px', borderRadius:12, background:track.bg, border:`1px solid ${track.color}40`, cursor:'pointer' }}>
                     <div style={{ fontSize:9, color:track.color, fontWeight:700, marginBottom:3, textTransform:'uppercase', letterSpacing:'0.1em' }}>✨ Wawasan Kosmik</div>
                     <p style={{ margin:0, fontSize:12, color:'rgba(255,255,255,0.85)', fontStyle:'italic', lineHeight:1.6 }}>{insight}</p>
                   </div>
@@ -3050,7 +3045,7 @@ export default function App() {
                                   const ch   = v.uploaderName || v.author || v.channel || 'YouTube';
                                   return (
                                     <div key={v.videoId || vi}
-                                      style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', transition:'background 0.15s' }}
+                                      style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)' }}
                                       onMouseEnter={e=>e.currentTarget.style.background='rgba(255,0,0,0.08)'}
                                       onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
                                       <div onClick={() => playYouTube(v, results, vi)} style={{ width:32, height:32, borderRadius:8, background:`${platform.color}20`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, cursor:'pointer' }}>
@@ -3187,7 +3182,7 @@ export default function App() {
                                   const hasPreview = !!t.previewUrl;
                                   return (
                                     <div key={t.id}
-                                      style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 9px', borderRadius:10, background: isActive ? `${platform.color}18` : 'rgba(255,255,255,0.04)', border: isActive ? `1px solid ${platform.color}45` : '1px solid rgba(255,255,255,0.07)', transition:'all 0.15s' }}
+                                      style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 9px', borderRadius:10, background: isActive ? `${platform.color}18` : 'rgba(255,255,255,0.04)', border: isActive ? `1px solid ${platform.color}45` : '1px solid rgba(255,255,255,0.07)' }}
                                       onMouseEnter={e=>{ if(!isActive) e.currentTarget.style.background='rgba(29,185,84,0.07)'; }}
                                       onMouseLeave={e=>{ if(!isActive) e.currentTarget.style.background='rgba(255,255,255,0.04)'; }}>
                                       {/* Album art + play button */}
@@ -3195,7 +3190,7 @@ export default function App() {
                                         <img src={t.cover} alt={t.title} loading="lazy" decoding="async"
                                           style={{ width:36, height:36, borderRadius:6, objectFit:'cover', display:'block' }}
                                           onError={e => { e.target.style.display='none'; }}/>
-                                        <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.45)', borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center', opacity: isActive ? 1 : 0, transition:'opacity 0.15s' }}
+                                        <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.45)', borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center', opacity: isActive ? 1 : 0 }}
                                           onMouseEnter={e=>e.currentTarget.style.opacity=1}
                                           onMouseLeave={e=>{ if(!isActive) e.currentTarget.style.opacity=0; }}>
                                           {isActive && spPlaying
@@ -3333,7 +3328,7 @@ export default function App() {
 
                   {/* All songs shortcut */}
                   <div onClick={()=>{ setActivePl('all_songs'); setPlView('detail'); }}
-                    style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', borderRadius:14, cursor:'pointer', background:'rgba(99,102,241,0.07)', border:'1px solid rgba(99,102,241,0.18)', transition:'all 0.2s' }}
+                    style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', borderRadius:14, cursor:'pointer', background:'rgba(99,102,241,0.07)', border:'1px solid rgba(99,102,241,0.18)' }}
                     onMouseEnter={e=>e.currentTarget.style.background='rgba(99,102,241,0.14)'}
                     onMouseLeave={e=>e.currentTarget.style.background='rgba(99,102,241,0.07)'}>
                     <div style={{ width:42, height:42, borderRadius:10, background:'linear-gradient(135deg,rgba(99,102,241,0.35),rgba(168,85,247,0.35))', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
@@ -3349,7 +3344,7 @@ export default function App() {
                   {/* ── Lagu Saya (Drive) */}
                   {(googleUser||customSongs.length>0)&&(
                     <div onClick={()=>{ setActivePl('my_songs'); setPlView('detail'); }}
-                      style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', borderRadius:14, cursor:'pointer', background:'rgba(14,165,233,0.06)', border:'1px solid rgba(14,165,233,0.18)', transition:'all 0.2s' }}
+                      style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', borderRadius:14, cursor:'pointer', background:'rgba(14,165,233,0.06)', border:'1px solid rgba(14,165,233,0.18)' }}
                       onMouseEnter={e=>e.currentTarget.style.background='rgba(14,165,233,0.12)'}
                       onMouseLeave={e=>e.currentTarget.style.background='rgba(14,165,233,0.06)'}>
                       <div style={{ width:42, height:42, borderRadius:10, background:'linear-gradient(135deg,rgba(14,165,233,0.35),rgba(99,102,241,0.35))', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
@@ -3368,6 +3363,8 @@ export default function App() {
                     </div>
                   )}
 
+
+
                   {/* ── Baru Dimainkan */}
                   {history.length>1&&(
                     <>
@@ -3375,7 +3372,7 @@ export default function App() {
                         <History size={10}/>Baru Dimainkan
                       </div>
                       <div onClick={()=>{ setActivePl('recently_played'); setPlView('detail'); }}
-                        style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', borderRadius:14, cursor:'pointer', background:'rgba(245,158,11,0.06)', border:'1px solid rgba(245,158,11,0.18)', transition:'all 0.2s' }}
+                        style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', borderRadius:14, cursor:'pointer', background:'rgba(245,158,11,0.06)', border:'1px solid rgba(245,158,11,0.18)' }}
                         onMouseEnter={e=>e.currentTarget.style.background='rgba(245,158,11,0.12)'}
                         onMouseLeave={e=>e.currentTarget.style.background='rgba(245,158,11,0.06)'}>
                         <div style={{ width:42, height:42, borderRadius:10, background:'linear-gradient(135deg,rgba(245,158,11,0.35),rgba(239,68,68,0.25))', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
@@ -3399,7 +3396,7 @@ export default function App() {
                     const isActive = activePl===pl.id;
                     const covers = songs.slice(0,4).map(s=>s.cover);
                     return (
-                      <div key={pl.id} style={{ borderRadius:16, background:isActive?'rgba(99,102,241,0.12)':'rgba(255,255,255,0.03)', border:`1px solid ${isActive?'rgba(99,102,241,0.35)':'rgba(255,255,255,0.08)'}`, overflow:'hidden', transition:'all 0.2s' }}>
+                      <div key={pl.id} style={{ borderRadius:16, background:isActive?'rgba(99,102,241,0.12)':'rgba(255,255,255,0.03)', border:`1px solid ${isActive?'rgba(99,102,241,0.35)':'rgba(255,255,255,0.08)'}`, overflow:'hidden' }}>
                         <div onClick={()=>{ setActivePl(pl.id); setPlView('detail'); }} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', cursor:'pointer' }}>
                           {/* Cover mosaic */}
                           <div style={{ width:48, height:48, borderRadius:10, overflow:'hidden', flexShrink:0, display:'grid', gridTemplateColumns:'1fr 1fr', gap:1.5, background:'rgba(255,255,255,0.06)' }}>
@@ -3511,12 +3508,6 @@ export default function App() {
                           <div style={{ fontWeight:800, fontSize:15 }}>Baru Dimainkan</div>
                           <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:1 }}>{songs.length} lagu terakhir</div>
                         </div>
-                        {songs.length>0&&(
-                          <button onClick={()=>{ play(songs[0]); setTab('player'); }}
-                            style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:10, border:'none', background:'#fbbf24', color:'black', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-                            <Play size={13} fill="currentColor"/>Putar
-                          </button>
-                        )}
                       </div>
                     </div>
                     <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'10px 16px 16px', display:'flex', flexDirection:'column', gap:5 }}>
@@ -3527,7 +3518,7 @@ export default function App() {
                         </div>
                       )}
                       {songs.map((s,i)=>(
-                        <div key={`rp-${s.id}-${i}`} onClick={()=>play(s)} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:12, cursor:'pointer', background:track.id===s.id?s.bg:'rgba(255,255,255,0.02)', border:`1px solid ${track.id===s.id?s.color+'50':'rgba(255,255,255,0.06)'}`, transition:'all 0.15s' }}>
+                        <div key={`rp-${s.id}-${i}`} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:12, background:track.id===s.id?s.bg:'rgba(255,255,255,0.02)', border:`1px solid ${track.id===s.id?s.color+'50':'rgba(255,255,255,0.06)'}` }}>
                           <div style={{ width:26, height:26, borderRadius:6, background:'rgba(245,158,11,0.15)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                             <span style={{ fontSize:10, fontWeight:700, color:'#fbbf24' }}>{i+1}</span>
                           </div>
@@ -3614,7 +3605,7 @@ export default function App() {
                     {songs.map((s,i)=>{
                       const isActive = track.id===s.id;
                       return (
-                        <div key={s.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:12, cursor:'pointer', background:isActive?s.bg:'rgba(255,255,255,0.02)', border:`1px solid ${isActive?s.color+'50':'rgba(255,255,255,0.06)'}`, transition:'all 0.15s' }}>
+                        <div key={s.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:12, cursor:'pointer', background:isActive?s.bg:'rgba(255,255,255,0.02)', border:`1px solid ${isActive?s.color+'50':'rgba(255,255,255,0.06)'}` }}>
                           <div onClick={()=>play(s)} style={{ display:'flex', alignItems:'center', gap:10, flex:1, minWidth:0 }}>
                               {isLite
                               ? <div style={{ width:36, height:36, borderRadius:8, background:s.bg||'rgba(255,255,255,0.07)', flexShrink:0 }}/>
@@ -3670,7 +3661,7 @@ export default function App() {
                   { id:'lyrics', label:'🎵 Lirik' },
                 ].map(({id, label})=>(
                   <button key={id} onClick={()=>setAiSubView(id)}
-                    style={{ padding:'9px 32px', borderRadius:0, border:'none', background:'none', color:aiSubView===id?'white':'rgba(255,255,255,0.4)', fontSize:13, fontWeight:aiSubView===id?800:600, cursor:'pointer', borderBottom:aiSubView===id?`2px solid ${track.color}`:'2px solid transparent', transition:'all 0.2s', marginBottom:-1 }}>
+                    style={{ padding:'9px 32px', borderRadius:0, border:'none', background:'none', color:aiSubView===id?'white':'rgba(255,255,255,0.4)', fontSize:13, fontWeight:aiSubView===id?800:600, cursor:'pointer', borderBottom:aiSubView===id?`2px solid ${track.color}`:'2px solid transparent', marginBottom:-1 }}>
                     {label}
                   </button>
                 ))}
@@ -3681,22 +3672,8 @@ export default function App() {
             {aiSubView==='lyrics' ? (
               /* ── LYRICS VIEW inside AI tab */
               <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'16px 20px 24px' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14 }}>
-                  {embedTrack?.type==='youtube'
-                    ? <div style={{ width:40, height:40, borderRadius:10, overflow:'hidden', flexShrink:0, background:'rgba(255,68,68,0.15)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                        {embedTrack.thumbnail ? <img src={embedTrack.thumbnail} style={{ width:'100%', height:'100%', objectFit:'cover' }}/> : <span style={{ fontSize:18 }}>▶</span>}
-                      </div>
-                    : isLite
-                      ? <div style={{ width:40, height:40, borderRadius:10, background:track.bg, display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={18} color={track.color}/></div>
-                      : <img src={getCover(track)} style={{ width:40, height:40, borderRadius:10, objectFit:'cover', flexShrink:0 }}/>}
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontWeight:800, fontSize:14, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{embedTrack ? (embedTrack.title || track.title) : track.title}</div>
-                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', display:'flex', alignItems:'center', gap:4 }}>
-                      {embedTrack && <span style={{ fontSize:9, fontWeight:800, color:'#ff6b6b', background:'rgba(255,68,68,0.12)', padding:'1px 5px', borderRadius:999 }}>▶ STREAM</span>}
-                      {embedTrack ? (embedTrack.artist || 'YouTube') : track.artist}
-                    </div>
-                  </div>
-                  <button onClick={getLyrics} disabled={lyricsLoading} style={{ padding:'7px 14px', borderRadius:999, border:'none', background:track.color, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', opacity:lyricsLoading?0.6:1, display:'flex', alignItems:'center', gap:6, flexShrink:0 }}>
+                <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:14 }}>
+                  <button onClick={getLyrics} disabled={lyricsLoading} style={{ padding:'7px 14px', borderRadius:999, border:'none', background:track.color, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', opacity:lyricsLoading?0.6:1, display:'flex', alignItems:'center', gap:6 }}>
                     {lyricsLoading?<><Loader2 size={13} style={{ animation:'spin 1s linear infinite' }}/>Cari...</>:<><Sparkles size={13}/>{lyrics?'Refresh':'Tampilkan Lirik'}</>}
                   </button>
                 </div>
@@ -3766,12 +3743,12 @@ export default function App() {
                 {/* Mood send */}
                 {vibeInput&&!vibeInput.startsWith('✨') ? (
                   <button onClick={()=>{ if(!vibeLoading) searchVibe(); }} disabled={vibeLoading||!vibeInput.trim()}
-                    style={{ width:40, height:40, borderRadius:12, border:'none', background:vibeInput.trim()?track.color:'rgba(255,255,255,0.1)', color:'white', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity:vibeLoading?0.5:1, flexShrink:0, transition:'background 0.2s' }}>
+                    style={{ width:40, height:40, borderRadius:12, border:'none', background:vibeInput.trim()?track.color:'rgba(255,255,255,0.1)', color:'white', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity:vibeLoading?0.5:1, flexShrink:0 }}>
                     {vibeLoading ? <Loader2 size={15} style={{ animation:'spin 1s linear infinite' }}/> : <span style={{fontSize:15}}>🔮</span>}
                   </button>
                 ) : (
                   <button onClick={sendChat} disabled={chatLoading||!input.trim()}
-                    style={{ width:40, height:40, borderRadius:12, border:'none', background:input.trim()?track.color:'rgba(255,255,255,0.1)', color:'white', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity:chatLoading?0.5:1, flexShrink:0, transition:'background 0.2s' }}>
+                    style={{ width:40, height:40, borderRadius:12, border:'none', background:input.trim()?track.color:'rgba(255,255,255,0.1)', color:'white', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity:chatLoading?0.5:1, flexShrink:0 }}>
                     {chatLoading ? <Loader2 size={15} style={{ animation:'spin 1s linear infinite' }}/> : <Send size={15}/>}
                   </button>
                 )}
@@ -3820,8 +3797,8 @@ export default function App() {
           {/* Tab bar — Stream, Playlist, AI */}
           <nav style={{ display:'flex', alignItems:'center', padding:'6px 8px', paddingBottom:'max(8px,env(safe-area-inset-bottom))' }}>
             {/* Player shortcut button — leftmost, compact */}
-            <button onClick={()=>setTab('player')} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2, padding:'5px 10px', background:'none', border:'none', cursor:'pointer', color:tab==='player'?track.color:'rgba(255,255,255,0.35)', transition:'color 0.2s', flexShrink:0 }}>
-              <div style={{ padding:'3px 10px', borderRadius:999, background:tab==='player'?`${track.color}22`:'transparent', transition:'background 0.2s' }}><Compass size={17}/></div>
+            <button onClick={()=>setTab('player')} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2, padding:'5px 10px', background:'none', border:'none', cursor:'pointer', color:tab==='player'?track.color:'rgba(255,255,255,0.35)', flexShrink:0 }}>
+              <div style={{ padding:'3px 10px', borderRadius:999, background:tab==='player'?`${track.color}22`:'transparent' }}><Compass size={17}/></div>
               <span style={{ fontSize:9, fontWeight:tab==='player'?700:500, letterSpacing:'0.02em' }}>Player</span>
             </button>
             {/* Divider */}
@@ -3830,8 +3807,8 @@ export default function App() {
             {tabs.map(t=>{
               const active=tab===t.id;
               return (
-                <button key={t.id} onClick={()=>setTab(t.id)} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:2, padding:'5px 0', background:'none', border:'none', cursor:'pointer', color:active?track.color:'rgba(255,255,255,0.35)', transition:'color 0.2s' }}>
-                  <div style={{ padding:'3px 12px', borderRadius:999, background:active?`${track.color}22`:'transparent', transition:'background 0.2s' }}>{t.icon}</div>
+                <button key={t.id} onClick={()=>setTab(t.id)} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:2, padding:'5px 0', background:'none', border:'none', cursor:'pointer', color:active?track.color:'rgba(255,255,255,0.35)' }}>
+                  <div style={{ padding:'3px 12px', borderRadius:999, background:active?`${track.color}22`:'transparent' }}>{t.icon}</div>
                   <span style={{ fontSize:9, fontWeight:active?700:500, letterSpacing:'0.02em' }}>{t.label}</span>
                 </button>
               );
@@ -3868,8 +3845,7 @@ export default function App() {
         @keyframes spin20{from{transform:rotate(0)}to{transform:rotate(360deg)}}
         @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
         @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
-        @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes slideUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
+
         @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.6;transform:scale(0.9)}}
         @keyframes twinkle{0%,100%{opacity:0.9}50%{opacity:0.35}}
         @keyframes twinkleB{0%,100%{opacity:0.55}50%{opacity:1}}
