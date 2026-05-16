@@ -25,7 +25,7 @@ const SONGS = [
 //  GOOGLE DRIVE
 // ═══════════════════════════════════════════════════════
 const GOOGLE_CLIENT_ID = '1028346781018-vbeafem60jrt8ctu1k1q07pfk41ejlnn.apps.googleusercontent.com';
-const GOOGLE_SCOPES    = 'https://www.googleapis.com/auth/drive.file profile email';
+const GOOGLE_SCOPES    = 'https://www.googleapis.com/auth/drive.readonly profile email';
 const DRIVE_FOLDER     = 'Starry Night Music';
 const SONG_COLORS = [
   { color:'#3b82f6', bg:'rgba(59,130,246,0.15)' },  { color:'#a855f7', bg:'rgba(168,85,247,0.15)' },
@@ -70,7 +70,11 @@ const SLEEP_OPTIONS = [
 // ═══════════════════════════════════════════════════════
 //  AI
 // ═══════════════════════════════════════════════════════
-const API_KEYS = ["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"];
+const API_KEYS = [
+  import.meta.env.VITE_OPENROUTER_KEY_1,
+  import.meta.env.VITE_OPENROUTER_KEY_2,
+  import.meta.env.VITE_OPENROUTER_KEY_3,
+].filter(k => k && !k.includes('undefined'));
 const FREE_MODELS = [
   "deepseek/deepseek-chat-v3-0324:free","meta-llama/llama-4-maverick:free",
   "deepseek/deepseek-r1:free","qwen/qwen3-235b-a22b:free",
@@ -103,28 +107,88 @@ const hasKey = () => API_KEYS.some(k => k && !k.includes('GANTI_KEY'));
 // ═══════════════════════════════════════════════════════
 //  GOOGLE DRIVE HELPERS
 // ═══════════════════════════════════════════════════════
-async function driveGetFolderId(token) {
-  const q = encodeURIComponent(`name='${DRIVE_FOLDER}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
-  const res  = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)`, { headers:{ Authorization:`Bearer ${token}` } });
-  const data = await res.json();
-  if (data.files?.length>0) return data.files[0].id;
-  const c = await fetch('https://www.googleapis.com/drive/v3/files',{ method:'POST', headers:{ Authorization:`Bearer ${token}`,'Content-Type':'application/json' }, body:JSON.stringify({ name:DRIVE_FOLDER, mimeType:'application/vnd.google-apps.folder' }) });
-  return (await c.json()).id;
-}
-async function driveListSongs(token) {
-  const fid  = await driveGetFolderId(token);
-  const q    = encodeURIComponent(`'${fid}' in parents and mimeType contains 'audio' and trashed=false`);
-  const res  = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,appProperties,mimeType)&pageSize=100`, { headers:{ Authorization:`Bearer ${token}` } });
-  const data = await res.json();
-  return (data.files||[]).map(f => {
-    const ap=f.appProperties||{}, clr=ap.color||randItem(SONG_COLORS).color;
-    return { id:`drive_${f.id}`, driveId:f.id, title:ap.title||f.name.replace(/\.[^/.]+$/,''), artist:ap.artist||'Unknown', album:ap.album||'My Songs', cover:ap.cover||randItem(COVERS), color:clr, bg:ap.bg||'rgba(99,102,241,0.15)', mood:'personal, custom', isDrive:true, src:null };
+// Cache list Drive agar tidak re-fetch setiap login
+const _driveCache = { token: null, songs: null, ts: 0 };
+const DRIVE_CACHE_TTL = 5 * 60 * 1000; // 5 menit
+
+// Ambil semua file audio di seluruh Drive dengan pagination + cache
+async function driveListSongs(token, forceRefresh = false) {
+  const now = Date.now();
+  if (!forceRefresh && _driveCache.token === token && _driveCache.songs
+      && (now - _driveCache.ts) < DRIVE_CACHE_TTL) {
+    return _driveCache.songs;
+  }
+  // Fetch semua halaman secara parallel setelah halaman pertama
+  const fields = 'nextPageToken,files(id,name,mimeType,appProperties,size)';
+  const makeUrl = (pt) => {
+    const q = encodeURIComponent(`mimeType contains 'audio/' and trashed=false`);
+    return `https://www.googleapis.com/drive/v3/files?q=${q}&fields=${fields}&pageSize=1000&orderBy=name${pt?'&pageToken='+pt:''}`;
+  };
+  const headers = { Authorization: `Bearer ${token}` };
+  // Ambil halaman pertama
+  const first = await fetch(makeUrl(''), { headers });
+  if (!first.ok) throw new Error(`Drive list error ${first.status}`);
+  const firstData = await first.json();
+  let allFiles = [...(firstData.files || [])];
+  // Jika ada halaman berikutnya, fetch semua sekaligus (parallel)
+  if (firstData.nextPageToken) {
+    let tokens = [firstData.nextPageToken];
+    while (tokens.length) {
+      const pages = await Promise.all(
+        tokens.map(pt => fetch(makeUrl(pt), { headers }).then(r => r.json()))
+      );
+      tokens = [];
+      pages.forEach(p => {
+        allFiles = allFiles.concat(p.files || []);
+        if (p.nextPageToken) tokens.push(p.nextPageToken);
+      });
+    }
+  }
+  const songs = allFiles.map(f => {
+    const ap  = f.appProperties || {};
+    const ci  = randItem(SONG_COLORS);
+    return {
+      id:     `drive_${f.id}`,
+      driveId: f.id,
+      title:  ap.title  || f.name.replace(/\.[^/.]+$/, ''),
+      artist: ap.artist || 'Unknown',
+      album:  ap.album  || 'Google Drive',
+      cover:  ap.cover  || randItem(COVERS),
+      color:  ap.color  || ci.color,
+      bg:     ap.bg     || ci.bg,
+      mood:   'personal, custom',
+      isDrive: true,
+      src: null,
+    };
   });
+  _driveCache.token = token;
+  _driveCache.songs = songs;
+  _driveCache.ts    = now;
+  return songs;
 }
+// Stream langsung pakai URL (tidak perlu download blob dulu — jauh lebih cepat)
+// Cache blob URLs agar tidak download ulang lagu yang sama
+const _blobCache = new Map();
+
 async function driveStreamBlob(driveId, token) {
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${driveId}?alt=media`, { headers:{ Authorization:`Bearer ${token}` } });
+  if (_blobCache.has(driveId)) return _blobCache.get(driveId);
+  // Fetch dengan streaming — tidak tunggu seluruh file
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${driveId}?alt=media&acknowledgeAbuse=true`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
   if (!res.ok) throw new Error(`Drive ${res.status}`);
-  return URL.createObjectURL(await res.blob());
+  // Buat blob dari stream agar audio bisa langsung mulai
+  const blob = await res.blob();
+  const url  = URL.createObjectURL(blob);
+  _blobCache.set(driveId, url);
+  return url;
+}
+
+// Pre-fetch lagu berikutnya di background agar instant saat diklik
+async function drivePrefetch(driveId, token) {
+  if (!driveId || _blobCache.has(driveId)) return;
+  try { await driveStreamBlob(driveId, token); } catch { /* silent fail */ }
 }
 async function driveUploadSong(file, meta, token) {
   const folderId=await driveGetFolderId(token), ci=randItem(SONG_COLORS), cover=randItem(COVERS);
@@ -622,17 +686,18 @@ export default function App() {
 
   // ── Audio init
   useEffect(() => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio(track.src);
-      audioRef.current.volume = volume;
+    const prev = audioRef.current;
+    const wasPlaying = prev && !prev.paused;
+    if (prev) { prev.pause(); prev.src = ''; }
+    const a = new Audio(track.src);
+    a.volume = muted ? 0 : volume;
+    a.preload = 'auto';
+    audioRef.current = a;
+    if (wasPlaying) {
+      a.play().catch(e => { console.warn('autoplay blocked:', e); setPlaying(false); });
     }
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
-  }, []);
+    return () => { a.pause(); a.src = ''; };
+  }, [track.src]);
 
   // ── Init Web Audio API (EQ + crossfade gain)
   const ensureAudioCtx = useCallback(() => {
@@ -692,11 +757,18 @@ export default function App() {
   // ── Chat scroll
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior:'smooth' }); }, [messages]);
 
-  // ── Track history
+  // ── Track history + prefetch lagu berikutnya
   useEffect(() => {
     setHistory(prev => { const f=prev.filter(s=>s.id!==track.id); return [track,...f].slice(0,15); });
     setLyrics(''); setInsight('');
-  }, [track.id]);
+    // Prefetch lagu berikutnya di background
+    const allSongs = [...SONGS, ...customSongs];
+    const idx = allSongs.findIndex(s => s.id === track.id);
+    const next = allSongs[(idx + 1) % allSongs.length];
+    if (next?.isDrive && next?.driveId && tokenRef.current) {
+      drivePrefetch(next.driveId, tokenRef.current);
+    }
+  }, [track.id, customSongs]);
 
   // ── Sleep timer cleanup
   useEffect(() => () => { if (sleepIntervalRef.current) clearInterval(sleepIntervalRef.current); }, []);
@@ -856,7 +928,7 @@ export default function App() {
         try {
           const u=await (await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{ headers:{ Authorization:`Bearer ${tok}` } })).json();
           setGoogleUser(u); setDriveError(''); setLoadingDrive(true);
-          setCustomSongs(await driveListSongs(tok)); setLoadingDrive(false);
+          setCustomSongs(await driveListSongs(tok, true)); setLoadingDrive(false);
         } catch(e) { setDriveError('Gagal memuat Drive: '+e.message); setLoadingDrive(false); }
       }
     });
@@ -1059,9 +1131,16 @@ export default function App() {
                   <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.15em', marginTop:10, marginBottom:4, display:'flex', alignItems:'center', gap:6 }}>
                     <Cloud size={11}/>Lagu Saya ({filteredCustom.length})
                     {loadingDrive&&<Loader2 size={11} style={{ animation:'spin 1s linear infinite', color:track.color }}/>}
+                    {!loadingDrive&&googleUser&&(
+                      <button onClick={async()=>{ setLoadingDrive(true); try{ setCustomSongs(await driveListSongs(tokenRef.current,true)); }catch(e){ setDriveError('Gagal refresh: '+e.message); } setLoadingDrive(false); }}
+                        title="Refresh daftar lagu dari Drive"
+                        style={{ marginLeft:'auto', background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.35)', display:'flex', alignItems:'center', gap:3, fontSize:10, padding:'2px 6px', borderRadius:6 }}>
+                        ↺ Refresh
+                      </button>
+                    )}
                   </div>
-                  {loadingDrive&&filteredCustom.length===0&&<div style={{ textAlign:'center', padding:16, color:'rgba(255,255,255,0.3)', fontSize:12 }}>Memuat dari Drive…</div>}
-                  {!loadingDrive&&filteredCustom.length===0&&googleUser&&<div style={{ padding:'16px', textAlign:'center', background:'rgba(255,255,255,0.02)', borderRadius:12, border:'1px dashed rgba(255,255,255,0.1)' }}><Cloud size={22} style={{ color:'rgba(255,255,255,0.12)', margin:'0 auto 8px', display:'block' }}/><div style={{ fontSize:12, color:'rgba(255,255,255,0.3)' }}>Belum ada lagu di Drive</div></div>}
+                  {loadingDrive&&filteredCustom.length===0&&<div style={{ textAlign:'center', padding:16, color:'rgba(255,255,255,0.3)', fontSize:12 }}>Memuat dari Drive… (musik yang sudah ada di folder juga akan muncul)</div>}
+                  {!loadingDrive&&filteredCustom.length===0&&googleUser&&<div style={{ padding:'16px', textAlign:'center', background:'rgba(255,255,255,0.02)', borderRadius:12, border:'1px dashed rgba(255,255,255,0.1)' }}><Cloud size={22} style={{ color:'rgba(255,255,255,0.12)', margin:'0 auto 8px', display:'block' }}/><div style={{ fontSize:12, color:'rgba(255,255,255,0.3)' }}>Belum ada lagu audio di Google Drive</div><div style={{ fontSize:10, color:'rgba(255,255,255,0.2)', marginTop:4 }}>Coba tekan ↺ Refresh di atas</div></div>}
                   {filteredCustom.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} play={play} isDrive onRemove={id=>setCustomSongs(p=>p.filter(x=>x.id!==id))} playlists={playlists} addToPlaylist={addToPlaylist}/>)}
                 </>
               )}
