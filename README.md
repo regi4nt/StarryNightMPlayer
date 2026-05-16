@@ -1,8 +1,12 @@
 # 🌌 Starry Night Music Player
 
-A space-themed music player built with React, Vite, and Tailwind CSS — featuring an AI-powered Cosmic Navigator powered by Claude.
+A space-themed music player built with **React + Vite + Tailwind CSS** — powered by Claude AI (Anthropic).
 
-![Cosmic Music Player](https://images.unsplash.com/photo-1464802686167-b939a6910659?w=1200&h=400&fit=crop)
+![Starry Night Music Player](https://images.unsplash.com/photo-1464802686167-b939a6910659?w=1200&h=400&fit=crop)
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/YOUR_USERNAME/starry-night-mplayer&env=VITE_ANTHROPIC_API_KEY&envDescription=Get%20your%20key%20at%20console.anthropic.com&project-name=starry-night-mplayer)
+
+---
 
 ## ✨ Features
 
@@ -12,160 +16,156 @@ A space-themed music player built with React, Vite, and Tailwind CSS — featuri
 - 🤖 Cosmic Navigator chat assistant
 - 🌌 Animated starfield background
 - 📱 Fully responsive (mobile & desktop)
+- ⚡ PWA-ready (installable on mobile)
+- 🚀 Auto-deploy via GitHub Actions → Vercel
 
-## 🚀 Quick Start
+---
 
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/YOUR_USERNAME/cosmic-music-player.git
-cd cosmic-music-player
-```
-
-### 2. Install dependencies
+## 🚀 Quick Start (Local Dev)
 
 ```bash
+# 1. Clone
+git clone https://github.com/YOUR_USERNAME/starry-night-mplayer.git
+cd starry-night-mplayer
+
+# 2. Install
 npm install
-```
 
-### 3. Set up environment variables
-
-```bash
+# 3. Set up env vars
 cp .env.example .env.local
-```
+# Edit .env.local dan paste Anthropic API key kamu
 
-Edit `.env.local` and add your Anthropic API key:
-
-```env
-VITE_ANTHROPIC_API_KEY=sk-ant-your-key-here
-```
-
-Get your API key at [console.anthropic.com](https://console.anthropic.com/)
-
-### 4. Run locally
-
-```bash
+# 4. Run
 npm run dev
+# Buka http://localhost:5173
 ```
 
-Open [http://localhost:5173](http://localhost:5173)
+---
 
-## 🌐 Deploy to Vercel
+## 🌐 Deploy: GitHub + Vercel (Auto CI/CD)
 
-### Option A — Vercel CLI (fastest)
+Proyek ini sudah dilengkapi GitHub Actions workflow yang **otomatis deploy ke Vercel** setiap push ke `main`.
 
-```bash
-npm install -g vercel
-vercel
-```
-
-Follow the prompts, then add your environment variable:
-
-```bash
-vercel env add VITE_ANTHROPIC_API_KEY
-```
-
-Redeploy:
-
-```bash
-vercel --prod
-```
-
-### Option B — GitHub + Vercel Dashboard
-
-1. **Push to GitHub:**
+### Step 1 — Push ke GitHub
 
 ```bash
 git init
 git add .
-git commit -m "feat: initial cosmic music player"
-git remote add origin https://github.com/YOUR_USERNAME/cosmic-music-player.git
+git commit -m "feat: initial starry night mplayer"
+git branch -M main
+git remote add origin https://github.com/YOUR_USERNAME/starry-night-mplayer.git
 git push -u origin main
 ```
 
-2. **Import to Vercel:**
-   - Go to [vercel.com/new](https://vercel.com/new)
-   - Click **"Import Git Repository"**
-   - Select your `cosmic-music-player` repo
-   - Click **"Deploy"**
+### Step 2 — Connect ke Vercel
 
-3. **Add Environment Variable:**
-   - Go to your project → **Settings** → **Environment Variables**
-   - Add: `VITE_ANTHROPIC_API_KEY` = `your_api_key`
-   - Click **Save** then **Redeploy**
+1. Buka [vercel.com/new](https://vercel.com/new)
+2. Klik **"Import Git Repository"** → pilih repo kamu
+3. Di bagian **Environment Variables**, tambahkan:
+   ```
+   VITE_ANTHROPIC_API_KEY = sk-ant-your-key-here
+   ```
+4. Klik **Deploy** ✅
+
+### Step 3 — Tambah GitHub Secrets (untuk CI/CD workflow)
+
+Di GitHub repo → **Settings → Secrets and variables → Actions**, tambahkan:
+
+| Secret | Cara dapat |
+|---|---|
+| `VERCEL_TOKEN` | [vercel.com/account/tokens](https://vercel.com/account/tokens) |
+| `VERCEL_ORG_ID` | Jalankan `vercel` CLI sekali → cek `.vercel/project.json` |
+| `VERCEL_PROJECT_ID` | File `.vercel/project.json` yang sama |
+| `VITE_ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com/) |
+
+### Step 4 — Selesai! 🎉
+
+Mulai sekarang:
+- Push ke `main` → **auto-deploy ke production**
+- Buka Pull Request → **auto-deploy preview URL** (di-comment di PR)
+
+---
 
 ## 🔧 Tech Stack
 
 | Layer | Technology |
-|-------|-----------|
+|---|---|
 | Framework | React 18 |
 | Build Tool | Vite 5 |
 | Styling | Tailwind CSS 3 |
 | Icons | Lucide React |
 | AI | Anthropic Claude API |
+| CI/CD | GitHub Actions |
 | Deployment | Vercel |
+| PWA | vite-plugin-pwa + Workbox |
+
+---
 
 ## 📁 Project Structure
 
 ```
-cosmic-music-player/
+starry-night-mplayer/
+├── .github/
+│   └── workflows/
+│       └── deploy.yml      # Auto-deploy ke Vercel saat push
 ├── public/
-│   └── favicon.svg
+│   ├── favicon.svg
+│   ├── icon-192.png
+│   └── icon-512.png
 ├── src/
-│   ├── App.jsx         # Main application component
-│   ├── index.css       # Global styles + animations
-│   └── main.jsx        # React entry point
-├── .env.example        # Environment variables template
+│   ├── App.jsx             # Komponen utama
+│   ├── index.css           # Global styles + animasi
+│   └── main.jsx            # React entry point
+├── .env.example            # ← Copy ke .env.local & isi key
 ├── .gitignore
-├── index.html          # HTML entry point
+├── index.html
 ├── package.json
 ├── postcss.config.js
 ├── tailwind.config.js
-├── vercel.json         # Vercel SPA routing config
-└── vite.config.js
+├── vercel.json             # SPA routing + cache headers
+└── vite.config.js          # Vite + PWA config
 ```
 
-## 🎨 Customization
+---
 
-### Adding tracks
+## 🎨 Kustomisasi
 
-Edit the `SONGS_DATA` array in `src/App.jsx`:
+### Menambah lagu
+
+Edit array `SONGS_DATA` di `src/App.jsx`:
 
 ```js
 {
   id: 5,
-  title: "Your Track Title",
-  artist: "Artist Name",
-  cover: "https://your-image-url.jpg",
-  src: "https://your-audio-url.mp3",
-  accent: "#ff6b6b",           // Progress ring color
-  nebula: "from-red-900/40",   // Background gradient class
-  mood: "energetic, upbeat"    // Used for AI insights
+  title: "Judul Lagu",
+  artist: "Nama Artist",
+  cover: "https://url-gambar.jpg",
+  src: "https://url-audio.mp3",
+  accent: "#ff6b6b",
+  nebula: "from-red-900/40",
+  mood: "energetic, upbeat"
 }
 ```
 
-### Changing the AI model
+---
 
-In `src/App.jsx`, find `askClaude()` and change:
-
-```js
-model: "claude-sonnet-4-20250514"
-// to any Claude model you prefer
-```
-
-## 📝 Scripts
+## 📝 NPM Scripts
 
 ```bash
-npm run dev      # Start development server
-npm run build    # Build for production
-npm run preview  # Preview production build
-npm run lint     # Run ESLint
+npm run dev      # Dev server (localhost:5173)
+npm run build    # Build production → /dist
+npm run preview  # Preview build lokal
+npm run lint     # ESLint
 ```
 
-## ⚠️ Notes
+---
 
-- **CORS**: The Anthropic API is called directly from the browser. This works for personal/demo projects. For production apps, consider proxying through a backend or Vercel Edge Function to protect your API key.
-- **Audio**: Sample tracks are from SoundHelix. Replace with your own MP3 sources as needed.
+## ⚠️ Catatan
+
+- **API Key**: Key Anthropic dipanggil langsung dari browser (prefix `VITE_` = publik). Aman untuk demo. Untuk produksi, pertimbangkan proxy via [Vercel Edge Function](https://vercel.com/docs/functions/edge-functions).
+- **Audio**: Sample lagu dari SoundHelix. Ganti dengan URL MP3 kamu sendiri.
+
+---
 
 ## 📄 License
 
