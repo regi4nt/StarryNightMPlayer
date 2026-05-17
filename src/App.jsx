@@ -2928,6 +2928,7 @@ export default function App() {
   const shuffleRef    = useRef(shuffle);
   const repeatRef     = useRef(repeat);
   const goNextRef     = useRef(null); // avoids stale closure in onEnd
+  const ytNextRef     = useRef(null); // avoids stale closure in YT onStateChange
   const audioCtxRef   = useRef(null);
   const eqNodesRef    = useRef([]);
   const masterGainRef = useRef(null);
@@ -3143,11 +3144,11 @@ export default function App() {
         // Fullscreen: maximize ring for both orientations
         if (isLandscape) {
           // Landscape fullscreen: ring limited by height, leave room for controls on the right
-          const size = Math.min(vw * 0.45, vh - 120);
-          setRingSize(Math.max(160, Math.min(420, size)));
+          const size = Math.min(vw * 0.42, vh - 80);
+          setRingSize(Math.max(140, Math.min(380, size)));
         } else {
           // Portrait fullscreen: centered, leave room for controls below
-          const size = Math.min(vw - 48, vh - 260);
+          const size = Math.min(vw - 48, vh - 240);
           setRingSize(Math.max(180, Math.min(480, size)));
         }
         return;
@@ -3198,25 +3199,20 @@ export default function App() {
         const mainH = vh - 44; // minus header
         // Ring column takes ~42% of mainW; remaining is info+controls
         const ringColW = Math.round(mainW * 0.42);
-        const infoColW = mainW - ringColW - 24; // 24 = gap
-        // Ring limited by both column width and available height (minus some padding)
-        const byH = mainH - 24;
-        const ring = Math.max(110, Math.min(190, Math.min(byH, ringColW - 12)));
+        // Ring limited by both column width and available height (no extra padding)
+        const byH = mainH - 8; // minimal vertical padding
+        const ring = Math.max(100, Math.min(170, Math.min(byH, ringColW - 8)));
         setRingSize(ring);
-        // Vertical space remaining in info column (rough): mainH - title~36 - artist~20 - controls~44 - volume~28 - actions~34 - gaps~16
-        const infoReserved = 36 + 20 + 44 + 28 + 34 + 16;
-        const infoSpare = Math.max(0, mainH - infoReserved);
-        const iu = Math.round(infoSpare / 5);
-        const clampI = (min, max) => `${Math.max(min, Math.min(max, iu))}px`;
+        // Minimal margins — landscape must fit without scrolling
         setLayoutVars({
-          playerPad: '4px 12px 6px',
-          trackTitleSize: `clamp(13px,${Math.round(infoColW * 0.07)}px,18px)`,
-          artistSize: '11px',
-          controlsGap: '12px',
-          actionPad: `${clampI(4, 8)} 0`,
-          volumeMt: clampI(3, 8),
-          controlsMt: clampI(4, 10),
-          infoMt: clampI(3, 8),
+          playerPad: '2px 8px 2px',
+          trackTitleSize: `clamp(12px,${Math.round((mainW - ringColW) * 0.07)}px,16px)`,
+          artistSize: '10px',
+          controlsGap: '10px',
+          actionPad: '3px 0',
+          volumeMt: '2px',
+          controlsMt: '3px',
+          infoMt: '2px',
         });
       } else {
         // Portrait: full-width stacked
@@ -3227,21 +3223,21 @@ export default function App() {
         const byW = vw - 40;
         const ring = Math.max(150, Math.min(270, Math.min(byH, byW)));
         setRingSize(ring);
-        // Distribute remaining space evenly as padding/margins
+        // Distribute remaining space tightly — divide by 14 to avoid excess gaps
         const spare = Math.max(0, vh - fixed - ring);
-        const u = Math.round(spare / 8);
+        const u = Math.round(spare / 14);
         const clampPx = (min, max) => `${Math.max(min, Math.min(max, u))}px`;
-        const vpadTop = Math.max(4, Math.min(14, u));
-        const vpadBot = Math.max(2, Math.min(8, Math.floor(u * 0.6)));
+        const vpadTop = Math.max(2, Math.min(8, u));
+        const vpadBot = Math.max(1, Math.min(4, Math.floor(u * 0.5)));
         setLayoutVars({
           playerPad: `${vpadTop}px 16px ${vpadBot}px`,
           trackTitleSize: vw >= 390 ? '16px' : '14px',
           artistSize: '11px',
           controlsGap: vw >= 390 ? '14px' : '10px',
-          actionPad: `${clampPx(5, 10)} 0`,
-          volumeMt: clampPx(4, 12),
-          controlsMt: clampPx(6, 16),
-          infoMt: clampPx(4, 12),
+          actionPad: `${clampPx(4, 8)} 0`,
+          volumeMt: clampPx(3, 8),
+          controlsMt: clampPx(4, 10),
+          infoMt: clampPx(3, 8),
         });
       }
     };
@@ -3390,7 +3386,7 @@ export default function App() {
             setTimeout(() => {
               try { ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'command', func:'playVideo', args:'' }), '*'); } catch(_) {}
             }, 200);
-          } else { setTimeout(ytNext, 600); }
+          } else { setTimeout(() => { if (ytNextRef.current) ytNextRef.current(); }, 600); }
         }
       } catch(_) {}
     };
@@ -3400,7 +3396,7 @@ export default function App() {
       try { ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'listening' }), '*'); } catch(_) {}
     }, 800);
     return () => { window.removeEventListener('message', handler); clearInterval(poll); };
-  }, [embedTrack, seekYt, ytNext]);
+  }, [embedTrack, seekYt]);
 
   // ── Chat scroll
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior:'smooth' }); }, [messages]);
@@ -3655,6 +3651,7 @@ export default function App() {
 
   // Keep goNextRef always pointing to latest goNext
   useEffect(() => { goNextRef.current = goNext; }, [goNext]);
+  useEffect(() => { ytNextRef.current = ytNext; }, [ytNext]);
 
   const goPrev = useCallback(() => {
     if (progress > 3) { if(audioRef.current){audioRef.current.currentTime=0;setProgress(0);} return; }
@@ -4353,17 +4350,18 @@ export default function App() {
 
           <div style={{
             minHeight: fullscreen ? '100%' : undefined,
-            height: fullscreen ? '100%' : undefined,
+            height: fullscreen ? '100%' : (layoutMode === 'mobile-landscape' ? '100%' : undefined),
             display: 'flex',
             flexDirection: (layoutMode === 'mobile-landscape' || (fullscreen && window.innerWidth > window.innerHeight)) ? 'row' : 'column',
             alignItems: 'center',
             justifyContent: fullscreen
               ? (window.innerWidth > window.innerHeight ? 'center' : 'space-evenly')
-              : layoutMode === 'mobile-landscape' ? 'flex-start' : 'center',
-            padding: fullscreen ? '10px 20px 14px' : layoutVars.playerPad,
+              : layoutMode === 'mobile-landscape' ? 'flex-start' : 'flex-start',
+            padding: fullscreen ? '6px 20px 8px' : layoutVars.playerPad,
             position: 'relative',
             boxSizing: 'border-box',
-            gap: (layoutMode === 'mobile-landscape' || (fullscreen && window.innerWidth > window.innerHeight)) ? '18px' : 0,
+            overflow: 'hidden',
+            gap: (layoutMode === 'mobile-landscape' || (fullscreen && window.innerWidth > window.innerHeight)) ? '12px' : 0,
           }}>
 
             {/* ── JAM — pojok kiri atas area player (desktop only) */}
@@ -4688,24 +4686,6 @@ export default function App() {
                                       <button onClick={e => { e.stopPropagation(); openNewTab(`https://www.youtube.com/watch?v=${v.videoId}`); }}
                                         title="Buka di YouTube"
                                         style={{ background:'none', border:`1px solid ${platform.color}40`, borderRadius:6, color:platform.color, fontSize:10, fontWeight:700, padding:'3px 7px', cursor:'pointer', flexShrink:0, lineHeight:1.2 }}>↗</button>
-                                      {/* Heart — like & save to Favorit */}
-                                      {(() => {
-                                        const ytId = `yt_${v.videoId}`;
-                                        const isLiked = !!liked[ytId];
-                                        const likeYtResult = (e) => {
-                                          e.stopPropagation();
-                                          const nowLiked = !isLiked;
-                                          setLiked(l => ({ ...l, [ytId]: nowLiked }));
-                                          updateFavPlaylist(ytId, nowLiked);
-                                          setYtSongs(prev => {
-                                            if (prev.find(s => s.id === ytId)) return nowLiked ? prev : prev.filter(s => s.id !== ytId);
-                                            if (!nowLiked) return prev;
-                                            return [...prev, { id:ytId, type:'youtube', videoId:v.videoId, title:v.title, artist:v.uploaderName||v.author||'YouTube', album:'YouTube', cover:v.thumbnail||v.thumbnails?.[0]?.url||'', src:'', color:'#ff4444', bg:'rgba(255,68,68,0.15)', mood:'youtube', thumbnail:v.thumbnail||v.thumbnails?.[0]?.url||'', duration:v.duration||0 }];
-                                          });
-                                        };
-                                        return <button onClick={likeYtResult} title={isLiked?(t?.removeFromFav||'Remove from Favorites'):(t?.saveFav||'Save to Favorites')} style={{ background:'none', border:'none', cursor:'pointer', flexShrink:0, padding:'2px 3px', color:isLiked?'#f472b6':'rgba(255,255,255,0.2)' }}><Heart size={12} fill={isLiked?'#f472b6':'none'}/></button>;
-                                      })()}
-                                      <Play onClick={() => playYouTube(v, results, vi)} size={13} style={{ color:platform.color, flexShrink:0, opacity:0.6, cursor:'pointer' }}/>
                                     </div>
                                   );
                                 })}
@@ -4758,13 +4738,7 @@ export default function App() {
                                         <div style={{ fontSize:12, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'rgba(255,255,255,0.9)' }}>{t.title}</div>
                                         <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{t.artist}{t.duration ? ` · ${mins}:${secs}` : ''}</div>
                                       </div>
-                                      {/* Heart — like SC track */}
-                                      {(() => {
-                                        const scId = `sc_${t.id}`;
-                                        const isLiked = !!liked[scId];
-                                        const scSongObj = { id:scId, type:'soundcloud', title:t.title, artist:t.artist, album:'SoundCloud', cover:t.cover||'', src:t.permalinkUrl||'', color:'#ff5500', bg:'rgba(255,85,0,0.15)', mood:'soundcloud', permalink:t.permalinkUrl };
-                                        return <button onClick={e=>{e.stopPropagation();toggleFav(scId,scSongObj);}} title={isLiked?(t?.removeFromFav||'Remove from Favorites'):(t?.saveFav||'Save to Favorites')} style={{ background:'none', border:'none', cursor:'pointer', flexShrink:0, padding:'2px 3px', color:isLiked?'#f472b6':'rgba(255,255,255,0.2)' }}><Heart size={12} fill={isLiked?'#f472b6':'none'}/></button>;
-                                      })()}
+
                                     </div>
                                   );
                                 })}
@@ -4873,13 +4847,7 @@ export default function App() {
                                       <button onClick={e => { e.stopPropagation(); const q = `${t.title} ${t.artist}`; setYtQuery(p=>({...p,'ytmusic':q})); setTimeout(()=>{ searchYouTube('ytmusic', q); }, 100); }}
                                         title={t?.searchYtTitle||"Search on YouTube"}
                                         style={{ background:'none', border:`1px solid ${platform.color}40`, borderRadius:6, color:platform.color, fontSize:10, fontWeight:700, padding:'3px 7px', cursor:'pointer', flexShrink:0, lineHeight:1.2 }}>▶ YT</button>
-                                      {/* Heart — like Spotify track */}
-                                      {(() => {
-                                        const spId = `sp_${t.id}`;
-                                        const isLiked = !!liked[spId];
-                                        const spSongObj = { id:spId, type:'spotify', title:t.title, artist:t.artist, album:t.album||'Spotify', cover:t.cover||'', src:t.previewUrl||'', color:'#1DB954', bg:'rgba(29,185,84,0.15)', mood:'spotify', spotifyUrl:t.spotifyUrl };
-                                        return <button onClick={e=>{e.stopPropagation();toggleFav(spId,spSongObj);}} title={isLiked?(t?.removeFromFav||'Remove from Favorites'):(t?.saveFav||'Save to Favorites')} style={{ background:'none', border:'none', cursor:'pointer', flexShrink:0, padding:'2px 3px', color:isLiked?'#f472b6':'rgba(255,255,255,0.2)' }}><Heart size={12} fill={isLiked?'#f472b6':'none'}/></button>;
-                                      })()}
+
                                     </div>
                                   );
                                 })}
@@ -5151,14 +5119,7 @@ export default function App() {
                                               {!isTesting && <span style={{ color:'#4ade80', fontWeight:700 }}>● tersedia</span>}
                                             </div>
                                           </div>
-                                          {/* Heart — like radio station */}
-                                          {!isTesting && (() => {
-                                            const radioId = `radio_${station.id}`;
-                                            const isLiked = !!liked[radioId];
-                                            const stationColor = selGenre.color || '#f59e0b';
-                                            const radioSongObj = { id:radioId, title:station.name, artist:station.city+' · Live Radio', album:'Live Radio', cover:'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop', src:station.url, color:stationColor, bg:`rgba(245,158,11,0.15)`, mood:'live, radio', isRadio:true };
-                                            return <button onClick={e=>{e.stopPropagation();toggleFav(radioId,radioSongObj);}} title={isLiked?(t?.removeFromFav||'Remove from Favorites'):(t?.saveFav||'Save to Favorites')} style={{ background:'none', border:'none', cursor:'pointer', flexShrink:0, padding:'2px 4px', color:isLiked?'#f472b6':'rgba(255,255,255,0.2)' }}><Heart size={12} fill={isLiked?'#f472b6':'none'}/></button>;
-                                          })()}
+
                                           <div style={{ width:26, height:26, borderRadius:'50%', background: isActive && (playing && track.isRadio) ? selGenre.color : 'rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color:'white', flexShrink:0 }}>
                                             {isTesting ? '…' : isActive && (playing && track.isRadio) ? '⏸' : '▶'}
                                           </div>
