@@ -5685,7 +5685,7 @@ export default function App() {
                   value={vibeInput && !vibeInput.startsWith('✨') ? vibeInput : input}
                   onChange={e=>{ const v=e.target.value; if(vibeInput&&!vibeInput.startsWith('✨')) setVibeInput(v); else setInput(v); }}
                   onKeyDown={e=>{ if(e.key==='Enter'){ if(vibeInput&&!vibeInput.startsWith('✨')){ if(!vibeLoading) searchVibe(); } else sendChat(); } }}
-                  placeholder={vibeInput&&!vibeInput.startsWith('✨') ? '"{t?.vibeMoodPlaceholder||'"chill", "energetic morning", "sad but beautiful"…'}" : t?.vibeInputPlaceholder||'Ask AI or type a mood…'}
+                  placeholder={vibeInput&&!vibeInput.startsWith('✨') ? (t?.vibeMoodPlaceholder||'"chill", "energetic morning", "sad but beautiful"…') : (t?.vibeInputPlaceholder||'Ask AI or type a mood…')}
                   style={{ flex:1, background:'rgba(255,255,255,0.07)', border:`1px solid rgba(255,255,255,0.12)`, borderRadius:12, padding:'9px 13px', fontSize:13, color:'white', outline:'none' }}/>
                 {/* Mood send */}
                 {vibeInput&&!vibeInput.startsWith('✨') ? (
