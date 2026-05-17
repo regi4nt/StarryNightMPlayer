@@ -2512,6 +2512,11 @@ export default function App() {
   // ── Settings panel
   const [showSettings, setShowSettings] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
+  const fullscreenRef = useRef(false);
+  useEffect(() => {
+    fullscreenRef.current = fullscreen;
+    window.dispatchEvent(new Event('resize')); // re-trigger layout calc
+  }, [fullscreen]);
 
   // ── Queue / search
   const [searchQuery, setSearchQuery]   = useState('');
@@ -2591,6 +2596,11 @@ export default function App() {
   // ── Responsive
   const [ringSize, setRingSize] = useState(260);
   const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= window.innerHeight);
+  const [layoutVars, setLayoutVars] = useState({
+    playerPad: '6px 16px 8px', trackTitleSize: '15px', artistSize: '10px',
+    controlsGap: '10px', actionPad: '6px 0', volumeMt: '6px',
+    controlsMt: '8px', infoMt: '6px',
+  });
 
   // ── Refs
   const audioRef      = useRef(null);
@@ -2796,21 +2806,15 @@ export default function App() {
   }, []);
 
   // ── Unified responsive layout calc (portrait + landscape + desktop)
-  const [layoutVars, setLayoutVars] = useState({
-    playerPad: '6px 16px 8px', trackTitleSize: '15px', artistSize: '10px',
-    controlsGap: '10px', actionPad: '6px 0', volumeMt: '6px',
-    controlsMt: '8px', infoMt: '6px',
-  });
-
   useEffect(() => {
     const calc = () => {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      const isFs = document.fullscreenElement != null;
+      const isFs = document.fullscreenElement != null || fullscreenRef.current;
       const desktop = vw >= vh; // landscape = desktop layout
       setIsDesktop(desktop);
 
-      if (isFs || fullscreen) {
+      if (isFs) {
         // Fullscreen: maximize ring
         const size = Math.min(vw - 48, vh - 280);
         setRingSize(Math.max(200, Math.min(480, size)));
@@ -2865,7 +2869,7 @@ export default function App() {
     calc();
     window.addEventListener('resize', calc);
     return () => window.removeEventListener('resize', calc);
-  }, [fullscreen]); // eslint-disable-line
+  }, []); // eslint-disable-line — fullscreen handled via ref below
 
   // ── Audio init
   useEffect(() => {
