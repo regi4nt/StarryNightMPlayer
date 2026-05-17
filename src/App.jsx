@@ -3137,6 +3137,12 @@ export default function App() {
               <button onClick={()=>setFullscreen(f=>!f)} title={fullscreen?'Keluar Layar Penuh':'Layar Penuh'} style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:'none', border:'none', color:fullscreen?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):'rgba(255,255,255,0.35)' }}>
                 {fullscreen?<Minimize2 size={16}/>:<Maximize2 size={16}/>}
               </button>
+              {/* Tutup embed — hanya muncul saat ada stream aktif */}
+              {embedTrack && (
+                <button onClick={()=>{ closeEmbed(); setShowSettings(false); }} title="Tutup" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:'none', border:'none', color:'#fca5a5' }}>
+                  <X size={16}/>
+                </button>
+              )}
             </div>
 
             {/* YouTube playlist picker — shown when YT track is liked */}
@@ -3380,7 +3386,16 @@ export default function App() {
                                       onMouseEnter={e=>{ if(!isActive) e.currentTarget.style.background='rgba(29,185,84,0.07)'; }}
                                       onMouseLeave={e=>{ if(!isActive) e.currentTarget.style.background='rgba(255,255,255,0.04)'; }}>
                                       {/* Album art + play button */}
-                                      <div style={{ position:'relative', flexShrink:0, cursor:'pointer' }} onClick={() => hasPreview ? playSpotifyPreview(t) : window.open(t.spotifyUrl, '_blank')}>
+                                      <div style={{ position:'relative', flexShrink:0, cursor:'pointer' }} onClick={async () => {
+                                        if (hasPreview) { playSpotifyPreview(t); return; }
+                                        const q = `${t.title} ${t.artist} official audio`;
+                                        setTab('player');
+                                        try {
+                                          let res = await searchViaPiped(q);
+                                          if (!res || !res.length) res = await searchViaInvidious(q);
+                                          if (res && res.length) playYouTube(res[0], res, 0);
+                                        } catch { /* silent */ }
+                                      }}>
                                         <img src={t.cover} alt={t.title} loading="lazy" decoding="async"
                                           style={{ width:36, height:36, borderRadius:6, objectFit:'cover', display:'block' }}
                                           onError={e => { e.target.style.display='none'; }}/>
@@ -3393,7 +3408,16 @@ export default function App() {
                                         </div>
                                       </div>
                                       {/* Title + artist */}
-                                      <div onClick={() => hasPreview ? playSpotifyPreview(t) : window.open(t.spotifyUrl, '_blank')} style={{ flex:1, minWidth:0, cursor:'pointer' }}>
+                                      <div onClick={async () => {
+                                        if (hasPreview) { playSpotifyPreview(t); return; }
+                                        const q = `${t.title} ${t.artist} official audio`;
+                                        setTab('player');
+                                        try {
+                                          let res = await searchViaPiped(q);
+                                          if (!res || !res.length) res = await searchViaInvidious(q);
+                                          if (res && res.length) playYouTube(res[0], res, 0);
+                                        } catch { /* silent */ }
+                                      }} style={{ flex:1, minWidth:0, cursor:'pointer' }}>
                                         <div style={{ fontSize:12, fontWeight:600, color: isActive ? platform.color : 'rgba(255,255,255,0.88)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.title}</div>
                                         <div style={{ fontSize:10, color:'rgba(255,255,255,0.38)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.artist}</div>
                                       </div>
@@ -3972,11 +3996,9 @@ export default function App() {
                               if (!results || results.length === 0) results = await searchViaInvidious(query);
                               if (results && results.length > 0) {
                                 playYouTube(results[0], results, 0);
-                              } else {
-                                window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`, '_blank');
                               }
                             } catch {
-                              window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`, '_blank');
+                              // Tidak buka tab baru — biarkan saja jika gagal
                             }
                           }}
                           style={{ marginTop:6, display:'flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:999, border:`1px solid ${track.color}50`, background:`${track.color}18`, color:track.color, fontSize:11, fontWeight:700, cursor:'pointer' }}>
@@ -4078,34 +4100,6 @@ export default function App() {
               );
             })}
           </nav>
-        </div>
-      )}
-
-      {/* ══ ROOT-LEVEL FLOATING ACTION BUTTON
-           Diletakkan di sini (sibling header & bottom-nav) agar position:fixed
-           tidak terkunci di dalam ancestor overflow:hidden */}
-      {(fullscreen || embedTrack) && (
-        <div style={{
-          position: 'fixed',
-          // Ketika fullscreen: pojok kanan atas penuh. Ketika normal: di bawah header (~52px) + gap.
-          top: fullscreen ? 14 : 54,
-          right: 14,
-          zIndex: 200,
-          display: 'flex',
-          gap: 6,
-        }}>
-          {fullscreen && (
-            <button onClick={()=>setFullscreen(false)}
-              style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 14px', borderRadius:999, border:'1px solid rgba(255,255,255,0.18)', background:'rgba(7,7,26,0.88)', backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)', color:'rgba(255,255,255,0.75)', fontSize:11, fontWeight:700, cursor:'pointer', boxShadow:'0 2px 12px rgba(0,0,0,0.5)' }}>
-              <Minimize2 size={13}/> Keluar
-            </button>
-          )}
-          {!fullscreen && embedTrack && (
-            <button onClick={()=>{ closeEmbed(); setShowSettings(false); }}
-              style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 14px', borderRadius:999, border:'1px solid rgba(255,68,68,0.4)', background:'rgba(7,7,26,0.92)', backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)', color:'#fca5a5', fontSize:11, fontWeight:700, cursor:'pointer', boxShadow:'0 2px 12px rgba(0,0,0,0.5)' }}>
-              <X size={13}/> Tutup Stream
-            </button>
-          )}
         </div>
       )}
 
