@@ -151,6 +151,30 @@ const T = {
     miniPlayerHint: 'Ketuk untuk player',
     deletePlaylistConfirm: 'Hapus playlist ini?',
     googleDnsLabel: 'Google DNS — cepat & stabil',
+    musicCollection: 'Koleksi Musik',
+    recentlyPlayed: 'Baru Dimainkan',
+    playBtn: 'Putar',
+    editBtn: 'Edit',
+    deleteBtn: 'Hapus',
+    playAllBtn: 'Putar Semua',
+    streamingPlatforms: 'Platform Streaming',
+    lyricsTab: 'Lirik',
+    lyricsLiteDisabledTitle: 'Lirik tidak ditemukan',
+    lyricsLiteDisabledMsg: 'Mode Lite aktif — AI generate lirik dinonaktifkan untuk hemat data.\nAktifkan Mode Pro untuk generate lirik dengan AI.',
+    switchToProBtn: '✨ Beralih ke Mode Pro',
+    vibeMoodTitle: '{t?.vibeMoodTitle||'🔮 Mood'}',
+    resetBtn: '× Reset',
+    searchYouTube: 'Cari di YouTube',
+    searchBtn: 'Cari',
+    changeCover: 'Ganti Foto',
+    chooseCover: 'Pilih Foto',
+    deleteCover: 'Hapus Foto',
+    coverApplied: '{t?.coverApplied||'Photo applied to all songs · Saved in browser'}',
+    liteAiDisabled: '⚡ Mode Lite aktif — AI chat dinonaktifkan. Ketuk tombol Lite ⚡ di header untuk beralih ke mode Pro.',
+    liteInsightDisabled: '⚡ Mode Lite aktif — fitur AI dinonaktifkan.',
+    liteVibeDisabled: '⚡ Mode Lite aktif — Vibe Search dinonaktifkan',
+    liteLyricsDisabled: '⚡ Lirik tidak ditemukan di database publik.\n\nMode Lite aktif — AI generate lirik dinonaktifkan untuk hemat data.\n\nAktifkan Mode Pro untuk generate lirik dengan AI.',
+    aiSystemPrompt: 'Kamu Starry AI — teman ngobrol yang hangat, seru, dan serba bisa. Kepribadianmu: santai, friendly, sedikit playful, tapi tetap bisa serius kalau diperlukan. Bahasa Indonesia kasual/gaul, bukan formal. Jawab singkat dan natural (maks 100 kata), jangan kaku seperti chatbot. Kamu bisa ngobrol soal apa saja: musik, cerita harian, perasaan, rekomendasi film/buku/tempat, trivia, jokes, motivasi, atau sekadar temani.',
   },
   en: {
     settings: 'Settings',
@@ -288,8 +312,33 @@ const T = {
     miniPlayerHint: 'Tap for player',
     deletePlaylistConfirm: 'Delete this playlist?',
     googleDnsLabel: 'Google DNS — fast & stable',
+    musicCollection: 'Music Collection',
+    recentlyPlayed: 'Recently Played',
+    playBtn: 'Play',
+    editBtn: 'Edit',
+    deleteBtn: 'Delete',
+    playAllBtn: 'Play All',
+    streamingPlatforms: 'Streaming Platforms',
+    lyricsTab: 'Lyrics',
+    lyricsLiteDisabledTitle: 'Lyrics not found',
+    lyricsLiteDisabledMsg: 'Lite Mode active — AI lyrics generation is disabled to save data.\nEnable Pro Mode to generate lyrics with AI.',
+    switchToProBtn: '✨ Switch to Pro Mode',
+    vibeMoodTitle: '🔮 Mood',
+    resetBtn: '× Reset',
+    searchYouTube: 'Search on YouTube',
+    searchBtn: 'Search',
+    changeCover: 'Change Photo',
+    chooseCover: 'Choose Photo',
+    deleteCover: 'Remove Photo',
+    coverApplied: 'Photo applied to all songs · Saved in browser',
+    liteAiDisabled: '⚡ Lite Mode active — AI chat is disabled. Tap the Lite ⚡ button in the header to switch to Pro Mode.',
+    liteInsightDisabled: '⚡ Lite Mode active — AI features disabled.',
+    liteVibeDisabled: '⚡ Lite Mode active — Vibe Search disabled',
+    liteLyricsDisabled: '⚡ Lyrics not found in public database.\n\nLite Mode active — AI lyrics generation is disabled to save data.\n\nEnable Pro Mode to generate lyrics with AI.',
+    aiSystemPrompt: 'You are Starry AI — a warm, fun, and versatile chat companion. Your personality: relaxed, friendly, a bit playful, but can be serious when needed. Use casual English. Answer briefly and naturally (max 100 words), not like a stiff chatbot. You can talk about anything: music, daily life, feelings, movie/book/place recommendations, trivia, jokes, motivation, or just hang out. Context: the user is listening to',
   },
 };
+
 
 // ═══════════════════════════════════════════════════════
 //  STREAMING PLATFORMS — search & redirect ke platform
@@ -1863,7 +1912,7 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
 // ═══════════════════════════════════════════════════════
 const btn = { background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.5)', padding:8, display:'flex', borderRadius:8 };
 
-function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDrive, isCached, onRemove, playlists, addToPlaylist, isLite }) {
+function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDrive, isCached, onRemove, playlists, addToPlaylist, isLite, t }) {
   const isActive = track.id === s.id;
   const handleHeart = (e) => {
     e.stopPropagation();
@@ -2071,19 +2120,19 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
               />
               <button onClick={() => coverRef.current?.click()}
                 style={{ padding:'9px 14px', borderRadius:12, border:`1px solid ${color}50`, background:`${color}15`, color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-                {globalCover ? 'Ganti Foto' : 'Pilih Foto'}
+                {globalCover ? (t?.changeCover||'Change Photo') : (t?.chooseCover||'Choose Photo')}
               </button>
               {globalCover && (
                 <button onClick={() => { setGlobalCover(''); localStorage.removeItem('sn_global_cover'); }}
                   style={{ padding:'9px 14px', borderRadius:12, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.1)', color:'#fca5a5', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-                  Hapus Foto
+                  {t?.deleteCover||'Remove Photo'}
                 </button>
               )}
             </div>
           </div>
           {globalCover && (
             <div style={{ marginTop:8, fontSize:11, color:'rgba(255,255,255,0.3)', textAlign:'center' }}>
-              Foto ini diterapkan ke semua lagu · Tersimpan di browser
+              {t?.coverApplied||'Photo applied to all songs · Saved in browser'}
             </div>
           )}
         </div>
@@ -2206,8 +2255,8 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
             <span style={{ fontSize:16 }}>📲</span>
             <div>
-              <div style={{ fontWeight:800, fontSize:14 }}>Install Sebagai App</div>
-              <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>Desktop & Mobile — tanpa toko aplikasi</div>
+              <div style={{ fontWeight:800, fontSize:14 }}>{t?.installApp||'Install as App'}</div>
+              <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{t?.installAppDesc||'Desktop & Mobile — no app store needed'}</div>
             </div>
           </div>
           {pwaInstalled ? (
@@ -2220,7 +2269,7 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
             </div>
           ) : pwaPrompt ? (
             <button onClick={installPwa} style={{ width:'100%', padding:'12px 0', borderRadius:14, border:'none', background:'linear-gradient(135deg,#6366f1,#a855f7)', color:'white', fontSize:13, fontWeight:800, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
-              <span style={{ fontSize:16 }}>📲</span>Install Sekarang
+              <span style={{ fontSize:16 }}>📲</span>{t?.installNow||'Install Now'}
             </button>
           ) : (
             <div style={{ padding:'10px 14px', borderRadius:12, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)' }}>
@@ -3746,43 +3795,87 @@ export default function App() {
   const getLyrics = async () => {
     setLL(true);
     setLyrics('');
-    // Use stream info if YouTube/SoundCloud active, otherwise use local track
+
+    // Resolve active track info
     const activeTitle  = embedTrack ? (embedTrack.title  || track.title)  : track.title;
     const activeArtist = embedTrack ? (embedTrack.artist || track.artist) : track.artist;
     const activeMood   = track.mood || '';
-    // Try to fetch real lyrics from lyrics.ovh API first (ringan, aman di Lite mode)
-    try {
-      const artist = encodeURIComponent(activeArtist.replace(/[^\w\s]/gi,'').trim());
-      const title  = encodeURIComponent(activeTitle.replace(/[^\w\s]/gi,'').trim());
+
+    // Helper: clean string for API queries
+    const clean = (s) => s.replace(/\(.*?\)|\[.*?\]|feat\..*|ft\..*|official.*|lyric.*|video.*/gi,'').trim();
+    const cleanTitle  = clean(activeTitle);
+    const cleanArtist = clean(activeArtist);
+
+    // Helper: strip LRC timestamps
+    const stripLRC = (s) => s.replace(/^\[\d+:\d+\.\d+\]\s*/gm, '').trim();
+
+    // ── Source 1: lrclib.net
+    const fetchLrclib = async () => {
+      const q = encodeURIComponent(`${cleanTitle} ${cleanArtist}`);
+      const resp = await fetch(`https://lrclib.net/api/search?q=${q}`);
+      if (!resp.ok) return null;
+      const results = await resp.json();
+      if (!Array.isArray(results) || results.length === 0) return null;
+      const best = results.find(r =>
+        r.plainLyrics && r.plainLyrics.trim().length > 20 &&
+        (r.trackName?.toLowerCase().includes(cleanTitle.toLowerCase().slice(0,8)) ||
+         cleanTitle.toLowerCase().includes((r.trackName||'').toLowerCase().slice(0,8)))
+      ) || results.find(r => r.plainLyrics && r.plainLyrics.trim().length > 20);
+      if (best?.plainLyrics && best.plainLyrics.trim().length > 20) return best.plainLyrics.trim();
+      if (best?.syncedLyrics) { const p = stripLRC(best.syncedLyrics); if (p.length > 20) return p; }
+      return null;
+    };
+
+    // ── Source 2: lyrics.ovh
+    const fetchOvh = async () => {
+      const artist = encodeURIComponent(cleanArtist);
+      const title  = encodeURIComponent(cleanTitle);
       const resp = await fetch(`https://api.lyrics.ovh/v1/${artist}/${title}`);
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data.lyrics && data.lyrics.trim().length > 10) {
-          setLyrics(data.lyrics.trim());
-          setLL(false);
-          return;
-        }
+      if (!resp.ok) return null;
+      const data = await resp.json();
+      return (data.lyrics && data.lyrics.trim().length > 20) ? data.lyrics.trim() : null;
+    };
+
+    // ── Source 3: AI API (Pro mode only)
+    const fetchAI = async () => {
+      if (isLite) return null;
+      const moodCtx = activeMood ? `Mood/genre: ${activeMood}.` : '';
+      const r = await askAI(
+        `You are a lyrics database expert. Your task:\n\nTitle: "${activeTitle}"\nArtist: ${activeArtist}\n${moodCtx}\n\nRULES:\n1. ONLY output lyrics if you are CONFIDENT you know the REAL lyrics of this exact song.\n2. If you are not sure or do not know the real lyrics, reply with exactly: NOT_FOUND\n3. Do NOT invent, guess, or write fake/inspired lyrics. Only real lyrics.\n4. If you output lyrics, use the ORIGINAL language of the song. ALL text must be in Latin alphabet — romanize non-Latin scripts (Korean Hangul → romanized, Japanese → Romaji, Chinese → Pinyin, Arabic → transliteration, etc.)\n5. Format with section tags: [Verse 1], [Pre-Chorus], [Chorus], [Verse 2], [Bridge], [Outro] as appropriate.\n6. Output ONLY the lyrics or NOT_FOUND. No explanation, no intro, no comments.`,
+        'You are a music lyrics expert with a vast database of songs. You either output real verified lyrics (in Latin alphabet) or reply NOT_FOUND. Never invent lyrics.'
+      );
+      if (!r || r.trim().toUpperCase().startsWith('NOT_FOUND') || r.trim().length < 10) return null;
+      return r.trim();
+    };
+
+    // ── Run all 3 sources in parallel (internet + AI simultaneously)
+    try {
+      const [lrclib, ovh, ai] = await Promise.all([
+        fetchLrclib().catch(() => null),
+        fetchOvh().catch(() => null),
+        fetchAI().catch(() => null),
+      ]);
+
+      // Prefer internet sources (more accurate), fallback to AI
+      const result = lrclib || ovh || ai;
+
+      if (result) {
+        setLyrics(result);
+      } else if (isLite) {
+        setLyrics(t?.liteLyricsDisabled||'⚡ Lyrics not found in public database.\n\nLite Mode active — AI lyrics generation is disabled to save data.\n\nEnable Pro Mode to generate lyrics with AI.');
+      } else {
+        setLyrics(t?.lyricsNotFoundResult || 'Lyrics not found');
       }
-    } catch(_) {}
-    // Lite mode: tidak gunakan AI fallback (hemat data)
-    if (isLite) {
-      setLyrics('⚡ Lirik tidak ditemukan di database publik.\n\nMode Lite aktif — AI generate lirik dinonaktifkan untuk hemat data.\n\nAktifkan Mode Pro untuk generate lirik dengan AI.');
-      setLL(false);
-      return;
+    } catch(_) {
+      setLyrics(t?.lyricsNotFoundResult || 'Lyrics not found');
     }
-    // Fallback: generate AI lyrics if real lyrics not found (Pro mode only)
-    const moodCtx = activeMood ? `Mood/vibe: ${activeMood}.` : '';
-    const r = await askAI(
-      `Tulis lirik lagu orisinal yang INDAH dan PUITIS untuk:\nJudul: "${activeTitle}"\nArtis: ${activeArtist}\n${moodCtx}\n\nFormat WAJIB:\n[Verse 1]\n(2-4 baris lirik)\n\n[Pre-Chorus]\n(1-2 baris)\n\n[Chorus]\n(2-4 baris, catchy & memorable)\n\n[Verse 2]\n(2-4 baris)\n\n[Chorus]\n(2-4 baris)\n\n[Bridge]\n(2-3 baris emosional)\n\n[Outro]\n(1-2 baris penutup)\n\nGunakan bahasa Indonesia yang puitis. Maksimal 180 kata.`,
-      'Kamu penulis lirik profesional kelas dunia. Tulis HANYA lirik saja, tanpa intro, penjelasan, atau komentar. Mulai langsung dengan [Verse 1].'
-    );
-    setLyrics(r);
+
     setLL(false);
   };
 
   // ── AI
   const getInsight = async () => {
-    if (isLite) { setInsight('⚡ Mode Lite aktif — fitur AI dinonaktifkan.'); return; }
+    if (isLite) { setInsight(t?.liteInsightDisabled||'⚡ Lite Mode active — AI features disabled.'); return; }
     setIL(true);
     const activeTitle  = embedTrack ? (embedTrack.title  || track.title)  : track.title;
     const activeArtist = embedTrack ? (embedTrack.artist || track.artist) : track.artist;
@@ -3797,20 +3890,20 @@ export default function App() {
     if (!input.trim()) return;
     if (dataSaver) {
       const msg=input; setInput('');
-      setMessages(p=>[...p,{from:'user',text:msg},{from:'ai',text:'⚡ Mode Lite aktif — AI chat dinonaktifkan. Ketuk tombol Lite ⚡ di header untuk beralih ke mode Pro.'}]);
+      setMessages(p=>[...p,{from:'user',text:msg},{from:'ai',text:t?.liteAiDisabled||'⚡ Lite Mode active — AI chat is disabled. Tap the Lite ⚡ button in the header to switch to Pro Mode.'}]);
       return;
     }
     const msg=input; setInput(''); setMessages(p=>[...p,{from:'user',text:msg}]); setCL(true);
     const r = await askAI(
       msg,
-      `Kamu Starry AI — teman ngobrol yang hangat, seru, dan serba bisa. Kepribadianmu: santai, friendly, sedikit playful, tapi tetap bisa serius kalau diperlukan. Bahasa Indonesia kasual/gaul, bukan formal. Jawab singkat dan natural (maks 100 kata), jangan kaku seperti chatbot. Kamu bisa ngobrol soal apa saja: musik, cerita harian, perasaan, rekomendasi film/buku/tempat, trivia, jokes, motivasi, atau sekadar temani. Konteks saat ini: pengguna lagi dengerin "${embedTrack ? (embedTrack.title || track.title) : track.title}" oleh ${embedTrack ? (embedTrack.artist || track.artist) : track.artist}${track.mood ? ' (mood: ' + track.mood + ')' : ''} — bisa jadi bahan obrolan tapi jangan dipaksakan kalau topiknya beda.`
+      `${t?.aiSystemPrompt||'You are Starry AI — a warm, fun, and versatile chat companion. Your personality: relaxed, friendly, a bit playful, but can be serious when needed. Use casual English. Answer briefly and naturally (max 100 words), not like a stiff chatbot. You can talk about anything: music, daily life, feelings, recommendations, trivia, jokes, motivation, or just hang out. Context: the user is listening to'} "${embedTrack ? (embedTrack.title || track.title) : track.title}" by ${embedTrack ? (embedTrack.artist || track.artist) : track.artist}${track.mood ? ' (mood: ' + track.mood + ')' : ''}.`
     );
     setMessages(p=>[...p,{from:'ai',text:r}]);
     setCL(false);
   };
   const searchVibe = async () => {
     if (!vibeInput.trim()||vibeLoading) return;
-    if (isLite) { setVibeInput('⚡ Mode Lite aktif — Vibe Search dinonaktifkan'); return; }
+    if (isLite) { setVibeInput(t?.liteVibeDisabled||'⚡ Lite Mode active — Vibe Search disabled'); return; }
     setVL(true);
 
     // First try to match from Drive songs
@@ -4214,7 +4307,7 @@ export default function App() {
                             const rg = rc?.genres?.find(g => g.id === radioStation?.genreId);
                             return `${rg?.stations?.length || 0} stasiun`;
                           })()
-                        : embedTrack?.type==='youtube' ? `${ytQueueRef.current.length} {t?.songsCount||'songs'}` : `${[...builtinSongs,...customSongs,...ytSongs].length} {t?.songsCount||'songs'}`
+                        : embedTrack?.type==='youtube' ? `${ytQueueRef.current.length} ${t?.songsCount||'songs'}` : `${[...builtinSongs,...customSongs,...ytSongs].length} ${t?.songsCount||'songs'}`
                       }
                     </div>
                   </div>
@@ -4538,7 +4631,7 @@ export default function App() {
             {/* Header */}
             <div style={{ marginBottom:10 }}>
               <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom:8 }}>
-                <div style={{ fontWeight:800, fontSize:15 }}>Platform Streaming</div>
+                <div style={{ fontWeight:800, fontSize:15 }}>{t?.streamingPlatforms||'Streaming Platforms'}</div>
                 {eqEnabled && <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:999, background:`${track.color}25`, color:track.color, letterSpacing:'0.04em' }}>EQ ON</span>}
                 {crossfade > 0 && <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:999, background:'rgba(99,102,241,0.18)', color:'#a5b4fc', letterSpacing:'0.04em' }}>CF {crossfade}s</span>}
                 {sleepTimer && <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:999, background:'rgba(251,191,36,0.15)', color:'#fbbf24', letterSpacing:'0.04em' }}>💤 {fmtSec(sleepTimer.remaining)}</span>}
@@ -4596,7 +4689,7 @@ export default function App() {
                       </div>
                       <button onClick={handleUnifiedSearch}
                         style={{ padding:'7px 14px', borderRadius:999, border:'none', background:`${activePlat.color}cc`, color:'white', fontSize:11, fontWeight:700, cursor:'pointer', flexShrink:0, display:'flex', alignItems:'center', gap:4 }}>
-                        <Search size={11}/> Cari
+                        <Search size={11}/> {t?.searchBtn||'Search'}
                       </button>
                     </div>
                   </div>
@@ -4927,7 +5020,7 @@ export default function App() {
                                     setPlatformIframe(p=>({...p,[platform.id]:url}));
                                   }}
                                   style={{ padding:'6px 14px', borderRadius:999, border:'none', background:`${platform.color}cc`, color:'white', fontSize:11, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
-                                  Cari
+                                  {t?.searchBtn||'Search'}
                                 </button>
                               </div>
                               {/* In-app iframe embed */}
@@ -5173,7 +5266,7 @@ export default function App() {
                 {/* Header */}
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
                   <div>
-                    <div style={{ fontWeight:900, fontSize:16 }}>Koleksi Musik</div>
+                    <div style={{ fontWeight:900, fontSize:16 }}>{t?.musicCollection||'Music Collection'}</div>
                     <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:2 }}>{playlists.length} playlist · {allSongs.length} {t?.songsCount||'songs'}</div>
                   </div>
                   <button onClick={()=>{ setEditingPl(null); setShowPlModal(true); }}
@@ -5192,7 +5285,7 @@ export default function App() {
                 <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column', gap:8, paddingBottom:16 }}>
 
                   {/* ── Koleksi label */}
-                  <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.25)', textTransform:'uppercase', letterSpacing:'0.15em', marginBottom:2 }}>Koleksi</div>
+                  <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.25)', textTransform:'uppercase', letterSpacing:'0.15em', marginBottom:2 }}>{t?.musicCollection||'Collection'}</div>
 
                   {/* All songs shortcut */}
                   <div onClick={()=>{ setActivePl('all_songs'); setPlView('detail'); }}
@@ -5221,7 +5314,7 @@ export default function App() {
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ fontWeight:700, fontSize:14, color:'white' }}>{t?.mySongs||'My Songs'}</div>
                         <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:1 }}>
-                          {loadingDrive ? t?.loadingDriveShort||'Loading from Drive…' : `${customSongs.length} {t?.songsFromDrive||'songs from Google Drive'}`}
+                          {loadingDrive ? t?.loadingDriveShort||'Loading from Drive…' : `${customSongs.length} ${t?.songsFromDrive||'songs from Google Drive'}`}
                         </div>
                       </div>
                       {loadingDrive
@@ -5237,7 +5330,7 @@ export default function App() {
                   {history.length>1&&(
                     <>
                       <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.25)', textTransform:'uppercase', letterSpacing:'0.15em', marginTop:8, marginBottom:2, display:'flex', alignItems:'center', gap:6 }}>
-                        <History size={10}/>Baru Dimainkan
+                        <History size={10}/>{t?.recentlyPlayed||'Recently Played'}
                       </div>
                       <div onClick={()=>{ setActivePl('recently_played'); setPlView('detail'); }}
                         style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', borderRadius:14, cursor:'pointer', background:'rgba(245,158,11,0.06)', border:'1px solid rgba(245,158,11,0.18)' }}
@@ -5247,7 +5340,7 @@ export default function App() {
                           <History size={20} style={{color:'#fbbf24'}}/>
                         </div>
                         <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ fontWeight:700, fontSize:14, color:'white' }}>Baru Dimainkan</div>
+                          <div style={{ fontWeight:700, fontSize:14, color:'white' }}>{t?.recentlyPlayed||'Recently Played'}</div>
                           <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:1 }}>{Math.max(0,history.length-1)} {t?.lastSongs||'recent songs'}</div>
                         </div>
                         <ChevronRight size={16} style={{color:'rgba(255,255,255,0.3)'}}/>
@@ -5283,17 +5376,17 @@ export default function App() {
                           {songs.length>0&&(
                             <button onClick={()=>{ setActivePl(pl.id); play(songs[0]); setTab('player'); }}
                               style={{ flex:1, padding:'8px 0', background:'none', border:'none', color:isActive?'#a78bfa':'rgba(255,255,255,0.5)', fontSize:11, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:5 }}>
-                              <Play size={12} fill="currentColor"/>Putar
+                              <Play size={12} fill="currentColor"/>{t?.playBtn||'Play'}
                             </button>
                           )}
                           <button onClick={()=>{ setEditingPl(pl); setShowPlModal(true); }}
                             style={{ flex:1, padding:'8px 0', background:'none', border:'none', borderLeft:'1px solid rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.5)', fontSize:11, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:5 }}>
-                            <PenLine size={12}/>Edit
+                            <PenLine size={12}/>{t?.editBtn||'Edit'}
                           </button>
                           {!pl.locked&&(
                             <button onClick={()=>deletePlaylist(pl.id)}
                               style={{ flex:1, padding:'8px 0', background:'none', border:'none', borderLeft:'1px solid rgba(255,255,255,0.06)', color:'rgba(239,68,68,0.6)', fontSize:11, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:5 }}>
-                              <Trash2 size={12}/>Hapus
+                              <Trash2 size={12}/>{t?.deleteBtn||'Delete'}
                             </button>
                           )}
                         </div>
@@ -5340,7 +5433,7 @@ export default function App() {
                       </div>
                       {googleUser && (
                         <button onClick={()=>setShowUpload(true)} style={{ marginTop:10, width:'100%', padding:'8px 0', borderRadius:10, background:'rgba(14,165,233,0.12)', border:'1px solid rgba(14,165,233,0.25)', color:'#38bdf8', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-                          <Plus size={14}/> Unggah Lagu ke Drive
+                          <Plus size={14}/> {t?.uploadToDrive||'Upload to Google Drive'}
                         </button>
                       )}
                     </div>
@@ -5370,7 +5463,7 @@ export default function App() {
                           )}
                         </div>
                       )}
-                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={play} isDrive isCached={cachedDriveIds.has(s.driveId)} onRemove={id=>setCustomSongs(p=>p.filter(x=>x.id!==id))} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite}/>)}
+                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={play} isDrive isCached={cachedDriveIds.has(s.driveId)} onRemove={id=>setCustomSongs(p=>p.filter(x=>x.id!==id))} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite} t={t}/>)}
                     </div>
                   </div>
                 );
@@ -5390,7 +5483,7 @@ export default function App() {
                           <History size={18} style={{color:'#fbbf24'}}/>
                         </div>
                         <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ fontWeight:800, fontSize:15 }}>Baru Dimainkan</div>
+                          <div style={{ fontWeight:800, fontSize:15 }}>{t?.recentlyPlayed||'Recently Played'}</div>
                           <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:1 }}>{songs.length} {t?.lastSongs||'recent songs'}</div>
                         </div>
                       </div>
@@ -5442,13 +5535,13 @@ export default function App() {
                         {songs.length>0&&(
                           <button onClick={()=>{ play(songs[0]); setTab('player'); }}
                             style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:10, border:'none', background:'#a78bfa', color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-                            <Play size={13} fill="currentColor"/>Putar Semua
+                            <Play size={13} fill="currentColor"/>{t?.playAllBtn||'Play All'}
                           </button>
                         )}
                       </div>
                     </div>
                     <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'10px 16px 16px', display:'flex', flexDirection:'column', gap:5 }}>
-                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={play} isDrive={s.isDrive} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite}/>)}
+                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={play} isDrive={s.isDrive} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite} t={t}/>)}
                     </div>
                   </div>
                 );
@@ -5472,7 +5565,7 @@ export default function App() {
                       {songs.length>0&&(
                         <button onClick={()=>{ play(songs[0]); setTab('player'); }}
                           style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:10, border:'none', background:track.color, color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-                          <Play size={13} fill="currentColor"/>Putar Semua
+                          <Play size={13} fill="currentColor"/>{t?.playAllBtn||'Play All'}
                         </button>
                       )}
                     </div>
@@ -5483,7 +5576,7 @@ export default function App() {
                     {songs.length===0&&(
                       <div style={{ textAlign:'center', padding:'40px 20px' }}>
                         <Music size={44} style={{color:'rgba(255,255,255,0.1)',display:'block',margin:'0 auto 12px'}}/>
-                        <div style={{ fontSize:13, color:'rgba(255,255,255,0.3)' }}>Playlist ini masih kosong</div>
+                        <div style={{ fontSize:13, color:'rgba(255,255,255,0.3)' }}>{lang==='id'?'Playlist ini masih kosong':'This playlist is empty'}</div>
                         <button onClick={()=>{ setEditingPl(pl); setShowPlModal(true); }} style={{ marginTop:12, padding:'8px 16px', borderRadius:10, border:'none', background:'rgba(99,102,241,0.2)', color:'#a78bfa', fontSize:12, fontWeight:700, cursor:'pointer' }}>{t?.addSong||'Add Song'}</button>
                       </div>
                     )}
@@ -5543,7 +5636,7 @@ export default function App() {
               <div style={{ display:'flex', justifyContent:'center', gap:0, marginBottom:0, borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
                 {[
                   { id:'chat', label:'💬 Chat' },
-                  { id:'lyrics', label:'🎵 Lirik' },
+                  { id:'lyrics', label:`🎵 ${t?.lyricsTab||'Lyrics'}` },
                 ].map(({id, label})=>(
                   <button key={id} onClick={()=>setAiSubView(id)}
                     style={{ padding:'9px 32px', borderRadius:0, border:'none', background:'none', color:aiSubView===id?'white':'rgba(255,255,255,0.4)', fontSize:13, fontWeight:aiSubView===id?800:600, cursor:'pointer', borderBottom:aiSubView===id?`2px solid ${track.color}`:'2px solid transparent', marginBottom:-1 }}>
@@ -5559,7 +5652,7 @@ export default function App() {
               <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'16px 20px 24px' }}>
                 <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:14 }}>
                   <button onClick={getLyrics} disabled={lyricsLoading} style={{ padding:'7px 14px', borderRadius:999, border:'none', background:track.color, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', opacity:lyricsLoading?0.6:1, display:'flex', alignItems:'center', gap:6 }}>
-                    {lyricsLoading?<><Loader2 size={13} style={{ animation:'spin 1s linear infinite' }}/>Cari...</>:<><Sparkles size={13}/>{lyrics?(t?.lyricsRefresh||'Refresh'):(t?.lyricsShow||'Show Lyrics')}</>}
+                    {lyricsLoading?<><Loader2 size={13} style={{ animation:'spin 1s linear infinite' }}/>{t?.lyricsSearchBtn||'Search...'}</>:<><Sparkles size={13}/>{lyrics?(t?.lyricsRefresh||'Refresh'):(t?.lyricsShow||'Show Lyrics')}</>}
                   </button>
                 </div>
                 {!lyrics&&!lyricsLoading&&(
@@ -5580,10 +5673,10 @@ export default function App() {
                     /* Lite mode info card */
                     <div style={{ textAlign:'center', paddingTop:24 }}>
                       <div style={{ fontSize:32, marginBottom:12 }}>⚡</div>
-                      <div style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.5)', marginBottom:8 }}>Lirik tidak ditemukan</div>
-                      <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', lineHeight:1.7, marginBottom:20, whiteSpace:'pre-line' }}>Mode Lite aktif — AI generate lirik dinonaktifkan untuk hemat data.{'\n'}Aktifkan Mode Pro untuk generate lirik dengan AI.</div>
+                      <div style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.5)', marginBottom:8 }}>{t?.lyricsLiteDisabledTitle||'Lyrics not found'}</div>
+                      <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', lineHeight:1.7, marginBottom:20, whiteSpace:'pre-line' }}>{t?.lyricsLiteDisabledMsg||'Lite Mode active — AI lyrics generation disabled.'}</div>
                       <button onClick={toggleMode} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid rgba(99,102,241,0.4)', background:'rgba(99,102,241,0.12)', color:'#a5b4fc', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-                        ✨ Beralih ke Mode Pro
+                        {t?.switchToProBtn||'✨ Switch to Pro Mode'}
                       </button>
                     </div>
                   ) : (
@@ -5611,7 +5704,7 @@ export default function App() {
                   <div style={{ padding:'11px 13px', borderRadius:14, background:`${track.color}12`, border:`1px solid ${track.color}35` }}>
                     <div style={{ fontSize:9, fontWeight:800, color:track.color, marginBottom:5, textTransform:'uppercase', letterSpacing:'0.12em' }}>🔮 Suasana Hati</div>
                     <div style={{ fontSize:12, color:'rgba(255,255,255,0.85)', lineHeight:1.75, whiteSpace:'pre-line' }}>{vibeInput.replace(/^✨\s?/,'')}</div>
-                    <button onClick={()=>setVibeInput('')} style={{ marginTop:7, fontSize:10, color:track.color, background:'none', border:'none', cursor:'pointer', fontWeight:700, padding:0 }}>× Reset</button>
+                    <button onClick={()=>setVibeInput('')} style={{ marginTop:7, fontSize:10, color:track.color, background:'none', border:'none', cursor:'pointer', fontWeight:700, padding:0 }}>{t?.resetBtn||'× Reset'}</button>
                   </div>
                 )}
                 {messages.map((m,i)=>{
@@ -5663,7 +5756,7 @@ export default function App() {
                             }, 120);
                           }}
                           style={{ marginTop:6, display:'flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:999, border:`1px solid ${track.color}50`, background:`${track.color}18`, color:track.color, fontSize:11, fontWeight:700, cursor:'pointer' }}>
-                          <Search size={11}/> Cari di YouTube: {songRec.title}
+                          <Search size={11}/> {t?.searchYouTube||'Search on YouTube'}: {songRec.title}
                         </button>
                       )}
                     </div>
