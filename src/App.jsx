@@ -1364,7 +1364,7 @@ function AppLogo({ size = 32 }) {
 // ═══════════════════════════════════════════════════════
 //  ORBITAL RING  — tap OR drag to seek
 // ═══════════════════════════════════════════════════════
-function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, title, onSeek, isLite }) {
+function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, title, onSeek, isLite, isRadio }) {
   const cx=size/2, cy=size/2, artR=size/2-36, ringR=artR+18, circ=2*Math.PI*ringR;
   const deg=pct*360-90, rad=deg*Math.PI/180;
   const dotX=cx+Math.cos(rad)*ringR, dotY=cy+Math.sin(rad)*ringR;
@@ -1412,37 +1412,52 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
   return (
     <div style={{ position:'relative', width:size, height:size, flexShrink:0 }}>
       {/* Album art */}
-      <div style={{ position:'absolute', top:cy-artR, left:cx-artR, width:artR*2, height:artR*2, borderRadius:'50%', overflow:'hidden', border:'3px solid rgba(255,255,255,0.13)', boxShadow:isLite?'none':`0 0 40px -8px ${color}90`, animation:(!isLite && isPlaying)?'spin20 20s linear infinite':'none', zIndex:2 }}>
-        {isLite
-          ? <div style={{ width:'100%', height:'100%', background:color+'33', display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={artR*0.6} color={color}/></div>
-          : <img src={cover} alt={title} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>}
+      <div style={{ position:'absolute', top:cy-artR, left:cx-artR, width:artR*2, height:artR*2, borderRadius:'50%', overflow:'hidden', border:`3px solid ${isRadio?color+'60':'rgba(255,255,255,0.13)'}`, boxShadow:isLite?'none':`0 0 40px -8px ${color}90`, animation:(!isLite && isPlaying && !isRadio)?'spin20 20s linear infinite':'none', zIndex:2 }}>
+        {isRadio
+          ? <div style={{ width:'100%', height:'100%', background:`linear-gradient(135deg,${color}30,${color}18)`, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:6, position:'relative' }}>
+              <Radio size={artR*0.45} color={color}/>
+              <div style={{ fontSize:artR*0.14, fontWeight:800, color:color, textTransform:'uppercase', letterSpacing:'0.12em' }}>LIVE</div>
+              {isPlaying && !isLite && <div style={{ position:'absolute', width:'100%', height:'100%', borderRadius:'50%', boxShadow:`inset 0 0 ${artR*0.3}px ${color}40`, animation:'pulse 2s infinite' }}/>}
+            </div>
+          : isLite
+            ? <div style={{ width:'100%', height:'100%', background:color+'33', display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={artR*0.6} color={color}/></div>
+            : <img src={cover} alt={title} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>}
       </div>
       {/* SVG ring — mouse drag + click */}
       <svg ref={svgRef} width={size} height={size}
-        style={{ position:'absolute', inset:0, zIndex:3, overflow:'visible', cursor:duration?'grab':'default', touchAction:'none' }}
+        style={{ position:'absolute', inset:0, zIndex:3, overflow:'visible', cursor:(duration&&!isRadio)?'grab':'default', touchAction:'none' }}
         onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}>
         {/* Wide invisible hit area */}
         <circle cx={cx} cy={cy} r={ringR} stroke="transparent" strokeWidth="44" fill="none"/>
         {/* Track */}
         <circle cx={cx} cy={cy} r={ringR} stroke="rgba(255,255,255,0.09)" strokeWidth="3.5" fill="none"/>
-        {/* Progress arc */}
-        <circle className="progress-arc" cx={cx} cy={cy} r={ringR} stroke={color} strokeWidth="4.5" fill="none"
-          strokeDasharray={circ} strokeDashoffset={circ-circ*pct} strokeLinecap="round"
-          transform={`rotate(-90 ${cx} ${cy})`}
-          style={{ transition: dragging.current?'none':'stroke-dashoffset 0.35s linear', filter:isLite?'none':`drop-shadow(0 0 6px ${color})` }}/>
-        {/* 0:00 tick */}
-        <line x1={cx} y1={cy-ringR-7} x2={cx} y2={cy-ringR+7} stroke="rgba(255,255,255,0.18)" strokeWidth="2.5" strokeLinecap="round"/>
-        {/* Dot glow */}
-        <circle cx={dotX} cy={dotY} r={14} fill={color} opacity="0.15"/>
-        {/* Draggable dot */}
-        <circle cx={dotX} cy={dotY} r={7} fill="white"
-          style={{ filter:isLite?'none':'drop-shadow(0 0 8px rgba(255,255,255,1))', cursor:'grab' }}/>
-        {/* Current time */}
-        {pct>0.01&&<text x={lblX} y={lblY} textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="11" fontWeight="800" fontFamily="monospace" style={{ filter:'drop-shadow(0 1px 5px rgba(0,0,0,1))', pointerEvents:'none' }}>{fmt(progress)}</text>}
-        {/* Duration */}
-        <text x={durX} y={durY} textAnchor="middle" dominantBaseline="middle" fill="rgba(255,255,255,0.28)" fontSize="10" fontWeight="600" fontFamily="monospace" style={{ pointerEvents:'none' }}>{fmt(duration)}</text>
-        {/* Start label */}
-        <text x={cx} y={cy-ringR-20} textAnchor="middle" dominantBaseline="middle" fill="rgba(255,255,255,0.18)" fontSize="10" fontWeight="600" fontFamily="monospace" style={{ pointerEvents:'none' }}>0:00</text>
+        {/* Radio: spinning dashed ring. Normal: progress arc */}
+        {isRadio ? (
+          <circle cx={cx} cy={cy} r={ringR} stroke={color} strokeWidth="4.5" fill="none"
+            strokeDasharray={`${circ*0.35} ${circ*0.65}`} strokeLinecap="round"
+            style={{ transformOrigin:`${cx}px ${cy}px`, animation: isPlaying ? 'spin 3s linear infinite' : 'none', filter:isLite?'none':`drop-shadow(0 0 6px ${color})` }}/>
+        ) : (
+          <circle className="progress-arc" cx={cx} cy={cy} r={ringR} stroke={color} strokeWidth="4.5" fill="none"
+            strokeDasharray={circ} strokeDashoffset={circ-circ*pct} strokeLinecap="round"
+            transform={`rotate(-90 ${cx} ${cy})`}
+            style={{ transition: dragging.current?'none':'stroke-dashoffset 0.35s linear', filter:isLite?'none':`drop-shadow(0 0 6px ${color})` }}/>
+        )}
+        {/* 0:00 tick — hide for radio */}
+        {!isRadio && <line x1={cx} y1={cy-ringR-7} x2={cx} y2={cy-ringR+7} stroke="rgba(255,255,255,0.18)" strokeWidth="2.5" strokeLinecap="round"/>}
+        {/* Dot glow — hide for radio */}
+        {!isRadio && <circle cx={dotX} cy={dotY} r={14} fill={color} opacity="0.15"/>}
+        {/* Draggable dot — hide for radio */}
+        {!isRadio && <circle cx={dotX} cy={dotY} r={7} fill="white"
+          style={{ filter:isLite?'none':'drop-shadow(0 0 8px rgba(255,255,255,1))', cursor:'grab' }}/>}
+        {/* Current time — hide for radio */}
+        {!isRadio && pct>0.01&&<text x={lblX} y={lblY} textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="11" fontWeight="800" fontFamily="monospace" style={{ filter:'drop-shadow(0 1px 5px rgba(0,0,0,1))', pointerEvents:'none' }}>{fmt(progress)}</text>}
+        {/* Duration / LIVE label */}
+        {isRadio
+          ? <text x={cx} y={cy+ringR+20} textAnchor="middle" dominantBaseline="middle" fill={color} fontSize="10" fontWeight="800" fontFamily="monospace" style={{ pointerEvents:'none', letterSpacing:'0.12em' }}>● LIVE</text>
+          : <text x={durX} y={durY} textAnchor="middle" dominantBaseline="middle" fill="rgba(255,255,255,0.28)" fontSize="10" fontWeight="600" fontFamily="monospace" style={{ pointerEvents:'none' }}>{fmt(duration)}</text>
+        }
+        {/* Start label — hide for radio */}
+        {!isRadio && <text x={cx} y={cy-ringR-20} textAnchor="middle" dominantBaseline="middle" fill="rgba(255,255,255,0.18)" fontSize="10" fontWeight="600" fontFamily="monospace" style={{ pointerEvents:'none' }}>0:00</text>}
       </svg>
     </div>
   );
@@ -1909,6 +1924,8 @@ export default function App() {
   const [radioCountry, setRadioCountry] = useState(null); // selected country id
   const [radioGenre, setRadioGenre] = useState(null);     // selected genre id
   const radioAudioRef = useRef(null);
+  const [stationStatus, setStationStatus] = useState({}); // stationId → 'testing'|'ok'|'fail'
+  const testedGenresRef = useRef(new Set());
 
   // ── Spotify in-app search state
   const [spQuery,    setSpQuery]    = useState('');
@@ -2873,6 +2890,43 @@ export default function App() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const cancelSleepTimer = useCallback(() => { if (sleepIntervalRef.current) clearInterval(sleepIntervalRef.current); setSleepTimer(null); }, []);
 
+  // ── Test radio stations: hanya tampilkan yang bisa diputar
+  const testStationsInGenre = useCallback(async (genre) => {
+    const key = genre.id;
+    if (testedGenresRef.current.has(key)) return;
+    testedGenresRef.current.add(key);
+    // Mark all as testing
+    setStationStatus(prev => {
+      const next = { ...prev };
+      genre.stations.forEach(s => { if (!(s.id in next)) next[s.id] = 'testing'; });
+      return next;
+    });
+    // Test satu per satu menggunakan fetch no-cors (tanpa CORS error)
+    // Jika server merespons → ok; timeout/network error → fail
+    const testOne = (station) => new Promise(resolve => {
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => { ctrl.abort(); resolve({ id: station.id, ok: false }); }, 7000);
+      fetch(station.url, { method: 'GET', mode: 'no-cors', signal: ctrl.signal })
+        .then(() => { clearTimeout(tid); resolve({ id: station.id, ok: true }); })
+        .catch(e => {
+          clearTimeout(tid);
+          // AbortError = timeout, TypeError = network fail
+          resolve({ id: station.id, ok: false });
+        });
+    });
+    // Batch 4 concurrent tests
+    const batchSize = 4;
+    for (let i = 0; i < genre.stations.length; i += batchSize) {
+      const batch = genre.stations.slice(i, i + batchSize);
+      const results = await Promise.all(batch.map(testOne));
+      setStationStatus(prev => {
+        const next = { ...prev };
+        results.forEach(({ id, ok }) => { next[id] = ok ? 'ok' : 'fail'; });
+        return next;
+      });
+    }
+  }, []);
+
   // ── PLAY (with crossfade support + Drive auto token refresh)
   const play = useCallback(async (t) => {
     let td = { ...t };
@@ -3412,16 +3466,21 @@ export default function App() {
           <div style={{ height:1, background:'rgba(255,255,255,0.06)', margin:'4px 6px' }}/>
           {/* Mini now-playing card — desktop sidebar */}
           {tab !== 'player' && (
-            <div onClick={()=>setTab('player')} style={{ margin:'0 0 8px', padding:'9px 10px', borderRadius:12, background:embedTrack?'rgba(255,68,68,0.1)':`${track.color}12`, border:`1px solid ${embedTrack?'rgba(255,68,68,0.3)':track.color+'30'}`, cursor:'pointer', display:'flex', alignItems:'center', gap:8 }}>
+            <div onClick={()=>setTab('player')} style={{ margin:'0 0 8px', padding:'9px 10px', borderRadius:12, background:embedTrack?'rgba(255,68,68,0.1)':track.isRadio?`${track.color}14`:`${track.color}12`, border:`1px solid ${embedTrack?'rgba(255,68,68,0.3)':track.color+'30'}`, cursor:'pointer', display:'flex', alignItems:'center', gap:8 }}>
               {embedTrack
                 ? <div style={{ width:30, height:30, borderRadius:7, background:'rgba(255,68,68,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:12 }}>▶</div>
-                : isLite
-                  ? <div style={{ width:30, height:30, borderRadius:7, background:track.bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Music size={13} color={track.color}/></div>
-                  : <img src={getCover(track)} style={{ width:30, height:30, borderRadius:7, objectFit:'cover', flexShrink:0 }}/>
+                : track.isRadio
+                  ? <div style={{ width:30, height:30, borderRadius:7, background:`${track.color}25`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, position:'relative' }}>
+                      <Radio size={13} color={track.color}/>
+                      {playing && <div style={{ position:'absolute', top:2, right:2, width:4, height:4, borderRadius:'50%', background:track.color, animation:'pulse 1.2s infinite' }}/>}
+                    </div>
+                  : isLite
+                    ? <div style={{ width:30, height:30, borderRadius:7, background:track.bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Music size={13} color={track.color}/></div>
+                    : <img src={getCover(track)} style={{ width:30, height:30, borderRadius:7, objectFit:'cover', flexShrink:0 }}/>
               }
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontSize:11, fontWeight:700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'rgba(255,255,255,0.9)' }}>{embedTrack ? embedTrack.title : track.title}</div>
-                <div style={{ fontSize:9, color:'rgba(255,255,255,0.38)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{embedTrack ? (embedTrack.type==='youtube'?'YouTube':'SoundCloud') : track.artist}</div>
+                <div style={{ fontSize:9, color:'rgba(255,255,255,0.38)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{embedTrack ? (embedTrack.type==='youtube'?'YouTube':'SoundCloud') : track.isRadio ? '● LIVE' : track.artist}</div>
               </div>
               {playing && <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:11, flexShrink:0 }}>{[9,5,7].map((h,i)=>(<div key={i} style={{ width:2.5, height:h, background:embedTrack?'#ff4444':track.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${i*0.15}s infinite` }}/>))}</div>}
             </div>
@@ -3568,10 +3627,10 @@ export default function App() {
                     {nowTime.toLocaleDateString('id-ID',{ weekday:'short', day:'numeric', month:'short' })}
                   </div>
                 </div>
-                <OrbitalRing size={ringSize} pct={embedTrack?.type==='youtube'?(ytDuration>0?ytProgress/ytDuration:0):pct} color={embedTrack?.type==='youtube'?'#ff4444':track.color} progress={embedTrack?.type==='youtube'?ytProgress:progress} duration={embedTrack?.type==='youtube'?ytDuration:duration} isPlaying={playing} cover={embedTrack?.type==='youtube'?(embedTrack.thumbnail||getCover(track)):getCover(track)} title={embedTrack?.type==='youtube'?embedTrack.title:track.title} onSeek={embedTrack?.type==='youtube'?seekYt:seekByPct} isLite={isLite}/>
+                <OrbitalRing size={ringSize} pct={embedTrack?.type==='youtube'?(ytDuration>0?ytProgress/ytDuration:0):track.isRadio?0:pct} color={embedTrack?.type==='youtube'?'#ff4444':track.color} progress={embedTrack?.type==='youtube'?ytProgress:progress} duration={embedTrack?.type==='youtube'?ytDuration:track.isRadio?0:duration} isPlaying={playing} cover={embedTrack?.type==='youtube'?(embedTrack.thumbnail||getCover(track)):getCover(track)} title={embedTrack?.type==='youtube'?embedTrack.title:track.title} onSeek={embedTrack?.type==='youtube'?seekYt:track.isRadio?null:seekByPct} isLite={isLite} isRadio={!embedTrack&&track.isRadio}/>
               </div>
             ) : (
-              <OrbitalRing size={ringSize} pct={embedTrack?.type==='youtube'?(ytDuration>0?ytProgress/ytDuration:0):pct} color={embedTrack?.type==='youtube'?'#ff4444':track.color} progress={embedTrack?.type==='youtube'?ytProgress:progress} duration={embedTrack?.type==='youtube'?ytDuration:duration} isPlaying={playing} cover={embedTrack?.type==='youtube'?(embedTrack.thumbnail||getCover(track)):getCover(track)} title={embedTrack?.type==='youtube'?embedTrack.title:track.title} onSeek={embedTrack?.type==='youtube'?seekYt:seekByPct} isLite={isLite}/>
+              <OrbitalRing size={ringSize} pct={embedTrack?.type==='youtube'?(ytDuration>0?ytProgress/ytDuration:0):track.isRadio?0:pct} color={embedTrack?.type==='youtube'?'#ff4444':track.color} progress={embedTrack?.type==='youtube'?ytProgress:progress} duration={embedTrack?.type==='youtube'?ytDuration:track.isRadio?0:duration} isPlaying={playing} cover={embedTrack?.type==='youtube'?(embedTrack.thumbnail||getCover(track)):getCover(track)} title={embedTrack?.type==='youtube'?embedTrack.title:track.title} onSeek={embedTrack?.type==='youtube'?seekYt:track.isRadio?null:seekByPct} isLite={isLite} isRadio={!embedTrack&&track.isRadio}/>
             )}
 
             {/* Track info */}
@@ -3580,9 +3639,14 @@ export default function App() {
                 <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:999, marginBottom:4, background:'rgba(255,0,0,0.12)', border:'1px solid rgba(255,0,0,0.25)' }}>
                   <span style={{ fontSize:9, fontWeight:800, color:'#ff6b6b', textTransform:'uppercase', letterSpacing:'0.1em' }}>▶ YouTube</span>
                 </div>
-              ) : track.isDrive&&(
+              ) : track.isRadio ? (
+                <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:999, marginBottom:4, background:`rgba(245,158,11,0.15)`, border:'1px solid rgba(245,158,11,0.35)' }}>
+                  <div style={{ width:5, height:5, borderRadius:'50%', background:'#f59e0b', boxShadow:'0 0 6px #f59e0b', animation: playing ? 'pulse 1.2s infinite' : 'none' }}/>
+                  <span style={{ fontSize:9, fontWeight:800, color:'#fbbf24', textTransform:'uppercase', letterSpacing:'0.1em' }}>● LIVE RADIO</span>
+                </div>
+              ) : track.isDrive ? (
                 <div style={{ display:'inline-flex', alignItems:'center', gap:3, padding:'2px 7px', borderRadius:999, marginBottom:4, background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)' }}><Cloud size={9} style={{ color:track.color }}/><span style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em' }}>Drive</span></div>
-              )}
+              ) : null}
               <h2 style={{ margin:0, fontWeight:900, letterSpacing:'-0.03em', lineHeight:1.1, fontSize: fullscreen ? 'clamp(18px,4.8vw,28px)' : 'clamp(16px,4.2vw,24px)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{embedTrack?.type==='youtube'?embedTrack.title:track.title}</h2>
               <p style={{ margin:'2px 0 0', fontSize: fullscreen ? 'clamp(11px,2.8vw,14px)' : 'clamp(10px,2.5vw,12px)', color:'rgba(255,255,255,0.45)', fontWeight:600 }}>
                 {embedTrack?.type==='youtube' ? embedTrack.artist : `${track.artist} — ${track.album}`}
@@ -4084,46 +4148,48 @@ export default function App() {
                           const selCountry = countries.find(c => c.id === radioCountry) || null;
                           const selGenre = selCountry ? (selCountry.genres.find(g => g.id === radioGenre) || null) : null;
                           const playStation = (station, genreColor) => {
-                            const audio = radioAudioRef.current;
-                            if (!audio) return;
-                            if (radioStation?.id === station.id) {
-                              if (radioPlaying) { audio.pause(); setRadioPlaying(false); }
-                              else { audio.play().catch(()=>{}); setRadioPlaying(true); }
+                            const stationColor = genreColor || '#f59e0b';
+                            const radioTrackObj = {
+                              id: `radio_${station.id}`,
+                              title: station.name,
+                              artist: station.city + ' · Live Radio',
+                              album: 'Live Radio',
+                              cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
+                              src: station.url,
+                              color: stationColor,
+                              bg: `rgba(245,158,11,0.15)`,
+                              mood: 'live, radio',
+                              isRadio: true,
+                            };
+                            if (track.id === radioTrackObj.id) {
+                              setPlaying(p => !p);
+                              setRadioPlaying(p => !p);
                             } else {
-                              audio.pause();
-                              audio.src = station.url;
-                              audio.load();
-                              audio.play().catch(()=>{});
-                              setRadioStation({ ...station, color: genreColor || '#f59e0b' });
+                              // Stop any YouTube embed
+                              if (embedTrack?.type === 'youtube') { closeEmbed(); }
+                              play(radioTrackObj);
+                              setRadioStation({ ...station, color: stationColor });
                               setRadioPlaying(true);
                             }
                           };
                           return (
                             <div style={{ padding:'0 10px 12px' }}>
-                              <audio ref={radioAudioRef} style={{ display:'none' }}
-                                onPlay={() => setRadioPlaying(true)}
-                                onPause={() => setRadioPlaying(false)}
-                                onError={() => setRadioPlaying(false)}
-                              />
-                              {/* Now playing bar */}
+                              {/* Now playing bar — synced with main player */}
                               {radioStation && (
                                 <div style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:10, background:`${radioStation.color}18`, border:`1px solid ${radioStation.color}40`, marginBottom:10 }}>
-                                  <div style={{ width:8, height:8, borderRadius:'50%', background: radioPlaying ? radioStation.color : 'rgba(255,255,255,0.2)', boxShadow: radioPlaying ? `0 0 8px ${radioStation.color}` : 'none', flexShrink:0 }}/>
+                                  <div style={{ width:8, height:8, borderRadius:'50%', background: (playing && track.isRadio && track.id === `radio_${radioStation.id}`) ? radioStation.color : 'rgba(255,255,255,0.2)', boxShadow: (playing && track.isRadio && track.id === `radio_${radioStation.id}`) ? `0 0 8px ${radioStation.color}` : 'none', flexShrink:0 }}/>
                                   <div style={{ flex:1, minWidth:0 }}>
                                     <div style={{ fontSize:11, fontWeight:700, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{radioStation.name}</div>
-                                    <div style={{ fontSize:9, color:'rgba(255,255,255,0.4)' }}>{radioStation.city}</div>
+                                    <div style={{ fontSize:9, color:'rgba(255,255,255,0.4)' }}>{radioStation.city} · ● LIVE</div>
                                   </div>
-                                  <button onClick={() => {
-                                    const audio = radioAudioRef.current;
-                                    if (!audio) return;
-                                    if (radioPlaying) { audio.pause(); setRadioPlaying(false); }
-                                    else { audio.play().catch(()=>{}); setRadioPlaying(true); }
-                                  }} style={{ width:28, height:28, borderRadius:'50%', border:'none', background: radioPlaying ? radioStation.color : 'rgba(255,255,255,0.15)', color:'white', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, flexShrink:0 }}>
-                                    {radioPlaying ? '⏸' : '▶'}
+                                  <button onClick={() => setTab('player')}
+                                    style={{ padding:'3px 8px', borderRadius:999, border:`1px solid ${radioStation.color}50`, background:`${radioStation.color}20`, color:radioStation.color, fontSize:10, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
+                                    Player ↗
                                   </button>
                                   <button onClick={() => {
-                                    if (radioAudioRef.current) { radioAudioRef.current.pause(); radioAudioRef.current.src = ''; }
-                                    setRadioStation(null); setRadioPlaying(false);
+                                    if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
+                                    setPlaying(false); setRadioStation(null); setRadioPlaying(false);
+                                    setTrack(SONGS[0]);
                                   }} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.3)', cursor:'pointer', fontSize:14, flexShrink:0, padding:0 }}>✕</button>
                                 </div>
                               )}
@@ -4188,31 +4254,87 @@ export default function App() {
                                   ))}
                                 </div>
                               )}
-                              {/* LEVEL 3: Station list */}
-                              {selCountry && selGenre && (
-                                <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                                  {selGenre.stations.map((station, idx) => {
-                                    const isActive = radioStation?.id === station.id;
-                                    return (
-                                      <div key={station.id} onClick={() => playStation(station, selGenre.color)}
-                                        style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 10px', borderRadius:10, background: isActive ? `${selGenre.color}20` : 'rgba(255,255,255,0.04)', border:`1px solid ${isActive ? selGenre.color+'55' : 'rgba(255,255,255,0.07)'}`, cursor:'pointer', transition:'all 0.15s' }}>
-                                        <div style={{ width:26, height:26, borderRadius:6, background:`${selGenre.color}22`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800, color: isActive ? selGenre.color : 'rgba(255,255,255,0.3)', flexShrink:0 }}>
-                                          {isActive && radioPlaying ? '🔊' : `#${idx+1}`}
-                                        </div>
-                                        <div style={{ flex:1, minWidth:0 }}>
-                                          <div style={{ fontSize:12, fontWeight:700, color: isActive ? selGenre.color : 'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{station.name}</div>
-                                          <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)' }}>{station.city}</div>
-                                        </div>
-                                        <div style={{ width:26, height:26, borderRadius:'50%', background: isActive && radioPlaying ? selGenre.color : 'rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color:'white', flexShrink:0 }}>
-                                          {isActive && radioPlaying ? '⏸' : '▶'}
+                              {/* LEVEL 3: Station list — hanya yang bisa diputar */}
+                              {selCountry && selGenre && (() => {
+                                // Trigger test saat genre pertama kali dibuka
+                                if (!testedGenresRef.current.has(selGenre.id)) {
+                                  testStationsInGenre(selGenre);
+                                }
+                                const allTesting = selGenre.stations.every(s => stationStatus[s.id] === 'testing');
+                                const okStations = selGenre.stations.filter(s => stationStatus[s.id] === 'ok' || stationStatus[s.id] === 'testing');
+                                const testingCount = selGenre.stations.filter(s => stationStatus[s.id] === 'testing').length;
+                                const failCount = selGenre.stations.filter(s => stationStatus[s.id] === 'fail').length;
+                                const doneCount = selGenre.stations.filter(s => stationStatus[s.id] === 'ok' || stationStatus[s.id] === 'fail').length;
+                                const totalCount = selGenre.stations.length;
+                                return (
+                                  <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                                    {/* Progress bar saat testing */}
+                                    {testingCount > 0 && (
+                                      <div style={{ padding:'7px 10px', borderRadius:9, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.09)', display:'flex', alignItems:'center', gap:8 }}>
+                                        <div style={{ flex:1 }}>
+                                          <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
+                                            <span style={{ fontSize:10, color:'rgba(255,255,255,0.45)', fontWeight:600 }}>Memeriksa koneksi stasiun…</span>
+                                            <span style={{ fontSize:10, color:selGenre.color, fontWeight:700 }}>{doneCount}/{totalCount}</span>
+                                          </div>
+                                          <div style={{ height:3, borderRadius:999, background:'rgba(255,255,255,0.08)', overflow:'hidden' }}>
+                                            <div style={{ height:'100%', borderRadius:999, background:selGenre.color, width:`${(doneCount/totalCount)*100}%`, transition:'width 0.4s' }}/>
+                                          </div>
                                         </div>
                                       </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
+                                    )}
+                                    {/* Stasiun yang aktif / belum ditest */}
+                                    {okStations.map((station, idx) => {
+                                      const status = stationStatus[station.id];
+                                      const isTesting = status === 'testing';
+                                      const isActive = radioStation?.id === station.id;
+                                      const okIdx = selGenre.stations.filter(s => stationStatus[s.id] === 'ok').indexOf(station) + 1;
+                                      return (
+                                        <div key={station.id}
+                                          onClick={() => !isTesting && playStation(station, selGenre.color)}
+                                          style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 10px', borderRadius:10, background: isActive ? `${selGenre.color}20` : 'rgba(255,255,255,0.04)', border:`1px solid ${isActive ? selGenre.color+'55' : 'rgba(255,255,255,0.07)'}`, cursor: isTesting ? 'default' : 'pointer', opacity: isTesting ? 0.6 : 1, transition:'all 0.15s' }}>
+                                          <div style={{ width:26, height:26, borderRadius:6, background:`${selGenre.color}22`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800, color: isActive ? selGenre.color : 'rgba(255,255,255,0.3)', flexShrink:0 }}>
+                                            {isTesting
+                                              ? <div style={{ width:10, height:10, borderRadius:'50%', border:`2px solid ${selGenre.color}`, borderTopColor:'transparent', animation:'spin 0.8s linear infinite' }}/>
+                                              : isActive && (playing && track.isRadio) ? '🔊' : `#${okIdx}`
+                                            }
+                                          </div>
+                                          <div style={{ flex:1, minWidth:0 }}>
+                                            <div style={{ fontSize:12, fontWeight:700, color: isActive ? selGenre.color : 'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{station.name}</div>
+                                            <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', display:'flex', alignItems:'center', gap:4 }}>
+                                              <span>{station.city}</span>
+                                              {isTesting && <span style={{ color:'rgba(255,255,255,0.25)' }}>· mengecek…</span>}
+                                              {!isTesting && <span style={{ color:'#4ade80', fontWeight:700 }}>● tersedia</span>}
+                                            </div>
+                                          </div>
+                                          <div style={{ width:26, height:26, borderRadius:'50%', background: isActive && (playing && track.isRadio) ? selGenre.color : 'rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color:'white', flexShrink:0 }}>
+                                            {isTesting ? '…' : isActive && (playing && track.isRadio) ? '⏸' : '▶'}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                    {/* Tidak ada stasiun aktif setelah testing selesai */}
+                                    {testingCount === 0 && okStations.length === 0 && (
+                                      <div style={{ textAlign:'center', padding:'20px 10px', borderRadius:10, background:'rgba(239,68,68,0.06)', border:'1px solid rgba(239,68,68,0.15)' }}>
+                                        <div style={{ fontSize:20, marginBottom:6 }}>📡</div>
+                                        <div style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.45)' }}>Tidak ada stasiun tersedia</div>
+                                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.25)', marginTop:4 }}>Semua {totalCount} stasiun tidak dapat dijangkau saat ini</div>
+                                        <button onClick={() => { testedGenresRef.current.delete(selGenre.id); setStationStatus(prev => { const next={...prev}; selGenre.stations.forEach(s=>{delete next[s.id];}); return next; }); testStationsInGenre(selGenre); }}
+                                          style={{ marginTop:10, padding:'5px 14px', borderRadius:999, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.12)', color:'#fca5a5', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                                          ↺ Cek Ulang
+                                        </button>
+                                      </div>
+                                    )}
+                                    {/* Info footer */}
+                                    {testingCount === 0 && okStations.length > 0 && failCount > 0 && (
+                                      <div style={{ fontSize:9, color:'rgba(255,255,255,0.18)', paddingLeft:2, marginTop:2 }}>
+                                        {okStations.length} stasiun aktif · {failCount} tidak tersedia disembunyikan
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                               <div style={{ marginTop:8, fontSize:9, color:'rgba(255,255,255,0.18)', paddingLeft:2 }}>
-                                {!selCountry ? 'Pilih negara untuk melihat genre & stasiun' : !selGenre ? 'Pilih genre untuk melihat stasiun' : 'Tap stasiun untuk memutar live · stream langsung dalam app'}
+                                {!selCountry ? 'Pilih negara untuk melihat genre & stasiun' : !selGenre ? 'Pilih genre untuk melihat stasiun' : 'Hanya stasiun yang dapat dijangkau yang ditampilkan'}
                               </div>
                             </div>
                           );
@@ -4769,9 +4891,14 @@ export default function App() {
               {/* Cover / icon */}
               {embedTrack
                 ? <div style={{ width:36, height:36, borderRadius:9, background:'rgba(255,68,68,0.18)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:14 }}>▶</div>
-                : isLite
-                  ? <div style={{ width:36, height:36, borderRadius:9, background:track.bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Music size={15} color={track.color}/></div>
-                  : <img src={getCover(track)} style={{ width:36, height:36, borderRadius:9, objectFit:'cover', flexShrink:0 }}/>
+                : track.isRadio
+                  ? <div style={{ width:36, height:36, borderRadius:9, background:`${track.color}25`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, position:'relative' }}>
+                      <Radio size={15} color={track.color}/>
+                      {playing && <div style={{ position:'absolute', top:3, right:3, width:5, height:5, borderRadius:'50%', background:track.color, animation:'pulse 1.2s infinite' }}/>}
+                    </div>
+                  : isLite
+                    ? <div style={{ width:36, height:36, borderRadius:9, background:track.bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Music size={15} color={track.color}/></div>
+                    : <img src={getCover(track)} style={{ width:36, height:36, borderRadius:9, objectFit:'cover', flexShrink:0 }}/>
               }
               {/* Track info */}
               <div style={{ flex:1, minWidth:0 }}>
@@ -4779,7 +4906,7 @@ export default function App() {
                   {embedTrack ? embedTrack.title : track.title}
                 </div>
                 <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                  {embedTrack ? (embedTrack.type==='youtube' ? '▶ YouTube' : '☁️ SoundCloud') : `${track.artist} — Ketuk untuk player`}
+                  {embedTrack ? (embedTrack.type==='youtube' ? '▶ YouTube' : '☁️ SoundCloud') : track.isRadio ? `📻 ${track.artist}` : `${track.artist} — Ketuk untuk player`}
                 </div>
               </div>
               {/* Playback indicator + play/pause hint */}
