@@ -80,11 +80,17 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: false,
     target: ['es2020', 'chrome87', 'firefox78', 'safari14'],
-    minify: 'esbuild',
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        passes: 2,
+        drop_console: false,
+      },
+      mangle: true,
+    },
     chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
-        inlineDynamicImports: true,
         entryFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
       }

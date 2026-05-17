@@ -863,52 +863,56 @@ const INVIDIOUS_INSTANCES = [
 ];
 
 // ── Provider definitions
-const PROVIDERS = [
-  // OpenAI (ChatGPT) — format OpenAI standard
-  ...([
-    (import.meta.env?.VITE_OPENAI_API_KEY || ''),
-  ].filter(k => k && k.length > 10).flatMap(k => [
-    { provider:'OpenAI', key:k, model:'gpt-4o-mini',    endpoint:'https://api.openai.com/v1/chat/completions', isOpenAI:true, extra:{} },
-    { provider:'OpenAI', key:k, model:'gpt-4o',          endpoint:'https://api.openai.com/v1/chat/completions', isOpenAI:true, extra:{} },
-    { provider:'OpenAI', key:k, model:'gpt-3.5-turbo',  endpoint:'https://api.openai.com/v1/chat/completions', isOpenAI:true, extra:{} },
-  ])),
-  // Anthropic (Claude) — format Anthropic native (isOpenAI:false)
-  ...([
-    (import.meta.env?.VITE_ANTHROPIC_API_KEY || ''),
-  ].filter(k => k && k.length > 10).flatMap(k => [
-    { provider:'Claude', key:k, model:'claude-haiku-4-5-20251001', endpoint:'https://api.anthropic.com/v1/messages', isOpenAI:false, extra:{ 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' } },
-    { provider:'Claude', key:k, model:'claude-sonnet-4-5',         endpoint:'https://api.anthropic.com/v1/messages', isOpenAI:false, extra:{ 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' } },
-  ])),
-  // OpenRouter — beberapa key & model gratis sebagai slot
-  ...([
-    (import.meta.env?.VITE_OPENROUTER_KEY_1 || ''),
-    (import.meta.env?.VITE_OPENROUTER_KEY_2 || ''),
-    (import.meta.env?.VITE_OPENROUTER_KEY_3 || ''),
-  ].filter(k => k && k.length > 10).flatMap(k => [
-    { provider:'OpenRouter', key:k, model:'deepseek/deepseek-chat-v3-0324:free',      endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true,  extra:{ 'HTTP-Referer':window.location.origin,'X-Title':'Starry Night' } },
-    { provider:'OpenRouter', key:k, model:'meta-llama/llama-4-maverick:free',          endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true,  extra:{ 'HTTP-Referer':window.location.origin,'X-Title':'Starry Night' } },
-    { provider:'OpenRouter', key:k, model:'qwen/qwen3-235b-a22b:free',                endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true,  extra:{ 'HTTP-Referer':window.location.origin,'X-Title':'Starry Night' } },
-    { provider:'OpenRouter', key:k, model:'google/gemma-3-12b-it:free',               endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true,  extra:{ 'HTTP-Referer':window.location.origin,'X-Title':'Starry Night' } },
-    { provider:'OpenRouter', key:k, model:'meta-llama/llama-3.3-70b-instruct:free',   endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true,  extra:{ 'HTTP-Referer':window.location.origin,'X-Title':'Starry Night' } },
-  ])),
-  // Google Gemini — format OpenAI-compatible via AI Studio
-  ...([
-    (import.meta.env?.VITE_GEMINI_KEY_1 || ''),
-    (import.meta.env?.VITE_GEMINI_KEY_2 || ''),
-  ].filter(k => k && k.length > 10).flatMap(k => [
-    { provider:'Gemini', key:k, model:'gemini-2.0-flash', endpoint:'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', isOpenAI:true, extra:{} },
-    { provider:'Gemini', key:k, model:'gemini-1.5-flash', endpoint:'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', isOpenAI:true, extra:{} },
-  ])),
-  // Groq — sangat cepat, format OpenAI-compatible
-  ...([
-    (import.meta.env?.VITE_GROQ_KEY_1 || ''),
-    (import.meta.env?.VITE_GROQ_KEY_2 || ''),
-  ].filter(k => k && k.length > 10).flatMap(k => [
-    { provider:'Groq', key:k, model:'llama-3.3-70b-versatile', endpoint:'https://api.groq.com/openai/v1/chat/completions', isOpenAI:true, extra:{} },
-    { provider:'Groq', key:k, model:'gemma2-9b-it',            endpoint:'https://api.groq.com/openai/v1/chat/completions', isOpenAI:true, extra:{} },
-    { provider:'Groq', key:k, model:'llama3-8b-8192',          endpoint:'https://api.groq.com/openai/v1/chat/completions', isOpenAI:true, extra:{} },
-  ])),
-];
+// PROVIDERS built lazily to avoid window.location access at module init time
+function getProviders() {
+  const origin = (typeof window !== 'undefined' && window.location?.origin) || '';
+  return [
+    // OpenAI
+    ...([
+      (import.meta.env?.VITE_OPENAI_API_KEY || ''),
+    ].filter(k => k && k.length > 10).flatMap(k => [
+      { provider:'OpenAI', key:k, model:'gpt-4o-mini',   endpoint:'https://api.openai.com/v1/chat/completions', isOpenAI:true, extra:{} },
+      { provider:'OpenAI', key:k, model:'gpt-4o',         endpoint:'https://api.openai.com/v1/chat/completions', isOpenAI:true, extra:{} },
+      { provider:'OpenAI', key:k, model:'gpt-3.5-turbo', endpoint:'https://api.openai.com/v1/chat/completions', isOpenAI:true, extra:{} },
+    ])),
+    // Anthropic
+    ...([
+      (import.meta.env?.VITE_ANTHROPIC_API_KEY || ''),
+    ].filter(k => k && k.length > 10).flatMap(k => [
+      { provider:'Claude', key:k, model:'claude-haiku-4-5-20251001', endpoint:'https://api.anthropic.com/v1/messages', isOpenAI:false, extra:{ 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' } },
+      { provider:'Claude', key:k, model:'claude-sonnet-4-5',         endpoint:'https://api.anthropic.com/v1/messages', isOpenAI:false, extra:{ 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' } },
+    ])),
+    // OpenRouter
+    ...([
+      (import.meta.env?.VITE_OPENROUTER_KEY_1 || ''),
+      (import.meta.env?.VITE_OPENROUTER_KEY_2 || ''),
+      (import.meta.env?.VITE_OPENROUTER_KEY_3 || ''),
+    ].filter(k => k && k.length > 10).flatMap(k => [
+      { provider:'OpenRouter', key:k, model:'deepseek/deepseek-chat-v3-0324:free',    endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true, extra:{ 'HTTP-Referer':origin,'X-Title':'Starry Night' } },
+      { provider:'OpenRouter', key:k, model:'meta-llama/llama-4-maverick:free',        endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true, extra:{ 'HTTP-Referer':origin,'X-Title':'Starry Night' } },
+      { provider:'OpenRouter', key:k, model:'qwen/qwen3-235b-a22b:free',              endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true, extra:{ 'HTTP-Referer':origin,'X-Title':'Starry Night' } },
+      { provider:'OpenRouter', key:k, model:'google/gemma-3-12b-it:free',             endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true, extra:{ 'HTTP-Referer':origin,'X-Title':'Starry Night' } },
+      { provider:'OpenRouter', key:k, model:'meta-llama/llama-3.3-70b-instruct:free', endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true, extra:{ 'HTTP-Referer':origin,'X-Title':'Starry Night' } },
+    ])),
+    // Gemini
+    ...([
+      (import.meta.env?.VITE_GEMINI_KEY_1 || ''),
+      (import.meta.env?.VITE_GEMINI_KEY_2 || ''),
+    ].filter(k => k && k.length > 10).flatMap(k => [
+      { provider:'Gemini', key:k, model:'gemini-2.0-flash', endpoint:'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', isOpenAI:true, extra:{} },
+      { provider:'Gemini', key:k, model:'gemini-1.5-flash', endpoint:'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', isOpenAI:true, extra:{} },
+    ])),
+    // Groq
+    ...([
+      (import.meta.env?.VITE_GROQ_KEY_1 || ''),
+      (import.meta.env?.VITE_GROQ_KEY_2 || ''),
+    ].filter(k => k && k.length > 10).flatMap(k => [
+      { provider:'Groq', key:k, model:'llama-3.3-70b-versatile', endpoint:'https://api.groq.com/openai/v1/chat/completions', isOpenAI:true, extra:{} },
+      { provider:'Groq', key:k, model:'gemma2-9b-it',            endpoint:'https://api.groq.com/openai/v1/chat/completions', isOpenAI:true, extra:{} },
+      { provider:'Groq', key:k, model:'llama3-8b-8192',          endpoint:'https://api.groq.com/openai/v1/chat/completions', isOpenAI:true, extra:{} },
+    ])),
+  ];
+}
 
 let slotIdx = 0;
 
@@ -993,6 +997,7 @@ async function searchSoundCloud(query, limit = 10) {
 
 
 const askAI = async (user, system='', tries=0) => {
+  const PROVIDERS = getProviders();
   if (!PROVIDERS.length) return '⚠️ Belum ada API key. Isi di Vercel Environment Variables.';
   if (tries >= PROVIDERS.length) { slotIdx = 0; return 'Semua provider sibuk, coba lagi nanti.'; }
   const slot = PROVIDERS[slotIdx % PROVIDERS.length];
@@ -1054,11 +1059,11 @@ const askAI = async (user, system='', tries=0) => {
 }
 
 const activeModel = () => {
-  if (!PROVIDERS.length) return 'no-key';
-  const s = PROVIDERS[slotIdx % PROVIDERS.length];
+  if (!getProviders().length) return 'no-key';
+  const s = getProviders()[slotIdx % getProviders().length];
   return `${s.provider}·${s.model.split('/').pop()?.replace(':free','') || s.model}`;
 };
-const hasKey = () => PROVIDERS.length > 0;
+const hasKey = () => getProviders().length > 0;
 
 // ═══════════════════════════════════════════════════════
 //  GOOGLE DRIVE HELPERS
