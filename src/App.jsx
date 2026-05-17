@@ -1812,8 +1812,9 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
   const cx=size/2, cy=size/2, artR=size/2-36, ringR=artR+18, circ=2*Math.PI*ringR;
   const deg=pct*360-90, rad=deg*Math.PI/180;
   const dotX=cx+Math.cos(rad)*ringR, dotY=cy+Math.sin(rad)*ringR;
-  const lblR=ringR+26, lblX=cx+Math.cos(rad)*lblR, lblY=cy+Math.sin(rad)*lblR;
-  const durX=cx+Math.cos(Math.PI/2)*lblR, durY=cy+Math.sin(Math.PI/2)*lblR;
+  const lblR=ringR+22, lblX=cx+Math.cos(rad)*lblR, lblY=cy+Math.sin(rad)*lblR;
+  // Duration label: inside SVG bounds (bottom of ring, pulled inward)
+  const durY=cy+ringR+16;
 
   const svgRef  = useRef(null);
   const dragging = useRef(false);
@@ -1831,7 +1832,7 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
   };
 
   // Mouse events
-  const onMouseDown = e => { if (!onSeek||!duration||!nearRing(e.clientX,e.clientY)) return; dragging.current=true; onSeek(getPct(e.clientX,e.clientY)); };
+  const onMouseDown = e => { if (!onSeek||isRadio||!nearRing(e.clientX,e.clientY)) return; dragging.current=true; onSeek(getPct(e.clientX,e.clientY)); };
   const onMouseMove = e => { if (!dragging.current||!onSeek) return; onSeek(getPct(e.clientX,e.clientY)); };
   const onMouseUp   = () => { dragging.current=false; };
 
@@ -1839,7 +1840,7 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
   useEffect(() => {
     const svg = svgRef.current; if (!svg) return;
     const tStart = e => {
-      const t=e.touches[0]; if (!onSeek||!duration||!nearRing(t.clientX,t.clientY)) return;
+      const t=e.touches[0]; if (!onSeek||isRadio||!nearRing(t.clientX,t.clientY)) return;
       dragging.current=true; onSeek(getPct(t.clientX,t.clientY)); e.preventDefault();
     };
     const tMove = e => {
@@ -1869,7 +1870,7 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
       </div>
       {/* SVG ring — mouse drag + click */}
       <svg ref={svgRef} width={size} height={size}
-        style={{ position:'absolute', inset:0, zIndex:3, overflow:'visible', cursor:(duration&&!isRadio)?'grab':'default', touchAction:'none' }}
+        style={{ position:'absolute', inset:0, zIndex:3, overflow:'visible', cursor:(!isRadio&&onSeek)?'grab':'default', touchAction:'none' }}
         onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}>
         {/* Wide invisible hit area */}
         <circle cx={cx} cy={cy} r={ringR} stroke="transparent" strokeWidth="44" fill="none"/>
@@ -1898,7 +1899,7 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
         {/* Duration / LIVE label */}
         {isRadio
           ? <text x={cx} y={cy+ringR+20} textAnchor="middle" dominantBaseline="middle" fill={color} fontSize="10" fontWeight="800" fontFamily="monospace" style={{ pointerEvents:'none', letterSpacing:'0.12em' }}>● LIVE</text>
-          : <text x={durX} y={durY} textAnchor="middle" dominantBaseline="middle" fill="rgba(255,255,255,0.28)" fontSize="10" fontWeight="600" fontFamily="monospace" style={{ pointerEvents:'none' }}>{fmt(duration)}</text>
+          : <text x={cx} y={durY} textAnchor="middle" dominantBaseline="middle" fill="rgba(255,255,255,0.28)" fontSize="10" fontWeight="600" fontFamily="monospace" style={{ pointerEvents:'none' }}>{duration>0?fmt(duration):'--:--'}</text>
         }
         {/* Start label — hide for radio */}
         {!isRadio && <text x={cx} y={cy-ringR-20} textAnchor="middle" dominantBaseline="middle" fill="rgba(255,255,255,0.18)" fontSize="10" fontWeight="600" fontFamily="monospace" style={{ pointerEvents:'none' }}>0:00</text>}
@@ -1994,6 +1995,33 @@ class SettingsErrorBoundary extends React.Component {
   }
 }
 
+// ═══════════════════════════════════════════════════════
+//  ERROR BOUNDARY — cegah blank screen saat playlist crash
+// ═══════════════════════════════════════════════════════
+class PlaylistErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(error, info) { console.error('Playlist render error:', error, info); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'32px 20px', textAlign:'center' }}>
+          <div style={{ fontSize:32, marginBottom:14 }}>⚠️</div>
+          <div style={{ fontWeight:800, fontSize:15, color:'#fca5a5', marginBottom:8 }}>Gagal memuat playlist</div>
+          <div style={{ fontSize:12, color:'rgba(255,255,255,0.4)', marginBottom:20 }}>
+            {String(this.state.error?.message || 'Unknown error')}
+          </div>
+          <button onClick={()=>{ this.setState({hasError:false,error:null}); if(this.props.onBack) this.props.onBack(); }}
+            style={{ padding:'10px 24px', borderRadius:12, border:'none', background:'rgba(239,68,68,0.2)', color:'#fca5a5', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+            ← Kembali
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // ── Komponen SettingsPanel dengan Error Boundary
 function SettingsPanel(props) {
   return (
@@ -2018,53 +2046,6 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
         </div>
 
         {/* ── EQUALIZER */}
-        <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <SlidersHorizontal size={16} style={{ color }}/>
-              <span style={{ fontWeight:800, fontSize:14 }}>Equalizer</span>
-            </div>
-            {/* Toggle */}
-            <div onClick={()=>setEqEnabled(v=>!v)} style={{ width:44, height:24, borderRadius:999, background:eqEnabled?color:'rgba(255,255,255,0.1)', cursor:'pointer', position:'relative' }}>
-              <div style={{ position:'absolute', top:3, left:eqEnabled?22:3, width:18, height:18, borderRadius:'50%', background:'white', boxShadow:'0 1px 4px rgba(0,0,0,0.3)' }}/>
-            </div>
-          </div>
-
-          {/* Preset pills */}
-          <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:16 }}>
-            {Object.keys(EQ_PRESETS).map(p=>(
-              <button key={p} onClick={()=>{ setEqPreset(p); setEqGains([...EQ_PRESETS[p]]); }} style={{ padding:'5px 12px', borderRadius:999, border:'none', fontSize:11, fontWeight:700, cursor:'pointer', background:eqPreset===p?color:'rgba(255,255,255,0.08)', color:eqPreset===p?'white':'rgba(255,255,255,0.5)' }}>{p}</button>
-            ))}
-          </div>
-
-          {/* 5-band sliders */}
-          <div style={{ opacity:eqEnabled?1:0.35 }}>
-            {EQ_FREQS.map((_, i)=>(
-              <div key={i} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
-                <span style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.4)', width:36, textAlign:'right', fontFamily:'monospace' }}>{EQ_LABELS[i]}</span>
-                <input type="range" min="-10" max="10" step="0.5" value={safeGains[i]} disabled={!eqEnabled}
-                  onChange={e=>setEqGains(g=>(Array.isArray(g)?g:[0,0,0,0,0]).map((v,j)=>j===i?+e.target.value:v))}
-                  style={{ flex:1, accentColor:color, height:4 }}/>
-                <span style={{ fontSize:10, fontWeight:700, color:safeGains[i]>0?color:safeGains[i]<0?'#ef4444':'rgba(255,255,255,0.35)', width:28, textAlign:'left', fontFamily:'monospace' }}>{safeGains[i]>0?'+':''}{safeGains[i]}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ── CROSSFADE */}
-        <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
-            <Zap size={16} style={{ color }}/>
-            <span style={{ fontWeight:800, fontSize:14 }}>Crossfade</span>
-            <span style={{ marginLeft:'auto', fontSize:12, fontWeight:700, color, fontFamily:'monospace' }}>{crossfade}s</span>
-          </div>
-          <input type="range" min="0" max="8" step="1" value={crossfade} onChange={e=>setCrossfade(+e.target.value)} style={{ width:'100%', accentColor:color, height:4 }}/>
-          <div style={{ display:'flex', justifyContent:'space-between', marginTop:4 }}>
-            <span style={{ fontSize:10, color:'rgba(255,255,255,0.25)' }}>Mati</span>
-            <span style={{ fontSize:10, color:'rgba(255,255,255,0.25)' }}>8 detik</span>
-          </div>
-        </div>
-
         {/* ── SLEEP TIMER */}
         <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
@@ -3349,8 +3330,12 @@ export default function App() {
   useEffect(() => {
     const a = audioRef.current; if (!a) return;
     const onTime  = () => setProgress(a.currentTime);
-    const onMeta  = () => { if (a.duration && isFinite(a.duration)) setDuration(a.duration); };
-    const onDurChange = () => { if (a.duration && isFinite(a.duration)) setDuration(a.duration); };
+    const trySetDur = () => {
+      if (isFinite(a.duration) && a.duration > 0) { setDuration(a.duration); return true; }
+      return false;
+    };
+    const onMeta  = () => trySetDur();
+    const onDurChange = () => trySetDur();
     const onEnd   = () => {
       if (repeatRef.current === 'one') { a.currentTime = 0; a.play().catch(()=>{}); return; }
       if (repeatRef.current === 'all' || shuffleRef.current) {
@@ -3370,6 +3355,13 @@ export default function App() {
     a.addEventListener('ended', onEnd);
     a.addEventListener('error', onError);
     a.addEventListener('stalled', onStall);
+    // Immediate check — metadata may already be loaded (blob URL / fast network)
+    trySetDur();
+    // Polling fallback: VBR MP3 may report Infinity initially, then settle later
+    let pollCount = 0;
+    const durPoll = setInterval(() => {
+      if (trySetDur() || ++pollCount > 20) clearInterval(durPoll);
+    }, 500);
     return () => {
       a.removeEventListener('timeupdate', onTime);
       a.removeEventListener('loadedmetadata', onMeta);
@@ -3377,6 +3369,7 @@ export default function App() {
       a.removeEventListener('ended', onEnd);
       a.removeEventListener('error', onError);
       a.removeEventListener('stalled', onStall);
+      clearInterval(durPoll);
     };
   }, [track]); // only re-attach when track changes (not customSongs)
 
@@ -3710,7 +3703,14 @@ export default function App() {
   }, [track, play, customSongs, ytSongs, progress]);
 
   // ── SEEK
-  const seekByPct = useCallback((p) => { if(audioRef.current&&duration){audioRef.current.currentTime=p*duration;setProgress(p*duration);} }, [duration]);
+  const seekByPct = useCallback((p) => {
+    const a = audioRef.current; if (!a) return;
+    const dur = (isFinite(a.duration) && a.duration > 0) ? a.duration : duration;
+    if (!dur) return;
+    a.currentTime = p * dur;
+    setProgress(p * dur);
+    if (dur > 0 && dur !== duration) setDuration(dur);
+  }, [duration]);
 
   // ── RADIO NEXT / PREV (navigate within same genre)
   const goNextRadio = useCallback(() => {
@@ -3990,19 +3990,19 @@ export default function App() {
   const handleUpload = useCallback(async (file, meta) => {
     if (!accessToken) return alert(t?.loginRequiredAlert||'Please sign in with Google first!');
     setUploading(true); setUploadProg(10);
-    const t=setInterval(()=>setUploadProg(p=>p<85?p+5:p),400);
+    const uploadTimer=setInterval(()=>setUploadProg(p=>p<85?p+5:p),400);
     try {
-      const s=await driveUploadSong(file,meta,accessToken); clearInterval(t); setUploadProg(100);
+      const s=await driveUploadSong(file,meta,accessToken); clearInterval(uploadTimer); setUploadProg(100);
       setCustomSongs(p=>[...p,s]);
       setTimeout(()=>{ setShowUpload(false); setUploading(false); setUploadProg(0); },700);
-    } catch(e) { clearInterval(t); alert((t?.uploadBtn||'Upload')+ ' failed: '+e.message); setUploading(false); setUploadProg(0); }
+    } catch(e) { clearInterval(uploadTimer); alert((t?.uploadBtn||'Upload')+ ' failed: '+e.message); setUploading(false); setUploadProg(0); }
   }, [accessToken]);
 
   const pct = duration>0?progress/duration:0;
 
   // ── Search filter
   const q = searchQuery.toLowerCase();
-  const filteredSongs = allSongs.filter(s => !q || s.title.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q) || s.album.toLowerCase().includes(q));
+  const filteredSongs = allSongs.filter(s => !q || (s.title||'').toLowerCase().includes(q) || (s.artist||'').toLowerCase().includes(q) || (s.album||'').toLowerCase().includes(q));
   const filteredCustom = filteredSongs.filter(s => s.isDrive);
 
   // ── Active playlist songs
@@ -4602,26 +4602,6 @@ export default function App() {
               )}
             </div>
 
-            {/* YouTube playlist picker — shown when YT track is liked */}
-            {embedTrack?.type==='youtube' && liked[`yt_${embedTrack.videoId}`] && (
-              <div style={{ width:'100%', maxWidth:340, marginTop:10, padding:'10px 14px', borderRadius:14, background:'rgba(255,68,68,0.07)', border:'1px solid rgba(255,68,68,0.18)' }}>
-                <div style={{ fontSize:10, fontWeight:700, color:'#ff6b6b', marginBottom:6, textTransform:'uppercase', letterSpacing:'0.08em' }}>{t?.addToPlaylistBtn||'Add to Playlist'}</div>
-                <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
-                  {playlists.map(pl => {
-                    const ytId = `yt_${embedTrack.videoId}`;
-                    const inPl = pl.songIds.includes(ytId);
-                    return (
-                      <button key={pl.id} onClick={()=>inPl?removeFromPlaylist(pl.id,ytId):addToPlaylist(pl.id,ytId)}
-                        style={{ padding:'4px 10px', borderRadius:999, border:`1px solid ${inPl?'#ff4444':'rgba(255,255,255,0.15)'}`, background:inPl?'rgba(255,68,68,0.2)':'rgba(255,255,255,0.05)', color:inPl?'#fca5a5':'rgba(255,255,255,0.6)', fontSize:10, fontWeight:700, cursor:'pointer' }}>
-                        {inPl?'✓ ':''}{pl.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-
           </div>
           </div>
         )}
@@ -4632,8 +4612,6 @@ export default function App() {
             <div style={{ marginBottom:10 }}>
               <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom:8 }}>
                 <div style={{ fontWeight:800, fontSize:15 }}>{t?.streamingPlatforms||'Streaming Platforms'}</div>
-                {eqEnabled && <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:999, background:`${track.color}25`, color:track.color, letterSpacing:'0.04em' }}>EQ ON</span>}
-                {crossfade > 0 && <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:999, background:'rgba(99,102,241,0.18)', color:'#a5b4fc', letterSpacing:'0.04em' }}>CF {crossfade}s</span>}
                 {sleepTimer && <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:999, background:'rgba(251,191,36,0.15)', color:'#fbbf24', letterSpacing:'0.04em' }}>💤 {fmtSec(sleepTimer.remaining)}</span>}
               </div>
 
@@ -5406,7 +5384,9 @@ export default function App() {
             )}
 
             {/* ── Playlist detail view */}
-            {plView==='detail'&&activePl&&(()=>{
+            {plView==='detail'&&activePl&&(
+              <PlaylistErrorBoundary onBack={()=>{ setActivePl(null); setPlView('list'); }}>
+                {(()=>{
               // ── Special: Lagu Saya (Drive)
               if (activePl === 'my_songs') {
                 const songs = filteredCustom;
@@ -5609,6 +5589,8 @@ export default function App() {
                 </div>
               );
             })()}
+              </PlaylistErrorBoundary>
+            )}
           </div>
         )}
 
@@ -5828,13 +5810,12 @@ export default function App() {
                   {embedTrack ? (embedTrack.type==='youtube' ? '▶ YouTube' : '☁️ SoundCloud') : track.isRadio ? `📻 ${track.artist}` : `${track.artist} — ${t?.miniPlayerHint||'Tap for player'}`}
                 </div>
               </div>
-              {/* Playback indicator + play/pause hint */}
+              {/* Playback indicator */}
               <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
                 {playing
                   ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:14 }}>{[10,5,8].map((h,i)=>(<div key={i} style={{ width:3, height:h, background:embedTrack?'#ff4444':track.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${i*0.15}s infinite` }}/>))}</div>
                   : <div style={{ width:6, height:6, borderRadius:'50%', background:'rgba(255,255,255,0.2)' }}/>
                 }
-                <Compass size={14} style={{ color:'rgba(255,255,255,0.25)' }}/>
               </div>
             </div>
           )}
