@@ -12,6 +12,116 @@ import {
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════
+//  TRANSLATIONS — id (Indonesia) & en (English)
+// ═══════════════════════════════════════════════════════
+const T = {
+  id: {
+    settings: 'Pengaturan',
+    language: 'Bahasa',
+    languageDesc: 'Pilih bahasa tampilan aplikasi',
+    equalizer: 'Equalizer',
+    crossfade: 'Crossfade',
+    sleepTimer: 'Sleep Timer',
+    sleepTimerOff: 'Mati',
+    sleepTimerSec: '8 detik',
+    sleepTimerCancel: 'Batal',
+    sleepTimerMsg: 'Musik berhenti dalam',
+    globalCover: 'Foto Cover Global',
+    globalCoverDesc: 'Terapkan satu foto ke semua lagu',
+    customDns: 'DNS Kustom',
+    customDnsDesc: 'Ubah DNS untuk memblokir iklan / meningkatkan privasi',
+    customDnsNote: 'Pengaturan DNS di browser terbatas. Untuk DNS penuh, ubah juga di:',
+    customDnsActive: 'Aktif',
+    modeLite: 'Mode',
+    modeLiteDesc: 'Hemat data · tanpa animasi · load cepat',
+    modeProDesc: 'Animasi penuh · cover art · fitur AI',
+    installApp: 'Install Sebagai App',
+    installAppDesc: 'Desktop & Mobile — tanpa toko aplikasi',
+    installNow: 'Install Sekarang',
+    installedMsg: 'Sudah terinstall!',
+    installedDesc: 'Buka dari layar utama atau app launcher',
+    installManual: 'Cara install manual:',
+    offline: 'Offline — Lagu yang sudah diunduh tetap bisa diputar',
+    cachedSongs: 'lagu tersimpan',
+    search: 'Cari',
+    player: 'Player',
+    pengaturan: 'Pengaturan',
+    liteFeatures: [
+      ['⚡ Cover art dinonaktifkan', 'Gambar album tidak dimuat — halaman lebih ringan'],
+      ['⚡ Audio preload: none', 'Audio hanya dimuat saat diputar, menghemat bandwidth'],
+      ['⚡ Drive: streaming adaptif', 'Hanya buffer ~30 detik ke depan, tidak simpan ke cache — hemat data & storage'],
+      ['⚡ Prefetch Drive dinonaktifkan', 'Lagu tidak di-unduh di background'],
+      ['⚡ AI & Insight dinonaktifkan', 'Starry AI, Vibe Search, dan Wawasan Kosmik dimatikan'],
+      ['⚡ Lirik: database publik saja', 'Mencari dari lyrics.ovh — tanpa AI generate jika tidak ditemukan'],
+      ['⚡ Animasi dinonaktifkan', 'Semua efek visual dan blur dimatikan untuk performa maksimal'],
+    ],
+    proFeatures: [
+      ['✨ Cover art aktif', 'Gambar album dimuat dari internet'],
+      ['✨ Audio preload: auto', 'Buffer audio disiapkan lebih awal untuk playback instan'],
+      ['✨ Drive: unduh & cache penuh', 'File diunduh seluruhnya & disimpan untuk playback offline'],
+      ['✨ Prefetch Drive aktif', 'Lagu berikutnya di-cache di background'],
+      ['✨ AI & Insight aktif', 'Starry AI, Vibe Search, dan Wawasan Kosmik tersedia'],
+      ['✨ Lirik: database + AI', 'Cari dari lyrics.ovh, fallback ke Starry AI generate lirik'],
+      ['✨ Animasi penuh', 'Bintang-bintang, blur, dan efek visual lengkap'],
+    ],
+    liteTitle: 'Mode Lite aktif (hemat data) — ketuk untuk Pro',
+    proTitle: 'Mode Pro — ketuk untuk Lite (hemat data)',
+  },
+  en: {
+    settings: 'Settings',
+    language: 'Language',
+    languageDesc: 'Choose the display language',
+    equalizer: 'Equalizer',
+    crossfade: 'Crossfade',
+    sleepTimer: 'Sleep Timer',
+    sleepTimerOff: 'Off',
+    sleepTimerSec: '8 seconds',
+    sleepTimerCancel: 'Cancel',
+    sleepTimerMsg: 'Music stops in',
+    globalCover: 'Global Cover Photo',
+    globalCoverDesc: 'Apply one photo to all songs',
+    customDns: 'Custom DNS',
+    customDnsDesc: 'Change DNS to block ads / improve privacy',
+    customDnsNote: 'Browser DNS settings are limited. For full DNS, also change it in:',
+    customDnsActive: 'Active',
+    modeLite: 'Mode',
+    modeLiteDesc: 'Save data · no animations · fast load',
+    modeProDesc: 'Full animations · cover art · AI features',
+    installApp: 'Install as App',
+    installAppDesc: 'Desktop & Mobile — no app store needed',
+    installNow: 'Install Now',
+    installedMsg: 'Already installed!',
+    installedDesc: 'Open from home screen or app launcher',
+    installManual: 'Manual install steps:',
+    offline: 'Offline — Downloaded songs can still be played',
+    cachedSongs: 'songs saved',
+    search: 'Search',
+    player: 'Player',
+    pengaturan: 'Settings',
+    liteFeatures: [
+      ['⚡ Cover art disabled', 'Album images not loaded — lighter page'],
+      ['⚡ Audio preload: none', 'Audio loaded only when played, saving bandwidth'],
+      ['⚡ Drive: adaptive streaming', 'Buffers ~30s ahead only, no cache — saves data & storage'],
+      ['⚡ Drive prefetch disabled', 'Songs not downloaded in background'],
+      ['⚡ AI & Insights disabled', 'Starry AI, Vibe Search, and Cosmic Insights are off'],
+      ['⚡ Lyrics: public database only', 'Searches from lyrics.ovh — no AI generation if not found'],
+      ['⚡ Animations disabled', 'All visual effects and blur disabled for max performance'],
+    ],
+    proFeatures: [
+      ['✨ Cover art active', 'Album images loaded from the internet'],
+      ['✨ Audio preload: auto', 'Audio buffer prepared early for instant playback'],
+      ['✨ Drive: full download & cache', 'Files fully downloaded & saved for offline playback'],
+      ['✨ Drive prefetch active', 'Next song cached in background'],
+      ['✨ AI & Insights active', 'Starry AI, Vibe Search, and Cosmic Insights available'],
+      ['✨ Lyrics: database + AI', 'Search from lyrics.ovh, fallback to Starry AI lyrics'],
+      ['✨ Full animations', 'Stars, blur, and full visual effects'],
+    ],
+    liteTitle: 'Lite Mode active (save data) — tap for Pro',
+    proTitle: 'Pro Mode — tap for Lite (save data)',
+  },
+};
+
+// ═══════════════════════════════════════════════════════
 //  STREAMING PLATFORMS — search & redirect ke platform
 // ═══════════════════════════════════════════════════════
 // Helper: buka URL di tab baru dengan cara yang reliable di semua browser/PWA
@@ -1670,7 +1780,7 @@ function SettingsPanel(props) {
 }
 
 // ─────────────────────────────────────────────────────────
-function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setEqPreset, eqGains, setEqGains, crossfade, setCrossfade, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns }) {
+function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setEqPreset, eqGains, setEqGains, crossfade, setCrossfade, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t }) {
   const coverRef = useRef(null);
   // Defensive: eqGains harus selalu array 5 elemen
   const safeGains = Array.isArray(eqGains) && eqGains.length === 5 ? eqGains : [0,0,0,0,0];
@@ -1679,7 +1789,7 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
       <div className="scrollbar-hide" style={{ width:'100%', height:'100%', overflowY:'auto', overflowX:'hidden', background:'#0d0d24', border:'none', borderRadius:0, padding:'0 0 32px' }}>
         {/* Header */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 18px 0', marginBottom:6 }}>
-          <div style={{ fontWeight:900, fontSize:15, letterSpacing:'-0.02em' }}>Pengaturan</div>
+          <div style={{ fontWeight:900, fontSize:15, letterSpacing:'-0.02em' }}>{t ? t.settings : 'Pengaturan'}</div>
           <button onClick={onClose} style={{ width:28, height:28, borderRadius:999, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.7)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:14 }}>×</button>
         </div>
 
@@ -1856,14 +1966,47 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
           </div>
         </div>
 
+        {/* ── BAHASA / LANGUAGE */}
+        <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <span style={{ fontSize:16 }}>🌐</span>
+              <div>
+                <div style={{ fontWeight:800, fontSize:14 }}>{t ? t.language : 'Bahasa'}</div>
+                <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{t ? t.languageDesc : 'Pilih bahasa tampilan aplikasi'}</div>
+              </div>
+            </div>
+            {/* Language pill toggle */}
+            <div style={{ display:'flex', alignItems:'center', gap:0, borderRadius:999, border:'1px solid rgba(255,255,255,0.15)', overflow:'hidden', flexShrink:0 }}>
+              <button
+                onClick={() => { if (lang !== 'id') toggleLang(); }}
+                style={{ padding:'5px 12px', border:'none', cursor:'pointer', fontSize:11, fontWeight:800, letterSpacing:'0.04em',
+                  background: lang === 'id' ? color : 'transparent',
+                  color: lang === 'id' ? 'white' : 'rgba(255,255,255,0.4)',
+                  transition:'all 0.2s' }}>
+                🇮🇩 ID
+              </button>
+              <div style={{ width:1, height:16, background:'rgba(255,255,255,0.15)', flexShrink:0 }}/>
+              <button
+                onClick={() => { if (lang !== 'en') toggleLang(); }}
+                style={{ padding:'5px 12px', border:'none', cursor:'pointer', fontSize:11, fontWeight:800, letterSpacing:'0.04em',
+                  background: lang === 'en' ? color : 'transparent',
+                  color: lang === 'en' ? 'white' : 'rgba(255,255,255,0.4)',
+                  transition:'all 0.2s' }}>
+                🇬🇧 EN
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* ── MODE LITE / PRO */}
         <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
             <div style={{ display:'flex', alignItems:'center', gap:8 }}>
               <span style={{ fontSize:16 }}>{isLite ? '⚡' : '✨'}</span>
               <div>
-                <div style={{ fontWeight:800, fontSize:14 }}>Mode {isLite ? 'Lite' : 'Pro'}</div>
-                <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{isLite ? 'Hemat data · tanpa animasi · load cepat' : 'Animasi penuh · cover art · fitur AI'}</div>
+                <div style={{ fontWeight:800, fontSize:14 }}>{t ? t.modeLite : 'Mode'} {isLite ? 'Lite' : 'Pro'}</div>
+                <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{isLite ? (t ? t.modeLiteDesc : 'Hemat data · tanpa animasi · load cepat') : (t ? t.modeProDesc : 'Animasi penuh · cover art · fitur AI')}</div>
               </div>
             </div>
             <div onClick={toggleMode} style={{ width:44, height:24, borderRadius:999, background:isLite?'#10b981':'rgba(255,255,255,0.1)', cursor:'pointer', position:'relative', flexShrink:0 }}>
@@ -1871,23 +2014,7 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
             </div>
           </div>
           <div style={{ borderRadius:12, background:isLite?'rgba(16,185,129,0.08)':'rgba(99,102,241,0.08)', border:`1px solid ${isLite?'rgba(16,185,129,0.2)':'rgba(99,102,241,0.2)'}`, padding:'10px 14px', display:'flex', flexDirection:'column', gap:5 }}>
-            {(isLite ? [
-              ['⚡ Cover art dinonaktifkan', 'Gambar album tidak dimuat — halaman lebih ringan'],
-              ['⚡ Audio preload: none', 'Audio hanya dimuat saat diputar, menghemat bandwidth'],
-              ['⚡ Drive: streaming adaptif', 'Hanya buffer ~30 detik ke depan, tidak simpan ke cache — hemat data & storage'],
-              ['⚡ Prefetch Drive dinonaktifkan', 'Lagu tidak di-unduh di background'],
-              ['⚡ AI & Insight dinonaktifkan', 'Starry AI, Vibe Search, dan Wawasan Kosmik dimatikan'],
-              ['⚡ Lirik: database publik saja', 'Mencari dari lyrics.ovh — tanpa AI generate jika tidak ditemukan'],
-              ['⚡ Animasi dinonaktifkan', 'Semua efek visual dan blur dimatikan untuk performa maksimal'],
-            ] : [
-              ['✨ Cover art aktif', 'Gambar album dimuat dari internet'],
-              ['✨ Audio preload: auto', 'Buffer audio disiapkan lebih awal untuk playback instan'],
-              ['✨ Drive: unduh & cache penuh', 'File diunduh seluruhnya & disimpan untuk playback offline'],
-              ['✨ Prefetch Drive aktif', 'Lagu berikutnya di-cache di background'],
-              ['✨ AI & Insight aktif', 'Starry AI, Vibe Search, dan Wawasan Kosmik tersedia'],
-              ['✨ Lirik: database + AI', 'Cari dari lyrics.ovh, fallback ke Starry AI generate lirik'],
-              ['✨ Animasi penuh', 'Bintang-bintang, blur, dan efek visual lengkap'],
-            ]).map(([feat, desc])=>(
+            {((isLite ? (t ? t.liteFeatures : T.id.liteFeatures) : (t ? t.proFeatures : T.id.proFeatures))).map(([feat, desc])=>(
               <div key={feat} style={{ display:'flex', alignItems:'flex-start', gap:8 }}>
                 <span style={{ fontSize:11, flexShrink:0 }}>{feat.split(' ')[0]}</span>
                 <div>
@@ -2001,6 +2128,12 @@ export default function App() {
   });
   const dataSaver = isLite; // alias untuk backward compat semua referensi lama
   const toggleDataSaver = toggleMode; // backward compat
+
+  // ── Language: 'id' (Indonesia) | 'en' (English)
+  const [lang, setLang] = useState(() => localStorage.getItem('sn_lang') || 'id');
+  const toggleLang = () => setLang(v => { const n = v === 'id' ? 'en' : 'id'; localStorage.setItem('sn_lang', n); return n; });
+  const t = T[lang] || T.id;
+
   const [customDns, setCustomDns] = useState(() => localStorage.getItem('sn_custom_dns') || '');
 
   // ── Built-in songs dihapus; semua musik dicari di platform eksternal
@@ -2594,7 +2727,17 @@ export default function App() {
 
   // ── Responsive
   const [ringSize, setRingSize] = useState(260);
-  const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= window.innerHeight);
+  const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= window.innerHeight && window.innerWidth >= 600);
+  // layoutMode: 'mobile-portrait' | 'mobile-landscape' | 'desktop-portrait' | 'desktop-landscape'
+  const [layoutMode, setLayoutMode] = useState(() => {
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const isLandscape = vw > vh;
+    const isLargeScreen = Math.max(vw, vh) >= 900;
+    if (isLargeScreen && isLandscape) return 'desktop-landscape';
+    if (isLargeScreen && !isLandscape) return 'desktop-portrait';
+    if (!isLargeScreen && isLandscape) return 'mobile-landscape';
+    return 'mobile-portrait';
+  });
   const [layoutVars, setLayoutVars] = useState({
     playerPad: '6px 16px 8px', trackTitleSize: '15px', artistSize: '10px',
     controlsGap: '10px', actionPad: '6px 0', volumeMt: '6px',
@@ -2810,8 +2953,17 @@ export default function App() {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       const isFs = document.fullscreenElement != null || fullscreenRef.current;
-      const desktop = vw >= vh; // landscape = desktop layout
-      setIsDesktop(desktop);
+      const desktop = vw >= vh && vw >= 600; // true desktop/tablet landscape only, not mobile landscape
+      setIsDesktop(mode === 'desktop-landscape' || mode === 'desktop-portrait');
+
+      // Determine layout mode
+      const isLandscape = vw > vh;
+      const isLargeScreen = Math.max(vw, vh) >= 900;
+      let mode = 'mobile-portrait';
+      if (isLargeScreen && isLandscape) mode = 'desktop-landscape';
+      else if (isLargeScreen && !isLandscape) mode = 'desktop-portrait';
+      else if (!isLargeScreen && isLandscape) mode = 'mobile-landscape';
+      setLayoutMode(mode);
 
       if (isFs) {
         // Fullscreen: maximize ring
@@ -2820,12 +2972,11 @@ export default function App() {
         return;
       }
 
-      if (desktop) {
-        // Desktop / landscape sidebar layout
+      if (mode === 'desktop-landscape') {
+        // Desktop Landscape — wide sidebar + centered ring
         const sidebarW = 196;
         const mainW = vw - sidebarW;
-        const mainH = vh - 50; // minus header ~50px
-        // Reserve: clock+badge~52, title+artist~52, controls~50, vol~30, actions~46, vpad~40
+        const mainH = vh - 50;
         const reservedH = 270;
         const byH = mainH - reservedH;
         const byW = mainW - 80;
@@ -2839,6 +2990,45 @@ export default function App() {
           volumeMt: `${Math.max(8, Math.min(16, Math.round(vpad * 0.6)))}px`,
           controlsMt: `${Math.max(10, Math.min(20, Math.round(vpad * 0.8)))}px`,
           infoMt: `${Math.max(8, Math.min(16, Math.round(vpad * 0.6)))}px`,
+        });
+      } else if (mode === 'desktop-portrait') {
+        // Desktop Portrait — narrower sidebar, taller player
+        const sidebarW = 160;
+        const mainW = vw - sidebarW;
+        const mainH = vh - 50;
+        const reservedH = 260;
+        const byH = mainH - reservedH;
+        const byW = mainW - 60;
+        const ring = Math.max(160, Math.min(300, Math.min(byH, byW)));
+        setRingSize(ring);
+        const vpad = Math.max(6, Math.round((mainH - ring - reservedH) / 2));
+        setLayoutVars({
+          playerPad: `${vpad}px 20px`,
+          trackTitleSize: `clamp(14px,${Math.round(mainW * 0.04)}px,24px)`,
+          artistSize: '11px', controlsGap: '12px', actionPad: '8px 0',
+          volumeMt: `${Math.max(6, Math.min(14, Math.round(vpad * 0.6)))}px`,
+          controlsMt: `${Math.max(8, Math.min(18, Math.round(vpad * 0.8)))}px`,
+          infoMt: `${Math.max(6, Math.min(14, Math.round(vpad * 0.6)))}px`,
+        });
+      } else if (mode === 'mobile-landscape') {
+        // Mobile Landscape — slim side icon nav (54px) + horizontal player layout
+        const sideNavW = 54;
+        const mainW = vw - sideNavW;
+        const mainH = vh - 44; // minus header
+        const reservedH = 200; // info + controls + volume + actions (more compact)
+        const byH = mainH - reservedH;
+        const byW = mainW * 0.4; // ring takes ~40% of width
+        const ring = Math.max(120, Math.min(200, Math.min(byH, byW)));
+        setRingSize(ring);
+        setLayoutVars({
+          playerPad: '6px 16px 8px',
+          trackTitleSize: 'clamp(13px,3.5vw,17px)',
+          artistSize: '10px',
+          controlsGap: '10px',
+          actionPad: '5px 0',
+          volumeMt: '5px',
+          controlsMt: '6px',
+          infoMt: '5px',
         });
       } else {
         // Portrait: full-width stacked
@@ -3644,24 +3834,35 @@ export default function App() {
   ];
 
   return (
-    <div className={isLite ? 'lite-mode' : ''} style={{ position:'fixed', inset:0, overflow:'hidden', background:'#07071a', color:'#f1f5f9', fontFamily:"'Segoe UI',system-ui,sans-serif", display:'flex', flexDirection:'column', userSelect:'none', WebkitTapHighlightColor:'transparent' }}>
+    <div className={`${isLite ? 'lite-mode' : ''} layout-${layoutMode}`} style={{ position:'fixed', inset:0, overflow:'hidden', background:'#07071a', color:'#f1f5f9', fontFamily:"'Segoe UI',system-ui,sans-serif", display:'flex', flexDirection:'column', userSelect:'none', WebkitTapHighlightColor:'transparent' }}>
 
       {/* BG — Pro only */}
       {!isLite && <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, background:`radial-gradient(ellipse at 60% 10%,${track.color}20 0%,transparent 60%)` }}/>}
       {!isLite && <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, overflow:'hidden' }}><div className="stars"/><div className="starsB"/><div className="starsC"/></div>}
 
       {/* ══ HEADER */}
-      {!fullscreen && <header style={{ position:'relative', zIndex:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 14px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+      {!fullscreen && <header style={{ position:'relative', zIndex:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'space-between', padding: layoutMode === 'mobile-landscape' ? '5px 14px' : '9px 14px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
         <div style={{ display:'flex', alignItems:'center', gap:9 }}>
-          <AppLogo size={30}/>
+          <AppLogo size={layoutMode === 'mobile-landscape' ? 24 : 30}/>
           <div>
-            <div style={{ fontWeight:900, fontSize:13, lineHeight:1, letterSpacing:'-0.03em', background:'linear-gradient(90deg,#60a5fa,#c084fc)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>Starry Night</div>
-            <div style={{ fontSize:9.5, fontWeight:700, color:'rgba(255,255,255,0.35)', marginTop:0.5, letterSpacing:'0.06em', textTransform:'uppercase' }}>MPlayer</div>
+            <div style={{ fontWeight:900, fontSize: layoutMode === 'mobile-landscape' ? 11 : 13, lineHeight:1, letterSpacing:'-0.03em', background:'linear-gradient(90deg,#60a5fa,#c084fc)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>Starry Night</div>
+            <div style={{ fontSize: layoutMode === 'mobile-landscape' ? 8 : 9.5, fontWeight:700, color:'rgba(255,255,255,0.35)', marginTop:0.5, letterSpacing:'0.06em', textTransform:'uppercase' }}>MPlayer</div>
           </div>
+          {/* Clock in header for mobile-landscape */}
+          {layoutMode === 'mobile-landscape' && (
+            <div style={{ marginLeft:8, userSelect:'none' }}>
+              <div style={{ fontSize:13, fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+                {nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', hour12:false })}
+              </div>
+              <div style={{ fontSize:8, color:'rgba(255,255,255,0.3)', fontWeight:600, letterSpacing:'0.04em', textTransform:'uppercase' }}>
+                {nowTime.toLocaleDateString('id-ID',{ weekday:'short', day:'numeric', month:'short' })}
+              </div>
+            </div>
+          )}
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
           {/* Mode toggle */}
-          <button onClick={toggleMode} title={isLite ? 'Mode Lite aktif (hemat data) — ketuk untuk Pro' : 'Mode Pro — ketuk untuk Lite (hemat data)'}
+          <button onClick={toggleMode} title={isLite ? (t ? t.liteTitle : 'Mode Lite aktif (hemat data) — ketuk untuk Pro') : (t ? t.proTitle : 'Mode Pro — ketuk untuk Lite (hemat data)')}
             style={{ display:'flex', alignItems:'center', gap:3, padding:'4px 8px', borderRadius:999, border:`1px solid ${isLite ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.15)'}`, background: isLite ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)', cursor:'pointer', color: isLite ? '#6ee7b7' : 'rgba(255,255,255,0.5)', fontSize:9, fontWeight:700, letterSpacing:'0.04em', textTransform:'uppercase' }}>
             {isLite ? <Zap size={9}/> : <Sparkles size={9}/>}
             {isLite ? 'Lite ⚡' : 'Pro'}
@@ -3721,9 +3922,44 @@ export default function App() {
       {/* ══ CONTENT — flex row wrapper for desktop sidebar layout */}
       <div style={{ flex:1, overflow:'hidden', display:'flex', flexDirection:'row', position:'relative', zIndex:5 }}>
 
+      {/* Mobile Landscape — vertical icon nav on left */}
+      {layoutMode === 'mobile-landscape' && !fullscreen && (
+        <div style={{ width:54, flexShrink:0, borderRight:'1px solid rgba(255,255,255,0.07)', background:'rgba(0,0,0,0.25)', display:'flex', flexDirection:'column', alignItems:'center', padding:'8px 0 12px', gap:2 }}>
+          <button onClick={()=>setTab('player')} style={{ width:42, height:42, borderRadius:12, border:'none', cursor:'pointer', background:tab==='player'?`${track.color}25`:'transparent', color:tab==='player'?track.color:'rgba(255,255,255,0.35)', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:1, position:'relative' }}>
+            <Compass size={18}/>
+            {tab==='player'&&<div style={{ position:'absolute', right:4, top:'50%', transform:'translateY(-50%)', width:3, height:16, borderRadius:999, background:track.color }}/>}
+          </button>
+          <div style={{ width:24, height:1, background:'rgba(255,255,255,0.07)', margin:'3px 0' }}/>
+          {/* Mini album art */}
+          {tab !== 'player' && (
+            <div onClick={()=>setTab('player')} style={{ width:38, height:38, borderRadius:10, overflow:'hidden', cursor:'pointer', marginBottom:4, border:`2px solid ${track.color}40`, flexShrink:0 }}>
+              {isLite ? <div style={{ width:'100%', height:'100%', background:track.bg, display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={14} color={track.color}/></div> : <img src={getCover(track)} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>}
+            </div>
+          )}
+          {tabs.map(t=>{
+            const active=tab===t.id;
+            return (
+              <button key={t.id} onClick={()=>setTab(t.id)} style={{ width:42, height:42, borderRadius:12, border:'none', cursor:'pointer', background:active?`${track.color}25`:'transparent', color:active?track.color:'rgba(255,255,255,0.35)', display:'flex', alignItems:'center', justifyContent:'center', position:'relative' }}>
+                {t.icon}
+                {active&&<div style={{ position:'absolute', right:4, top:'50%', transform:'translateY(-50%)', width:3, height:16, borderRadius:999, background:track.color }}/>}
+              </button>
+            );
+          })}
+          <div style={{ flex:1 }}/>
+          {playing && (
+            <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:14, marginBottom:4 }}>
+              {[8,4,6].map((h,i)=>(<div key={i} style={{ width:2.5, height:h, background:track.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${i*0.15}s infinite` }}/>))}
+            </div>
+          )}
+          <button onClick={()=>setShowSettings(true)} style={{ width:42, height:42, borderRadius:12, border:'none', cursor:'pointer', background:'transparent', color:'rgba(255,255,255,0.25)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <Settings size={16}/>
+          </button>
+        </div>
+      )}
+
       {/* Desktop left sidebar nav */}
-      {isDesktop && !fullscreen && (
-        <div style={{ width: window.innerWidth < 700 ? 150 : 196, flexShrink:0, borderRight:'1px solid rgba(255,255,255,0.07)', background:'rgba(0,0,0,0.18)', display:'flex', flexDirection:'column', padding: window.innerWidth < 700 ? '8px 6px 12px' : '10px 8px 16px', gap:3 }}>
+      {(layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait') && !fullscreen && (
+        <div style={{ width: layoutMode === 'desktop-portrait' ? 160 : 196, flexShrink:0, borderRight:'1px solid rgba(255,255,255,0.07)', background:'rgba(0,0,0,0.18)', display:'flex', flexDirection:'column', padding: layoutMode === 'desktop-portrait' ? '8px 6px 12px' : '10px 8px 16px', gap:3 }}>
           {/* Player nav item — always at top */}
           <button onClick={()=>setTab('player')} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:12, border:'none', cursor:'pointer', background:tab==='player'?`${track.color}20`:'transparent', color:tab==='player'?track.color:'rgba(255,255,255,0.4)', textAlign:'left', width:'100%', fontSize:13, fontWeight:tab==='player'?700:500 }}>
             <Compass size={17}/><span>Player</span>
@@ -3760,7 +3996,7 @@ export default function App() {
           })}
           <div style={{ flex:1 }}/>
           <button onClick={()=>setShowSettings(true)} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:12, border:'none', cursor:'pointer', background:'transparent', color:'rgba(255,255,255,0.3)', width:'100%', fontSize:13 }}>
-            <Settings size={17}/><span>Pengaturan</span>
+            <Settings size={17}/><span>{t ? t.pengaturan : 'Pengaturan'}</span>
           </button>
         </div>
       )}
@@ -3923,12 +4159,12 @@ export default function App() {
           )}
 
           {/* ── SETTINGS PANEL — inline dalam player */}
-          {showSettings&&<SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} eqEnabled={!!eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset||"Normal"} setEqPreset={setEqPreset} eqGains={Array.isArray(eqGains)&&eqGains.length===5?eqGains:[0,0,0,0,0]} setEqGains={setEqGains} crossfade={typeof crossfade==="number"?crossfade:0} setCrossfade={setCrossfade} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns}/>}
+          {showSettings&&<SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} eqEnabled={!!eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset||"Normal"} setEqPreset={setEqPreset} eqGains={Array.isArray(eqGains)&&eqGains.length===5?eqGains:[0,0,0,0,0]} setEqGains={setEqGains} crossfade={typeof crossfade==="number"?crossfade:0} setCrossfade={setCrossfade} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t}/>}
 
-          <div style={{ minHeight: fullscreen ? '100%' : undefined, height: fullscreen ? '100%' : undefined, display:'flex', flexDirection:'column', alignItems:'center', justifyContent: fullscreen ? 'space-evenly' : 'flex-start', padding: fullscreen ? '12px 24px 16px' : layoutVars.playerPad, position:'relative', boxSizing:'border-box' }}>
+          <div style={{ minHeight: fullscreen ? '100%' : undefined, height: fullscreen ? '100%' : undefined, display:'flex', flexDirection: layoutMode === 'mobile-landscape' ? 'row' : 'column', alignItems:'center', justifyContent: fullscreen ? 'space-evenly' : layoutMode === 'mobile-landscape' ? 'flex-start' : 'flex-start', padding: fullscreen ? '12px 24px 16px' : layoutVars.playerPad, position:'relative', boxSizing:'border-box', gap: layoutMode === 'mobile-landscape' ? '14px' : 0 }}>
 
             {/* ── JAM — pojok kiri atas area player (desktop only) */}
-            {isDesktop && (
+            {(layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait') && (
               <div style={{ position:'absolute', top:'clamp(10px,2.5vh,20px)', left:16, userSelect:'none', pointerEvents:'none' }}>
                 <div style={{ fontSize:24, fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
                   {nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false })}
@@ -3954,9 +4190,10 @@ export default function App() {
             {/* floating action button moved to root level */}
 
             {/* ── Mobile: jam kiri atas + ring tengah | Desktop: ring tengah saja */}
-            {!isDesktop ? (
-              <div style={{ position:'relative', width:'100%', display:'flex', justifyContent:'center' }}>
-                {/* Jam mobile — pojok kiri, tidak overlap ring */}
+            {(layoutMode === 'mobile-portrait' || layoutMode === 'mobile-landscape') ? (
+              <div style={{ position:'relative', width: layoutMode === 'mobile-landscape' ? ringSize + 'px' : '100%', flexShrink:0, display:'flex', justifyContent:'center', alignItems:'center' }}>
+                {/* Jam mobile — pojok kiri, tidak overlap ring — hide on landscape (clock is in header) */}
+                {layoutMode === 'mobile-portrait' && (
                 <div style={{ position:'absolute', left:0, top:6, userSelect:'none' }}>
                   <div style={{ fontSize:17, fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
                     {nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false })}
@@ -3965,6 +4202,7 @@ export default function App() {
                     {nowTime.toLocaleDateString('id-ID',{ weekday:'short', day:'numeric', month:'short' })}
                   </div>
                 </div>
+                )}
                 <OrbitalRing size={ringSize} pct={embedTrack?.type==='youtube'?(ytDuration>0?ytProgress/ytDuration:0):track.isRadio?0:pct} color={embedTrack?.type==='youtube'?'#ff4444':track.color} progress={embedTrack?.type==='youtube'?ytProgress:progress} duration={embedTrack?.type==='youtube'?ytDuration:track.isRadio?0:duration} isPlaying={playing} cover={embedTrack?.type==='youtube'?(embedTrack.thumbnail||getCover(track)):getCover(track)} title={embedTrack?.type==='youtube'?embedTrack.title:track.title} onSeek={embedTrack?.type==='youtube'?seekYt:track.isRadio?null:seekByPct} isLite={isLite} isRadio={!embedTrack&&track.isRadio}/>
               </div>
             ) : (
@@ -3972,7 +4210,7 @@ export default function App() {
             )}
 
             {/* Track info */}
-            <div style={{ textAlign:'center', marginTop: fullscreen ? 0 : layoutVars.infoMt, width:'100%', maxWidth: fullscreen ? 420 : 340, padding:'0 6px' }}>
+            <div style={{ textAlign:'center', marginTop: fullscreen ? 0 : layoutMode === 'mobile-landscape' ? 0 : layoutVars.infoMt, width:'100%', maxWidth: fullscreen ? 420 : layoutMode === 'mobile-landscape' ? '58%' : 340, padding:'0 6px', ...(layoutMode === 'mobile-landscape' ? { display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', flex:1 } : {}) }}>
               {embedTrack?.type==='youtube' ? (
                 <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:999, marginBottom:3, background:'rgba(255,0,0,0.12)', border:'1px solid rgba(255,0,0,0.25)' }}>
                   <span style={{ fontSize:9, fontWeight:800, color:'#ff6b6b', textTransform:'uppercase', letterSpacing:'0.1em' }}>▶ YouTube</span>
@@ -5291,8 +5529,8 @@ export default function App() {
       </main>
       </div>{/* end flex row wrapper */}
 
-      {/* ══ BOTTOM NAV — Mobile only */}
-      {!isDesktop && !fullscreen && (
+      {/* ══ BOTTOM NAV — Mobile Portrait only */}
+      {layoutMode === 'mobile-portrait' && !fullscreen && (
         <div style={{ position:'relative', zIndex:10, flexShrink:0, display:'flex', flexDirection:'column', background:'rgba(7,7,26,0.97)', ...(isLite ? {} : { backdropFilter:'blur(20px)' }), borderTop:'1px solid rgba(255,255,255,0.08)' }}>
 
           {/* Mini Now-Playing Bar — visible when NOT on player tab */}
@@ -5394,6 +5632,43 @@ export default function App() {
         .scrollbar-hide{-ms-overflow-style:none;scrollbar-width:none}
         input::placeholder{color:rgba(148,163,184,0.35)}
         input[type=range]{cursor:pointer;height:4px;border-radius:999px}
+
+        /* ══ LAYOUT MODE — Mobile Portrait ══ */
+        .layout-mobile-portrait header {
+          background: rgba(7,7,26,0.95);
+          backdrop-filter: blur(12px);
+        }
+
+        /* ══ LAYOUT MODE — Mobile Landscape ══ */
+        .layout-mobile-landscape header {
+          background: linear-gradient(90deg, rgba(7,7,26,0.98) 0%, rgba(15,10,40,0.95) 100%);
+          backdrop-filter: blur(16px);
+          border-bottom-color: rgba(255,255,255,0.05);
+        }
+        /* In mobile-landscape: player inner layout is row, ring left, controls right */
+        .layout-mobile-landscape main {
+          overflow-y: auto;
+        }
+
+        /* ══ LAYOUT MODE — Desktop Portrait ══ */
+        .layout-desktop-portrait header {
+          background: rgba(5,5,20,0.9);
+          backdrop-filter: blur(20px);
+          border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        /* Desktop portrait sidebar gets a subtle gradient separator */
+        .layout-desktop-portrait [data-sidebar] {
+          background: linear-gradient(180deg, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.12) 100%);
+        }
+
+        /* ══ LAYOUT MODE — Desktop Landscape ══ */
+        .layout-desktop-landscape header {
+          background: rgba(4,4,18,0.88);
+          backdrop-filter: blur(24px);
+          border-bottom: 1px solid rgba(99,102,241,0.12);
+          box-shadow: 0 1px 0 rgba(99,102,241,0.06);
+        }
+
         ${isLite ? `
           .lite-mode *{animation:none!important;transition:none!important}
           .lite-mode .progress-arc{transition:stroke-dashoffset 0.35s linear!important}
