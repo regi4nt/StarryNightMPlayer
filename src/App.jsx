@@ -4093,8 +4093,26 @@ export default function App() {
                         {isYT && (
                           <div style={{ padding:'0 10px 10px' }}>
                             {error && <div style={{ fontSize:11, color:'#fca5a5', marginTop:6, padding:'6px 10px', borderRadius:8, background:'rgba(239,68,68,0.1)' }}>{error}</div>}
+                            {/* Loading skeleton */}
+                            {loading && (
+                              <div style={{ display:'flex', flexDirection:'column', gap:6, marginTop:8 }}>
+                                {[1,2,3,4].map(i => (
+                                  <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)' }}>
+                                    <div style={{ width:32, height:32, borderRadius:8, background:'rgba(255,68,68,0.12)', flexShrink:0, animation:'pulse 1.4s ease-in-out infinite', animationDelay:`${i*0.12}s` }}/>
+                                    <div style={{ flex:1, display:'flex', flexDirection:'column', gap:5 }}>
+                                      <div style={{ height:10, borderRadius:6, background:'rgba(255,255,255,0.08)', width:`${72-i*6}%`, animation:'pulse 1.4s ease-in-out infinite', animationDelay:`${i*0.12}s` }}/>
+                                      <div style={{ height:8, borderRadius:6, background:'rgba(255,255,255,0.05)', width:'40%', animation:'pulse 1.4s ease-in-out infinite', animationDelay:`${i*0.18}s` }}/>
+                                    </div>
+                                  </div>
+                                ))}
+                                <div style={{ textAlign:'center', paddingTop:4, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                                  <Loader2 size={12} style={{ color:'rgba(255,68,68,0.6)', animation:'spin 0.8s linear infinite' }}/>
+                                  <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)' }}>Mencari di YouTube…</span>
+                                </div>
+                              </div>
+                            )}
                             {/* Results — no thumbnail, cleaner list */}
-                            {results.length > 0 && (
+                            {!loading && results.length > 0 && (
                               <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:4 }}>
                                 {results.map((v, vi) => {
                                   const secs = v.duration || v.lengthSeconds || 0;
@@ -4130,8 +4148,27 @@ export default function App() {
                             {/* Error */}
                             {scError[platform.id] && <div style={{ fontSize:11, color:'#fca5a5', marginTop:6, padding:'6px 10px', borderRadius:8, background:'rgba(239,68,68,0.1)' }}>{scError[platform.id]}</div>}
 
+                            {/* Loading skeleton SoundCloud */}
+                            {scLoading[platform.id] && (
+                              <div style={{ display:'flex', flexDirection:'column', gap:6, marginTop:8 }}>
+                                {[1,2,3].map(i => (
+                                  <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)' }}>
+                                    <div style={{ width:32, height:32, borderRadius:8, background:'rgba(255,85,0,0.15)', flexShrink:0, animation:'pulse 1.4s ease-in-out infinite', animationDelay:`${i*0.15}s` }}/>
+                                    <div style={{ flex:1, display:'flex', flexDirection:'column', gap:5 }}>
+                                      <div style={{ height:10, borderRadius:6, background:'rgba(255,255,255,0.08)', width:`${70-i*8}%`, animation:'pulse 1.4s ease-in-out infinite', animationDelay:`${i*0.15}s` }}/>
+                                      <div style={{ height:8, borderRadius:6, background:'rgba(255,255,255,0.05)', width:'38%', animation:'pulse 1.4s ease-in-out infinite', animationDelay:`${i*0.2}s` }}/>
+                                    </div>
+                                  </div>
+                                ))}
+                                <div style={{ textAlign:'center', paddingTop:4, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                                  <Loader2 size={12} style={{ color:'rgba(255,85,0,0.7)', animation:'spin 0.8s linear infinite' }}/>
+                                  <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)' }}>Mencari di SoundCloud…</span>
+                                </div>
+                              </div>
+                            )}
+
                             {/* SoundCloud API results list */}
-                            {(scResults[platform.id]||[]).length > 0 && (
+                            {!scLoading[platform.id] && (scResults[platform.id]||[]).length > 0 && (
                               <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:4 }}>
                                 {(scResults[platform.id]).map((t, ti) => {
                                   const mins = Math.floor((t.duration||0)/60);
@@ -4178,8 +4215,28 @@ export default function App() {
                             {/* Error */}
                             {spError && <div style={{ fontSize:11, color:'#fca5a5', marginBottom:6, padding:'6px 10px', borderRadius:8, background:'rgba(239,68,68,0.1)' }}>{spError}</div>}
 
+                            {/* Loading skeleton Spotify */}
+                            {spLoading && (
+                              <div style={{ display:'flex', flexDirection:'column', gap:6, marginTop:8 }}>
+                                {[1,2,3,4].map(i => (
+                                  <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 9px', borderRadius:10, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)' }}>
+                                    <div style={{ width:34, height:34, borderRadius:6, background:'rgba(29,185,84,0.15)', flexShrink:0, animation:'pulse 1.4s ease-in-out infinite', animationDelay:`${i*0.12}s` }}/>
+                                    <div style={{ flex:1, display:'flex', flexDirection:'column', gap:5 }}>
+                                      <div style={{ height:10, borderRadius:6, background:'rgba(255,255,255,0.08)', width:`${68-i*5}%`, animation:'pulse 1.4s ease-in-out infinite', animationDelay:`${i*0.12}s` }}/>
+                                      <div style={{ height:8, borderRadius:6, background:'rgba(255,255,255,0.05)', width:'35%', animation:'pulse 1.4s ease-in-out infinite', animationDelay:`${i*0.18}s` }}/>
+                                    </div>
+                                    <div style={{ width:36, height:16, borderRadius:999, background:'rgba(29,185,84,0.12)', flexShrink:0, animation:'pulse 1.4s ease-in-out infinite', animationDelay:`${i*0.1}s` }}/>
+                                  </div>
+                                ))}
+                                <div style={{ textAlign:'center', paddingTop:4, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                                  <Loader2 size={12} style={{ color:'rgba(29,185,84,0.7)', animation:'spin 0.8s linear infinite' }}/>
+                                  <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)' }}>Mencari di Spotify…</span>
+                                </div>
+                              </div>
+                            )}
+
                             {/* Results list — search results */}
-                            {spResults.length > 0 && (
+                            {!spLoading && spResults.length > 0 && (
                               <div style={{ display:'flex', flexDirection:'column', gap:4, maxHeight:280, overflowY:'auto' }}>
                                 {spResults.map(t => {
                                   const mins = Math.floor(t.duration/60000);
