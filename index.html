@@ -3,6 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Lock to portrait: Screen Orientation API -->
+    <style>
+      #landscape-block {
+        display: none;
+        position: fixed; inset: 0; z-index: 99999;
+        background: #07071a;
+        flex-direction: column; align-items: center; justify-content: center;
+        gap: 16px; color: white; font-family: 'Segoe UI', system-ui, sans-serif;
+      }
+      @media screen and (orientation: landscape) and (max-height: 500px) {
+        #landscape-block { display: flex !important; }
+        #root { display: none !important; }
+      }
+    </style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="Starry Night MPlayer — Pemutar musik AI dengan tema luar angkasa" />
     <meta name="theme-color" content="#07071a" />
@@ -64,8 +78,23 @@
       </div>
       <style>@keyframes spl{0%,100%{opacity:0.3;transform:scaleX(0.5)}50%{opacity:1;transform:scaleX(1)}}</style>
     </div>
+    <!-- Portrait-only overlay -->
+    <div id="landscape-block">
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+        <rect x="8" y="4" width="32" height="40" rx="5" stroke="white" stroke-width="2.5" stroke-opacity="0.4"/>
+        <path d="M24 36 L20 32 M24 36 L28 32" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M24 12 L24 36" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+      <div style="font-size:15px;font-weight:700;opacity:0.85;">Putar layar ke portrait</div>
+      <div style="font-size:12px;opacity:0.4;">Starry Night MPlayer hanya mendukung mode portrait</div>
+    </div>
     <div id="root"></div>
     <script>
+      // Screen Orientation API lock (PWA & modern browsers)
+      if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock('portrait').catch(function(){});
+      }
+
       // Hide splash once React mounts
       function hideSplash() {
         var s = document.getElementById('splash');
