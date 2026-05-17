@@ -2356,6 +2356,16 @@ export default function App() {
     return null;
   };
 
+  // ── Core playback (moved here to avoid TDZ in useCallback closures below)
+  const [track, setTrack]       = useState(SONGS[0]);
+  const [playing, setPlaying]   = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume]     = useState(0.75);
+  const [muted, setMuted]       = useState(false);
+  const [liked, setLiked]       = useState({});
+  const [tab, setTab]           = useState(() => localStorage.getItem('sn_tab') || 'player');
+
   // Fetch live trending music from Invidious/Piped → shown as suggestion chips
   const fetchYtTrending = useCallback(async () => {
     if (ytTrendingLoading || ytTrending.length > 0) return; // only fetch once per session
@@ -2614,15 +2624,6 @@ export default function App() {
     });
   }, [embedTrack, liked, updateFavPlaylist]); // eslint-disable-line
 
-  // ── Core playback
-  const [track, setTrack]       = useState(SONGS[0]);
-  const [playing, setPlaying]   = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [volume, setVolume]     = useState(0.75);
-  const [muted, setMuted]       = useState(false);
-  const [liked, setLiked]       = useState({});
-  const [tab, setTab]           = useState(() => localStorage.getItem('sn_tab') || 'player');
 
   // ── Jam live (update setiap detik)
   const [nowTime, setNowTime] = useState(() => new Date());
