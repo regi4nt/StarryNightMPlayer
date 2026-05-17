@@ -33,12 +33,12 @@ export default defineConfig({
       workbox: {
         skipWaiting: true,
         clientsClaim: true,
-        // Hanya precache file kecil — jangan precache JS besar agar load awal cepat
+        // Hanya precache asset kecil — JS besar via runtime cache
         globPatterns: ['**/*.{css,html,svg,png,ico,woff2}'],
         globIgnores: ['**/node_modules/**/*', 'sw.js', 'workbox-*.js'],
         runtimeCaching: [
           {
-            // JS & CSS assets — cache setelah pertama dimuat (hash-based = aman)
+            // JS & CSS assets dengan hash — aman di-cache 1 tahun
             urlPattern: /\/assets\/.+\.(js|css)$/i,
             handler: 'CacheFirst',
             options: {
@@ -48,7 +48,6 @@ export default defineConfig({
             }
           },
           {
-            // Audio files
             urlPattern: /\.(mp3|wav|ogg|flac|m4a)$/i,
             handler: 'CacheFirst',
             options: {
@@ -58,7 +57,6 @@ export default defineConfig({
             }
           },
           {
-            // Cover art
             urlPattern: /^https:\/\/images\.unsplash\.com\//,
             handler: 'CacheFirst',
             options: {
@@ -68,7 +66,6 @@ export default defineConfig({
             }
           },
           {
-            // YouTube thumbnails
             urlPattern: /^https:\/\/i\.ytimg\.com\//,
             handler: 'CacheFirst',
             options: {
@@ -84,31 +81,19 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
-    // Target browser modern — bundle lebih kecil, tidak perlu polyfill lama
+    // Target modern browser — bundle lebih kecil
     target: ['es2020', 'chrome87', 'firefox78', 'safari14'],
-    // Minifikasi maksimal pakai terser
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true,      // hapus semua console.log di production
-        drop_debugger: true,
-        pure_funcs: ['console.info', 'console.debug', 'console.warn'],
-        passes: 2,               // 2 pass compress untuk hasil lebih kecil
-      },
-      mangle: { safari10: true },
-      format: { comments: false } // hapus semua komentar
-    },
+    // esbuild (default) — AMAN, tidak menyebabkan TDZ reordering
+    minify: 'esbuild',
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
-        // Single bundle — hindari TDZ cross-chunk issues
+        // Single bundle — cegah cross-chunk TDZ issues
         inlineDynamicImports: true,
-        // Nama file dengan hash untuk cache busting optimal
         entryFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
       }
     },
-    // Inline asset kecil langsung ke JS (kurangi request)
     assetsInlineLimit: 4096,
   }
 })
