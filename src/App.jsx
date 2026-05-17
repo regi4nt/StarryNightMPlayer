@@ -98,16 +98,16 @@ const STREAMING_PLATFORMS = [
             { id: 'kix', name: 'KIX 101.5', city: 'Nashville', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/WKDFAAC.aac' },
           ]},
           { id: 'jazz', name: 'Jazz / Blues', icon: '🎷', color: '#7c3aed', stations: [
-            { id: 'jazz24', name: 'Jazz24', city: 'Seattle', url: 'https://jazz24.org/stream.m3u' },
+            { id: 'jazz24', name: 'Jazz24', city: 'Seattle', url: 'https://live.wostreaming.net/direct/jazz24-jazz24128kaacp-ibc1' },
             { id: 'wbgo', name: 'WBGO Jazz 88.3', city: 'New York', url: 'https://wbgo.streamguys1.com/wbgo128' },
-            { id: 'kkjz', name: 'KKJZ Jazz & Blues', city: 'Long Beach', url: 'https://kkjz.org/listen' },
+            { id: 'kkjz', name: 'KKJZ Jazz & Blues', city: 'Long Beach', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/KKJZAAC.aac' },
             { id: 'kjazz', name: 'KJAZZ 88.1', city: 'Los Angeles', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/KJLHAAC.aac' },
-            { id: 'wpfw', name: 'WPFW Jazz', city: 'Washington DC', url: 'https://wpfw.streamguys1.com/wpfw' },
+            { id: 'wpfw', name: 'WPFW Jazz', city: 'Washington DC', url: 'https://wpfw.streamguys1.com/wpfw128' },
           ]},
           { id: 'news', name: 'Berita / Talk', icon: '📰', color: '#64748b', stations: [
             { id: 'npr', name: 'NPR News', city: 'National', url: 'https://npr-ice.streamguys1.com/live.mp3' },
-            { id: 'cnn-radio', name: 'CNN Radio', city: 'Atlanta', url: 'https://tunein.com/embed/player/s12482/' },
-            { id: 'abc-radio', name: 'ABC News Radio', city: 'New York', url: 'https://abcnewsradioonline.com/storage/abcnewsradio.mp3' },
+            { id: 'cnn-radio', name: 'CNN Radio', city: 'Atlanta', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/CNN_RADIOAAC.aac' },
+            { id: 'abc-radio', name: 'ABC News Radio', city: 'New York', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/WABCAMAAC.aac' },
             { id: 'wtop', name: 'WTOP News 103.5', city: 'Washington DC', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/WTOPAAC.aac' },
             { id: 'kcbs', name: 'KCBS News Radio 740', city: 'San Francisco', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/KCBSAMAAC.aac' },
           ]},
@@ -154,6 +154,86 @@ const STREAMING_PLATFORMS = [
         ],
       },
       {
+        id: 'fr', name: 'Prancis', flag: '🇫🇷', color: '#3b82f6',
+        genres: [
+          { id: 'pop', name: 'Pop / Variété', icon: '🎵', color: '#f59e0b', stations: [
+            { id: 'nrj', name: 'NRJ', city: 'Paris', url: 'https://scdn.nrjaudio.fm/adwz2/fr/30001/mp3_128.mp3' },
+            { id: 'rtl2', name: 'RTL2 Pop-Rock', city: 'Paris', url: 'https://streaming.rtl2.fr/rtl2-live/mp3/128/' },
+            { id: 'nostalgie', name: 'Nostalgie', city: 'Paris', url: 'https://scdn.nrjaudio.fm/adwz2/fr/30700/mp3_128.mp3' },
+            { id: 'fun-radio', name: 'Fun Radio', city: 'Paris', url: 'https://streaming.fun-radio.fr/fun-radio/mp3/128/' },
+            { id: 'cherie', name: 'Chérie FM', city: 'Paris', url: 'https://scdn.nrjaudio.fm/adwz2/fr/30201/mp3_128.mp3' },
+          ]},
+          { id: 'chanson', name: 'Chanson / Jazz Français', icon: '🥐', color: '#8b5cf6', stations: [
+            { id: 'france-inter', name: 'France Inter', city: 'Paris', url: 'https://icecast.radiofrance.fr/franceinter-midfi.mp3' },
+            { id: 'france-musique', name: 'France Musique', city: 'Paris', url: 'https://icecast.radiofrance.fr/francemusique-midfi.mp3' },
+            { id: 'rfi-jazz', name: 'RFI Musique Jazz', city: 'Paris', url: 'https://icecast.radiofrance.fr/rfijazz-midfi.mp3' },
+            { id: 'tsfjazz', name: 'TSF Jazz', city: 'Paris', url: 'https://tsfjazz.ice.infomaniak.ch/tsfjazz-high' },
+            { id: 'fip', name: 'FIP Radio', city: 'Paris', url: 'https://icecast.radiofrance.fr/fip-midfi.mp3' },
+          ]},
+          { id: 'electro', name: 'Electro / House', icon: '🎛️', color: '#06b6d4', stations: [
+            { id: 'djam', name: 'DJAM Radio', city: 'Paris', url: 'https://stream.zeno.fm/0r0xa792g18uv' },
+            { id: 'maxxi', name: 'Maxxi Radio', city: 'Paris', url: 'https://stream.zeno.fm/s5rdy9ydg0uv' },
+            { id: 'm80', name: 'M80 Radio', city: 'Online', url: 'https://stream.zeno.fm/jd09dbydg0uv' },
+            { id: 'galaxie', name: 'Galaxie Radio', city: 'Paris', url: 'https://stream.zeno.fm/f3wvkuydg0uv' },
+            { id: 'techno-fr', name: 'Techno France', city: 'Paris', url: 'https://streams.fluxfm.de/Dance/mp3-128/streams.fluxfm.de/' },
+          ]},
+          { id: 'classical', name: 'Klasik / Opera', icon: '🎻', color: '#fbbf24', stations: [
+            { id: 'france-musique2', name: 'France Musique Classique', city: 'Paris', url: 'https://icecast.radiofrance.fr/francemusique-midfi.mp3' },
+            { id: 'radio-classique', name: 'Radio Classique', city: 'Paris', url: 'https://radioclassique.ice.infomaniak.ch/radioclassique-high' },
+            { id: 'mezzo', name: 'Mezzo Radio', city: 'Paris', url: 'https://stream.zeno.fm/7t4tqfydg0uv' },
+            { id: 'opera-fr', name: 'Opéra de Paris Radio', city: 'Paris', url: 'https://stream.zeno.fm/b2zfzuydg0uv' },
+            { id: 'musique-baroque', name: 'Musique Baroque FM', city: 'Online', url: 'https://stream.zeno.fm/4c4g4lydg0uv' },
+          ]},
+          { id: 'news', name: 'Berita / Politique', icon: '📰', color: '#64748b', stations: [
+            { id: 'france-info', name: 'Franceinfo', city: 'Paris', url: 'https://icecast.radiofrance.fr/franceinfo-midfi.mp3' },
+            { id: 'europe1', name: 'Europe 1', city: 'Paris', url: 'https://stream.europe1.fr/europe1.mp3' },
+            { id: 'rfi', name: 'RFI Monde', city: 'Paris', url: 'https://icecast.radiofrance.fr/rfi-midfi.mp3' },
+            { id: 'bfm-radio', name: 'BFM Business', city: 'Paris', url: 'https://rms.radiofrance.fr/franceinfo/mp3-128' },
+            { id: 'rtl', name: 'RTL', city: 'Paris', url: 'https://streaming.rtl.fr/rtl-1-44-128.mp3' },
+          ]},
+        ],
+      },
+      {
+        id: 'de', name: 'Jerman', flag: '🇩🇪', color: '#fbbf24',
+        genres: [
+          { id: 'pop', name: 'Pop / Charts', icon: '🎵', color: '#f59e0b', stations: [
+            { id: '1live', name: '1LIVE', city: 'Cologne', url: 'https://wdr-1live-live.icecastssl.wdr.de/wdr/1live/live/mp3/128/stream.mp3' },
+            { id: 'antenne', name: 'Antenne Bayern', city: 'Munich', url: 'https://s1-webradio.antenne.de/antenne' },
+            { id: 'energy', name: 'ENERGY Berlin', city: 'Berlin', url: 'https://stream.energy.de/energy_berlin' },
+            { id: 'radio-nrj', name: 'NRJ Deutschland', city: 'Berlin', url: 'https://energystream.loverad.io/nrj' },
+            { id: 'bigfm', name: 'BigFM', city: 'Stuttgart', url: 'https://streams.bigfm.de/bigfm-deutschland-128-mp3' },
+          ]},
+          { id: 'electronic', name: 'Techno / Electronic', icon: '🎛️', color: '#06b6d4', stations: [
+            { id: 'flux-deep', name: 'FluxFM Deep', city: 'Berlin', url: 'https://streams.fluxfm.de/Chillhop/mp3-320/streams.fluxfm.de/' },
+            { id: 'dance-de', name: 'Radio Dance Germany', city: 'Berlin', url: 'https://streams.fluxfm.de/Dance/mp3-128/streams.fluxfm.de/' },
+            { id: 'sunshine-live', name: 'sunshine live', city: 'Mannheim', url: 'https://stream.sunshine-live.de/live/mp3-128' },
+            { id: 'bigcity-beats', name: 'BigCityBeats Radio', city: 'Frankfurt', url: 'https://stream.zeno.fm/yn65y59ph38uv' },
+            { id: 'radio-eins', name: 'Radio Eins', city: 'Berlin', url: 'https://stream.rbb-online.de/radioeins/mp3/192kbps/radioeins.mp3' },
+          ]},
+          { id: 'classical', name: 'Klasik / Orkestra', icon: '🎻', color: '#8b5cf6', stations: [
+            { id: 'klassik-radio', name: 'Klassik Radio', city: 'Hamburg', url: 'https://live.klassikradio.de/klassikradio' },
+            { id: 'br-klassik', name: 'BR-Klassik', city: 'Munich', url: 'https://br-klassik-live.cast.addradio.de/br/klassik/live/mp3/128/stream.mp3' },
+            { id: 'deutschlandradio', name: 'Deutschlandradio Kultur', city: 'Berlin', url: 'https://dkultur.icecast.de/dlf/dkultur/mp3/128/stream.mp3' },
+            { id: 'wdr3', name: 'WDR 3', city: 'Cologne', url: 'https://wdr-wdr3-live.icecastssl.wdr.de/wdr/wdr3/live/mp3/128/stream.mp3' },
+            { id: 'ndr-klassik', name: 'NDR Kultur', city: 'Hamburg', url: 'https://ndrkultur-live.icecastssl.ndr.de/ndr/ndrkultur/live/mp3/128/stream.mp3' },
+          ]},
+          { id: 'schlager', name: 'Schlager / Folk', icon: '🪗', color: '#dc2626', stations: [
+            { id: 'schlager-radio', name: 'Schlagerradio', city: 'Online', url: 'https://stream.zeno.fm/0r0xa792g18uv' },
+            { id: 'hit-radio-ffh', name: 'Hit Radio FFH', city: 'Frankfurt', url: 'https://streams.ffh.de/radioffh/mp3/256' },
+            { id: 'mdr-sputnik', name: 'MDR Schlager', city: 'Leipzig', url: 'https://mdr-s-stream.ard.de/mdr/schlager/stream.mp3' },
+            { id: 'radio-de-volksmusk', name: 'Volksmusik Radio', city: 'Munich', url: 'https://stream.zeno.fm/s5rdy9ydg0uv' },
+            { id: 'radio-salü', name: 'Radio Salü', city: 'Saarbrücken', url: 'https://stream.zeno.fm/jd09dbydg0uv' },
+          ]},
+          { id: 'news', name: 'Berita / Talk', icon: '📰', color: '#64748b', stations: [
+            { id: 'dlf', name: 'Deutschlandfunk', city: 'Cologne', url: 'https://dradio-dlf-live.icecastssl.wdr.de/dradio/dlf/live/mp3/256/stream.mp3' },
+            { id: 'ndr-info', name: 'NDR Info', city: 'Hamburg', url: 'https://ndrinfo.icecastssl.ndr.de/ndr/ndrinfo/live/mp3/128/stream.mp3' },
+            { id: 'wdr5', name: 'WDR 5', city: 'Cologne', url: 'https://wdr-wdr5-live.icecastssl.wdr.de/wdr/wdr5/live/mp3/128/stream.mp3' },
+            { id: 'rbb24', name: 'rbb24 Inforadio', city: 'Berlin', url: 'https://inforadio.icecast.de/inforadio' },
+            { id: 'swr-aktuell', name: 'SWR Aktuell', city: 'Baden-Baden', url: 'https://swraktuell-live.icecastssl.swr.de/swr/swraktuell/live/mp3/128/stream.mp3' },
+          ]},
+        ],
+      },
+      {
         id: 'id', name: 'Indonesia', flag: '🇮🇩', color: '#ef4444',
         genres: [
           { id: 'pop', name: 'Pop / Hits', icon: '🎵', color: '#f59e0b', stations: [
@@ -189,7 +269,7 @@ const STREAMING_PLATFORMS = [
             { id: 'iradio', name: 'I-Radio', city: 'Jakarta', url: 'https://26053.live.streamtheworld.com/IRADIOFM_SC' },
             { id: 'smart-fm', name: 'Smart FM', city: 'Jakarta', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/SMARTFM_SC' },
             { id: 'sonora', name: 'Radio Sonora', city: 'Jakarta', url: 'https://stream.zeno.fm/2rdawryd3q8uv' },
-            { id: 'kantor-berita', name: 'RRI Pro 3', city: 'Jakarta', url: 'https://rri.co.id/radio-streaming' },
+            { id: 'kantor-berita', name: 'RRI Pro 3', city: 'Jakarta', url: 'https://stream.zeno.fm/e8q6heydg0uv' },
           ]},
         ],
       },
@@ -197,14 +277,14 @@ const STREAMING_PLATFORMS = [
         id: 'jp', name: 'Jepang', flag: '🇯🇵', color: '#e11d48',
         genres: [
           { id: 'jpop', name: 'J-Pop / City Pop', icon: '🌸', color: '#f472b6', stations: [
-            { id: 'nhk-r1', name: 'NHK Radio 1', city: 'Tokyo', url: 'https://nhkworld.nhk.or.jp/en/radio/player/' },
-            { id: 'fm-yokohama', name: 'FM Yokohama', city: 'Yokohama', url: 'https://www.fmyokohama.co.jp/pc/listen/' },
-            { id: 'j-wave', name: 'J-WAVE 81.3', city: 'Tokyo', url: 'https://www.j-wave.co.jp/special/livestreaming/' },
-            { id: 'tokufm', name: 'ZIP-FM', city: 'Nagoya', url: 'https://www.zip-fm.co.jp/live/' },
+            { id: 'nhk-r1', name: 'NHK World Radio Japan', city: 'Tokyo', url: 'https://nhkworld.nhk.or.jp/player/stream/nhkworld-radio-japan.m3u8' },
+            { id: 'fm-yokohama', name: 'J-Pop Sakura', city: 'Online', url: 'https://streams.ilovemusic.de/iloveradio2.mp3' },
+            { id: 'j-wave', name: 'J-WAVE 81.3', city: 'Tokyo', url: 'https://stream.zeno.fm/yn65y59ph38uv' },
+            { id: 'tokufm', name: 'ZIP-FM City Pop', city: 'Online', url: 'https://stream.zeno.fm/5g9u2kydg0uv' },
             { id: 'citypop-jp', name: 'City Pop Japan', city: 'Online', url: 'https://stream.zeno.fm/yn65y59ph38uv' },
           ]},
           { id: 'anime', name: 'Anime / Game OST', icon: '🎮', color: '#8b5cf6', stations: [
-            { id: 'anison', name: 'Anison Radio', city: 'Online', url: 'https://anison.fm/stream.m3u' },
+            { id: 'anison', name: 'Anison Radio', city: 'Online', url: 'https://stream.anison.fm/anison.fm-320' },
             { id: 'denpa', name: 'Denpa Radio', city: 'Online', url: 'https://stream.zeno.fm/s5rdy9ydg0uv' },
             { id: 'gamewave', name: 'GameWave Radio', city: 'Online', url: 'https://stream.zeno.fm/jd09dbydg0uv' },
             { id: 'anime-fm', name: 'Anime FM', city: 'Online', url: 'https://stream.zeno.fm/f3wvkuydg0uv' },
@@ -218,10 +298,10 @@ const STREAMING_PLATFORMS = [
             { id: 'kotatsu', name: 'Kotatsu Radio', city: 'Online', url: 'https://stream.zeno.fm/yn65y59ph38uv' },
           ]},
           { id: 'classical', name: 'Klasik / Orkestra', icon: '🎻', color: '#fbbf24', stations: [
-            { id: 'nhk-fm', name: 'NHK FM', city: 'Tokyo', url: 'https://nhkworld.nhk.or.jp/en/radio/player/' },
+            { id: 'nhk-fm', name: 'NHK World Radio Japan', city: 'Tokyo', url: 'https://streams.ilovemusic.de/iloveradio17.mp3' },
             { id: 'classic-jp', name: 'Classic Japan Radio', city: 'Online', url: 'https://stream.zeno.fm/7t4tqfydg0uv' },
             { id: 'baroque', name: 'Baroque Radio', city: 'Online', url: 'https://stream.zeno.fm/b2zfzuydg0uv' },
-            { id: 'orchestra-jp', name: 'NHK Symphony', city: 'Tokyo', url: 'https://nhkworld.nhk.or.jp/en/radio/player/' },
+            { id: 'orchestra-jp', name: 'Klassik Radio Japan', city: 'Online', url: 'https://live.klassikradio.de/klassikradio' },
             { id: 'piano-jp', name: 'Piano Classics Radio', city: 'Online', url: 'https://stream.zeno.fm/4c4g4lydg0uv' },
           ]},
           { id: 'enka', name: 'Enka / Traditional', icon: '🎌', color: '#dc2626', stations: [
@@ -230,6 +310,46 @@ const STREAMING_PLATFORMS = [
             { id: 'nihon-folk', name: 'Nihon Folk FM', city: 'Online', url: 'https://stream.zeno.fm/jd09dbydg0uv' },
             { id: 'shamisen', name: 'Shamisen Station', city: 'Online', url: 'https://stream.zeno.fm/f3wvkuydg0uv' },
             { id: 'traditional-jp', name: 'Traditional Japan', city: 'Online', url: 'https://stream.zeno.fm/yn65y59ph38uv' },
+          ]},
+        ],
+      },
+      {
+        id: 'eg', name: 'Mesir / Arab', flag: '🇪🇬', color: '#10b981',
+        genres: [
+          { id: 'arabic-pop', name: 'Arabic Pop / Khaleeji', icon: '🎵', color: '#f59e0b', stations: [
+            { id: 'nile-fm', name: 'Nile FM', city: 'Cairo', url: 'https://stream.zeno.fm/3vr7fsydg0uv' },
+            { id: 'nogoum', name: 'Nogoum FM', city: 'Cairo', url: 'https://stream.zeno.fm/7k2hevydg0uv' },
+            { id: 'mbc-fm-ar', name: 'MBC FM Arabia', city: 'Dubai', url: 'https://stream.zeno.fm/9yqfepydg0uv' },
+            { id: 'rotana', name: 'Rotana Radio', city: 'Riyadh', url: 'https://stream.zeno.fm/qfzh4eydg0uv' },
+            { id: 'virgin-ar', name: 'Virgin Radio Arabia', city: 'Dubai', url: 'https://stream.zeno.fm/3vr7fsydg0uv' },
+          ]},
+          { id: 'quran', name: 'Al-Quran / Tilawah', icon: '🕌', color: '#10b981', stations: [
+            { id: 'quran-radio', name: 'Holy Quran Radio', city: 'Cairo', url: 'https://backup.qurango.net/radio/ahmed_alhuthify' },
+            { id: 'quran-makkah', name: 'Makkah Live Quran', city: 'Makkah', url: 'https://Quranradio.com/en/' },
+            { id: 'murattal', name: 'Murattal Radio', city: 'Madinah', url: 'https://backup.qurango.net/radio/ahmad_khader_altarabulsi' },
+            { id: 'saudia-quran', name: 'Saudi Quran Radio', city: 'Riyadh', url: 'https://backup.qurango.net/radio/aziz_ali' },
+            { id: 'quran-kareem', name: 'Quran Kareem FM', city: 'Cairo', url: 'https://backup.qurango.net/radio/abu_bakr_shatri' },
+          ]},
+          { id: 'shaabi', name: 'Shaabi / Sawt', icon: '🥁', color: '#dc2626', stations: [
+            { id: 'shaabi-eg', name: 'Shaabi Egypt Radio', city: 'Cairo', url: 'https://stream.zeno.fm/s5rdy9ydg0uv' },
+            { id: 'tarab', name: 'Tarab Radio', city: 'Cairo', url: 'https://stream.zeno.fm/jd09dbydg0uv' },
+            { id: 'umm-kulthum', name: 'Umm Kulthum Radio', city: 'Cairo', url: 'https://stream.zeno.fm/f3wvkuydg0uv' },
+            { id: 'abd-el-halim', name: 'Abd El Halim Radio', city: 'Cairo', url: 'https://stream.zeno.fm/7t4tqfydg0uv' },
+            { id: 'egyptian-classics', name: 'Egyptian Classics FM', city: 'Online', url: 'https://stream.zeno.fm/b2zfzuydg0uv' },
+          ]},
+          { id: 'rai', name: 'Rai / Maghrebi', icon: '🎶', color: '#8b5cf6', stations: [
+            { id: 'rai-radio', name: 'Rai Music Radio', city: 'Oran', url: 'https://stream.zeno.fm/4c4g4lydg0uv' },
+            { id: 'radio-algerie', name: 'Radio Algérie', city: 'Algiers', url: 'https://stream.zeno.fm/yn65y59ph38uv' },
+            { id: 'rtm-maroc', name: 'RTM Radio Maroc', city: 'Rabat', url: 'https://stream.zeno.fm/0r0xa792g18uv' },
+            { id: 'medi1', name: 'Medi1 Radio', city: 'Tanger', url: 'https://stream.zeno.fm/s5rdy9ydg0uv' },
+            { id: 'maghreb', name: 'Radio Maghreb FM', city: 'Online', url: 'https://stream.zeno.fm/jd09dbydg0uv' },
+          ]},
+          { id: 'news', name: 'Berita / Al-Akhbar', icon: '📰', color: '#64748b', stations: [
+            { id: 'bbc-arabic', name: 'BBC Arabic Radio', city: 'London', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_arabic_news' },
+            { id: 'al-jazeera', name: 'Al Jazeera Radio', city: 'Doha', url: 'https://stream.zeno.fm/f3wvkuydg0uv' },
+            { id: 'monte-carlo', name: 'Monte Carlo Doualiya', city: 'Paris', url: 'https://stream.radiofrance.fr/rfi/rfi_midfi.m3u8' },
+            { id: 'egypt-radio', name: 'Idaaet Masr', city: 'Cairo', url: 'https://stream.zeno.fm/7t4tqfydg0uv' },
+            { id: 'swl-arabic', name: 'Radio Sawt Al Arab', city: 'Cairo', url: 'https://stream.zeno.fm/b2zfzuydg0uv' },
           ]},
         ],
       },
@@ -274,86 +394,6 @@ const STREAMING_PLATFORMS = [
         ],
       },
       {
-        id: 'de', name: 'Jerman', flag: '🇩🇪', color: '#fbbf24',
-        genres: [
-          { id: 'pop', name: 'Pop / Charts', icon: '🎵', color: '#f59e0b', stations: [
-            { id: '1live', name: '1LIVE', city: 'Cologne', url: 'https://wdr-1live-live.icecastssl.wdr.de/wdr/1live/live/mp3/128/stream.mp3' },
-            { id: 'antenne', name: 'Antenne Bayern', city: 'Munich', url: 'https://s1-webradio.antenne.de/antenne' },
-            { id: 'energy', name: 'ENERGY Berlin', city: 'Berlin', url: 'https://stream.energy.de/energy_berlin' },
-            { id: 'radio-nrj', name: 'NRJ Deutschland', city: 'Berlin', url: 'https://energystream.loverad.io/nrj' },
-            { id: 'bigfm', name: 'BigFM', city: 'Stuttgart', url: 'https://streams.bigfm.de/bigfm-deutschland-128-mp3' },
-          ]},
-          { id: 'electronic', name: 'Techno / Electronic', icon: '🎛️', color: '#06b6d4', stations: [
-            { id: 'flux-deep', name: 'FluxFM Deep', city: 'Berlin', url: 'https://streams.fluxfm.de/Chillhop/mp3-320/streams.fluxfm.de/' },
-            { id: 'dance-de', name: 'Radio Dance Germany', city: 'Berlin', url: 'https://streams.fluxfm.de/Dance/mp3-128/streams.fluxfm.de/' },
-            { id: 'sunshine-live', name: 'sunshine live', city: 'Mannheim', url: 'https://stream.sunshine-live.de/live/mp3-128' },
-            { id: 'bigcity-beats', name: 'BigCityBeats Radio', city: 'Frankfurt', url: 'https://stream.zeno.fm/yn65y59ph38uv' },
-            { id: 'radio-eins', name: 'Radio Eins', city: 'Berlin', url: 'https://stream.rbb-online.de/radioeins/mp3/192kbps/radioeins.mp3' },
-          ]},
-          { id: 'classical', name: 'Klasik / Orkestra', icon: '🎻', color: '#8b5cf6', stations: [
-            { id: 'klassik-radio', name: 'Klassik Radio', city: 'Hamburg', url: 'https://live.klassikradio.de/klassikradio' },
-            { id: 'br-klassik', name: 'BR-Klassik', city: 'Munich', url: 'https://br-klassik-live.cast.addradio.de/br/klassik/live/mp3/128/stream.mp3' },
-            { id: 'deutschlandradio', name: 'Deutschlandradio Kultur', city: 'Berlin', url: 'https://dkultur.icecast.de/dlf/dkultur/mp3/128/stream.mp3' },
-            { id: 'wdr3', name: 'WDR 3', city: 'Cologne', url: 'https://wdr-wdr3-live.icecastssl.wdr.de/wdr/wdr3/live/mp3/128/stream.mp3' },
-            { id: 'ndr-klassik', name: 'NDR Kultur', city: 'Hamburg', url: 'https://ndrkultur-live.icecastssl.ndr.de/ndr/ndrkultur/live/mp3/128/stream.mp3' },
-          ]},
-          { id: 'schlager', name: 'Schlager / Folk', icon: '🪗', color: '#dc2626', stations: [
-            { id: 'schlager-radio', name: 'Schlagerradio', city: 'Online', url: 'https://stream.zeno.fm/0r0xa792g18uv' },
-            { id: 'hit-radio-ffh', name: 'Hit Radio FFH', city: 'Frankfurt', url: 'https://streams.ffh.de/radioffh/mp3/256' },
-            { id: 'mdr-sputnik', name: 'MDR Schlager', city: 'Leipzig', url: 'https://mdr-s-stream.ard.de/mdr/schlager/stream.mp3' },
-            { id: 'radio-de-volksmusk', name: 'Volksmusik Radio', city: 'Munich', url: 'https://stream.zeno.fm/s5rdy9ydg0uv' },
-            { id: 'radio-salü', name: 'Radio Salü', city: 'Saarbrücken', url: 'https://stream.zeno.fm/jd09dbydg0uv' },
-          ]},
-          { id: 'news', name: 'Berita / Talk', icon: '📰', color: '#64748b', stations: [
-            { id: 'dlf', name: 'Deutschlandfunk', city: 'Cologne', url: 'https://dradio-dlf-live.icecastssl.wdr.de/dradio/dlf/live/mp3/256/stream.mp3' },
-            { id: 'ndr-info', name: 'NDR Info', city: 'Hamburg', url: 'https://ndrinfo.icecastssl.ndr.de/ndr/ndrinfo/live/mp3/128/stream.mp3' },
-            { id: 'wdr5', name: 'WDR 5', city: 'Cologne', url: 'https://wdr-wdr5-live.icecastssl.wdr.de/wdr/wdr5/live/mp3/128/stream.mp3' },
-            { id: 'rbb24', name: 'rbb24 Inforadio', city: 'Berlin', url: 'https://inforadio.icecast.de/inforadio' },
-            { id: 'swr-aktuell', name: 'SWR Aktuell', city: 'Baden-Baden', url: 'https://stream.swr.de/swraktuell/mp3-128.m3u' },
-          ]},
-        ],
-      },
-      {
-        id: 'fr', name: 'Prancis', flag: '🇫🇷', color: '#3b82f6',
-        genres: [
-          { id: 'pop', name: 'Pop / Variété', icon: '🎵', color: '#f59e0b', stations: [
-            { id: 'nrj', name: 'NRJ', city: 'Paris', url: 'https://scdn.nrjaudio.fm/adwz2/fr/30001/mp3_128.mp3' },
-            { id: 'rtl2', name: 'RTL2 Pop-Rock', city: 'Paris', url: 'https://streaming.rtl2.fr/rtl2-live/mp3/128/' },
-            { id: 'nostalgie', name: 'Nostalgie', city: 'Paris', url: 'https://scdn.nrjaudio.fm/adwz2/fr/30700/mp3_128.mp3' },
-            { id: 'fun-radio', name: 'Fun Radio', city: 'Paris', url: 'https://streaming.fun-radio.fr/fun-radio/mp3/128/' },
-            { id: 'cherie', name: 'Chérie FM', city: 'Paris', url: 'https://scdn.nrjaudio.fm/adwz2/fr/30201/mp3_128.mp3' },
-          ]},
-          { id: 'chanson', name: 'Chanson / Jazz Français', icon: '🥐', color: '#8b5cf6', stations: [
-            { id: 'france-inter', name: 'France Inter', city: 'Paris', url: 'https://stream.radiofrance.fr/franceinter/franceinter_midfi.m3u8' },
-            { id: 'france-musique', name: 'France Musique', city: 'Paris', url: 'https://stream.radiofrance.fr/francemusique/francemusique_midfi.m3u8' },
-            { id: 'rfi-jazz', name: 'RFI Musique Jazz', city: 'Paris', url: 'https://stream.radiofrance.fr/rfijazz/rfijazz_midfi.m3u8' },
-            { id: 'tsfjazz', name: 'TSF Jazz', city: 'Paris', url: 'https://tsfjazz.ice.infomaniak.ch/tsfjazz-high' },
-            { id: 'fip', name: 'FIP Radio', city: 'Paris', url: 'https://stream.radiofrance.fr/fip/fip_midfi.m3u8' },
-          ]},
-          { id: 'electro', name: 'Electro / House', icon: '🎛️', color: '#06b6d4', stations: [
-            { id: 'djam', name: 'DJAM Radio', city: 'Paris', url: 'https://stream.zeno.fm/0r0xa792g18uv' },
-            { id: 'maxxi', name: 'Maxxi Radio', city: 'Paris', url: 'https://stream.zeno.fm/s5rdy9ydg0uv' },
-            { id: 'm80', name: 'M80 Radio', city: 'Online', url: 'https://stream.zeno.fm/jd09dbydg0uv' },
-            { id: 'galaxie', name: 'Galaxie Radio', city: 'Paris', url: 'https://stream.zeno.fm/f3wvkuydg0uv' },
-            { id: 'techno-fr', name: 'Techno France', city: 'Paris', url: 'https://streams.fluxfm.de/Dance/mp3-128/streams.fluxfm.de/' },
-          ]},
-          { id: 'classical', name: 'Klasik / Opera', icon: '🎻', color: '#fbbf24', stations: [
-            { id: 'france-musique2', name: 'France Musique Classique', city: 'Paris', url: 'https://stream.radiofrance.fr/francemusique/francemusique_midfi.m3u8' },
-            { id: 'radio-classique', name: 'Radio Classique', city: 'Paris', url: 'https://radioclassique.ice.infomaniak.ch/radioclassique-high' },
-            { id: 'mezzo', name: 'Mezzo Radio', city: 'Paris', url: 'https://stream.zeno.fm/7t4tqfydg0uv' },
-            { id: 'opera-fr', name: 'Opéra de Paris Radio', city: 'Paris', url: 'https://stream.zeno.fm/b2zfzuydg0uv' },
-            { id: 'musique-baroque', name: 'Musique Baroque FM', city: 'Online', url: 'https://stream.zeno.fm/4c4g4lydg0uv' },
-          ]},
-          { id: 'news', name: 'Berita / Politique', icon: '📰', color: '#64748b', stations: [
-            { id: 'france-info', name: 'Franceinfo', city: 'Paris', url: 'https://stream.radiofrance.fr/franceinfo/franceinfo_midfi.m3u8' },
-            { id: 'europe1', name: 'Europe 1', city: 'Paris', url: 'https://stream.europe1.fr/europe1.mp3' },
-            { id: 'rfi', name: 'RFI Monde', city: 'Paris', url: 'https://stream.radiofrance.fr/rfi/rfi_midfi.m3u8' },
-            { id: 'bfm-radio', name: 'BFM Business', city: 'Paris', url: 'https://stream.bfmtv.com/bfmbusiness_live.mp3' },
-            { id: 'rtl', name: 'RTL', city: 'Paris', url: 'https://streaming.rtl.fr/rtl-1-44-128.mp3' },
-          ]},
-        ],
-      },
-      {
         id: 'in', name: 'India', flag: '🇮🇳', color: '#f97316',
         genres: [
           { id: 'bollywood', name: 'Bollywood / Hindi', icon: '🎬', color: '#f59e0b', stations: [
@@ -364,7 +404,7 @@ const STREAMING_PLATFORMS = [
             { id: 'red-fm', name: 'Red FM 93.5', city: 'Mumbai', url: 'https://stream.zeno.fm/7k2hevydg0uv' },
           ]},
           { id: 'classical-in', name: 'Klasik India / Ragas', icon: '🎶', color: '#8b5cf6', stations: [
-            { id: 'all-india', name: 'All India Radio Classical', city: 'New Delhi', url: 'https://air.pc.cdn.bitgravity.com/air/live/pbaudio029/playlist.m3u8' },
+            { id: 'all-india', name: 'All India Radio Classical', city: 'New Delhi', url: 'https://stream.zeno.fm/xp5rfbyd2g0uv' },
             { id: 'hindustani', name: 'Hindustani Classical FM', city: 'Online', url: 'https://stream.zeno.fm/s5rdy9ydg0uv' },
             { id: 'carnatic', name: 'Carnatic Radio', city: 'Chennai', url: 'https://stream.zeno.fm/jd09dbydg0uv' },
             { id: 'tabla-radio', name: 'Tabla & Raga Radio', city: 'Online', url: 'https://stream.zeno.fm/f3wvkuydg0uv' },
@@ -385,11 +425,11 @@ const STREAMING_PLATFORMS = [
             { id: 'surbahar', name: 'Surbahar Radio', city: 'Ludhiana', url: 'https://stream.zeno.fm/4c4g4lydg0uv' },
           ]},
           { id: 'news', name: 'Berita / Talk', icon: '📰', color: '#64748b', stations: [
-            { id: 'air-news', name: 'All India Radio News', city: 'New Delhi', url: 'https://air.pc.cdn.bitgravity.com/air/live/pbaudio001/playlist.m3u8' },
+            { id: 'air-news', name: 'All India Radio News', city: 'New Delhi', url: 'https://stream.zeno.fm/9yqfepydg0uv' },
             { id: 'ndtv-radio', name: 'NDTV Radio', city: 'New Delhi', url: 'https://stream.zeno.fm/yn65y59ph38uv' },
             { id: 'bbchindi', name: 'BBC Hindi Service', city: 'London', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_hindi_news' },
             { id: 'aaj-tak', name: 'Aaj Tak Radio', city: 'New Delhi', url: 'https://stream.zeno.fm/0r0xa792g18uv' },
-            { id: 'air-fm-gold', name: 'AIR FM Gold', city: 'New Delhi', url: 'https://air.pc.cdn.bitgravity.com/air/live/pbaudio024/playlist.m3u8' },
+            { id: 'air-fm-gold', name: 'AIR FM Gold', city: 'New Delhi', url: 'https://stream.zeno.fm/3vr7fsydg0uv' },
           ]},
         ],
       },
@@ -472,47 +512,7 @@ const STREAMING_PLATFORMS = [
             { id: 'sbs-news', name: 'SBS News Radio', city: 'Seoul', url: 'https://stream.zeno.fm/7t4tqfydg0uv' },
           ]},
         ],
-      },
-      {
-        id: 'eg', name: 'Mesir / Arab', flag: '🇪🇬', color: '#10b981',
-        genres: [
-          { id: 'arabic-pop', name: 'Arabic Pop / Khaleeji', icon: '🎵', color: '#f59e0b', stations: [
-            { id: 'nile-fm', name: 'Nile FM', city: 'Cairo', url: 'https://stream.zeno.fm/3vr7fsydg0uv' },
-            { id: 'nogoum', name: 'Nogoum FM', city: 'Cairo', url: 'https://stream.zeno.fm/7k2hevydg0uv' },
-            { id: 'mbc-fm-ar', name: 'MBC FM Arabia', city: 'Dubai', url: 'https://stream.zeno.fm/9yqfepydg0uv' },
-            { id: 'rotana', name: 'Rotana Radio', city: 'Riyadh', url: 'https://stream.zeno.fm/qfzh4eydg0uv' },
-            { id: 'virgin-ar', name: 'Virgin Radio Arabia', city: 'Dubai', url: 'https://stream.zeno.fm/3vr7fsydg0uv' },
-          ]},
-          { id: 'quran', name: 'Al-Quran / Tilawah', icon: '🕌', color: '#10b981', stations: [
-            { id: 'quran-radio', name: 'Holy Quran Radio', city: 'Cairo', url: 'https://backup.qurango.net/radio/ahmed_alhuthify' },
-            { id: 'quran-makkah', name: 'Makkah Live Quran', city: 'Makkah', url: 'https://Quranradio.com/en/' },
-            { id: 'murattal', name: 'Murattal Radio', city: 'Madinah', url: 'https://backup.qurango.net/radio/ahmad_khader_altarabulsi' },
-            { id: 'saudia-quran', name: 'Saudi Quran Radio', city: 'Riyadh', url: 'https://backup.qurango.net/radio/aziz_ali' },
-            { id: 'quran-kareem', name: 'Quran Kareem FM', city: 'Cairo', url: 'https://backup.qurango.net/radio/abu_bakr_shatri' },
-          ]},
-          { id: 'shaabi', name: 'Shaabi / Sawt', icon: '🥁', color: '#dc2626', stations: [
-            { id: 'shaabi-eg', name: 'Shaabi Egypt Radio', city: 'Cairo', url: 'https://stream.zeno.fm/s5rdy9ydg0uv' },
-            { id: 'tarab', name: 'Tarab Radio', city: 'Cairo', url: 'https://stream.zeno.fm/jd09dbydg0uv' },
-            { id: 'umm-kulthum', name: 'Umm Kulthum Radio', city: 'Cairo', url: 'https://stream.zeno.fm/f3wvkuydg0uv' },
-            { id: 'abd-el-halim', name: 'Abd El Halim Radio', city: 'Cairo', url: 'https://stream.zeno.fm/7t4tqfydg0uv' },
-            { id: 'egyptian-classics', name: 'Egyptian Classics FM', city: 'Online', url: 'https://stream.zeno.fm/b2zfzuydg0uv' },
-          ]},
-          { id: 'rai', name: 'Rai / Maghrebi', icon: '🎶', color: '#8b5cf6', stations: [
-            { id: 'rai-radio', name: 'Rai Music Radio', city: 'Oran', url: 'https://stream.zeno.fm/4c4g4lydg0uv' },
-            { id: 'radio-algerie', name: 'Radio Algérie', city: 'Algiers', url: 'https://stream.zeno.fm/yn65y59ph38uv' },
-            { id: 'rtm-maroc', name: 'RTM Radio Maroc', city: 'Rabat', url: 'https://stream.zeno.fm/0r0xa792g18uv' },
-            { id: 'medi1', name: 'Medi1 Radio', city: 'Tanger', url: 'https://stream.zeno.fm/s5rdy9ydg0uv' },
-            { id: 'maghreb', name: 'Radio Maghreb FM', city: 'Online', url: 'https://stream.zeno.fm/jd09dbydg0uv' },
-          ]},
-          { id: 'news', name: 'Berita / Al-Akhbar', icon: '📰', color: '#64748b', stations: [
-            { id: 'bbc-arabic', name: 'BBC Arabic Radio', city: 'London', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_arabic_news' },
-            { id: 'al-jazeera', name: 'Al Jazeera Radio', city: 'Doha', url: 'https://stream.zeno.fm/f3wvkuydg0uv' },
-            { id: 'monte-carlo', name: 'Monte Carlo Doualiya', city: 'Paris', url: 'https://stream.radiofrance.fr/rfi/rfi_midfi.m3u8' },
-            { id: 'egypt-radio', name: 'Idaaet Masr', city: 'Cairo', url: 'https://stream.zeno.fm/7t4tqfydg0uv' },
-            { id: 'swl-arabic', name: 'Radio Sawt Al Arab', city: 'Cairo', url: 'https://stream.zeno.fm/b2zfzuydg0uv' },
-          ]},
-        ],
-      },
+      }
     ],
   },
 ];
@@ -1198,6 +1198,114 @@ async function driveStreamBlob(driveId, token) {
   return url;
 }
 
+// ── Mode Lite: stream Drive tanpa download penuh & tanpa simpan ke cache.
+// Hanya buffer ~30 detik ke depan, lanjut fetch saat buffer menipis.
+// Hemat data + hemat storage. AbortController dikirim agar bisa dibatalkan saat skip.
+const _liteAbortMap = new Map(); // driveId → AbortController
+async function driveStreamLite(driveId, token, audioElRef) {
+  const memKey = `${driveId}:${token.slice(-12)}:lite`;
+
+  // 1. In-memory URL (dari sesi ini)
+  if (_blobCache.has(memKey)) return _blobCache.get(memKey);
+
+  // 2. Cek Cache API — kalau sudah pernah diputar sebelumnya, pakai cache (tidak perlu re-download)
+  const cachedBlob = await cacheGet(driveId);
+  if (cachedBlob) {
+    const url = URL.createObjectURL(cachedBlob);
+    _blobCache.set(memKey, url);
+    return url;
+  }
+
+  // 3. Batalkan fetch lagu sebelumnya (jika masih berjalan)
+  for (const [id, ctrl] of _liteAbortMap) { if (id !== driveId) { ctrl.abort(); _liteAbortMap.delete(id); } }
+  const abortCtrl = new AbortController();
+  _liteAbortMap.set(driveId, abortCtrl);
+
+  // 4. Fetch stream dari Drive
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${driveId}?alt=media&acknowledgeAbuse=true`,
+    { headers: { Authorization: `Bearer ${token}` }, signal: abortCtrl.signal }
+  );
+  if (res.status === 401 || res.status === 403) throw new Error(`${res.status}`);
+  if (!res.ok) throw new Error(`Drive ${res.status}`);
+
+  const contentType = res.headers.get('Content-Type') || '';
+  const mime = guessMime(contentType);
+
+  // Bersihkan URL lama untuk driveId ini
+  for (const [k, v] of _blobCache) {
+    if (k.startsWith(driveId + ':') && k !== memKey) { URL.revokeObjectURL(v); _blobCache.delete(k); }
+  }
+
+  // 5. MediaSource adaptive buffering — hanya buffer AHEAD_SEC detik ke depan
+  if (typeof MediaSource !== 'undefined' && MediaSource.isTypeSupported(mime) && res.body) {
+    const AHEAD_SEC  = 30; // detik buffer ke depan
+    const PAUSE_SEC  = 20; // lanjut fetch kalau buffer < ini
+    const ms  = new MediaSource();
+    const url = URL.createObjectURL(ms);
+    _blobCache.set(memKey, url);
+
+    ms.addEventListener('sourceopen', async () => {
+      try {
+        const sb     = res.status !== -1 ? ms.addSourceBuffer(mime) : null;
+        if (!sb) return;
+        const reader = res.body.getReader();
+        const waitUpdate = () => new Promise(r => sb.addEventListener('updateend', r, { once: true }));
+        let paused = false;
+
+        const getAudio = () => audioElRef && audioElRef.current;
+
+        const pump = async () => {
+          if (abortCtrl.signal.aborted) { reader.cancel(); if (ms.readyState === 'open') ms.endOfStream(); return; }
+
+          // Adaptive: pause baca jika sudah buffer cukup ke depan
+          const audio = getAudio();
+          if (audio && sb.buffered.length > 0) {
+            const bufferedEnd = sb.buffered.end(sb.buffered.length - 1);
+            const ahead = bufferedEnd - audio.currentTime;
+            if (ahead > AHEAD_SEC && !paused) {
+              paused = true;
+              // Tunggu sampai buffer habis sebelum lanjut fetch
+              const resume = () => {
+                const a2 = getAudio();
+                if (!a2 || a2.currentTime >= bufferedEnd - PAUSE_SEC) {
+                  paused = false;
+                  pump();
+                } else {
+                  setTimeout(resume, 2000);
+                }
+              };
+              setTimeout(resume, 2000);
+              return;
+            }
+          }
+
+          const { done, value } = await reader.read();
+          if (done) {
+            if (ms.readyState === 'open') ms.endOfStream();
+            // Lite: TIDAK simpan ke Cache API — hemat storage
+            return;
+          }
+          if (sb.updating) await waitUpdate();
+          if (ms.readyState === 'open') { sb.appendBuffer(value); await waitUpdate(); }
+          await pump();
+        };
+        await pump();
+      } catch(e) {
+        if (e.name !== 'AbortError') { /* stream closed / tab navigated */ }
+      }
+    }, { once: true });
+    return url;
+  }
+
+  // 6. Fallback blob (MediaSource tidak tersedia) — Lite: tidak simpan ke cache
+  const blob = await res.blob();
+  const url  = URL.createObjectURL(blob);
+  _blobCache.set(memKey, url);
+  // Lite: tidak cachePut — hemat storage
+  return url;
+}
+
 // Download full blob (no MediaSource) — dipakai mode Pro agar durasi & progress bar bisa terbaca
 async function driveDownloadBlob(driveId, token) {
   const cacheKey = driveId;
@@ -1660,14 +1768,18 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
             {(isLite ? [
               ['⚡ Cover art dinonaktifkan', 'Gambar album tidak dimuat — halaman lebih ringan'],
               ['⚡ Audio preload: none', 'Audio hanya dimuat saat diputar, menghemat bandwidth'],
-              ['⚡ Prefetch Drive dinonaktifkan', 'Lagu tidak di-cache di background'],
+              ['⚡ Drive: streaming adaptif', 'Hanya buffer ~30 detik ke depan, tidak simpan ke cache — hemat data & storage'],
+              ['⚡ Prefetch Drive dinonaktifkan', 'Lagu tidak di-unduh di background'],
               ['⚡ AI & Insight dinonaktifkan', 'Starry AI, Vibe Search, dan Wawasan Kosmik dimatikan'],
+              ['⚡ Lirik: database publik saja', 'Mencari dari lyrics.ovh — tanpa AI generate jika tidak ditemukan'],
               ['⚡ Animasi dinonaktifkan', 'Semua efek visual dan blur dimatikan untuk performa maksimal'],
             ] : [
               ['✨ Cover art aktif', 'Gambar album dimuat dari internet'],
               ['✨ Audio preload: auto', 'Buffer audio disiapkan lebih awal untuk playback instan'],
+              ['✨ Drive: unduh & cache penuh', 'File diunduh seluruhnya & disimpan untuk playback offline'],
               ['✨ Prefetch Drive aktif', 'Lagu berikutnya di-cache di background'],
               ['✨ AI & Insight aktif', 'Starry AI, Vibe Search, dan Wawasan Kosmik tersedia'],
+              ['✨ Lirik: database + AI', 'Cari dari lyrics.ovh, fallback ke Starry AI generate lirik'],
               ['✨ Animasi penuh', 'Bintang-bintang, blur, dan efek visual lengkap'],
             ]).map(([feat, desc])=>(
               <div key={feat} style={{ display:'flex', alignItems:'flex-start', gap:8 }}>
@@ -1899,6 +2011,10 @@ export default function App() {
   const ytQueueRef    = useRef([]);   // current list of YT results
   const ytQueueIdxRef = useRef(-1);  // index of current video in queue
   const [ytSongs, setYtSongs]         = useState([]); // YT tracks saved to playlist/liked
+
+  // ── Unified search state
+  const [unifiedQuery, setUnifiedQuery] = useState('');
+  const [unifiedPlatform, setUnifiedPlatform] = useState('ytmusic'); // 'ytmusic' | 'soundcloud' | 'spotify'
 
   // ── YouTube search state (keyed by platform id)
   const [ytQuery,   setYtQuery]   = useState({});
@@ -2988,8 +3104,9 @@ export default function App() {
             throw e;
           }
         } else {
-          const url = await driveStreamBlob(t.driveId, tok);
-          setCachedDriveIds(prev => new Set([...prev, t.driveId]));
+          // Lite: stream tanpa download penuh & tanpa simpan cache — hemat data & storage
+          const url = await driveStreamLite(t.driveId, tok, audioRef);
+          // Tidak ditandai cached di Lite mode (file tidak disimpan ke Cache API)
           return url;
         }
       };
@@ -3086,6 +3203,65 @@ export default function App() {
   // ── SEEK
   const seekByPct = useCallback((p) => { if(audioRef.current&&duration){audioRef.current.currentTime=p*duration;setProgress(p*duration);} }, [duration]);
 
+  // ── RADIO NEXT / PREV (navigate within same genre)
+  const goNextRadio = useCallback(() => {
+    if (!radioStation) return;
+    const platform = STREAMING_PLATFORMS.find(p => p.embedType === 'radio');
+    if (!platform) return;
+    const country = platform.countries.find(c => c.id === radioStation.countryId);
+    if (!country) return;
+    const genre = country.genres.find(g => g.id === radioStation.genreId);
+    if (!genre) return;
+    const stations = genre.stations;
+    const idx = stations.findIndex(s => s.id === radioStation.id);
+    const nextStation = stations[(idx + 1) % stations.length];
+    if (!nextStation) return;
+    const radioTrackObj = {
+      id: `radio_${nextStation.id}`,
+      title: nextStation.name,
+      artist: nextStation.city + ' · Live Radio',
+      album: 'Live Radio',
+      cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
+      src: nextStation.url,
+      color: genre.color,
+      bg: `rgba(245,158,11,0.15)`,
+      mood: 'live, radio',
+      isRadio: true,
+    };
+    play(radioTrackObj);
+    setRadioStation({ ...nextStation, color: genre.color, countryId: radioStation.countryId, genreId: radioStation.genreId });
+    setRadioPlaying(true);
+  }, [radioStation, play]);
+
+  const goPrevRadio = useCallback(() => {
+    if (!radioStation) return;
+    const platform = STREAMING_PLATFORMS.find(p => p.embedType === 'radio');
+    if (!platform) return;
+    const country = platform.countries.find(c => c.id === radioStation.countryId);
+    if (!country) return;
+    const genre = country.genres.find(g => g.id === radioStation.genreId);
+    if (!genre) return;
+    const stations = genre.stations;
+    const idx = stations.findIndex(s => s.id === radioStation.id);
+    const prevStation = stations[(idx - 1 + stations.length) % stations.length];
+    if (!prevStation) return;
+    const radioTrackObj = {
+      id: `radio_${prevStation.id}`,
+      title: prevStation.name,
+      artist: prevStation.city + ' · Live Radio',
+      album: 'Live Radio',
+      cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
+      src: prevStation.url,
+      color: genre.color,
+      bg: `rgba(245,158,11,0.15)`,
+      mood: 'live, radio',
+      isRadio: true,
+    };
+    play(radioTrackObj);
+    setRadioStation({ ...prevStation, color: genre.color, countryId: radioStation.countryId, genreId: radioStation.genreId });
+    setRadioPlaying(true);
+  }, [radioStation, play]);
+
   // ── REPEAT cycle
   // Di stream (embedTrack YouTube): off → all → one → off
   // Di player biasa (Drive/lokal): off → all → one → off
@@ -3114,7 +3290,7 @@ export default function App() {
     const activeTitle  = embedTrack ? (embedTrack.title  || track.title)  : track.title;
     const activeArtist = embedTrack ? (embedTrack.artist || track.artist) : track.artist;
     const activeMood   = track.mood || '';
-    // Try to fetch real lyrics from lyrics.ovh API first
+    // Try to fetch real lyrics from lyrics.ovh API first (ringan, aman di Lite mode)
     try {
       const artist = encodeURIComponent(activeArtist.replace(/[^\w\s]/gi,'').trim());
       const title  = encodeURIComponent(activeTitle.replace(/[^\w\s]/gi,'').trim());
@@ -3128,7 +3304,13 @@ export default function App() {
         }
       }
     } catch(_) {}
-    // Fallback: generate AI lyrics if real lyrics not found
+    // Lite mode: tidak gunakan AI fallback (hemat data)
+    if (isLite) {
+      setLyrics('⚡ Lirik tidak ditemukan di database publik.\n\nMode Lite aktif — AI generate lirik dinonaktifkan untuk hemat data.\n\nAktifkan Mode Pro untuk generate lirik dengan AI.');
+      setLL(false);
+      return;
+    }
+    // Fallback: generate AI lyrics if real lyrics not found (Pro mode only)
     const moodCtx = activeMood ? `Mood/vibe: ${activeMood}.` : '';
     const r = await askAI(
       `Tulis lirik lagu orisinal yang INDAH dan PUITIS untuk:\nJudul: "${activeTitle}"\nArtis: ${activeArtist}\n${moodCtx}\n\nFormat WAJIB:\n[Verse 1]\n(2-4 baris lirik)\n\n[Pre-Chorus]\n(1-2 baris)\n\n[Chorus]\n(2-4 baris, catchy & memorable)\n\n[Verse 2]\n(2-4 baris)\n\n[Chorus]\n(2-4 baris)\n\n[Bridge]\n(2-3 baris emosional)\n\n[Outro]\n(1-2 baris penutup)\n\nGunakan bahasa Indonesia yang puitis. Maksimal 180 kata.`,
@@ -3295,7 +3477,7 @@ export default function App() {
           e.preventDefault();
           if (e.shiftKey) {
             // Shift+→ : next track
-            if (embedTrack?.type === 'youtube') ytNext(); else goNext();
+            if (embedTrack?.type === 'youtube') ytNext(); else if (track.isRadio) goNextRadio(); else goNext();
           } else {
             // →  : seek forward 5s
             if (embedTrack?.type === 'youtube') {
@@ -3310,7 +3492,7 @@ export default function App() {
           e.preventDefault();
           if (e.shiftKey) {
             // Shift+← : previous track
-            if (embedTrack?.type === 'youtube') ytPrev(); else goPrev();
+            if (embedTrack?.type === 'youtube') ytPrev(); else if (track.isRadio) goPrevRadio(); else goPrev();
           } else {
             // ← : seek back 5s
             if (embedTrack?.type === 'youtube') {
@@ -3368,7 +3550,7 @@ export default function App() {
 
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [track, embedTrack, playing, volume, muted, shuffle, repeat, tab, showQueue, showSettings, duration, ytDuration, goNext, goPrev, ytNext, ytPrev, cycleRepeat]);
+  }, [track, embedTrack, playing, volume, muted, shuffle, repeat, tab, showQueue, showSettings, duration, ytDuration, goNext, goPrev, ytNext, ytPrev, cycleRepeat, goNextRadio, goPrevRadio]);
 
   // tabs = only non-player tabs (Stream, Playlist, AI)
   // Player is accessed via the mini now-playing bar above the tab bar
@@ -3513,13 +3695,21 @@ export default function App() {
               {/* Queue header */}
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 18px 12px', borderBottom:'1px solid rgba(255,255,255,0.07)', flexShrink:0 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:9 }}>
-                  <div style={{ width:30, height:30, borderRadius:9, background:embedTrack?.type==='youtube'?'rgba(255,68,68,0.2)':`${track.color}22`, border:`1px solid ${embedTrack?.type==='youtube'?'rgba(255,68,68,0.4)':track.color+'40'}`, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                    <ListMusic size={15} style={{ color:embedTrack?.type==='youtube'?'#ff6b6b':track.color }}/>
+                  <div style={{ width:30, height:30, borderRadius:9, background:track.isRadio&&!embedTrack?`${radioStation?.color||'#f59e0b'}22`:embedTrack?.type==='youtube'?'rgba(255,68,68,0.2)':`${track.color}22`, border:`1px solid ${track.isRadio&&!embedTrack?`${radioStation?.color||'#f59e0b'}40`:embedTrack?.type==='youtube'?'rgba(255,68,68,0.4)':track.color+'40'}`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <ListMusic size={15} style={{ color:track.isRadio&&!embedTrack?(radioStation?.color||'#f59e0b'):embedTrack?.type==='youtube'?'#ff6b6b':track.color }}/>
                   </div>
                   <div>
                     <div style={{ fontWeight:800, fontSize:14 }}>Antrean</div>
                     <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>
-                      {embedTrack?.type==='youtube' ? `${ytQueueRef.current.length} lagu` : `${[...builtinSongs,...customSongs,...ytSongs].length} lagu`}
+                      {track.isRadio && !embedTrack
+                        ? (() => {
+                            const rp = STREAMING_PLATFORMS.find(p => p.embedType === 'radio');
+                            const rc = rp?.countries?.find(c => c.id === radioStation?.countryId);
+                            const rg = rc?.genres?.find(g => g.id === radioStation?.genreId);
+                            return `${rg?.stations?.length || 0} stasiun`;
+                          })()
+                        : embedTrack?.type==='youtube' ? `${ytQueueRef.current.length} lagu` : `${[...builtinSongs,...customSongs,...ytSongs].length} lagu`
+                      }
                     </div>
                   </div>
                 </div>
@@ -3527,7 +3717,65 @@ export default function App() {
               </div>
               {/* Queue list */}
               <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'8px 0' }}>
-                {embedTrack?.type==='youtube' ? (
+                {track.isRadio && !embedTrack ? (()=>{
+                  const radioPlatform = STREAMING_PLATFORMS.find(p => p.embedType === 'radio');
+                  const radioCountryData = radioPlatform?.countries?.find(c => c.id === radioStation?.countryId);
+                  const radioGenreData = radioCountryData?.genres?.find(g => g.id === radioStation?.genreId);
+                  const radioStations = radioGenreData?.stations || [];
+                  return radioStations.length === 0 ? (
+                    <div style={{ padding:'48px 20px', textAlign:'center' }}>
+                      <ListMusic size={40} style={{ color:'rgba(255,255,255,0.08)', margin:'0 auto 14px', display:'block' }}/>
+                      <div style={{ fontSize:13, color:'rgba(255,255,255,0.25)', fontWeight:600 }}>Tidak ada stasiun</div>
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ padding:'8px 18px 4px', fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.08em' }}>
+                        {radioGenreData?.icon} {radioGenreData?.name} · {radioCountryData?.flag} {radioCountryData?.name}
+                      </div>
+                      {radioStations.map((station, i) => {
+                        const isCur = radioStation?.id === station.id;
+                        const stationColor = radioGenreData?.color || '#f59e0b';
+                        return (
+                          <div key={station.id} onClick={() => {
+                            const radioTrackObj = {
+                              id: `radio_${station.id}`,
+                              title: station.name,
+                              artist: station.city + ' · Live Radio',
+                              album: 'Live Radio',
+                              cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
+                              src: station.url,
+                              color: stationColor,
+                              bg: `rgba(245,158,11,0.15)`,
+                              mood: 'live, radio',
+                              isRadio: true,
+                            };
+                            if (track.id === radioTrackObj.id) { setPlaying(p => !p); } else {
+                              play(radioTrackObj);
+                              setRadioStation({ ...station, color: stationColor, countryId: radioStation?.countryId, genreId: radioStation?.genreId });
+                              setRadioPlaying(true);
+                            }
+                            setShowQueue(false);
+                          }} style={{ display:'flex', alignItems:'center', gap:11, padding:'9px 18px', background:isCur?`${stationColor}12`:'transparent', cursor:'pointer' }}>
+                            <div style={{ width:20, textAlign:'center', flexShrink:0 }}>
+                              {isCur
+                                ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12, justifyContent:'center' }}>{[9,5,7].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:stationColor, borderRadius:1, animation:`bounce 0.8s ease-in-out ${j*0.15}s infinite` }}/>))}</div>
+                                : <span style={{ fontSize:10, color:'rgba(255,255,255,0.25)', fontWeight:600 }}>{i+1}</span>
+                              }
+                            </div>
+                            <div style={{ width:38, height:38, borderRadius:8, background:isCur?`${stationColor}25`:'rgba(255,255,255,0.07)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:16 }}>
+                              📻
+                            </div>
+                            <div style={{ flex:1, minWidth:0 }}>
+                              <div style={{ fontSize:12, fontWeight:isCur?700:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:isCur?stationColor:'rgba(255,255,255,0.88)' }}>{station.name}</div>
+                              <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:2 }}>{station.city} · ● LIVE</div>
+                            </div>
+                            {isCur && <div style={{ width:6, height:6, borderRadius:'50%', background:stationColor, flexShrink:0, animation:'pulse 2s infinite' }}/>}
+                          </div>
+                        );
+                      })}
+                    </>
+                  );
+                })() : embedTrack?.type==='youtube' ? (
                   ytQueueRef.current.length > 0 ? (
                     ytQueueRef.current.map((item,i)=>{
                       const isCur = i === ytQueueIdxRef.current;
@@ -3655,19 +3903,19 @@ export default function App() {
 
             {/* Main controls: Shuffle | Prev | Play | Next | Repeat */}
             <div style={{ display:'flex', alignItems:'center', gap:'clamp(6px,2.5vw,14px)', marginTop: fullscreen ? 0 : 'clamp(12px,2vh,18px)' }}>
-              <button onClick={()=>{ if(embedTrack?.type==='youtube'){ setShuffle(s=>{ const next=!s; if(next){ setRepeat('off'); ytShuffle(); } return next; }); } else { setShuffle(s=>{ const next=!s; if(next) setRepeat("off"); return next; }); } }} style={{ ...btn, color:shuffle?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', position:'relative', padding:'clamp(5px,1.2vw,8px)' }}>
+              {!track.isRadio && <button onClick={()=>{ if(embedTrack?.type==='youtube'){ setShuffle(s=>{ const next=!s; if(next){ setRepeat('off'); ytShuffle(); } return next; }); } else { setShuffle(s=>{ const next=!s; if(next) setRepeat("off"); return next; }); } }} style={{ ...btn, color:shuffle?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', position:'relative', padding:'clamp(5px,1.2vw,8px)' }}>
                 <Shuffle size={18}/>
                 {shuffle&&<div style={{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:embedTrack?.type==='youtube'?'#ff4444':track.color }}/>}
-              </button>
-              <button onClick={()=>embedTrack?.type==='youtube'?ytPrev():goPrev()} style={{ ...btn, padding:'clamp(5px,1.2vw,8px)' }}><SkipBack size={22} fill="currentColor"/></button>
+              </button>}
+              <button onClick={()=>track.isRadio?goPrevRadio():embedTrack?.type==='youtube'?ytPrev():goPrev()} style={{ ...btn, padding:'clamp(5px,1.2vw,8px)' }}><SkipBack size={22} fill="currentColor"/></button>
               <button onClick={()=>{ if(!track.src&&!embedTrack) return; setPlaying(p=>!p); }} disabled={!track.src&&!embedTrack} style={{ width: fullscreen ? 'clamp(60px,16vw,72px)' : 'clamp(48px,13vw,56px)', height: fullscreen ? 'clamp(60px,16vw,72px)' : 'clamp(48px,13vw,56px)', borderRadius:'50%', border:'none', background:'white', color:'#07071a', cursor:(!track.src&&!embedTrack)?'default':'pointer', opacity:(!track.src&&!embedTrack)?0.4:1, display:'flex', alignItems:'center', justifyContent:'center', boxShadow: isLite ? `0 2px 8px rgba(0,0,0,0.4)` : `0 0 22px ${embedTrack?.type==='youtube'?'#ff444490':track.color+'90'},0 4px 20px rgba(0,0,0,0.4)`, flexShrink:0 }}>
                 {playing?<Pause size={21} fill="currentColor"/>:<Play size={21} fill="currentColor" style={{ marginLeft:3 }}/>}
               </button>
-              <button onClick={()=>embedTrack?.type==='youtube'?ytNext():goNext()} style={{ ...btn, padding:'clamp(5px,1.2vw,8px)' }}><SkipForward size={22} fill="currentColor"/></button>
-              <button onClick={cycleRepeat} style={{ ...btn, color:repeat!=='off'?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', position:'relative', padding:'clamp(5px,1.2vw,8px)' }}>
+              <button onClick={()=>track.isRadio?goNextRadio():embedTrack?.type==='youtube'?ytNext():goNext()} style={{ ...btn, padding:'clamp(5px,1.2vw,8px)' }}><SkipForward size={22} fill="currentColor"/></button>
+              {!track.isRadio && <button onClick={cycleRepeat} style={{ ...btn, color:repeat!=='off'?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', position:'relative', padding:'clamp(5px,1.2vw,8px)' }}>
                 {repeat==='one'?<Repeat1 size={18}/>:<Repeat size={18}/>}
                 {repeat!=='off'&&<div style={{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:embedTrack?.type==='youtube'?'#ff4444':track.color }}/>}
-              </button>
+              </button>}
             </div>
 
             {/* ── Volume row */}
@@ -3696,7 +3944,13 @@ export default function App() {
               </button>
               {/* Tutup embed — hanya muncul saat ada stream aktif */}
               {embedTrack && (
-                <button onClick={()=>{ closeEmbed(); setShowSettings(false); }} title="Tutup" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:'none', border:'none', color:'#fca5a5' }}>
+                <button onClick={()=>{ closeEmbed(); setShowSettings(false); }} title="Tutup Stream" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:'none', border:'none', color:'#fca5a5' }}>
+                  <X size={16}/>
+                </button>
+              )}
+              {/* Tutup radio — hanya muncul saat radio sedang aktif */}
+              {!embedTrack && track.isRadio && radioStation && (
+                <button onClick={()=>{ if(audioRef.current){audioRef.current.pause();audioRef.current.src='';} setPlaying(false); setRadioStation(null); setRadioPlaying(false); setTrack(SONGS[0]); setShowSettings(false); }} title="Keluar Radio" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:'none', border:'none', color:'#fbbf24' }}>
                   <X size={16}/>
                 </button>
               )}
@@ -3729,14 +3983,72 @@ export default function App() {
           <div style={{ height:'100%', display:'flex', flexDirection:'column', padding:'14px 16px 0' }}>
 
             {/* Header */}
-            <div style={{ marginBottom:12 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+            <div style={{ marginBottom:10 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom:8 }}>
                 <div style={{ fontWeight:800, fontSize:15 }}>Platform Streaming</div>
                 {eqEnabled && <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:999, background:`${track.color}25`, color:track.color, letterSpacing:'0.04em' }}>EQ ON</span>}
                 {crossfade > 0 && <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:999, background:'rgba(99,102,241,0.18)', color:'#a5b4fc', letterSpacing:'0.04em' }}>CF {crossfade}s</span>}
                 {sleepTimer && <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:999, background:'rgba(251,191,36,0.15)', color:'#fbbf24', letterSpacing:'0.04em' }}>💤 {fmtSec(sleepTimer.remaining)}</span>}
               </div>
-              <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:2 }}>Putar langsung dari platform favoritmu{eqEnabled?' · EQ aktif (Spotify)':''}</div>
+
+              {/* ── Unified search bar */}
+              {(() => {
+                const searchPlatforms = STREAMING_PLATFORMS.filter(p => ['ytmusic','soundcloud','spotify'].includes(p.id));
+                const activePlat = searchPlatforms.find(p => p.id === unifiedPlatform) || searchPlatforms[0];
+                const handleUnifiedSearch = () => {
+                  if (!unifiedQuery.trim()) return;
+                  if (unifiedPlatform === 'ytmusic') {
+                    setYtQuery(p => ({...p, ytmusic: unifiedQuery}));
+                    searchYouTube('ytmusic', unifiedQuery);
+                  } else if (unifiedPlatform === 'soundcloud') {
+                    const q = unifiedQuery.trim();
+                    setScQuery(p => ({...p, soundcloud: q}));
+                    if (q.includes('soundcloud.com/')) {
+                      setScWidget(p => ({...p, soundcloud: q}));
+                    } else if (scHasKey) {
+                      doSoundCloudSearch('soundcloud', q);
+                    } else {
+                      setScWidget(p => ({...p, soundcloud: `https://soundcloud.com/search?q=${encodeURIComponent(q)}`}));
+                    }
+                  } else if (unifiedPlatform === 'spotify') {
+                    setSpQuery(unifiedQuery);
+                    doSpotifySearch(unifiedQuery);
+                  }
+                };
+                return (
+                  <div style={{ marginBottom:8 }}>
+                    {/* Platform filter tabs */}
+                    <div style={{ display:'flex', gap:5, marginBottom:7 }}>
+                      {searchPlatforms.map(p => {
+                        const isActive = unifiedPlatform === p.id;
+                        return (
+                          <button key={p.id} onClick={() => { setUnifiedPlatform(p.id); setUnifiedQuery(p.id==='ytmusic' ? (ytQuery['ytmusic']||'') : p.id==='soundcloud' ? (scQuery['soundcloud']||'') : p.id==='spotify' ? spQuery : ''); }}
+                            style={{ flex:1, padding:'6px 0', borderRadius:10, border:`1.5px solid ${isActive ? p.color : p.color+'30'}`, background: isActive ? `${p.color}22` : 'rgba(255,255,255,0.03)', color: isActive ? p.color : 'rgba(255,255,255,0.4)', fontSize:11, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:5, transition:'all 0.15s' }}>
+                            <PlatformLogo id={p.id} size={13}/>
+                            {p.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {/* Search input */}
+                    <div style={{ display:'flex', gap:6 }}>
+                      <div style={{ flex:1, display:'flex', alignItems:'center', gap:6, background:'rgba(0,0,0,0.35)', borderRadius:999, padding:'7px 13px', border:`1.5px solid ${activePlat.color}35` }}>
+                        <Search size={12} style={{ color:activePlat.color, flexShrink:0 }}/>
+                        <input type="text" placeholder={activePlat.hint}
+                          value={unifiedQuery}
+                          onChange={e => setUnifiedQuery(e.target.value)}
+                          onKeyDown={e => { if(e.key==='Enter') handleUnifiedSearch(); }}
+                          style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'white', fontSize:12, minWidth:0 }}/>
+                        {unifiedQuery && <button onClick={()=>setUnifiedQuery('')} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.3)', cursor:'pointer', padding:0, display:'flex', lineHeight:1 }}>×</button>}
+                      </div>
+                      <button onClick={handleUnifiedSearch}
+                        style={{ padding:'7px 14px', borderRadius:999, border:'none', background:`${activePlat.color}cc`, color:'white', fontSize:11, fontWeight:700, cursor:'pointer', flexShrink:0, display:'flex', alignItems:'center', gap:4 }}>
+                        <Search size={11}/> Cari
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* List */}
@@ -3758,7 +4070,8 @@ export default function App() {
                     const error   = ytError[platform.id];
                     const activeWidget = scWidget[platform.id];
                     return (
-                      <div key={platform.id} ref={platform.id === 'ytmusic' ? ytMusicSectionRef : null} style={{ borderRadius:16, background:`${platform.color}0e`, border:`1px solid ${platform.color}30`, overflow:'hidden' }}>
+                      <div key={platform.id} ref={platform.id === 'ytmusic' ? ytMusicSectionRef : null}
+                        style={{ borderRadius:16, background:`${platform.color}0e`, border:`1px solid ${platform.color}30`, overflow:'hidden', display: (isYT||isSC||isSpotify) && unifiedPlatform !== platform.id ? 'none' : 'block' }}>
                         {/* ── Platform header */}
                         <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px 8px' }}>
                           <div style={{ width:36, height:36, borderRadius:10, background:`${platform.color}20`, display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', flexShrink:0 }}>
@@ -3776,24 +4089,9 @@ export default function App() {
                           <button onClick={()=>openNewTab(platform.openUrl)} style={{ padding:'4px 8px', borderRadius:999, border:`1px solid ${platform.color}40`, background:'transparent', color:platform.color, fontSize:10, fontWeight:700, cursor:'pointer', flexShrink:0 }}>↗</button>
                         </div>
 
-                        {/* ── YouTube: search bar + results list */}
+                        {/* ── YouTube: results only (search bar moved to unified) */}
                         {isYT && (
                           <div style={{ padding:'0 10px 10px' }}>
-                            <div style={{ display:'flex', gap:6 }}>
-                              <div style={{ flex:1, display:'flex', alignItems:'center', gap:6, background:'rgba(0,0,0,0.3)', borderRadius:999, padding:'6px 12px', border:`1px solid ${platform.color}25` }}>
-                                <Search size={11} style={{ color:platform.color, flexShrink:0 }}/>
-                                <input type="text" placeholder={platform.hint}
-                                  value={ytQ}
-                                  onChange={e => setYtQuery(p=>({...p,[platform.id]:e.target.value}))}
-                                  onKeyDown={e => { if(e.key==='Enter') searchYouTube(platform.id, ytQ); }}
-                                  style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'white', fontSize:12, minWidth:0 }}/>
-                              </div>
-                              <button onClick={() => searchYouTube(platform.id, ytQ)} disabled={loading}
-                                style={{ padding:'6px 12px', borderRadius:999, border:'none', background:`${platform.color}cc`, color:'white', fontSize:11, fontWeight:700, cursor:'pointer', flexShrink:0, display:'flex', alignItems:'center', gap:4, opacity:loading?0.5:1 }}>
-                                {loading?<Loader2 size={11} style={{ animation:'spin 1s linear infinite' }}/>:<Search size={11}/>}
-                                {loading?'Cari…':'Cari'}
-                              </button>
-                            </div>
                             {error && <div style={{ fontSize:11, color:'#fca5a5', marginTop:6, padding:'6px 10px', borderRadius:8, background:'rgba(239,68,68,0.1)' }}>{error}</div>}
                             {/* Results — no thumbnail, cleaner list */}
                             {results.length > 0 && (
@@ -3829,52 +4127,6 @@ export default function App() {
                         {/* ── SoundCloud: full in-app search + embed */}
                         {isSC && (
                           <div style={{ padding:'0 10px 10px' }}>
-                            {/* Search bar — bisa URL SoundCloud atau kata kunci */}
-                            <div style={{ display:'flex', gap:6 }}>
-                              <div style={{ flex:1, display:'flex', alignItems:'center', gap:6, background:'rgba(0,0,0,0.3)', borderRadius:999, padding:'6px 12px', border:`1px solid ${platform.color}25` }}>
-                                <Search size={11} style={{ color:platform.color, flexShrink:0 }}/>
-                                <input type="text" placeholder="Cari track, artis, atau paste URL SoundCloud…"
-                                  value={scQuery[platform.id] || ''}
-                                  onChange={e => setScQuery(p=>({...p,[platform.id]:e.target.value}))}
-                                  onKeyDown={e => {
-                                    if(e.key==='Enter') {
-                                      const q = (scQuery[platform.id]||'').trim();
-                                      if(q.includes('soundcloud.com/')) {
-                                        setScWidget(p=>({...p,[platform.id]:q}));
-                                      } else if (scHasKey) {
-                                        doSoundCloudSearch(platform.id, q);
-                                      } else {
-                                        // Tanpa API key: embed search URL via iframe
-                                        setScWidget(p=>({...p,[platform.id]:`https://soundcloud.com/search?q=${encodeURIComponent(q)}`}));
-                                      }
-                                    }
-                                  }}
-                                  style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'white', fontSize:12, minWidth:0 }}/>
-                                {scQuery[platform.id] && (
-                                  <button onClick={() => { setScQuery(p=>({...p,[platform.id]:''})); setScResults(p=>({...p,[platform.id]:[]})); setScWidget(p=>({...p,[platform.id]:null})); setScError(p=>({...p,[platform.id]:null})); }}
-                                    style={{ background:'none', border:'none', color:'rgba(255,255,255,0.3)', cursor:'pointer', padding:0, display:'flex' }}>
-                                    <X size={13}/>
-                                  </button>
-                                )}
-                              </div>
-                              <button
-                                onClick={() => {
-                                  const q = (scQuery[platform.id]||'').trim();
-                                  if(q.includes('soundcloud.com/')) {
-                                    setScWidget(p=>({...p,[platform.id]:q}));
-                                  } else if (scHasKey) {
-                                    doSoundCloudSearch(platform.id, q);
-                                  } else {
-                                    setScWidget(p=>({...p,[platform.id]:`https://soundcloud.com/search?q=${encodeURIComponent(q)}`}));
-                                  }
-                                }}
-                                disabled={scLoading[platform.id]}
-                                style={{ padding:'6px 12px', borderRadius:999, border:'none', background:`${platform.color}cc`, color:'white', fontSize:11, fontWeight:700, cursor:'pointer', flexShrink:0, display:'flex', alignItems:'center', gap:4, opacity:scLoading[platform.id]?0.5:1 }}>
-                                {scLoading[platform.id]?<Loader2 size={11} style={{ animation:'spin 1s linear infinite' }}/>:<Search size={11}/>}
-                                {scLoading[platform.id]?'Cari…':'Cari'}
-                              </button>
-                            </div>
-
                             {/* Error */}
                             {scError[platform.id] && <div style={{ fontSize:11, color:'#fca5a5', marginTop:6, padding:'6px 10px', borderRadius:8, background:'rgba(239,68,68,0.1)' }}>{scError[platform.id]}</div>}
 
@@ -3923,56 +4175,6 @@ export default function App() {
                         {/* ── Spotify: search in-app + 30s preview + redirect */}
                         {isSpotify && (
                           <div style={{ padding:'0 10px 12px' }}>
-                            {/* Search bar — bisa kata kunci atau URL Spotify */}
-                            <div style={{ display:'flex', gap:6, marginBottom:6 }}>
-                              <div style={{ flex:1, display:'flex', alignItems:'center', gap:6, background:'rgba(0,0,0,0.3)', borderRadius:999, padding:'6px 12px', border:`1px solid ${platform.color}30` }}>
-                                <Search size={11} style={{ color:platform.color, flexShrink:0 }}/>
-                                <input type="text" placeholder="Cari atau paste URL Spotify…"
-                                  value={spQuery}
-                                  onChange={e => setSpQuery(e.target.value)}
-                                  onKeyDown={e => {
-                                    if(e.key==='Enter') {
-                                      const q = spQuery.trim();
-                                      if(q.includes('spotify.com/') || q.startsWith('spotify:')) {
-                                        // Konversi ke embed Spotify
-                                        const rawUrl = q.startsWith('spotify:') ? `https://open.spotify.com/${q.replace('spotify:','').replace(/:/g,'/')}` : q;
-                                        const embedUrl = rawUrl.replace('open.spotify.com/', 'open.spotify.com/embed/');
-                                        setSpEmbedUrl(embedUrl);
-                                      } else if(spHasKey) { doSpotifySearch(q); }
-                                      else {
-                                        // Tanpa API key: cari via YouTube in-app
-                                        setYtQuery(p=>({...p,'ytmusic':q}));
-                                        setTimeout(()=>{ searchYouTube('ytmusic', q); }, 100);
-                                      }
-                                    }
-                                  }}
-                                  style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'white', fontSize:12, minWidth:0 }}/>
-                                {spQuery && (
-                                  <button onClick={() => { setSpQuery(''); setSpResults([]); setSpError(null); setSpTrack(null); setSpPlaying(false); if(spPreviewRef.current){spPreviewRef.current.pause();spPreviewRef.current=null;} }}
-                                    style={{ background:'none', border:'none', color:'rgba(255,255,255,0.3)', cursor:'pointer', padding:0, display:'flex' }}>
-                                    <X size={13}/>
-                                  </button>
-                                )}
-                              </div>
-                              <button onClick={() => {
-                                  const q = spQuery.trim();
-                                  if(q.includes('spotify.com/') || q.startsWith('spotify:')) {
-                                    const rawUrl = q.startsWith('spotify:') ? `https://open.spotify.com/${q.replace('spotify:','').replace(/:/g,'/')}` : q;
-                                    const embedUrl = rawUrl.replace('open.spotify.com/', 'open.spotify.com/embed/');
-                                    setSpEmbedUrl(embedUrl);
-                                  } else if(spHasKey) { doSpotifySearch(q); }
-                                  else {
-                                    // Tanpa API key: cari via YouTube in-app
-                                    setYtQuery(p=>({...p,'ytmusic':q}));
-                                    setTimeout(()=>{ searchYouTube('ytmusic', q); }, 100);
-                                  }
-                                }} disabled={spLoading}
-                                style={{ padding:'6px 12px', borderRadius:999, border:'none', background: spLoading ? `${platform.color}40` : `${platform.color}cc`, color:'white', fontSize:11, fontWeight:700, cursor: spLoading ? 'default' : 'pointer', flexShrink:0, display:'flex', alignItems:'center', gap:4 }}>
-                                {spLoading ? <Loader2 size={11} style={{ animation:'spin 1s linear infinite' }}/> : <Search size={11}/>}
-                                {spLoading ? 'Cari…' : spHasKey ? 'Cari' : 'Cari via YT'}
-                              </button>
-                            </div>
-
                             {/* Error */}
                             {spError && <div style={{ fontSize:11, color:'#fca5a5', marginBottom:6, padding:'6px 10px', borderRadius:8, background:'rgba(239,68,68,0.1)' }}>{spError}</div>}
 
@@ -4168,7 +4370,7 @@ export default function App() {
                               // Stop any YouTube embed
                               if (embedTrack?.type === 'youtube') { closeEmbed(); }
                               play(radioTrackObj);
-                              setRadioStation({ ...station, color: stationColor });
+                              setRadioStation({ ...station, color: stationColor, countryId: selCountry.id, genreId: selGenre.id });
                               setRadioPlaying(true);
                             }
                           };
@@ -4752,29 +4954,41 @@ export default function App() {
                   <div style={{ textAlign:'center', paddingTop:36 }}>
                     <Mic2 size={48} style={{ color:'rgba(255,255,255,0.1)', margin:'0 auto 16px', display:'block' }}/>
                     <div style={{ fontSize:15, fontWeight:700, color:'rgba(255,255,255,0.3)', marginBottom:8 }}>Lirik belum tersedia</div>
-                    <div style={{ fontSize:12, color:'rgba(255,255,255,0.2)' }}>Ketuk "Tampilkan Lirik" untuk generate lirik AI</div>
+                    <div style={{ fontSize:12, color:'rgba(255,255,255,0.2)' }}>{isLite ? 'Ketuk "Tampilkan Lirik" untuk cari dari database publik' : 'Ketuk "Tampilkan Lirik" untuk generate lirik AI'}</div>
                   </div>
                 )}
                 {lyricsLoading&&(
                   <div style={{ textAlign:'center', paddingTop:36 }}>
                     <Loader2 size={40} style={{ color:track.color, margin:'0 auto 14px', display:'block', animation:'spin 1s linear infinite' }}/>
-                    <div style={{ fontSize:13, color:'rgba(255,255,255,0.4)' }}>Starry AI sedang menulis lirik…</div>
+                    <div style={{ fontSize:13, color:'rgba(255,255,255,0.4)' }}>{isLite ? 'Mencari lirik…' : 'Starry AI sedang menulis lirik…'}</div>
                   </div>
                 )}
                 {lyrics&&!lyricsLoading&&(
-                  <div style={{ lineHeight:1.9 }}>
-                    {lyrics.split('\n').map((line, i) => {
-                      const isTag = line.startsWith('[') && line.endsWith(']');
-                      return (
-                        <div key={i} style={{ fontSize:isTag?11:15, fontWeight:isTag?800:400, color:isTag?track.color:'rgba(255,255,255,0.9)', marginTop:isTag&&i>0?18:0, marginBottom:isTag?6:0, textTransform:isTag?'uppercase':'none', letterSpacing:isTag?'0.12em':0 }}>
-                          {line || <br/>}
-                        </div>
-                      );
-                    })}
-                    <div style={{ marginTop:24, padding:'10px 14px', borderRadius:10, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)' }}>
-                      <div style={{ fontSize:10, color:'rgba(255,255,255,0.25)' }}>✨ Lirik dari database publik. Jika tidak tersedia, Starry AI akan membuatkan lirik berdasarkan judul dan mood lagu.</div>
+                  lyrics.startsWith('⚡') ? (
+                    /* Lite mode info card */
+                    <div style={{ textAlign:'center', paddingTop:24 }}>
+                      <div style={{ fontSize:32, marginBottom:12 }}>⚡</div>
+                      <div style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.5)', marginBottom:8 }}>Lirik tidak ditemukan</div>
+                      <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', lineHeight:1.7, marginBottom:20, whiteSpace:'pre-line' }}>Mode Lite aktif — AI generate lirik dinonaktifkan untuk hemat data.{'\n'}Aktifkan Mode Pro untuk generate lirik dengan AI.</div>
+                      <button onClick={toggleMode} style={{ padding:'8px 18px', borderRadius:999, border:'1px solid rgba(99,102,241,0.4)', background:'rgba(99,102,241,0.12)', color:'#a5b4fc', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                        ✨ Beralih ke Mode Pro
+                      </button>
                     </div>
-                  </div>
+                  ) : (
+                    <div style={{ lineHeight:1.9 }}>
+                      {lyrics.split('\n').map((line, i) => {
+                        const isTag = line.startsWith('[') && line.endsWith(']');
+                        return (
+                          <div key={i} style={{ fontSize:isTag?11:15, fontWeight:isTag?800:400, color:isTag?track.color:'rgba(255,255,255,0.9)', marginTop:isTag&&i>0?18:0, marginBottom:isTag?6:0, textTransform:isTag?'uppercase':'none', letterSpacing:isTag?'0.12em':0 }}>
+                            {line || <br/>}
+                          </div>
+                        );
+                      })}
+                      <div style={{ marginTop:24, padding:'10px 14px', borderRadius:10, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)' }}>
+                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.25)' }}>{isLite ? '🎵 Lirik dari database publik (lyrics.ovh).' : '✨ Lirik dari database publik. Jika tidak tersedia, Starry AI akan membuatkan lirik berdasarkan judul dan mood lagu.'}</div>
+                      </div>
+                    </div>
+                  )
                 )}
               </div>
             ) : (
