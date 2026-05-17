@@ -33,12 +33,10 @@ export default defineConfig({
       workbox: {
         skipWaiting: true,
         clientsClaim: true,
-        // Hanya precache asset kecil — JS besar via runtime cache
         globPatterns: ['**/*.{css,html,svg,png,ico,woff2}'],
         globIgnores: ['**/node_modules/**/*', 'sw.js', 'workbox-*.js'],
         runtimeCaching: [
           {
-            // JS & CSS assets dengan hash — aman di-cache 1 tahun
             urlPattern: /\/assets\/.+\.(js|css)$/i,
             handler: 'CacheFirst',
             options: {
@@ -81,14 +79,11 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
-    // Target modern browser — bundle lebih kecil
     target: ['es2020', 'chrome87', 'firefox78', 'safari14'],
-    // esbuild (default) — AMAN, tidak menyebabkan TDZ reordering
     minify: 'esbuild',
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
-        // Single bundle — cegah cross-chunk TDZ issues
         inlineDynamicImports: true,
         entryFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
