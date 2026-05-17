@@ -682,6 +682,9 @@ const SONGS = [
   }
 ];
 
+// ── Built-in songs (empty — all music comes from external platforms/Drive)
+const builtinSongs = [];
+
 // Helper: semua lagu dari semua sumber yang sudah di-load
 // ═══════════════════════════════════════════════════════
 //  GOOGLE DRIVE
@@ -879,7 +882,7 @@ async function searchSoundCloud(query, limit = 10) {
 }
 
 
-async function askAI(user, system='', tries=0) {
+const askAI = async (user, system='', tries=0) => {
   if (!PROVIDERS.length) return '⚠️ Belum ada API key. Isi di Vercel Environment Variables.';
   if (tries >= PROVIDERS.length) { slotIdx = 0; return 'Semua provider sibuk, coba lagi nanti.'; }
   const slot = PROVIDERS[slotIdx % PROVIDERS.length];
@@ -953,6 +956,9 @@ const hasKey = () => PROVIDERS.length > 0;
 // Cache list Drive agar tidak re-fetch setiap login
 const _driveCache = { token: null, songs: null, ts: 0 };
 const DRIVE_CACHE_TTL = 5 * 60 * 1000; // 5 menit
+// Cache in-memory (sesi ini) + Cache API (persisten antar refresh)
+const _blobCache = new Map();
+const DRIVE_CACHE_NAME = 'sn-drive-v1';
 
 // Cari folder "Starry Night Music" (hanya untuk upload — TIDAK membuat otomatis)
 async function driveGetFolderId(token) {
@@ -1089,10 +1095,6 @@ async function driveListSongs(token, forceRefresh = false) {
   _driveCache.ts     = now;
   return songs;
 }
-// Cache in-memory (sesi ini) + Cache API (persisten antar refresh)
-const _blobCache = new Map();
-const DRIVE_CACHE_NAME = 'sn-drive-v1';
-
 // Simpan blob ke Cache API (IndexedDB-like, persisten)
 async function cachePut(cacheKey, blob) {
   try {
@@ -1981,9 +1983,6 @@ function UploadModal({ onClose, onUpload, uploading, uploadProgress, color, isLi
     </div>
   );
 }
-
-// ── Built-in songs placeholder (empty — music from external platforms)
-const builtinSongs = [];
 
 // ═══════════════════════════════════════════════════════
 //  MAIN APP
