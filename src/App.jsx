@@ -2165,8 +2165,11 @@ export default function App() {
     if (fullscreen) {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      const size = Math.min(vw - 48, vh - 280);
-      setRingSize(Math.max(220, Math.min(380, size)));
+      // Reserve space for: track info ~60px, controls ~60px, volume ~36px, actions ~48px, padding ~80px = ~284px
+      const reservedH = 284;
+      // For mobile width, also cap by vw
+      const size = Math.min(vw - 48, vh - reservedH);
+      setRingSize(Math.max(200, Math.min(420, size)));
     } else {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
@@ -2952,7 +2955,7 @@ export default function App() {
 
         {/* ─── PLAYER TAB */}
         {tab==='player'&&(
-          <div className="scrollbar-hide" style={{ height:'100%', overflowY:'auto', position:'relative' }}>
+          <div className="scrollbar-hide" style={{ height:'100%', overflowY: fullscreen ? 'hidden' : 'auto', position:'relative' }}>
 
           {/* ── QUEUE PANEL — inline dalam player, bukan full layar */}
           {showQueue && (
@@ -3035,7 +3038,7 @@ export default function App() {
           {/* ── SETTINGS PANEL — inline dalam player */}
           {showSettings&&<SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} eqEnabled={!!eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset||"Normal"} setEqPreset={setEqPreset} eqGains={Array.isArray(eqGains)&&eqGains.length===5?eqGains:[0,0,0,0,0]} setEqGains={setEqGains} crossfade={typeof crossfade==="number"?crossfade:0} setCrossfade={setCrossfade} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns}/>}
 
-          <div style={{ minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start', padding:'clamp(10px,2.5vh,20px) 16px clamp(10px,2vh,18px)', position:'relative' }}>
+          <div style={{ minHeight: fullscreen ? '100%' : undefined, height: fullscreen ? '100%' : undefined, display:'flex', flexDirection:'column', alignItems:'center', justifyContent: fullscreen ? 'space-evenly' : 'flex-start', padding: fullscreen ? '12px 24px 16px' : 'clamp(10px,2.5vh,20px) 16px clamp(10px,2vh,18px)', position:'relative', boxSizing:'border-box' }}>
 
             {/* ── JAM — pojok kiri atas area player (desktop only) */}
             {isDesktop && (
@@ -3082,7 +3085,7 @@ export default function App() {
             )}
 
             {/* Track info */}
-            <div style={{ textAlign:'center', marginTop:'clamp(8px,1.6vh,14px)', width:'100%', maxWidth:340, padding:'0 6px' }}>
+            <div style={{ textAlign:'center', marginTop: fullscreen ? 0 : 'clamp(8px,1.6vh,14px)', width:'100%', maxWidth: fullscreen ? 420 : 340, padding:'0 6px' }}>
               {embedTrack?.type==='youtube' ? (
                 <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:999, marginBottom:4, background:'rgba(255,0,0,0.12)', border:'1px solid rgba(255,0,0,0.25)' }}>
                   <span style={{ fontSize:9, fontWeight:800, color:'#ff6b6b', textTransform:'uppercase', letterSpacing:'0.1em' }}>▶ YouTube</span>
@@ -3090,20 +3093,20 @@ export default function App() {
               ) : track.isDrive&&(
                 <div style={{ display:'inline-flex', alignItems:'center', gap:3, padding:'2px 7px', borderRadius:999, marginBottom:4, background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)' }}><Cloud size={9} style={{ color:track.color }}/><span style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em' }}>Drive</span></div>
               )}
-              <h2 style={{ margin:0, fontWeight:900, letterSpacing:'-0.03em', lineHeight:1.1, fontSize:'clamp(16px,4.2vw,24px)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{embedTrack?.type==='youtube'?embedTrack.title:track.title}</h2>
-              <p style={{ margin:'2px 0 0', fontSize:'clamp(10px,2.5vw,12px)', color:'rgba(255,255,255,0.45)', fontWeight:600 }}>
+              <h2 style={{ margin:0, fontWeight:900, letterSpacing:'-0.03em', lineHeight:1.1, fontSize: fullscreen ? 'clamp(18px,4.8vw,28px)' : 'clamp(16px,4.2vw,24px)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{embedTrack?.type==='youtube'?embedTrack.title:track.title}</h2>
+              <p style={{ margin:'2px 0 0', fontSize: fullscreen ? 'clamp(11px,2.8vw,14px)' : 'clamp(10px,2.5vw,12px)', color:'rgba(255,255,255,0.45)', fontWeight:600 }}>
                 {embedTrack?.type==='youtube' ? embedTrack.artist : `${track.artist} — ${track.album}`}
               </p>
             </div>
 
             {/* Main controls: Shuffle | Prev | Play | Next | Repeat */}
-            <div style={{ display:'flex', alignItems:'center', gap:'clamp(6px,2.5vw,14px)', marginTop:'clamp(12px,2vh,18px)' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:'clamp(6px,2.5vw,14px)', marginTop: fullscreen ? 0 : 'clamp(12px,2vh,18px)' }}>
               <button onClick={()=>{ if(embedTrack?.type==='youtube'){ setShuffle(s=>{ const next=!s; if(next){ setRepeat('off'); ytShuffle(); } return next; }); } else { setShuffle(s=>{ const next=!s; if(next) setRepeat("off"); return next; }); } }} style={{ ...btn, color:shuffle?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', position:'relative', padding:'clamp(5px,1.2vw,8px)' }}>
                 <Shuffle size={18}/>
                 {shuffle&&<div style={{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:embedTrack?.type==='youtube'?'#ff4444':track.color }}/>}
               </button>
               <button onClick={()=>embedTrack?.type==='youtube'?ytPrev():goPrev()} style={{ ...btn, padding:'clamp(5px,1.2vw,8px)' }}><SkipBack size={22} fill="currentColor"/></button>
-              <button onClick={()=>{ if(!track.src&&!embedTrack) return; setPlaying(p=>!p); }} disabled={!track.src&&!embedTrack} style={{ width:'clamp(48px,13vw,56px)', height:'clamp(48px,13vw,56px)', borderRadius:'50%', border:'none', background:'white', color:'#07071a', cursor:(!track.src&&!embedTrack)?'default':'pointer', opacity:(!track.src&&!embedTrack)?0.4:1, display:'flex', alignItems:'center', justifyContent:'center', boxShadow: isLite ? `0 2px 8px rgba(0,0,0,0.4)` : `0 0 22px ${embedTrack?.type==='youtube'?'#ff444490':track.color+'90'},0 4px 20px rgba(0,0,0,0.4)`, flexShrink:0 }}>
+              <button onClick={()=>{ if(!track.src&&!embedTrack) return; setPlaying(p=>!p); }} disabled={!track.src&&!embedTrack} style={{ width: fullscreen ? 'clamp(60px,16vw,72px)' : 'clamp(48px,13vw,56px)', height: fullscreen ? 'clamp(60px,16vw,72px)' : 'clamp(48px,13vw,56px)', borderRadius:'50%', border:'none', background:'white', color:'#07071a', cursor:(!track.src&&!embedTrack)?'default':'pointer', opacity:(!track.src&&!embedTrack)?0.4:1, display:'flex', alignItems:'center', justifyContent:'center', boxShadow: isLite ? `0 2px 8px rgba(0,0,0,0.4)` : `0 0 22px ${embedTrack?.type==='youtube'?'#ff444490':track.color+'90'},0 4px 20px rgba(0,0,0,0.4)`, flexShrink:0 }}>
                 {playing?<Pause size={21} fill="currentColor"/>:<Play size={21} fill="currentColor" style={{ marginLeft:3 }}/>}
               </button>
               <button onClick={()=>embedTrack?.type==='youtube'?ytNext():goNext()} style={{ ...btn, padding:'clamp(5px,1.2vw,8px)' }}><SkipForward size={22} fill="currentColor"/></button>
@@ -3114,14 +3117,14 @@ export default function App() {
             </div>
 
             {/* ── Volume row */}
-            <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:'clamp(8px,1.4vh,12px)', width:'100%', maxWidth:340, padding:'4px 2px' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginTop: fullscreen ? 0 : 'clamp(8px,1.4vh,12px)', width:'100%', maxWidth: fullscreen ? 420 : 340, padding:'4px 2px' }}>
               <button onClick={()=>setMuted(m=>!m)} style={{ ...btn, color:muted?'#ef4444':'rgba(255,255,255,0.38)', padding:4, flexShrink:0 }}>{muted?<VolumeX size={16}/>:<Volume2 size={16}/>}</button>
               <input type="range" min="0" max="1" step="0.01" value={muted?0:volume} onChange={e=>{setVolume(+e.target.value);setMuted(false)}} style={{ flex:1, accentColor:embedTrack?.type==='youtube'?'#ff4444':track.color, height:3, cursor:'pointer' }}/>
               <span style={{ fontSize:10, color:'rgba(255,255,255,0.28)', fontWeight:700, minWidth:28, textAlign:'right', fontFamily:'monospace', flexShrink:0 }}>{muted?'0':Math.round(volume*100)}%</span>
             </div>
 
             {/* ── Action buttons row */}
-            <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:8, width:'100%', maxWidth:340 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:6, marginTop: fullscreen ? 0 : 8, width:'100%', maxWidth: fullscreen ? 420 : 340 }}>
               {/* Like */}
               {embedTrack?.type==='youtube'
                 ? <button onClick={likeYtTrack} title="Suka" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:'none', border:'none', color:liked[`yt_${embedTrack.videoId}`]?'#f472b6':'rgba(255,255,255,0.35)' }}><Heart size={16} fill={liked[`yt_${embedTrack.videoId}`]?'#f472b6':'none'}/></button>
