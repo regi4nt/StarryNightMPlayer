@@ -1576,8 +1576,13 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
 // ═══════════════════════════════════════════════════════
 const btn = { background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.5)', padding:8, display:'flex', borderRadius:8 };
 
-function SongRow({ s, i, track, playing, liked, setLiked, play, isDrive, isCached, onRemove, playlists, addToPlaylist, isLite }) {
+function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDrive, isCached, onRemove, playlists, addToPlaylist, isLite }) {
   const isActive = track.id === s.id;
+  const handleHeart = (e) => {
+    e.stopPropagation();
+    if (toggleFav) toggleFav(s.id, null); // already in allSongs — just toggle pl_fav + liked
+    else setLiked(l => ({ ...l, [s.id]: !l[s.id] }));
+  };
   return (
     <div style={{ display:'flex', alignItems:'center', gap:12, padding:'9px 12px', borderRadius:14, cursor:'pointer', background:isActive?s.bg:'rgba(255,255,255,0.04)', border:`1px solid ${isActive?s.color+'50':'transparent'}` }} onClick={()=>play(s)}>
       <div style={{ width:28, height:28, borderRadius:8, flexShrink:0, background:isActive?s.color:'rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:800, color:isActive?'white':'rgba(255,255,255,0.4)' }}>
@@ -1615,7 +1620,7 @@ function SongRow({ s, i, track, playing, liked, setLiked, play, isDrive, isCache
             </div>
           </div>
         )}
-        <button onClick={e=>{e.stopPropagation();setLiked(l=>({...l,[s.id]:!l[s.id]}))}} style={{ ...btn, color:liked[s.id]?'#f472b6':'rgba(255,255,255,0.2)', padding:6 }}><Heart size={15} fill={liked[s.id]?'#f472b6':'none'}/></button>
+        <button onClick={handleHeart} style={{ ...btn, color:liked[s.id]?'#f472b6':'rgba(255,255,255,0.2)', padding:6 }}><Heart size={15} fill={liked[s.id]?'#f472b6':'none'}/></button>
       </div>
     </div>
   );
@@ -1750,89 +1755,6 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
           )}
         </div>
 
-        {/* ── MODE LITE / PRO */}
-        <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <span style={{ fontSize:16 }}>{isLite ? '⚡' : '✨'}</span>
-              <div>
-                <div style={{ fontWeight:800, fontSize:14 }}>Mode {isLite ? 'Lite' : 'Pro'}</div>
-                <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{isLite ? 'Hemat data · tanpa animasi · load cepat' : 'Animasi penuh · cover art · fitur AI'}</div>
-              </div>
-            </div>
-            <div onClick={toggleMode} style={{ width:44, height:24, borderRadius:999, background:isLite?'#10b981':'rgba(255,255,255,0.1)', cursor:'pointer', position:'relative', flexShrink:0 }}>
-              <div style={{ position:'absolute', top:3, left:isLite?22:3, width:18, height:18, borderRadius:'50%', background:'white', boxShadow:'0 1px 4px rgba(0,0,0,0.3)' }}/>
-            </div>
-          </div>
-          <div style={{ borderRadius:12, background:isLite?'rgba(16,185,129,0.08)':'rgba(99,102,241,0.08)', border:`1px solid ${isLite?'rgba(16,185,129,0.2)':'rgba(99,102,241,0.2)'}`, padding:'10px 14px', display:'flex', flexDirection:'column', gap:5 }}>
-            {(isLite ? [
-              ['⚡ Cover art dinonaktifkan', 'Gambar album tidak dimuat — halaman lebih ringan'],
-              ['⚡ Audio preload: none', 'Audio hanya dimuat saat diputar, menghemat bandwidth'],
-              ['⚡ Drive: streaming adaptif', 'Hanya buffer ~30 detik ke depan, tidak simpan ke cache — hemat data & storage'],
-              ['⚡ Prefetch Drive dinonaktifkan', 'Lagu tidak di-unduh di background'],
-              ['⚡ AI & Insight dinonaktifkan', 'Starry AI, Vibe Search, dan Wawasan Kosmik dimatikan'],
-              ['⚡ Lirik: database publik saja', 'Mencari dari lyrics.ovh — tanpa AI generate jika tidak ditemukan'],
-              ['⚡ Animasi dinonaktifkan', 'Semua efek visual dan blur dimatikan untuk performa maksimal'],
-            ] : [
-              ['✨ Cover art aktif', 'Gambar album dimuat dari internet'],
-              ['✨ Audio preload: auto', 'Buffer audio disiapkan lebih awal untuk playback instan'],
-              ['✨ Drive: unduh & cache penuh', 'File diunduh seluruhnya & disimpan untuk playback offline'],
-              ['✨ Prefetch Drive aktif', 'Lagu berikutnya di-cache di background'],
-              ['✨ AI & Insight aktif', 'Starry AI, Vibe Search, dan Wawasan Kosmik tersedia'],
-              ['✨ Lirik: database + AI', 'Cari dari lyrics.ovh, fallback ke Starry AI generate lirik'],
-              ['✨ Animasi penuh', 'Bintang-bintang, blur, dan efek visual lengkap'],
-            ]).map(([feat, desc])=>(
-              <div key={feat} style={{ display:'flex', alignItems:'flex-start', gap:8 }}>
-                <span style={{ fontSize:11, flexShrink:0 }}>{feat.split(' ')[0]}</span>
-                <div>
-                  <div style={{ fontSize:11, fontWeight:600, color:'rgba(255,255,255,0.7)' }}>{feat.slice(2)}</div>
-                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{desc}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ── INSTALL APP (PWA) */}
-        <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
-            <span style={{ fontSize:16 }}>📲</span>
-            <div>
-              <div style={{ fontWeight:800, fontSize:14 }}>Install Sebagai App</div>
-              <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>Desktop & Mobile — tanpa toko aplikasi</div>
-            </div>
-          </div>
-          {pwaInstalled ? (
-            <div style={{ padding:'10px 14px', borderRadius:12, background:'rgba(99,102,241,0.1)', border:'1px solid rgba(99,102,241,0.25)', display:'flex', alignItems:'center', gap:10 }}>
-              <span style={{ fontSize:20 }}>✅</span>
-              <div>
-                <div style={{ fontSize:13, fontWeight:700, color:'#a5b4fc' }}>Sudah terinstall!</div>
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:2 }}>Buka dari layar utama atau app launcher</div>
-              </div>
-            </div>
-          ) : pwaPrompt ? (
-            <button onClick={installPwa} style={{ width:'100%', padding:'12px 0', borderRadius:14, border:'none', background:'linear-gradient(135deg,#6366f1,#a855f7)', color:'white', fontSize:13, fontWeight:800, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
-              <span style={{ fontSize:16 }}>📲</span>Install Sekarang
-            </button>
-          ) : (
-            <div style={{ padding:'10px 14px', borderRadius:12, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)' }}>
-              <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)', marginBottom:6 }}>Cara install manual:</div>
-              <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
-                {[
-                  ['📱 Chrome Android', 'Menu ⋮ → Tambahkan ke Layar Utama'],
-                  ['🍎 Safari iOS', 'Tap 🔗 → Tambahkan ke Layar Utama'],
-                  ['🖥️ Chrome Desktop', 'Klik ikon ⬇️ di address bar'],
-                  ['🖥️ Edge Desktop', 'Klik ikon ... → Apps → Install'],
-                ].map(([platform, step]) => (
-                  <div key={platform} style={{ fontSize:11, color:'rgba(255,255,255,0.4)' }}>
-                    <span style={{ color:'rgba(255,255,255,0.65)' }}>{platform}:</span> {step}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
         {/* ── FOTO COVER GLOBAL */}
         <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
@@ -1932,6 +1854,89 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
           </div>
         </div>
 
+        {/* ── MODE LITE / PRO */}
+        <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <span style={{ fontSize:16 }}>{isLite ? '⚡' : '✨'}</span>
+              <div>
+                <div style={{ fontWeight:800, fontSize:14 }}>Mode {isLite ? 'Lite' : 'Pro'}</div>
+                <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{isLite ? 'Hemat data · tanpa animasi · load cepat' : 'Animasi penuh · cover art · fitur AI'}</div>
+              </div>
+            </div>
+            <div onClick={toggleMode} style={{ width:44, height:24, borderRadius:999, background:isLite?'#10b981':'rgba(255,255,255,0.1)', cursor:'pointer', position:'relative', flexShrink:0 }}>
+              <div style={{ position:'absolute', top:3, left:isLite?22:3, width:18, height:18, borderRadius:'50%', background:'white', boxShadow:'0 1px 4px rgba(0,0,0,0.3)' }}/>
+            </div>
+          </div>
+          <div style={{ borderRadius:12, background:isLite?'rgba(16,185,129,0.08)':'rgba(99,102,241,0.08)', border:`1px solid ${isLite?'rgba(16,185,129,0.2)':'rgba(99,102,241,0.2)'}`, padding:'10px 14px', display:'flex', flexDirection:'column', gap:5 }}>
+            {(isLite ? [
+              ['⚡ Cover art dinonaktifkan', 'Gambar album tidak dimuat — halaman lebih ringan'],
+              ['⚡ Audio preload: none', 'Audio hanya dimuat saat diputar, menghemat bandwidth'],
+              ['⚡ Drive: streaming adaptif', 'Hanya buffer ~30 detik ke depan, tidak simpan ke cache — hemat data & storage'],
+              ['⚡ Prefetch Drive dinonaktifkan', 'Lagu tidak di-unduh di background'],
+              ['⚡ AI & Insight dinonaktifkan', 'Starry AI, Vibe Search, dan Wawasan Kosmik dimatikan'],
+              ['⚡ Lirik: database publik saja', 'Mencari dari lyrics.ovh — tanpa AI generate jika tidak ditemukan'],
+              ['⚡ Animasi dinonaktifkan', 'Semua efek visual dan blur dimatikan untuk performa maksimal'],
+            ] : [
+              ['✨ Cover art aktif', 'Gambar album dimuat dari internet'],
+              ['✨ Audio preload: auto', 'Buffer audio disiapkan lebih awal untuk playback instan'],
+              ['✨ Drive: unduh & cache penuh', 'File diunduh seluruhnya & disimpan untuk playback offline'],
+              ['✨ Prefetch Drive aktif', 'Lagu berikutnya di-cache di background'],
+              ['✨ AI & Insight aktif', 'Starry AI, Vibe Search, dan Wawasan Kosmik tersedia'],
+              ['✨ Lirik: database + AI', 'Cari dari lyrics.ovh, fallback ke Starry AI generate lirik'],
+              ['✨ Animasi penuh', 'Bintang-bintang, blur, dan efek visual lengkap'],
+            ]).map(([feat, desc])=>(
+              <div key={feat} style={{ display:'flex', alignItems:'flex-start', gap:8 }}>
+                <span style={{ fontSize:11, flexShrink:0 }}>{feat.split(' ')[0]}</span>
+                <div>
+                  <div style={{ fontSize:11, fontWeight:600, color:'rgba(255,255,255,0.7)' }}>{feat.slice(2)}</div>
+                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── INSTALL APP (PWA) */}
+        <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+            <span style={{ fontSize:16 }}>📲</span>
+            <div>
+              <div style={{ fontWeight:800, fontSize:14 }}>Install Sebagai App</div>
+              <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>Desktop & Mobile — tanpa toko aplikasi</div>
+            </div>
+          </div>
+          {pwaInstalled ? (
+            <div style={{ padding:'10px 14px', borderRadius:12, background:'rgba(99,102,241,0.1)', border:'1px solid rgba(99,102,241,0.25)', display:'flex', alignItems:'center', gap:10 }}>
+              <span style={{ fontSize:20 }}>✅</span>
+              <div>
+                <div style={{ fontSize:13, fontWeight:700, color:'#a5b4fc' }}>Sudah terinstall!</div>
+                <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:2 }}>Buka dari layar utama atau app launcher</div>
+              </div>
+            </div>
+          ) : pwaPrompt ? (
+            <button onClick={installPwa} style={{ width:'100%', padding:'12px 0', borderRadius:14, border:'none', background:'linear-gradient(135deg,#6366f1,#a855f7)', color:'white', fontSize:13, fontWeight:800, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+              <span style={{ fontSize:16 }}>📲</span>Install Sekarang
+            </button>
+          ) : (
+            <div style={{ padding:'10px 14px', borderRadius:12, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)', marginBottom:6 }}>Cara install manual:</div>
+              <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                {[
+                  ['📱 Chrome Android', 'Menu ⋮ → Tambahkan ke Layar Utama'],
+                  ['🍎 Safari iOS', 'Tap 🔗 → Tambahkan ke Layar Utama'],
+                  ['🖥️ Chrome Desktop', 'Klik ikon ⬇️ di address bar'],
+                  ['🖥️ Edge Desktop', 'Klik ikon ... → Apps → Install'],
+                ].map(([platform, step]) => (
+                  <div key={platform} style={{ fontSize:11, color:'rgba(255,255,255,0.4)' }}>
+                    <span style={{ color:'rgba(255,255,255,0.65)' }}>{platform}:</span> {step}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );
@@ -2011,6 +2016,7 @@ export default function App() {
   const ytQueueRef    = useRef([]);   // current list of YT results
   const ytQueueIdxRef = useRef(-1);  // index of current video in queue
   const [ytSongs, setYtSongs]         = useState([]); // YT tracks saved to playlist/liked
+  const [favSongs, setFavSongs]       = useState([]); // SC / Spotify / Radio liked tracks
 
   // ── Unified search state
   const [unifiedQuery, setUnifiedQuery] = useState('');
@@ -2428,11 +2434,37 @@ export default function App() {
     playYouTube(q[idx], q, idx);
   }, []); // eslint-disable-line
 
+  // ── Helper: update ❤️ Favorit playlist on like/unlike
+  const updateFavPlaylist = useCallback((id, isLiked) => {
+    setPlaylists(p => p.map(pl => {
+      if (pl.id !== 'pl_fav') return pl;
+      if (isLiked) return pl.songIds.includes(id) ? pl : { ...pl, songIds: [...pl.songIds, id] };
+      return { ...pl, songIds: pl.songIds.filter(s => s !== id) };
+    }));
+  }, []);
+
+  // ── Toggle like for SC / Spotify / Radio tracks (adds to favSongs + pl_fav)
+  const toggleFav = useCallback((id, songObj = null) => {
+    setLiked(l => {
+      const nowLiked = !l[id];
+      updateFavPlaylist(id, nowLiked);
+      if (songObj) {
+        if (nowLiked) setFavSongs(p => p.find(s => s.id === id) ? p : [...p, songObj]);
+        else setFavSongs(p => p.filter(s => s.id !== id));
+      } else {
+        // Regular track already in allSongs — just update pl_fav
+      }
+      return { ...l, [id]: nowLiked };
+    });
+  }, [updateFavPlaylist]); // eslint-disable-line
+
   // ── Like a YouTube track → save to ytSongs + liked state
   const likeYtTrack = useCallback(() => {
     if (!embedTrack || embedTrack.type !== 'youtube') return;
     const id = `yt_${embedTrack.videoId}`;
+    const nowLiked = !liked[id]; // eslint-disable-line
     setLiked(l => ({ ...l, [id]: !l[id] }));
+    updateFavPlaylist(id, nowLiked);
     setYtSongs(prev => {
       if (prev.find(s => s.id === id)) return prev;
       return [...prev, {
@@ -2443,7 +2475,7 @@ export default function App() {
         thumbnail:embedTrack.thumbnail, duration:embedTrack.durationSecs||0,
       }];
     });
-  }, [embedTrack]); // eslint-disable-line
+  }, [embedTrack, liked, updateFavPlaylist]); // eslint-disable-line
 
   // ── Core playback
   const [track, setTrack]       = useState(SONGS[0]);
@@ -2558,7 +2590,7 @@ export default function App() {
 
   // ── Responsive
   const [ringSize, setRingSize] = useState(260);
-  const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 768);
+  const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= window.innerHeight);
 
   // ── Refs
   const audioRef      = useRef(null);
@@ -2574,7 +2606,7 @@ export default function App() {
   const cfGainRef     = useRef(null); // crossfade gain
   const crossfadeRef  = useRef(0);
 
-  const allSongs = [...builtinSongs, ...customSongs, ...ytSongs];
+  const allSongs = [...builtinSongs, ...customSongs, ...ytSongs, ...favSongs];
 
   // ── Keep refs in sync
   useEffect(() => { shuffleRef.current  = shuffle;   }, [shuffle]);
@@ -2625,6 +2657,7 @@ export default function App() {
   // ── PWA Install prompt
   const [pwaPrompt, setPwaPrompt] = useState(null);
   const [pwaInstalled, setPwaInstalled] = useState(false);
+
   useEffect(() => {
     const handler = e => { e.preventDefault(); setPwaPrompt(e); };
     window.addEventListener('beforeinstallprompt', handler);
@@ -2762,48 +2795,77 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Responsive ring + desktop detection
+  // ── Unified responsive layout calc (portrait + landscape + desktop)
+  const [layoutVars, setLayoutVars] = useState({
+    playerPad: '6px 16px 8px', trackTitleSize: '15px', artistSize: '10px',
+    controlsGap: '10px', actionPad: '6px 0', volumeMt: '6px',
+    controlsMt: '8px', infoMt: '6px',
+  });
+
   useEffect(() => {
     const calc = () => {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      const desktop = vw >= 768;
+      const isFs = document.fullscreenElement != null;
+      const desktop = vw >= vh; // landscape = desktop layout
       setIsDesktop(desktop);
+
+      if (isFs || fullscreen) {
+        // Fullscreen: maximize ring
+        const size = Math.min(vw - 48, vh - 280);
+        setRingSize(Math.max(200, Math.min(480, size)));
+        return;
+      }
+
       if (desktop) {
-        const available = Math.min(vh - 340, 300);
-        setRingSize(Math.max(200, Math.min(270, available)));
+        // Desktop / landscape sidebar layout
+        const sidebarW = 196;
+        const mainW = vw - sidebarW;
+        const mainH = vh - 50; // minus header ~50px
+        // Reserve: clock+badge~52, title+artist~52, controls~50, vol~30, actions~46, vpad~40
+        const reservedH = 270;
+        const byH = mainH - reservedH;
+        const byW = mainW - 80;
+        const ring = Math.max(180, Math.min(320, Math.min(byH, byW)));
+        setRingSize(ring);
+        const vpad = Math.max(8, Math.round((mainH - ring - reservedH) / 2));
+        setLayoutVars({
+          playerPad: `${vpad}px 24px`,
+          trackTitleSize: `clamp(16px,${Math.round(mainW * 0.04)}px,28px)`,
+          artistSize: '12px', controlsGap: '14px', actionPad: '9px 0',
+          volumeMt: `${Math.max(8, Math.min(16, Math.round(vpad * 0.6)))}px`,
+          controlsMt: `${Math.max(10, Math.min(20, Math.round(vpad * 0.8)))}px`,
+          infoMt: `${Math.max(8, Math.min(16, Math.round(vpad * 0.6)))}px`,
+        });
       } else {
-        const overhead = 347;
-        const available = Math.min(vh - overhead, vw - 48);
-        setRingSize(Math.max(185, Math.min(310, available)));
+        // Portrait: full-width stacked
+        // Fixed slots: header 50, clock 30, badge 18, info 48,
+        //   controls 50, volume 28, actions 40, bottomNav 68, gaps 16
+        const fixed = 50 + 30 + 18 + 48 + 50 + 28 + 40 + 68 + 16;
+        const byH = vh - fixed;
+        const byW = vw - 48;
+        const ring = Math.max(155, Math.min(280, Math.min(byH, byW)));
+        setRingSize(ring);
+        // Spare vertical space — distribute as padding/margins
+        const spare = Math.max(0, vh - fixed - ring);
+        const u = Math.round(spare / 7); // 1 unit
+        const px = (min, max) => `${Math.max(min, Math.min(max, u))}px`;
+        setLayoutVars({
+          playerPad: `${px(3, 10)} 16px ${px(3, 8)}`,
+          trackTitleSize: vw >= 390 ? '16px' : '14px',
+          artistSize: '10px',
+          controlsGap: vw >= 390 ? '12px' : '8px',
+          actionPad: `${px(4, 9)} 0`,
+          volumeMt: px(3, 10),
+          controlsMt: px(5, 14),
+          infoMt: px(3, 10),
+        });
       }
     };
     calc();
     window.addEventListener('resize', calc);
     return () => window.removeEventListener('resize', calc);
-  }, []);
-
-  // ── Fullscreen ring recalculate
-  useEffect(() => {
-    if (fullscreen) {
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      // Reserve space for: track info ~60px, controls ~60px, volume ~36px, actions ~48px, padding ~80px = ~284px
-      const reservedH = 284;
-      // For mobile width, also cap by vw
-      const size = Math.min(vw - 48, vh - reservedH);
-      setRingSize(Math.max(200, Math.min(420, size)));
-    } else {
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      const desktop = vw >= 768;
-      if (desktop) {
-        setRingSize(Math.max(200, Math.min(270, Math.min(vh - 340, 300))));
-      } else {
-        setRingSize(Math.max(185, Math.min(310, Math.min(vh - 347, vw - 48))));
-      }
-    }
-  }, [fullscreen]);
+  }, [fullscreen]); // eslint-disable-line
 
   // ── Audio init
   useEffect(() => {
@@ -3045,6 +3107,24 @@ export default function App() {
 
   // ── PLAY (with crossfade support + Drive auto token refresh)
   const play = useCallback(async (t) => {
+    // ── Handle fav tracks from SC / Spotify / Radio
+    if (t.type === 'soundcloud') {
+      setScWidget(p => ({ ...p, soundcloud: t.permalink || t.src }));
+      setTab('stream'); return;
+    }
+    if (t.type === 'spotify') {
+      if (t.spotifyUrl) {
+        const embedUrl = t.spotifyUrl.replace('open.spotify.com/', 'open.spotify.com/embed/');
+        setSpEmbedUrl(embedUrl);
+      }
+      setTab('stream'); return;
+    }
+    if (t.isRadio) {
+      const radioTrackObj = { id: t.id, title: t.title, artist: t.artist, album: 'Live Radio', cover: t.cover, src: t.src, color: t.color||'#f59e0b', bg: t.bg||'rgba(245,158,11,0.15)', mood: 'live, radio', isRadio: true };
+      if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
+      setRadioStation({ id: t.id.replace('radio_',''), name: t.title, url: t.src, color: t.color||'#f59e0b' });
+      setRadioPlaying(true); setTrack(radioTrackObj); setPlaying(true); setTab('player'); return;
+    }
     let td = { ...t };
     if (t.isDrive && !t.src) {
       setLoadingTrack(true);
@@ -3640,7 +3720,7 @@ export default function App() {
 
       {/* Desktop left sidebar nav */}
       {isDesktop && !fullscreen && (
-        <div style={{ width:196, flexShrink:0, borderRight:'1px solid rgba(255,255,255,0.07)', background:'rgba(0,0,0,0.18)', display:'flex', flexDirection:'column', padding:'10px 8px 16px', gap:3 }}>
+        <div style={{ width: window.innerWidth < 700 ? 150 : 196, flexShrink:0, borderRight:'1px solid rgba(255,255,255,0.07)', background:'rgba(0,0,0,0.18)', display:'flex', flexDirection:'column', padding: window.innerWidth < 700 ? '8px 6px 12px' : '10px 8px 16px', gap:3 }}>
           {/* Player nav item — always at top */}
           <button onClick={()=>setTab('player')} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:12, border:'none', cursor:'pointer', background:tab==='player'?`${track.color}20`:'transparent', color:tab==='player'?track.color:'rgba(255,255,255,0.4)', textAlign:'left', width:'100%', fontSize:13, fontWeight:tab==='player'?700:500 }}>
             <Compass size={17}/><span>Player</span>
@@ -3769,6 +3849,13 @@ export default function App() {
                               <div style={{ fontSize:12, fontWeight:isCur?700:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:isCur?stationColor:'rgba(255,255,255,0.88)' }}>{station.name}</div>
                               <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:2 }}>{station.city} · ● LIVE</div>
                             </div>
+                            {/* Heart — like from queue sidebar */}
+                            {(() => {
+                              const radioId = `radio_${station.id}`;
+                              const isLiked = !!liked[radioId];
+                              const radioSongObj = { id:radioId, title:station.name, artist:station.city+' · Live Radio', album:'Live Radio', cover:'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop', src:station.url, color:stationColor, bg:`rgba(245,158,11,0.15)`, mood:'live, radio', isRadio:true };
+                              return <button onClick={e=>{e.stopPropagation();toggleFav(radioId,radioSongObj);}} title={isLiked?'Hapus dari Favorit':'Simpan ke Favorit'} style={{ background:'none', border:'none', cursor:'pointer', flexShrink:0, padding:'2px 4px', color:isLiked?'#f472b6':'rgba(255,255,255,0.15)' }}><Heart size={11} fill={isLiked?'#f472b6':'none'}/></button>;
+                            })()}
                             {isCur && <div style={{ width:6, height:6, borderRadius:'50%', background:stationColor, flexShrink:0, animation:'pulse 2s infinite' }}/>}
                           </div>
                         );
@@ -3835,7 +3922,7 @@ export default function App() {
           {/* ── SETTINGS PANEL — inline dalam player */}
           {showSettings&&<SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} eqEnabled={!!eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset||"Normal"} setEqPreset={setEqPreset} eqGains={Array.isArray(eqGains)&&eqGains.length===5?eqGains:[0,0,0,0,0]} setEqGains={setEqGains} crossfade={typeof crossfade==="number"?crossfade:0} setCrossfade={setCrossfade} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns}/>}
 
-          <div style={{ minHeight: fullscreen ? '100%' : undefined, height: fullscreen ? '100%' : undefined, display:'flex', flexDirection:'column', alignItems:'center', justifyContent: fullscreen ? 'space-evenly' : 'flex-start', padding: fullscreen ? '12px 24px 16px' : 'clamp(10px,2.5vh,20px) 16px clamp(10px,2vh,18px)', position:'relative', boxSizing:'border-box' }}>
+          <div style={{ minHeight: fullscreen ? '100%' : undefined, height: fullscreen ? '100%' : undefined, display:'flex', flexDirection:'column', alignItems:'center', justifyContent: fullscreen ? 'space-evenly' : 'flex-start', padding: fullscreen ? '12px 24px 16px' : layoutVars.playerPad, position:'relative', boxSizing:'border-box' }}>
 
             {/* ── JAM — pojok kiri atas area player (desktop only) */}
             {isDesktop && (
@@ -3867,8 +3954,8 @@ export default function App() {
             {!isDesktop ? (
               <div style={{ position:'relative', width:'100%', display:'flex', justifyContent:'center' }}>
                 {/* Jam mobile — pojok kiri, tidak overlap ring */}
-                <div style={{ position:'absolute', left:0, top:8, userSelect:'none' }}>
-                  <div style={{ fontSize:20, fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+                <div style={{ position:'absolute', left:0, top:6, userSelect:'none' }}>
+                  <div style={{ fontSize:17, fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
                     {nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false })}
                   </div>
                   <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', fontWeight:600, marginTop:3, letterSpacing:'0.04em', textTransform:'uppercase', whiteSpace:'nowrap' }}>
@@ -3882,27 +3969,27 @@ export default function App() {
             )}
 
             {/* Track info */}
-            <div style={{ textAlign:'center', marginTop: fullscreen ? 0 : 'clamp(8px,1.6vh,14px)', width:'100%', maxWidth: fullscreen ? 420 : 340, padding:'0 6px' }}>
+            <div style={{ textAlign:'center', marginTop: fullscreen ? 0 : layoutVars.infoMt, width:'100%', maxWidth: fullscreen ? 420 : 340, padding:'0 6px' }}>
               {embedTrack?.type==='youtube' ? (
-                <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:999, marginBottom:4, background:'rgba(255,0,0,0.12)', border:'1px solid rgba(255,0,0,0.25)' }}>
+                <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:999, marginBottom:3, background:'rgba(255,0,0,0.12)', border:'1px solid rgba(255,0,0,0.25)' }}>
                   <span style={{ fontSize:9, fontWeight:800, color:'#ff6b6b', textTransform:'uppercase', letterSpacing:'0.1em' }}>▶ YouTube</span>
                 </div>
               ) : track.isRadio ? (
-                <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:999, marginBottom:4, background:`rgba(245,158,11,0.15)`, border:'1px solid rgba(245,158,11,0.35)' }}>
+                <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:999, marginBottom:3, background:`rgba(245,158,11,0.15)`, border:'1px solid rgba(245,158,11,0.35)' }}>
                   <div style={{ width:5, height:5, borderRadius:'50%', background:'#f59e0b', boxShadow:'0 0 6px #f59e0b', animation: playing ? 'pulse 1.2s infinite' : 'none' }}/>
                   <span style={{ fontSize:9, fontWeight:800, color:'#fbbf24', textTransform:'uppercase', letterSpacing:'0.1em' }}>● LIVE RADIO</span>
                 </div>
               ) : track.isDrive ? (
-                <div style={{ display:'inline-flex', alignItems:'center', gap:3, padding:'2px 7px', borderRadius:999, marginBottom:4, background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)' }}><Cloud size={9} style={{ color:track.color }}/><span style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em' }}>Drive</span></div>
+                <div style={{ display:'inline-flex', alignItems:'center', gap:3, padding:'2px 7px', borderRadius:999, marginBottom:3, background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)' }}><Cloud size={9} style={{ color:track.color }}/><span style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em' }}>Drive</span></div>
               ) : null}
-              <h2 style={{ margin:0, fontWeight:900, letterSpacing:'-0.03em', lineHeight:1.1, fontSize: fullscreen ? 'clamp(18px,4.8vw,28px)' : 'clamp(16px,4.2vw,24px)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{embedTrack?.type==='youtube'?embedTrack.title:track.title}</h2>
-              <p style={{ margin:'2px 0 0', fontSize: fullscreen ? 'clamp(11px,2.8vw,14px)' : 'clamp(10px,2.5vw,12px)', color:'rgba(255,255,255,0.45)', fontWeight:600 }}>
+              <h2 style={{ margin:0, fontWeight:900, letterSpacing:'-0.03em', lineHeight:1.1, fontSize: fullscreen ? 'clamp(18px,4.8vw,28px)' : layoutVars.trackTitleSize, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{embedTrack?.type==='youtube'?embedTrack.title:track.title}</h2>
+              <p style={{ margin:'2px 0 0', fontSize: fullscreen ? 'clamp(11px,2.8vw,14px)' : layoutVars.artistSize, color:'rgba(255,255,255,0.45)', fontWeight:600 }}>
                 {embedTrack?.type==='youtube' ? embedTrack.artist : `${track.artist} — ${track.album}`}
               </p>
             </div>
 
             {/* Main controls: Shuffle | Prev | Play | Next | Repeat */}
-            <div style={{ display:'flex', alignItems:'center', gap:'clamp(6px,2.5vw,14px)', marginTop: fullscreen ? 0 : 'clamp(12px,2vh,18px)' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:layoutVars.controlsGap, marginTop: fullscreen ? 0 : layoutVars.controlsMt }}>
               {!track.isRadio && <button onClick={()=>{ if(embedTrack?.type==='youtube'){ setShuffle(s=>{ const next=!s; if(next){ setRepeat('off'); ytShuffle(); } return next; }); } else { setShuffle(s=>{ const next=!s; if(next) setRepeat("off"); return next; }); } }} style={{ ...btn, color:shuffle?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', position:'relative', padding:'clamp(5px,1.2vw,8px)' }}>
                 <Shuffle size={18}/>
                 {shuffle&&<div style={{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:embedTrack?.type==='youtube'?'#ff4444':track.color }}/>}
@@ -3919,38 +4006,48 @@ export default function App() {
             </div>
 
             {/* ── Volume row */}
-            <div style={{ display:'flex', alignItems:'center', gap:10, marginTop: fullscreen ? 0 : 'clamp(8px,1.4vh,12px)', width:'100%', maxWidth: fullscreen ? 420 : 340, padding:'4px 2px' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginTop: fullscreen ? 0 : layoutVars.volumeMt, width:'100%', maxWidth: fullscreen ? 420 : 340, padding:'4px 2px' }}>
               <button onClick={()=>setMuted(m=>!m)} style={{ ...btn, color:muted?'#ef4444':'rgba(255,255,255,0.38)', padding:4, flexShrink:0 }}>{muted?<VolumeX size={16}/>:<Volume2 size={16}/>}</button>
               <input type="range" min="0" max="1" step="0.01" value={muted?0:volume} onChange={e=>{setVolume(+e.target.value);setMuted(false)}} style={{ flex:1, accentColor:embedTrack?.type==='youtube'?'#ff4444':track.color, height:3, cursor:'pointer' }}/>
               <span style={{ fontSize:10, color:'rgba(255,255,255,0.28)', fontWeight:700, minWidth:28, textAlign:'right', fontFamily:'monospace', flexShrink:0 }}>{muted?'0':Math.round(volume*100)}%</span>
             </div>
 
             {/* ── Action buttons row */}
-            <div style={{ display:'flex', alignItems:'center', gap:6, marginTop: fullscreen ? 0 : 8, width:'100%', maxWidth: fullscreen ? 420 : 340 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:6, marginTop: fullscreen ? 0 : layoutVars.volumeMt, width:'100%', maxWidth: fullscreen ? 420 : 340 }}>
               {/* Like */}
               {embedTrack?.type==='youtube'
-                ? <button onClick={likeYtTrack} title="Suka" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:'none', border:'none', color:liked[`yt_${embedTrack.videoId}`]?'#f472b6':'rgba(255,255,255,0.35)' }}><Heart size={16} fill={liked[`yt_${embedTrack.videoId}`]?'#f472b6':'none'}/></button>
-                : <button onClick={()=>setLiked(l=>({...l,[track.id]:!l[track.id]}))} title="Suka" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:'none', border:'none', color:liked[track.id]?'#f472b6':'rgba(255,255,255,0.35)' }}><Heart size={16} fill={liked[track.id]?'#f472b6':'none'}/></button>
+                ? <button onClick={likeYtTrack} title="Suka" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:layoutVars.actionPad, borderRadius:12, background:'none', border:'none', color:liked[`yt_${embedTrack.videoId}`]?'#f472b6':'rgba(255,255,255,0.35)' }}><Heart size={16} fill={liked[`yt_${embedTrack.videoId}`]?'#f472b6':'none'}/></button>
+                : (() => {
+                    const favId = track.id;
+                    const isLiked = !!liked[favId];
+                    const songObj = (!track.isRadio && !track.isDrive && !builtinSongs.find(s=>s.id===track.id)) ? null : null; // already in allSongs
+                    const radioObj = track.isRadio ? track : null;
+                    return (
+                      <button onClick={() => toggleFav(favId, radioObj)} title={isLiked ? 'Hapus dari Favorit' : 'Tambah ke Favorit'} style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:layoutVars.actionPad, borderRadius:12, background:'none', border:'none', color:isLiked?'#f472b6':'rgba(255,255,255,0.35)' }}>
+                        <Heart size={16} fill={isLiked?'#f472b6':'none'}/>
+                      </button>
+                    );
+                  })()
               }
               {/* Queue */}
-              <button onClick={()=>setShowQueue(q=>!q)} title="Antrean" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:'none', border:'none', color:showQueue?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):'rgba(255,255,255,0.35)' }}>
+              <button onClick={()=>setShowQueue(q=>!q)} title="Antrean" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:layoutVars.actionPad, borderRadius:12, background:'none', border:'none', color:showQueue?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):'rgba(255,255,255,0.35)' }}>
                 <ListMusic size={16}/>
               </button>
               {/* Settings */}
-              <button onClick={()=>setShowSettings(true)} title="Pengaturan" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:'none', border:'none', color:(eqEnabled||sleepTimer)?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):'rgba(255,255,255,0.35)' }}><Settings size={16}/></button>
+              <button onClick={()=>setShowSettings(true)} title="Pengaturan" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:layoutVars.actionPad, borderRadius:12, background:'none', border:'none', color:(eqEnabled||sleepTimer)?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):'rgba(255,255,255,0.35)' }}><Settings size={16}/></button>
               {/* Fullscreen */}
-              <button onClick={()=>setFullscreen(f=>!f)} title={fullscreen?'Keluar Layar Penuh':'Layar Penuh'} style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:'none', border:'none', color:fullscreen?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):'rgba(255,255,255,0.35)' }}>
+              <button onClick={()=>setFullscreen(f=>!f)} title={fullscreen?'Keluar Layar Penuh':'Layar Penuh'} style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:layoutVars.actionPad, borderRadius:12, background:'none', border:'none', color:fullscreen?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):'rgba(255,255,255,0.35)' }}>
                 {fullscreen?<Minimize2 size={16}/>:<Maximize2 size={16}/>}
               </button>
               {/* Tutup embed — hanya muncul saat ada stream aktif */}
               {embedTrack && (
-                <button onClick={()=>{ closeEmbed(); setShowSettings(false); }} title="Tutup Stream" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:'none', border:'none', color:'#fca5a5' }}>
+                <button onClick={()=>{ closeEmbed(); setShowSettings(false); }} title="Tutup Stream" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:layoutVars.actionPad, borderRadius:12, background:'none', border:'none', color:'#fca5a5' }}>
                   <X size={16}/>
                 </button>
               )}
               {/* Tutup radio — hanya muncul saat radio sedang aktif */}
               {!embedTrack && track.isRadio && radioStation && (
-                <button onClick={()=>{ if(audioRef.current){audioRef.current.pause();audioRef.current.src='';} setPlaying(false); setRadioStation(null); setRadioPlaying(false); setTrack(SONGS[0]); setShowSettings(false); }} title="Keluar Radio" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'9px 0', borderRadius:12, background:'none', border:'none', color:'#fbbf24' }}>
+                <button onClick={()=>{ if(audioRef.current){audioRef.current.pause();audioRef.current.src='';} setPlaying(false); setRadioStation(null); setRadioPlaying(false); setTrack(SONGS[0]); setShowSettings(false); }} title="Keluar Radio" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:layoutVars.actionPad, borderRadius:12, background:'none', border:'none', color:'#fbbf24' }}>
                   <X size={16}/>
                 </button>
               )}
@@ -4133,6 +4230,23 @@ export default function App() {
                                       <button onClick={e => { e.stopPropagation(); openNewTab(`https://www.youtube.com/watch?v=${v.videoId}`); }}
                                         title="Buka di YouTube"
                                         style={{ background:'none', border:`1px solid ${platform.color}40`, borderRadius:6, color:platform.color, fontSize:10, fontWeight:700, padding:'3px 7px', cursor:'pointer', flexShrink:0, lineHeight:1.2 }}>↗</button>
+                                      {/* Heart — like & save to Favorit */}
+                                      {(() => {
+                                        const ytId = `yt_${v.videoId}`;
+                                        const isLiked = !!liked[ytId];
+                                        const likeYtResult = (e) => {
+                                          e.stopPropagation();
+                                          const nowLiked = !isLiked;
+                                          setLiked(l => ({ ...l, [ytId]: nowLiked }));
+                                          updateFavPlaylist(ytId, nowLiked);
+                                          setYtSongs(prev => {
+                                            if (prev.find(s => s.id === ytId)) return nowLiked ? prev : prev.filter(s => s.id !== ytId);
+                                            if (!nowLiked) return prev;
+                                            return [...prev, { id:ytId, type:'youtube', videoId:v.videoId, title:v.title, artist:v.uploaderName||v.author||'YouTube', album:'YouTube', cover:v.thumbnail||v.thumbnails?.[0]?.url||'', src:'', color:'#ff4444', bg:'rgba(255,68,68,0.15)', mood:'youtube', thumbnail:v.thumbnail||v.thumbnails?.[0]?.url||'', duration:v.duration||0 }];
+                                          });
+                                        };
+                                        return <button onClick={likeYtResult} title={isLiked?'Hapus dari Favorit':'Simpan ke Favorit'} style={{ background:'none', border:'none', cursor:'pointer', flexShrink:0, padding:'2px 3px', color:isLiked?'#f472b6':'rgba(255,255,255,0.2)' }}><Heart size={12} fill={isLiked?'#f472b6':'none'}/></button>;
+                                      })()}
                                       <Play onClick={() => playYouTube(v, results, vi)} size={13} style={{ color:platform.color, flexShrink:0, opacity:0.6, cursor:'pointer' }}/>
                                     </div>
                                   );
@@ -4186,6 +4300,13 @@ export default function App() {
                                         <div style={{ fontSize:12, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'rgba(255,255,255,0.9)' }}>{t.title}</div>
                                         <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{t.artist}{t.duration ? ` · ${mins}:${secs}` : ''}</div>
                                       </div>
+                                      {/* Heart — like SC track */}
+                                      {(() => {
+                                        const scId = `sc_${t.id}`;
+                                        const isLiked = !!liked[scId];
+                                        const scSongObj = { id:scId, type:'soundcloud', title:t.title, artist:t.artist, album:'SoundCloud', cover:t.cover||'', src:t.permalinkUrl||'', color:'#ff5500', bg:'rgba(255,85,0,0.15)', mood:'soundcloud', permalink:t.permalinkUrl };
+                                        return <button onClick={e=>{e.stopPropagation();toggleFav(scId,scSongObj);}} title={isLiked?'Hapus dari Favorit':'Simpan ke Favorit'} style={{ background:'none', border:'none', cursor:'pointer', flexShrink:0, padding:'2px 3px', color:isLiked?'#f472b6':'rgba(255,255,255,0.2)' }}><Heart size={12} fill={isLiked?'#f472b6':'none'}/></button>;
+                                      })()}
                                     </div>
                                   );
                                 })}
@@ -4294,6 +4415,13 @@ export default function App() {
                                       <button onClick={e => { e.stopPropagation(); const q = `${t.title} ${t.artist}`; setYtQuery(p=>({...p,'ytmusic':q})); setTimeout(()=>{ searchYouTube('ytmusic', q); }, 100); }}
                                         title="Cari di YouTube"
                                         style={{ background:'none', border:`1px solid ${platform.color}40`, borderRadius:6, color:platform.color, fontSize:10, fontWeight:700, padding:'3px 7px', cursor:'pointer', flexShrink:0, lineHeight:1.2 }}>▶ YT</button>
+                                      {/* Heart — like Spotify track */}
+                                      {(() => {
+                                        const spId = `sp_${t.id}`;
+                                        const isLiked = !!liked[spId];
+                                        const spSongObj = { id:spId, type:'spotify', title:t.title, artist:t.artist, album:t.album||'Spotify', cover:t.cover||'', src:t.previewUrl||'', color:'#1DB954', bg:'rgba(29,185,84,0.15)', mood:'spotify', spotifyUrl:t.spotifyUrl };
+                                        return <button onClick={e=>{e.stopPropagation();toggleFav(spId,spSongObj);}} title={isLiked?'Hapus dari Favorit':'Simpan ke Favorit'} style={{ background:'none', border:'none', cursor:'pointer', flexShrink:0, padding:'2px 3px', color:isLiked?'#f472b6':'rgba(255,255,255,0.2)' }}><Heart size={12} fill={isLiked?'#f472b6':'none'}/></button>;
+                                      })()}
                                     </div>
                                   );
                                 })}
@@ -4565,6 +4693,14 @@ export default function App() {
                                               {!isTesting && <span style={{ color:'#4ade80', fontWeight:700 }}>● tersedia</span>}
                                             </div>
                                           </div>
+                                          {/* Heart — like radio station */}
+                                          {!isTesting && (() => {
+                                            const radioId = `radio_${station.id}`;
+                                            const isLiked = !!liked[radioId];
+                                            const stationColor = selGenre.color || '#f59e0b';
+                                            const radioSongObj = { id:radioId, title:station.name, artist:station.city+' · Live Radio', album:'Live Radio', cover:'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop', src:station.url, color:stationColor, bg:`rgba(245,158,11,0.15)`, mood:'live, radio', isRadio:true };
+                                            return <button onClick={e=>{e.stopPropagation();toggleFav(radioId,radioSongObj);}} title={isLiked?'Hapus dari Favorit':'Simpan ke Favorit'} style={{ background:'none', border:'none', cursor:'pointer', flexShrink:0, padding:'2px 4px', color:isLiked?'#f472b6':'rgba(255,255,255,0.2)' }}><Heart size={12} fill={isLiked?'#f472b6':'none'}/></button>;
+                                          })()}
                                           <div style={{ width:26, height:26, borderRadius:'50%', background: isActive && (playing && track.isRadio) ? selGenre.color : 'rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color:'white', flexShrink:0 }}>
                                             {isTesting ? '…' : isActive && (playing && track.isRadio) ? '⏸' : '▶'}
                                           </div>
@@ -4815,7 +4951,7 @@ export default function App() {
                           )}
                         </div>
                       )}
-                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} play={play} isDrive isCached={cachedDriveIds.has(s.driveId)} onRemove={id=>setCustomSongs(p=>p.filter(x=>x.id!==id))} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite}/>)}
+                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={play} isDrive isCached={cachedDriveIds.has(s.driveId)} onRemove={id=>setCustomSongs(p=>p.filter(x=>x.id!==id))} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite}/>)}
                     </div>
                   </div>
                 );
@@ -4893,7 +5029,7 @@ export default function App() {
                       </div>
                     </div>
                     <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'10px 16px 16px', display:'flex', flexDirection:'column', gap:5 }}>
-                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} play={play} isDrive={s.isDrive} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite}/>)}
+                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={play} isDrive={s.isDrive} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite}/>)}
                     </div>
                   </div>
                 );
