@@ -2410,6 +2410,7 @@ function MaskedKeyInput({ value, onChange, onBlur, placeholder, accentColor, lab
 
 function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setEqPreset, eqGains, setEqGains, crossfade, setCrossfade, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t, userSpId, setUserSpId, userSpSecret, setUserSpSecret, userScId, setUserScId, userAiKey, setUserAiKey }) {
   const coverRef = useRef(null);
+  const [apiKeyTab, setApiKeyTab] = React.useState('spotify');
   // Defensive: eqGains harus selalu array 5 elemen
   const safeGains = Array.isArray(eqGains) && eqGains.length === 5 ? eqGains : [0,0,0,0,0];
   return (
@@ -2550,7 +2551,7 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
 
         {/* ── API KEYS */}
         <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
             <span style={{ fontSize:16 }}>🔑</span>
             <div>
               <div style={{ fontWeight:800, fontSize:14 }}>API Keys</div>
@@ -2558,83 +2559,115 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
             </div>
           </div>
 
-          {/* Spotify */}
-          <div style={{ marginBottom:14 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
-              <svg width={13} height={13} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="12" fill="#1DB954"/><path d="M17.9 10.9C14.7 9 9.35 8.8 6.3 9.75c-.5.15-1-.15-1.15-.6-.15-.5.15-1 .6-1.15C9.65 6.8 15.5 7 19.1 9.15c.45.25.6.85.35 1.3-.25.35-.85.5-1.55.45zM17.75 13.55c-.2.35-.65.45-1 .25-2.65-1.6-6.65-2.05-9.75-1.1-.4.1-.8-.1-.9-.5-.1-.4.1-.8.5-.9 3.55-1.1 7.95-.55 11 1.3.3.15.4.6.15.95zM16.6 16.1c-.15.3-.5.4-.8.25-2.3-1.4-5.2-1.7-8.6-.95-.35.1-.65-.15-.75-.45-.1-.35.15-.65.45-.75 3.75-.85 6.95-.5 9.5 1.1.35.15.4.5.2.8z" fill="white"/></svg>
-              <span style={{ fontWeight:700, fontSize:11, color:'rgba(255,255,255,0.7)' }}>Spotify</span>
-              {(userSpId && userSpSecret) && <span style={{ fontSize:9, fontWeight:700, padding:'1px 5px', borderRadius:999, background:'rgba(29,185,84,0.2)', color:'#1DB954' }}>✓ Aktif</span>}
-            </div>
-            <div style={{ marginBottom:6 }}>
+          {/* ── Filter Tab Bar (DNS-style pill selector) */}
+          <div style={{ display:'flex', gap:4, marginBottom:14, background:'rgba(255,255,255,0.05)', borderRadius:10, padding:3 }}>
+            {[
+              { id:'spotify', label:'Spotify', icon:<svg width={11} height={11} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="12" fill="#1DB954"/><path d="M17.9 10.9C14.7 9 9.35 8.8 6.3 9.75c-.5.15-1-.15-1.15-.6-.15-.5.15-1 .6-1.15C9.65 6.8 15.5 7 19.1 9.15c.45.25.6.85.35 1.3-.25.35-.85.5-1.55.45zM17.75 13.55c-.2.35-.65.45-1 .25-2.65-1.6-6.65-2.05-9.75-1.1-.4.1-.8-.1-.9-.5-.1-.4.1-.8.5-.9 3.55-1.1 7.95-.55 11 1.3.3.15.4.6.15.95zM16.6 16.1c-.15.3-.5.4-.8.25-2.3-1.4-5.2-1.7-8.6-.95-.35.1-.65-.15-.75-.45-.1-.35.15-.65.45-.75 3.75-.85 6.95-.5 9.5 1.1.35.15.4.5.2.8z" fill="white"/></svg>, activeColor:'#1DB954', activeBg:'rgba(29,185,84,0.15)', dot: (userSpId && userSpSecret) },
+              { id:'soundcloud', label:'SoundCloud', icon:<svg width={11} height={11} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="5" fill="#ff5500"/><rect x="5.5" y="10" width="2" height="7" rx="1" fill="white"/><rect x="8.5" y="8.5" width="2" height="8.5" rx="1" fill="white"/><rect x="11.5" y="7" width="2" height="10" rx="1" fill="white"/><rect x="14.5" y="8" width="2" height="9" rx="1" fill="white"/><rect x="17.5" y="9.5" width="2" height="7.5" rx="1" fill="white"/></svg>, activeColor:'#ff5500', activeBg:'rgba(255,85,0,0.15)', dot: !!userScId },
+              { id:'ai', label:'AI Key', icon:<svg width={11} height={11} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#6366f1"/><circle cx="12" cy="12" r="4" fill="none" stroke="white" strokeWidth="1.5"/><circle cx="12" cy="12" r="1.5" fill="white"/><line x1="12" y1="4" x2="12" y2="7" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="12" y1="17" x2="12" y2="20" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="4" y1="12" x2="7" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="17" y1="12" x2="20" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>, activeColor:'#818cf8', activeBg:'rgba(99,102,241,0.15)', dot: !!userAiKey },
+            ].map(({ id, label, icon, activeColor, activeBg, dot }) => {
+              const isActive = apiKeyTab === id;
+              return (
+                <button key={id} onClick={() => setApiKeyTab(id)} style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:4, padding:'5px 4px', borderRadius:7, border:'none', cursor:'pointer', background: isActive ? activeBg : 'transparent', color: isActive ? activeColor : 'rgba(255,255,255,0.38)', fontWeight: isActive ? 700 : 500, fontSize:10, transition:'all 0.15s', position:'relative' }}>
+                  {icon}
+                  <span style={{ whiteSpace:'nowrap' }}>{label}</span>
+                  {dot && <span style={{ width:5, height:5, borderRadius:'50%', background: activeColor, opacity: isActive ? 1 : 0.5, flexShrink:0 }}/>}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* ── Spotify Panel */}
+          {apiKeyTab === 'spotify' && (
+            <div>
+              <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
+                <svg width={13} height={13} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="12" fill="#1DB954"/><path d="M17.9 10.9C14.7 9 9.35 8.8 6.3 9.75c-.5.15-1-.15-1.15-.6-.15-.5.15-1 .6-1.15C9.65 6.8 15.5 7 19.1 9.15c.45.25.6.85.35 1.3-.25.35-.85.5-1.55.45zM17.75 13.55c-.2.35-.65.45-1 .25-2.65-1.6-6.65-2.05-9.75-1.1-.4.1-.8-.1-.9-.5-.1-.4.1-.8.5-.9 3.55-1.1 7.95-.55 11 1.3.3.15.4.6.15.95zM16.6 16.1c-.15.3-.5.4-.8.25-2.3-1.4-5.2-1.7-8.6-.95-.35.1-.65-.15-.75-.45-.1-.35.15-.65.45-.75 3.75-.85 6.95-.5 9.5 1.1.35.15.4.5.2.8z" fill="white"/></svg>
+                <span style={{ fontWeight:700, fontSize:12, color:'rgba(255,255,255,0.85)' }}>Spotify API</span>
+                {(userSpId && userSpSecret) && <span style={{ fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:999, background:'rgba(29,185,84,0.2)', color:'#1DB954' }}>✓ Aktif</span>}
+              </div>
+              <div style={{ marginBottom:6 }}>
+                <MaskedKeyInput
+                  value={userSpId}
+                  onChange={v => setUserSpId(v)}
+                  onBlur={v => localStorage.setItem('sn_sp_id', v)}
+                  placeholder="Client ID"
+                  accentColor="#1DB954"
+                />
+              </div>
               <MaskedKeyInput
-                value={userSpId}
-                onChange={v => setUserSpId(v)}
-                onBlur={v => localStorage.setItem('sn_sp_id', v)}
-                placeholder="Client ID"
+                value={userSpSecret}
+                onChange={v => setUserSpSecret(v)}
+                onBlur={v => localStorage.setItem('sn_sp_secret', v)}
+                placeholder="Client Secret"
                 accentColor="#1DB954"
               />
+              <div style={{ marginTop:6, fontSize:9, color:'rgba(255,255,255,0.25)', lineHeight:1.6 }}>
+                Daftarkan app di developer.spotify.com → buat app → salin Client ID & Secret
+              </div>
+              {(userSpId || userSpSecret) && (
+                <button onClick={() => { setUserSpId(''); setUserSpSecret(''); localStorage.removeItem('sn_sp_id'); localStorage.removeItem('sn_sp_secret'); }}
+                  style={{ marginTop:6, padding:'4px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.08)', color:'#fca5a5', fontSize:10, cursor:'pointer' }}>
+                  Hapus Key Spotify
+                </button>
+              )}
             </div>
-            <MaskedKeyInput
-              value={userSpSecret}
-              onChange={v => setUserSpSecret(v)}
-              onBlur={v => localStorage.setItem('sn_sp_secret', v)}
-              placeholder="Client Secret"
-              accentColor="#1DB954"
-            />
-            {(userSpId || userSpSecret) && (
-              <button onClick={() => { setUserSpId(''); setUserSpSecret(''); localStorage.removeItem('sn_sp_id'); localStorage.removeItem('sn_sp_secret'); }}
-                style={{ marginTop:5, padding:'4px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.08)', color:'#fca5a5', fontSize:10, cursor:'pointer' }}>
-                Hapus Key Spotify
-              </button>
-            )}
-          </div>
+          )}
 
-          {/* SoundCloud */}
-          <div style={{ marginBottom:14 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
-              <svg width={13} height={13} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="5" fill="#ff5500"/><rect x="5.5" y="10" width="2" height="7" rx="1" fill="white"/><rect x="8.5" y="8.5" width="2" height="8.5" rx="1" fill="white"/><rect x="11.5" y="7" width="2" height="10" rx="1" fill="white"/><rect x="14.5" y="8" width="2" height="9" rx="1" fill="white"/><rect x="17.5" y="9.5" width="2" height="7.5" rx="1" fill="white"/></svg>
-              <span style={{ fontWeight:700, fontSize:11, color:'rgba(255,255,255,0.7)' }}>SoundCloud</span>
-              {userScId && <span style={{ fontSize:9, fontWeight:700, padding:'1px 5px', borderRadius:999, background:'rgba(255,85,0,0.2)', color:'#ff5500' }}>✓ Aktif</span>}
+          {/* ── SoundCloud Panel */}
+          {apiKeyTab === 'soundcloud' && (
+            <div>
+              <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
+                <svg width={13} height={13} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="5" fill="#ff5500"/><rect x="5.5" y="10" width="2" height="7" rx="1" fill="white"/><rect x="8.5" y="8.5" width="2" height="8.5" rx="1" fill="white"/><rect x="11.5" y="7" width="2" height="10" rx="1" fill="white"/><rect x="14.5" y="8" width="2" height="9" rx="1" fill="white"/><rect x="17.5" y="9.5" width="2" height="7.5" rx="1" fill="white"/></svg>
+                <span style={{ fontWeight:700, fontSize:12, color:'rgba(255,255,255,0.85)' }}>SoundCloud API</span>
+                {userScId && <span style={{ fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:999, background:'rgba(255,85,0,0.2)', color:'#ff5500' }}>✓ Aktif</span>}
+              </div>
+              <MaskedKeyInput
+                value={userScId}
+                onChange={v => setUserScId(v)}
+                onBlur={v => localStorage.setItem('sn_sc_id', v)}
+                placeholder="Client ID"
+                accentColor="#ff5500"
+              />
+              <div style={{ marginTop:6, fontSize:9, color:'rgba(255,255,255,0.25)', lineHeight:1.6 }}>
+                Daftar di soundcloud.com/you/apps → buat app → salin Client ID
+              </div>
+              {userScId && (
+                <button onClick={() => { setUserScId(''); localStorage.removeItem('sn_sc_id'); }}
+                  style={{ marginTop:6, padding:'4px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.08)', color:'#fca5a5', fontSize:10, cursor:'pointer' }}>
+                  Hapus Key SoundCloud
+                </button>
+              )}
             </div>
-            <MaskedKeyInput
-              value={userScId}
-              onChange={v => setUserScId(v)}
-              onBlur={v => localStorage.setItem('sn_sc_id', v)}
-              placeholder="Client ID"
-              accentColor="#ff5500"
-            />
-            {userScId && (
-              <button onClick={() => { setUserScId(''); localStorage.removeItem('sn_sc_id'); }}
-                style={{ marginTop:5, padding:'4px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.08)', color:'#fca5a5', fontSize:10, cursor:'pointer' }}>
-                Hapus Key SoundCloud
-              </button>
-            )}
-          </div>
+          )}
 
-          {/* AI */}
-          <div style={{ marginBottom:4 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
-              <svg width={13} height={13} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#6366f1"/><circle cx="12" cy="12" r="4" fill="none" stroke="white" strokeWidth="1.5"/><circle cx="12" cy="12" r="1.5" fill="white"/><line x1="12" y1="4" x2="12" y2="7" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="12" y1="17" x2="12" y2="20" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="4" y1="12" x2="7" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="17" y1="12" x2="20" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>
-              <span style={{ fontWeight:700, fontSize:11, color:'rgba(255,255,255,0.7)' }}>AI Key</span>
-              {userAiKey && <span style={{ fontSize:9, fontWeight:700, padding:'1px 5px', borderRadius:999, background:'rgba(99,102,241,0.2)', color:'#818cf8' }}>✓ Aktif</span>}
+          {/* ── AI Key Panel */}
+          {apiKeyTab === 'ai' && (
+            <div>
+              <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
+                <svg width={13} height={13} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#6366f1"/><circle cx="12" cy="12" r="4" fill="none" stroke="white" strokeWidth="1.5"/><circle cx="12" cy="12" r="1.5" fill="white"/><line x1="12" y1="4" x2="12" y2="7" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="12" y1="17" x2="12" y2="20" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="4" y1="12" x2="7" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="17" y1="12" x2="20" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                <span style={{ fontWeight:700, fontSize:12, color:'rgba(255,255,255,0.85)' }}>AI Key</span>
+                {userAiKey && <span style={{ fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:999, background:'rgba(99,102,241,0.2)', color:'#818cf8' }}>✓ Aktif</span>}
+              </div>
+              <MaskedKeyInput
+                value={userAiKey}
+                onChange={v => setUserAiKey(v)}
+                onBlur={v => localStorage.setItem('sn_ai_key', v)}
+                placeholder="OpenAI sk- / OpenRouter sk-or- / Groq gsk_ / Gemini AIza / Anthropic sk-ant-"
+                accentColor="#818cf8"
+              />
+              <div style={{ marginTop:6, fontSize:9, color:'rgba(255,255,255,0.25)', lineHeight:1.7 }}>
+                Auto-detect provider:<br/>
+                <span style={{ color:'rgba(255,255,255,0.35)' }}>sk-</span> → OpenAI &nbsp;·&nbsp; <span style={{ color:'rgba(255,255,255,0.35)' }}>sk-or-</span> → OpenRouter<br/>
+                <span style={{ color:'rgba(255,255,255,0.35)' }}>gsk_</span> → Groq &nbsp;·&nbsp; <span style={{ color:'rgba(255,255,255,0.35)' }}>AIza</span> → Gemini &nbsp;·&nbsp; <span style={{ color:'rgba(255,255,255,0.35)' }}>sk-ant-</span> → Anthropic
+              </div>
+              {userAiKey && (
+                <button onClick={() => { setUserAiKey(''); localStorage.removeItem('sn_ai_key'); }}
+                  style={{ marginTop:6, padding:'4px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.08)', color:'#fca5a5', fontSize:10, cursor:'pointer' }}>
+                  Hapus AI Key
+                </button>
+              )}
             </div>
-            <MaskedKeyInput
-              value={userAiKey}
-              onChange={v => setUserAiKey(v)}
-              onBlur={v => localStorage.setItem('sn_ai_key', v)}
-              placeholder="OpenAI sk- / OpenRouter sk-or- / Groq gsk_ / Gemini AIza / Anthropic sk-ant-"
-              accentColor="#818cf8"
-            />
-            <div style={{ marginTop:5, fontSize:9, color:'rgba(255,255,255,0.25)', lineHeight:1.6 }}>
-              Auto-detect: sk- → OpenAI · sk-or- → OpenRouter · gsk_ → Groq · AIza → Gemini · sk-ant- → Anthropic
-            </div>
-            {userAiKey && (
-              <button onClick={() => { setUserAiKey(''); localStorage.removeItem('sn_ai_key'); }}
-                style={{ marginTop:5, padding:'4px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.08)', color:'#fca5a5', fontSize:10, cursor:'pointer' }}>
-                Hapus AI Key
-              </button>
-            )}
-          </div>
+          )}
         </div>
 
         {/* ── BAHASA / LANGUAGE */}
@@ -5357,7 +5390,7 @@ export default function App() {
               {[8,4,6].map((h,i)=>(<div key={i} style={{ width:2.5, height:h, background:track.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${i*0.15}s infinite` }}/>))}
             </div>
           )}
-          <button onClick={()=>setShowSettings(true)} style={{ width:42, height:42, borderRadius:12, border:'none', cursor:'pointer', background:'transparent', color:(eqEnabled||sleepTimer)?track.color:'rgba(255,255,255,0.25)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <button onClick={()=>setShowSettings(v=>!v)} style={{ width:42, height:42, borderRadius:12, border:'none', cursor:'pointer', background: showSettings ? 'rgba(255,255,255,0.08)' : 'transparent', color:(eqEnabled||sleepTimer)?track.color:(showSettings?'rgba(255,255,255,0.7)':'rgba(255,255,255,0.25)'), display:'flex', alignItems:'center', justifyContent:'center' }}>
             <Settings size={16}/>
           </button>
         </div>
@@ -5401,7 +5434,7 @@ export default function App() {
             );
           })}
           <div style={{ flex:1 }}/>
-          <button onClick={()=>setShowSettings(true)} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:12, border:'none', cursor:'pointer', background:'transparent', color:'rgba(255,255,255,0.3)', width:'100%', fontSize:13 }}>
+          <button onClick={()=>setShowSettings(v=>!v)} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:12, border:'none', cursor:'pointer', background: showSettings?'rgba(255,255,255,0.07)':'transparent', color: showSettings?'rgba(255,255,255,0.7)':'rgba(255,255,255,0.3)', width:'100%', fontSize:13 }}>
             <Settings size={17}/><span>{t ? t.pengaturan : 'Pengaturan'}</span>
           </button>
         </div>
@@ -5409,65 +5442,7 @@ export default function App() {
 
       <main style={{ flex:1, overflow:'hidden', position:'relative' }}>
 
-        {/* ── SHARE MENU OVERLAY */}
-        {showShareMenu && (
-          <div style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(0,0,0,0.7)', display:'flex', alignItems:'flex-end', justifyContent:'center' }}
-            onClick={e=>e.target===e.currentTarget&&setShowShareMenu(false)}>
-            <div style={{ width:'100%', maxWidth:520, background:'#0f0f2a', borderRadius:'20px 20px 0 0', padding:'20px 0 calc(20px + env(safe-area-inset-bottom))', border:'1px solid rgba(255,255,255,0.1)', borderBottom:'none' }}>
-              {/* Handle */}
-              <div style={{ width:40, height:4, borderRadius:999, background:'rgba(255,255,255,0.15)', margin:'0 auto 18px' }}/>
-              {/* Title */}
-              <div style={{ padding:'0 20px 14px', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
-                <div style={{ fontWeight:800, fontSize:15, marginBottom:4 }}>🔗 Bagikan Stream</div>
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                  {embedTrack?.title || track.title} — {embedTrack?.artist || track.artist}
-                </div>
-              </div>
-              {/* Options */}
-              <div style={{ padding:'12px 16px', display:'flex', flexDirection:'column', gap:6 }}>
-                {/* Copy Link */}
-                {(() => {
-                  const url = embedTrack?.type==='youtube' ? `https://youtu.be/${embedTrack.videoId}` :
-                    embedTrack?.type==='soundcloud' ? (embedTrack.src||'') :
-                    track.isRadio ? (radioStation?.url||track.src||window.location.href) :
-                    (track.src || window.location.href);
-                  const shareItems = [
-                    { icon:'📋', label: shareCopied ? '✓ Tersalin!' : 'Salin Link', color:'#6366f1', action: async () => {
-                      try { await navigator.clipboard.writeText(url); setShareCopied(true); setTimeout(()=>setShareCopied(false), 2500); } catch {}
-                    }},
-                    { icon:'💬', label:'WhatsApp', color:'#25D366', action: () => window.open(`https://wa.me/?text=${encodeURIComponent((embedTrack?.title||track.title)+' — '+url)}`, '_blank', 'noopener') },
-                    { icon:'✈️', label:'Telegram', color:'#2AABEE', action: () => window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(embedTrack?.title||track.title)}`, '_blank', 'noopener') },
-                    { icon:'𝕏', label:'Twitter / X', color:'#e7e9ea', action: () => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent('Dengerin ini bareng: '+(embedTrack?.title||track.title))}&url=${encodeURIComponent(url)}`, '_blank', 'noopener') },
-                    { icon:'📧', label:'Email', color:'#f59e0b', action: () => window.open(`mailto:?subject=${encodeURIComponent('Lagu/Stream: '+(embedTrack?.title||track.title))}&body=${encodeURIComponent(url)}`, '_blank', 'noopener') },
-                    { icon:'📱', label:'Share via App', color:'#a78bfa', action: async () => {
-                      if (navigator.share) { try { await navigator.share({ title: embedTrack?.title||track.title, url }); } catch {} }
-                      else { try { await navigator.clipboard.writeText(url); setShareCopied(true); setTimeout(()=>setShareCopied(false), 2500); } catch {} }
-                    }},
-                  ];
-                  return shareItems.map((item, i) => (
-                    <button key={i} onClick={item.action}
-                      style={{ display:'flex', alignItems:'center', gap:14, padding:'12px 16px', borderRadius:14, border:'none', background:'rgba(255,255,255,0.04)', cursor:'pointer', textAlign:'left', width:'100%', transition:'background 0.15s' }}
-                      onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.08)'}
-                      onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
-                      <div style={{ width:36, height:36, borderRadius:10, background:`${item.color}18`, border:`1px solid ${item.color}35`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, flexShrink:0 }}>{item.icon}</div>
-                      <span style={{ fontSize:14, fontWeight:600, color:'rgba(255,255,255,0.88)' }}>{item.label}</span>
-                    </button>
-                  ));
-                })()}
-                {/* URL display */}
-                <div style={{ marginTop:6, padding:'10px 14px', borderRadius:12, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', fontSize:11, color:'rgba(255,255,255,0.3)', fontFamily:'monospace', wordBreak:'break-all', lineHeight:1.5 }}>
-                  {embedTrack?.type==='youtube' ? `https://youtu.be/${embedTrack.videoId}` :
-                    embedTrack?.type==='soundcloud' ? (embedTrack.src||'—') :
-                    track.isRadio ? (radioStation?.url||track.src||window.location.href) :
-                    (track.src || window.location.href)}
-                </div>
-              </div>
-              <div style={{ padding:'0 16px' }}>
-                <button onClick={()=>setShowShareMenu(false)} style={{ width:'100%', padding:'12px', borderRadius:14, border:'1px solid rgba(255,255,255,0.1)', background:'transparent', color:'rgba(255,255,255,0.5)', fontSize:13, fontWeight:700, cursor:'pointer' }}>Tutup</button>
-              </div>
-            </div>
-          </div>
-        )}
+
 
         {/* ── SETTINGS PANEL — menutup semua tab di desktop & landscape, hanya player di portrait */}
         {showSettings && (isDesktop || layoutMode === 'mobile-landscape' || tab === 'player') && (
@@ -5628,6 +5603,75 @@ export default function App() {
             </div>
             </div>
           )}
+
+          {/* ── SHARE PANEL — inline dalam player, sama seperti queue panel */}
+          {showShareMenu && (
+            <div style={{ position:'absolute', inset:0, zIndex:100, background:'rgba(0,0,0,0.55)', display:'flex', alignItems:'stretch' }} onClick={e=>e.target===e.currentTarget&&setShowShareMenu(false)}>
+            <div style={{ width:'100%', height:'100%', display:'flex', flexDirection:'column', background:'#0d0d24', border:'none', borderRadius:0 }}>
+              {/* Share header */}
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 18px 12px', borderBottom:'1px solid rgba(255,255,255,0.07)', flexShrink:0 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:9 }}>
+                  <div style={{ width:30, height:30, borderRadius:9, background:`${track.color}22`, border:`1px solid ${track.color}40`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <Share2 size={15} style={{ color: track.color }}/>
+                  </div>
+                  <div>
+                    <div style={{ fontWeight:800, fontSize:14 }}>Bagikan</div>
+                    <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:200 }}>
+                      {embedTrack?.title || track.title}
+                    </div>
+                  </div>
+                </div>
+                <button onClick={()=>setShowShareMenu(false)} style={{ width:30, height:30, borderRadius:999, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.7)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, fontWeight:700 }}>×</button>
+              </div>
+              {/* Share list */}
+              <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'8px 0' }}>
+                {(() => {
+                  const url = embedTrack?.type==='youtube' ? `https://youtu.be/${embedTrack.videoId}` :
+                    embedTrack?.type==='soundcloud' ? (embedTrack.src||'') :
+                    track.isRadio ? (radioStation?.url||track.src||window.location.href) :
+                    (track.src || window.location.href);
+                  const shareItems = [
+                    { icon:'📋', label: shareCopied ? '✓ Tersalin!' : 'Salin Link', color:'#6366f1', action: async () => {
+                      try { await navigator.clipboard.writeText(url); setShareCopied(true); setTimeout(()=>setShareCopied(false), 2500); } catch {}
+                    }},
+                    { icon:'💬', label:'WhatsApp', color:'#25D366', action: () => window.open(`https://wa.me/?text=${encodeURIComponent((embedTrack?.title||track.title)+' — '+url)}`, '_blank', 'noopener') },
+                    { icon:'✈️', label:'Telegram', color:'#2AABEE', action: () => window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(embedTrack?.title||track.title)}`, '_blank', 'noopener') },
+                    { icon:'𝕏', label:'Twitter / X', color:'#e7e9ea', action: () => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent('Dengerin ini bareng: '+(embedTrack?.title||track.title))}&url=${encodeURIComponent(url)}`, '_blank', 'noopener') },
+                    { icon:'📧', label:'Email', color:'#f59e0b', action: () => window.open(`mailto:?subject=${encodeURIComponent('Lagu/Stream: '+(embedTrack?.title||track.title))}&body=${encodeURIComponent(url)}`, '_blank', 'noopener') },
+                    { icon:'📱', label:'Share via App', color:'#a78bfa', action: async () => {
+                      if (navigator.share) { try { await navigator.share({ title: embedTrack?.title||track.title, url }); } catch {} }
+                      else { try { await navigator.clipboard.writeText(url); setShareCopied(true); setTimeout(()=>setShareCopied(false), 2500); } catch {} }
+                    }},
+                  ];
+                  return (
+                    <>
+                      <div style={{ padding:'8px 18px 4px', fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.08em' }}>
+                        🔗 Pilih platform
+                      </div>
+                      {shareItems.map((item, i) => (
+                        <div key={i} onClick={item.action}
+                          style={{ display:'flex', alignItems:'center', gap:11, padding:'9px 18px', background:'transparent', cursor:'pointer', transition:'background 0.12s' }}
+                          onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.05)'}
+                          onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                          <div style={{ width:38, height:38, borderRadius:10, background:`${item.color}18`, border:`1px solid ${item.color}35`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, flexShrink:0 }}>{item.icon}</div>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.88)' }}>{item.label}</div>
+                          </div>
+                          <div style={{ width:6, height:6, borderRadius:'50%', background:`${item.color}60`, flexShrink:0 }}/>
+                        </div>
+                      ))}
+                      {/* URL display */}
+                      <div style={{ margin:'8px 18px 4px', padding:'9px 13px', borderRadius:12, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', fontSize:10, color:'rgba(255,255,255,0.28)', fontFamily:'monospace', wordBreak:'break-all', lineHeight:1.5 }}>
+                        {url}
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+            </div>
+          )}
+
 
 
 
@@ -5803,15 +5847,15 @@ export default function App() {
                   })()
               }
               {/* Share Stream */}
-              <button onClick={()=>setShowShareMenu(true)} title="Share Stream" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:layoutVars.actionPad, borderRadius:12, background:'none', border:'none', color:'rgba(255,255,255,0.35)' }}>
+              <button onClick={()=>{ setShowShareMenu(v=>!v); setShowQueue(false); }} title="Share Stream" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:layoutVars.actionPad, borderRadius:12, background:'none', border:'none', color:showShareMenu?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):'rgba(255,255,255,0.35)' }}>
                 <Share2 size={16}/>
               </button>
               {/* Queue */}
-              <button onClick={()=>setShowQueue(q=>!q)} title={t?.queue||"Queue"} style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:layoutVars.actionPad, borderRadius:12, background:'none', border:'none', color:showQueue?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):'rgba(255,255,255,0.35)' }}>
+              <button onClick={()=>{ setShowQueue(q=>!q); setShowShareMenu(false); }} title={t?.queue||"Queue"} style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:layoutVars.actionPad, borderRadius:12, background:'none', border:'none', color:showQueue?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):'rgba(255,255,255,0.35)' }}>
                 <ListMusic size={16}/>
               </button>
               {/* Settings */}
-              <button onClick={()=>setShowSettings(true)} title={t?.settings||"Settings"} style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:layoutVars.actionPad, borderRadius:12, background:'none', border:'none', color:(eqEnabled||sleepTimer)?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):'rgba(255,255,255,0.35)' }}><Settings size={16}/></button>
+              <button onClick={()=>setShowSettings(v=>!v)} title={t?.settings||"Settings"} style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:layoutVars.actionPad, borderRadius:12, background: showSettings?'rgba(255,255,255,0.08)':'none', border:'none', color:(eqEnabled||sleepTimer)?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):(showSettings?'rgba(255,255,255,0.7)':'rgba(255,255,255,0.35)') }}><Settings size={16}/></button>
               {/* Fullscreen */}
               <button onClick={()=>setFullscreen(f=>!f)} title={fullscreen?(t?.exitFullscreenBtn||'Exit Fullscreen'):(t?.fullscreenBtn||'Fullscreen')} style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:layoutVars.actionPad, borderRadius:12, background:'none', border:'none', color:fullscreen?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):'rgba(255,255,255,0.35)' }}>
                 {fullscreen?<Minimize2 size={16}/>:<Maximize2 size={16}/>}
@@ -6483,6 +6527,25 @@ export default function App() {
                               {/* ── UNIFIED CARI RADIO PANEL */}
                               {rbMode === 'search' && (
                                 <div>
+                                  {/* Now playing bar — synced with main player */}
+                                  {radioStation && (
+                                    <div style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:10, background:`${radioStation.color}18`, border:`1px solid ${radioStation.color}40`, marginBottom:10 }}>
+                                      <div style={{ width:8, height:8, borderRadius:'50%', background: (playing && track.isRadio && track.id === `radio_${radioStation.id}`) ? radioStation.color : 'rgba(255,255,255,0.2)', boxShadow: (playing && track.isRadio && track.id === `radio_${radioStation.id}`) ? `0 0 8px ${radioStation.color}` : 'none', flexShrink:0 }}/>
+                                      <div style={{ flex:1, minWidth:0 }}>
+                                        <div style={{ fontSize:11, fontWeight:700, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{radioStation.name}</div>
+                                        <div style={{ fontSize:9, color:'rgba(255,255,255,0.4)' }}>{radioStation.city} · ● LIVE</div>
+                                      </div>
+                                      <button onClick={() => setTab('player')}
+                                        style={{ padding:'3px 8px', borderRadius:999, border:`1px solid ${radioStation.color}50`, background:`${radioStation.color}20`, color:radioStation.color, fontSize:10, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
+                                        Player ↗
+                                      </button>
+                                      <button onClick={() => {
+                                        if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
+                                        setPlaying(false); setRadioStation(null); setRadioPlaying(false);
+                                        setTrack(SONGS[0]);
+                                      }} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.3)', cursor:'pointer', fontSize:14, flexShrink:0, padding:0 }}>✕</button>
+                                    </div>
+                                  )}
                                   {/* Search bar */}
                                   <div style={{ display:'flex', gap:5, marginBottom:8 }}>
                                     <input
@@ -6812,6 +6875,7 @@ export default function App() {
                                 );
                               })()}
 
+                              <div style={{ marginTop:8, fontSize:9, color:'rgba(255,255,255,0.18)', paddingLeft:2 }}>
                               <div style={{ marginTop:8, fontSize:9, color:'rgba(255,255,255,0.18)', paddingLeft:2 }}>
                                 {!selCountry ? 'Pilih negara untuk melihat genre & stasiun' : !selGenre ? 'Pilih genre untuk melihat stasiun' : 'Hanya stasiun yang dapat dijangkau yang ditampilkan'}
                               </div>
@@ -7765,6 +7829,7 @@ Berikan response HANYA dalam JSON ini (tanpa markdown, tanpa teks lain):
         @keyframes spin20{from{transform:rotate(0)}to{transform:rotate(360deg)}}
         @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
         @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+        @keyframes shareSlideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
 
         @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.6;transform:scale(0.9)}}
         @keyframes pulse-ring{0%{transform:scale(0.6);opacity:0.8}100%{transform:scale(1.3);opacity:0}}
