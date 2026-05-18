@@ -3001,13 +3001,12 @@ export default function App() {
   const [wsLoading, setWsLoading] = useState(false);
   const [wsError,   setWsError]   = useState(null);
   const [wsEmbedUrl, setWsEmbedUrl] = useState(null); // active embed URL
-  const [spWsEmbedId, setSpWsEmbedId] = useState(null); // Spotify track ID for embed in web search
   const wsQueueRef  = useRef([]);   // current ws native audio queue
   const wsQueueIdxRef = useRef(-1);
 
   const doWebSearch = async (q) => {
     if (!q.trim()) return;
-    setWsLoading(true); setWsError(null); setWsResults([]); setWsEmbedUrl(null); setSpWsEmbedId(null);
+    setWsLoading(true); setWsError(null); setWsResults([]); setWsEmbedUrl(null);
     try {
       // ── Deteksi URL langsung SoundCloud → embed
       if (q.includes('soundcloud.com/')) {
@@ -5752,7 +5751,7 @@ export default function App() {
                     return (
                       <div key={i} onClick={()=>{ playWsTrack(item, wsQueueRef.current, i); setShowQueue(false); }}
                         style={{ display:'flex', alignItems:'center', gap:11, padding:'9px 18px', background:isCur?`${sc3}12`:'transparent', cursor:'pointer' }}>
-                        <div style={{ width:20, textAlign:'center', fontSize:10, color:'rgba(255,255,255,0.25)', fontWeight:600, flexShrink:0 }}>{isCur ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12, justifyContent:'center' }}>{[9,5,7].map((h2,j)=>(<div key={j} style={{ width:2.5, height:h2, background:sc3, borderRadius:1, animation:`bounce 0.8s ease-in-out ${j*0.15}s infinite` }}/>))}</div> : i+1}</div>
+                        <div style={{ width:20, textAlign:'center', fontSize:10, color:'rgba(255,255,255,0.25)', fontWeight:600, flexShrink:0 }}>{isCur ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12, justifyContent:'center' }}>{[9,5,7].map((h2,j)=>(<div key={j} style={{ width:2.5, height:h2, background:sc3, borderRadius:1, animation:{"`"}bounce 0.8s ease-in-out ${j*0.15}s infinite{"`"} }}/>))}</div> : i+1}</div>
                         {item.thumbnail
                           ? <img src={item.thumbnail} style={{ width:38, height:38, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
                           : <div style={{ width:38, height:38, borderRadius:8, background:`${sc3}22`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><span style={{ color:sc3, fontSize:14 }}>♪</span></div>}
@@ -6701,52 +6700,27 @@ export default function App() {
                                           {item._items.map(t3 => {
                                             const mins3 = Math.floor(t3.duration/60000), secs3 = String(Math.floor((t3.duration%60000)/1000)).padStart(2,'0');
                                             const hasPreview = !!t3.previewUrl;
-                                            const isEmbedActive = spWsEmbedId === t3.id;
-                                            const isPreviewActive = spTrack?.id === t3.id;
+                                            const isActive = spTrack?.id === t3.id;
                                             return (
-                                              <div key={t3.id} style={{ display:'flex', flexDirection:'column', gap:0 }}>
-                                                <div
-                                                  style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 9px', borderRadius: isEmbedActive ? '9px 9px 0 0' : 9, background: isEmbedActive ? 'rgba(29,185,84,0.15)' : isPreviewActive ? 'rgba(29,185,84,0.12)' : 'rgba(29,185,84,0.06)', border: isEmbedActive ? '1px solid rgba(29,185,84,0.5)' : isPreviewActive ? '1px solid rgba(29,185,84,0.4)' : '1px solid rgba(29,185,84,0.15)', borderBottom: isEmbedActive ? 'none' : undefined, cursor:'pointer' }}
-                                                  onMouseEnter={e=>{ if(!isEmbedActive&&!isPreviewActive) e.currentTarget.style.background='rgba(29,185,84,0.12)'; }}
-                                                  onMouseLeave={e=>{ if(!isEmbedActive&&!isPreviewActive) e.currentTarget.style.background='rgba(29,185,84,0.06)'; }}
-                                                  onClick={() => { setSpWsEmbedId(prev => prev === t3.id ? null : t3.id); }}>
-                                                  <div style={{ position:'relative', flexShrink:0 }}>
-                                                    <img src={t3.cover} alt={t3.title} loading="lazy" style={{ width:30, height:30, borderRadius:6, objectFit:'cover', display:'block' }} onError={e=>{e.target.style.display='none';}}/>
-                                                    <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.45)', borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                                                      {isEmbedActive ? <span style={{ fontSize:11, color:'#1DB954' }}>▼</span> : <Play size={10} style={{ color:'white', marginLeft:1 }}/>}
-                                                    </div>
+                                              <div key={t3.id}
+                                                style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 9px', borderRadius:9, background: isActive ? 'rgba(29,185,84,0.12)' : 'rgba(29,185,84,0.06)', border: isActive ? '1px solid rgba(29,185,84,0.4)' : '1px solid rgba(29,185,84,0.15)', cursor:'pointer' }}
+                                                onMouseEnter={e=>{ if(!isActive) e.currentTarget.style.background='rgba(29,185,84,0.12)'; }}
+                                                onMouseLeave={e=>{ if(!isActive) e.currentTarget.style.background='rgba(29,185,84,0.06)'; }}
+                                                onClick={() => { if(hasPreview) playSpotifyPreview(t3); else if(t3.spotifyUrl) window.open(t3.spotifyUrl,'_blank','noopener,noreferrer'); }}>
+                                                <div style={{ position:'relative', flexShrink:0 }}>
+                                                  <img src={t3.cover} alt={t3.title} loading="lazy" style={{ width:30, height:30, borderRadius:6, objectFit:'cover', display:'block' }} onError={e=>{e.target.style.display='none';}}/>
+                                                  <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.4)', borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center', opacity: isActive ? 1 : 0 }} onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>{ if(!isActive) e.currentTarget.style.opacity=0; }}>
+                                                    {isActive && spPlaying ? <span style={{ fontSize:10, color:'white' }}>⏸</span> : hasPreview ? <Play size={10} style={{ color:'white', marginLeft:1 }}/> : <span style={{ fontSize:10 }}>↗</span>}
                                                   </div>
-                                                  <div style={{ flex:1, minWidth:0 }}>
-                                                    <div style={{ fontSize:11, fontWeight:600, color: isEmbedActive ? '#1DB954' : 'rgba(255,255,255,0.9)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t3.title}</div>
-                                                    <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t3.artist}</div>
-                                                  </div>
-                                                  <span style={{ fontSize:9, color:'rgba(255,255,255,0.3)', flexShrink:0 }}>{mins3}:{secs3}</span>
-                                                  {hasPreview
-                                                    ? <span onClick={e=>{ e.stopPropagation(); playSpotifyPreview(t3); }} style={{ fontSize:9, color:'#1DB954', background:'rgba(29,185,84,0.18)', padding:'2px 5px', borderRadius:4, fontWeight:700, flexShrink:0, cursor:'pointer' }} title="Preview 30 detik">30s</span>
-                                                    : null}
-                                                  <span style={{ fontSize:9, color: isEmbedActive ? '#1DB954' : 'rgba(29,185,84,0.7)', background: isEmbedActive ? 'rgba(29,185,84,0.25)' : 'rgba(29,185,84,0.1)', padding:'2px 5px', borderRadius:4, fontWeight:700, flexShrink:0 }}>
-                                                    {isEmbedActive ? 'Tutup' : 'Embed'}
-                                                  </span>
                                                 </div>
-                                                {isEmbedActive && (
-                                                  <div style={{ borderRadius:'0 0 9px 9px', overflow:'hidden', border:'1px solid rgba(29,185,84,0.5)', borderTop:'none' }}>
-                                                    <iframe
-                                                      key={`sp-ws-embed-${t3.id}`}
-                                                      src={`https://open.spotify.com/embed/track/${t3.id}?utm_source=generator&theme=0`}
-                                                      width="100%" height="152" frameBorder="0"
-                                                      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                                                      loading="lazy"
-                                                      style={{ display:'block' }}
-                                                    />
-                                                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'4px 8px', background:'rgba(0,0,0,0.4)', gap:6 }}>
-                                                      <span style={{ fontSize:10, color:'#1DB954', fontWeight:700 }}>🎵 Spotify Embed</span>
-                                                      <div style={{ display:'flex', gap:6 }}>
-                                                        {t3.spotifyUrl && <button onClick={()=>window.open(t3.spotifyUrl,'_blank','noopener,noreferrer')} style={{ fontSize:10, color:'rgba(255,255,255,0.5)', background:'none', border:'none', cursor:'pointer' }}>Buka ↗</button>}
-                                                        <button onClick={()=>setSpWsEmbedId(null)} style={{ fontSize:10, color:'rgba(255,255,255,0.4)', background:'none', border:'none', cursor:'pointer' }}>✕</button>
-                                                      </div>
-                                                    </div>
-                                                  </div>
-                                                )}
+                                                <div style={{ flex:1, minWidth:0 }}>
+                                                  <div style={{ fontSize:11, fontWeight:600, color: isActive ? '#1DB954' : 'rgba(255,255,255,0.9)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t3.title}</div>
+                                                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t3.artist}</div>
+                                                </div>
+                                                <span style={{ fontSize:9, color:'rgba(255,255,255,0.3)', flexShrink:0 }}>{mins3}:{secs3}</span>
+                                                {hasPreview
+                                                  ? <span style={{ fontSize:9, color:'#1DB954', background:'rgba(29,185,84,0.18)', padding:'2px 5px', borderRadius:4, fontWeight:700, flexShrink:0 }}>30s</span>
+                                                  : <span style={{ fontSize:9, color:'#1DB954', background:'rgba(29,185,84,0.1)', padding:'2px 5px', borderRadius:4, fontWeight:700, flexShrink:0 }}>SP</span>}
                                               </div>
                                             );
                                           })}
@@ -6859,6 +6833,7 @@ export default function App() {
                           );
                         })()}
                         {isRadio && (() => {
+                          const countries = platform.countries || [];
                           const countries = platform.countries || [];
                           const selCountry = countries.find(c => c.id === radioCountry) || null;
                           const selGenre = selCountry ? (selCountry.genres.find(g => g.id === radioGenre) || null) : null;
