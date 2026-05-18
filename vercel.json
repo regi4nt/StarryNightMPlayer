@@ -4,8 +4,6 @@
   "installCommand": "npm install",
   "rewrites": [
     { "source": "/api/radio-garden/:path*", "destination": "https://radio.garden/api/ara/:path*" },
-    { "source": "/api/invidious/:path*",    "destination": "https://yewtu.be/api/v1/:path*" },
-    { "source": "/api/piped/:path*",        "destination": "https://pipedapi.kavin.rocks/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [

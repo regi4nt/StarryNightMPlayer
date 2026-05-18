@@ -1027,24 +1027,41 @@ const SLEEP_OPTIONS = [
 // ═══════════════════════════════════════════════════════
 
 // Public Piped/Invidious API instances (YouTube search, no key needed)
-// First entry uses Vercel proxy rewrites → same-origin request, no CORS issues.
-// Remaining entries are public fallbacks (may have CORS on some browsers).
+// /api/invidious and /api/piped are Vercel Serverless Functions that proxy
+// requests server-side — no CORS issues, tries multiple upstream instances automatically.
 const PIPED_INSTANCES = [
-  '/api/piped',
+  '/api/piped',                 // Vercel serverless function (primary, no CORS)
+  'https://pipedapi.kavin.rocks',
   'https://pipedapi.tokhmi.xyz',
   'https://pipedapi.moomoo.me',
-  'https://api.piped.yt',
-  'https://piped-api.garudalinux.org',
-  'https://api.piped.projectsegfault.net',
 ];
-// Invidious instances yang allow CORS dari browser (tidak block berdasarkan origin/IP)
-// Proxy Vercel dihapus karena semua instance block request dari server IP Vercel (403)
 const INVIDIOUS_INSTANCES = [
+  '/api/invidious',             // Vercel serverless function (primary, no CORS)
   'https://inv.tux.pizza',
   'https://invidious.privacyredirect.com',
-  'https://vid.puffyan.us',
   'https://invidious.nerdvpn.de',
 ];
+
+// ── URL builder helpers for Invidious and Piped
+// When base is our serverless proxy ('/api/invidious' or '/api/piped'),
+// the API path goes into a ?path= query parameter.
+// When base is an external URL, the path is appended directly.
+function buildInvidiousUrl(base, apiPath, params = {}) {
+  if (base.startsWith('/')) {
+    const qs = new URLSearchParams({ path: apiPath, ...params }).toString();
+    return `${base}?${qs}`;
+  }
+  const qs = new URLSearchParams(params).toString();
+  return `${base}${apiPath}${qs ? '?' + qs : ''}`;
+}
+function buildPipedUrl(base, apiPath, params = {}) {
+  if (base.startsWith('/')) {
+    const qs = new URLSearchParams({ path: apiPath, ...params }).toString();
+    return `${base}?${qs}`;
+  }
+  const qs = new URLSearchParams(params).toString();
+  return `${base}${apiPath}${qs ? '?' + qs : ''}`;
+}
 
 // ── Provider definitions
 // PROVIDERS built lazily to avoid window.location access at module init time
@@ -1143,6 +1160,8 @@ const _ENV_SP_SECRET = (import.meta.env?.VITE_SPOTIFY_CLIENT_SECRET || '');
 const _ENV_SC_ID     = (import.meta.env?.VITE_SOUNDCLOUD_CLIENT_ID  || '');
 const _ENV_DS_KEY    = (import.meta.env?.VITE_DEEPSEEK_KEY_1        || '');
 const _ENV_GROK_KEY  = (import.meta.env?.VITE_GROK_KEY_1            || '');
+// YouTube Data API v3 — bisa via env (server proxy) ATAU user key langsung dari browser
+const _ENV_YT_KEY = (import.meta.env?.VITE_YOUTUBE_API_KEY || '');
 // Runtime mutable — diupdate oleh App saat settings berubah
 let _USER_SP_ID     = '';
 let _USER_SP_SECRET = '';
@@ -1150,10 +1169,12 @@ let _USER_SC_ID     = '';
 let _USER_AI_KEY    = ''; // OpenRouter / OpenAI / Groq key dari user
 let _USER_DS_KEY    = ''; // DeepSeek API key
 let _USER_GROK_KEY  = ''; // xAI Grok API key
-export const setRuntimeKeys = (sp_id, sp_secret, sc_id, ai_key, ds_key, grok_key) => {
+let _USER_YT_KEY    = ''; // YouTube Data API v3 key dari user
+export const setRuntimeKeys = (sp_id, sp_secret, sc_id, ai_key, ds_key, grok_key, yt_key) => {
   _USER_SP_ID = sp_id || ''; _USER_SP_SECRET = sp_secret || '';
   _USER_SC_ID = sc_id || ''; _USER_AI_KEY    = ai_key    || '';
   _USER_DS_KEY = ds_key || ''; _USER_GROK_KEY = grok_key || '';
+  _USER_YT_KEY = yt_key || '';
   _spToken = null; _spTokenExp = 0; // invalidate cached Spotify token
 };
 const getSpId      = () => _USER_SP_ID     || _ENV_SP_ID;
@@ -1162,6 +1183,9 @@ const getScId      = () => _USER_SC_ID     || _ENV_SC_ID;
 const getUserAiKey  = () => _USER_AI_KEY;
 const getUserDsKey  = () => _USER_DS_KEY  || _ENV_DS_KEY;
 const getUserGrokKey = () => _USER_GROK_KEY || _ENV_GROK_KEY;
+// Ambil YT key: user key (langsung ke Google) atau fallback ke env (via proxy)
+const getYtKey     = () => _USER_YT_KEY || _ENV_YT_KEY;
+const isYtApiEnabled = () => !!(getYtKey());
 
 // ═══════════════════════════════════════════════════════
 //  SPOTIFY — Client Credentials token + search
@@ -1353,7 +1377,7 @@ async function downloadYtAudio(videoId, onProgress, signal) {
   let audioUrl = null;
   for (const base of PIPED_INSTANCES) {
     try {
-      const res = await fetch(`${base}/streams/${videoId}`, { signal });
+      const res = await fetch(buildPipedUrl(base, `/streams/${videoId}`), { signal });
       if (!res.ok) continue;
       const data = await res.json();
       // Ambil audio stream dengan bitrate tertinggi
@@ -1405,7 +1429,7 @@ async function downloadToDevice(url, filename, headers = {}) {
 async function getYtAudioUrl(videoId) {
   for (const base of PIPED_INSTANCES) {
     try {
-      const res = await fetch(`${base}/streams/${videoId}`);
+      const res = await fetch(buildPipedUrl(base, `/streams/${videoId}`));
       if (!res.ok) continue;
       const data = await res.json();
       const streams = (data.audioStreams || []).filter(s => s.url && (s.mimeType||'').includes('audio'));
@@ -2405,7 +2429,7 @@ function MaskedKeyInput({ value, onChange, onBlur, placeholder, accentColor, lab
   );
 }
 
-function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setEqPreset, eqGains, setEqGains, crossfade, setCrossfade, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t, userSpId, setUserSpId, userSpSecret, setUserSpSecret, userScId, setUserScId, userAiKey, setUserAiKey, userDsKey, setUserDsKey, userGrokKey, setUserGrokKey }) {
+function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setEqPreset, eqGains, setEqGains, crossfade, setCrossfade, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t, userSpId, setUserSpId, userSpSecret, setUserSpSecret, userScId, setUserScId, userAiKey, setUserAiKey, userDsKey, setUserDsKey, userGrokKey, setUserGrokKey, userYtKey, setUserYtKey }) {
   const coverRef = useRef(null);
   const [apiKeyTab, setApiKeyTab] = React.useState('spotify');
   // Defensive: eqGains harus selalu array 5 elemen
@@ -2634,6 +2658,7 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
             {[
               { id:'spotify', label:'Spotify', icon:<svg width={11} height={11} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="12" fill="#1DB954"/><path d="M17.9 10.9C14.7 9 9.35 8.8 6.3 9.75c-.5.15-1-.15-1.15-.6-.15-.5.15-1 .6-1.15C9.65 6.8 15.5 7 19.1 9.15c.45.25.6.85.35 1.3-.25.35-.85.5-1.55.45zM17.75 13.55c-.2.35-.65.45-1 .25-2.65-1.6-6.65-2.05-9.75-1.1-.4.1-.8-.1-.9-.5-.1-.4.1-.8.5-.9 3.55-1.1 7.95-.55 11 1.3.3.15.4.6.15.95zM16.6 16.1c-.15.3-.5.4-.8.25-2.3-1.4-5.2-1.7-8.6-.95-.35.1-.65-.15-.75-.45-.1-.35.15-.65.45-.75 3.75-.85 6.95-.5 9.5 1.1.35.15.4.5.2.8z" fill="white"/></svg>, activeColor:'#1DB954', activeBg:'rgba(29,185,84,0.15)', dot: (userSpId && userSpSecret) },
               { id:'soundcloud', label:'SoundCloud', icon:<svg width={11} height={11} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="5" fill="#ff5500"/><rect x="5.5" y="10" width="2" height="7" rx="1" fill="white"/><rect x="8.5" y="8.5" width="2" height="8.5" rx="1" fill="white"/><rect x="11.5" y="7" width="2" height="10" rx="1" fill="white"/><rect x="14.5" y="8" width="2" height="9" rx="1" fill="white"/><rect x="17.5" y="9.5" width="2" height="7.5" rx="1" fill="white"/></svg>, activeColor:'#ff5500', activeBg:'rgba(255,85,0,0.15)', dot: !!userScId },
+              { id:'youtube', label:'YouTube', icon:<svg width={11} height={11} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="5" fill="#FF0000"/><path d="M19.6 7.8a2.5 2.5 0 00-1.76-1.77C16.4 5.7 12 5.7 12 5.7s-4.4 0-5.84.33A2.5 2.5 0 004.4 7.8C4.08 9.24 4.08 12 4.08 12s0 2.76.32 4.2a2.5 2.5 0 001.76 1.77C7.6 18.3 12 18.3 12 18.3s4.4 0 5.84-.33a2.5 2.5 0 001.76-1.77C19.92 14.76 19.92 12 19.92 12s0-2.76-.32-4.2z" fill="white"/><path d="M10.2 14.7V9.3l4.8 2.7-4.8 2.7z" fill="#FF0000"/></svg>, activeColor:'#FF0000', activeBg:'rgba(255,0,0,0.12)', dot: !!userYtKey },
               { id:'ai', label:'AI Key', icon:<svg width={11} height={11} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#6366f1"/><circle cx="12" cy="12" r="4" fill="none" stroke="white" strokeWidth="1.5"/><circle cx="12" cy="12" r="1.5" fill="white"/><line x1="12" y1="4" x2="12" y2="7" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="12" y1="17" x2="12" y2="20" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="4" y1="12" x2="7" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="17" y1="12" x2="20" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>, activeColor:'#818cf8', activeBg:'rgba(99,102,241,0.15)', dot: !!(userAiKey || userDsKey || userGrokKey) },
 
             ].map(({ id, label, icon, activeColor, activeBg, dot }) => {
@@ -2706,6 +2731,36 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
                 <button onClick={() => { setUserScId(''); localStorage.removeItem('sn_sc_id'); }}
                   style={{ marginTop:6, padding:'4px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.08)', color:'#fca5a5', fontSize:10, cursor:'pointer' }}>
                   Hapus Key SoundCloud
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* ── YouTube Panel */}
+          {apiKeyTab === 'youtube' && (
+            <div>
+              <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
+                <svg width={13} height={13} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="5" fill="#FF0000"/><path d="M19.6 7.8a2.5 2.5 0 00-1.76-1.77C16.4 5.7 12 5.7 12 5.7s-4.4 0-5.84.33A2.5 2.5 0 004.4 7.8C4.08 9.24 4.08 12 4.08 12s0 2.76.32 4.2a2.5 2.5 0 001.76 1.77C7.6 18.3 12 18.3 12 18.3s4.4 0 5.84-.33a2.5 2.5 0 001.76-1.77C19.92 14.76 19.92 12 19.92 12s0-2.76-.32-4.2z" fill="white"/><path d="M10.2 14.7V9.3l4.8 2.7-4.8 2.7z" fill="#FF0000"/></svg>
+                <span style={{ fontWeight:700, fontSize:12, color:'rgba(255,255,255,0.85)' }}>YouTube Data API v3</span>
+                {userYtKey && <span style={{ fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:999, background:'rgba(255,0,0,0.18)', color:'#ff6b6b' }}>✓ Aktif</span>}
+              </div>
+              <MaskedKeyInput
+                value={userYtKey}
+                onChange={v => setUserYtKey(v)}
+                onBlur={v => localStorage.setItem('sn_yt_key', v)}
+                placeholder="AIza… · console.cloud.google.com"
+                accentColor="#FF0000"
+              />
+              <div style={{ marginTop:8, padding:'10px 12px', borderRadius:10, background:'rgba(255,0,0,0.06)', border:'1px solid rgba(255,0,0,0.15)' }}>
+                <div style={{ fontSize:10, color:'rgba(255,255,255,0.5)', lineHeight:1.7 }}>
+                  🔴 <strong style={{ color:'rgba(255,255,255,0.75)' }}>Manfaat:</strong> Search YouTube lebih akurat &amp; relevan, trending musik Indonesia real-time, tidak bergantung Piped/Invidious yang sering down.<br/>
+                  <span style={{ color:'rgba(255,255,255,0.3)' }}>Cara dapat key: console.cloud.google.com → buat project → enable "YouTube Data API v3" → Create Credentials → API Key</span>
+                </div>
+              </div>
+              {userYtKey && (
+                <button onClick={() => { setUserYtKey(''); localStorage.removeItem('sn_yt_key'); }}
+                  style={{ marginTop:6, padding:'4px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.08)', color:'#fca5a5', fontSize:10, cursor:'pointer' }}>
+                  Hapus Key YouTube
                 </button>
               )}
             </div>
@@ -2987,7 +3042,8 @@ export default function App() {
   const [userAiKey,    setUserAiKey]    = useState(() => localStorage.getItem('sn_ai_key')   ||'');
   const [userDsKey,    setUserDsKey]    = useState(() => localStorage.getItem('sn_ds_key')   ||'');
   const [userGrokKey,  setUserGrokKey]  = useState(() => localStorage.getItem('sn_grok_key') ||'');
-  useEffect(() => { setRuntimeKeys(userSpId, userSpSecret, userScId, userAiKey, userDsKey, userGrokKey); }, [userSpId, userSpSecret, userScId, userAiKey, userDsKey, userGrokKey]);
+  const [userYtKey,    setUserYtKey]    = useState(() => localStorage.getItem('sn_yt_key')   ||'');
+  useEffect(() => { setRuntimeKeys(userSpId, userSpSecret, userScId, userAiKey, userDsKey, userGrokKey, userYtKey); }, [userSpId, userSpSecret, userScId, userAiKey, userDsKey, userGrokKey, userYtKey]);
 
   // ── Built-in songs dihapus; semua musik dicari di platform eksternal
   // builtinSongs is defined at module level as empty array
@@ -3364,12 +3420,52 @@ export default function App() {
   };
 
   // Try Piped API instances
+  // ── YouTube Data API v3
+  // • Jika user punya key sendiri → panggil langsung ke googleapis.com (lebih cepat, no proxy)
+  // • Jika hanya env key (Vercel) → gunakan serverless proxy /api/youtube
+  const searchViaYouTubeAPI = async (query) => {
+    if (!isYtApiEnabled()) return null;
+    try {
+      const ctrl = new AbortController();
+      setTimeout(() => ctrl.abort(), 7000);
+      const userKey = _USER_YT_KEY;
+      let res;
+      if (userKey) {
+        // Langsung ke Google API menggunakan key user
+        const params = new URLSearchParams({
+          key: userKey, part: 'snippet', type: 'video',
+          videoCategoryId: '10', maxResults: '10', q: query,
+          safeSearch: 'none', relevanceLanguage: 'id', regionCode: 'ID',
+          fields: 'items(id/videoId,snippet/title,snippet/channelTitle,snippet/thumbnails/medium)',
+        });
+        res = await fetch(`https://www.googleapis.com/youtube/v3/search?${params}`, { signal: ctrl.signal });
+      } else {
+        // Env key → via serverless proxy
+        const params = new URLSearchParams({ action: 'search', q: query, maxResults: '10' });
+        res = await fetch(`/api/youtube?${params}`, { signal: ctrl.signal });
+      }
+      if (!res.ok) return null;
+      const data = await res.json();
+      const items = (data.items || []).filter(i => i.id?.videoId);
+      if (items.length === 0) return null;
+      return items.map(i => ({
+        videoId: i.id.videoId,
+        title: i.snippet.title,
+        uploaderName: i.snippet.channelTitle,
+        duration: 0, // Search API tidak return durasi; diambil saat play
+        thumbnail: i.snippet.thumbnails?.medium?.url ||
+                   `https://i.ytimg.com/vi/${i.id.videoId}/mqdefault.jpg`,
+        url: `/watch?v=${i.id.videoId}`,
+      }));
+    } catch { return null; }
+  };
+
   const searchViaPiped = async (query) => {
     for (const base of PIPED_INSTANCES) {
       try {
         const ctrl = new AbortController();
         const tid  = setTimeout(() => ctrl.abort(), 5000);
-        const res  = await fetch(`${base}/search?q=${encodeURIComponent(query)}&filter=music_songs`, { signal: ctrl.signal });
+        const res  = await fetch(buildPipedUrl(base, '/search', { q: query, filter: 'music_songs' }), { signal: ctrl.signal });
         clearTimeout(tid);
         if (!res.ok) continue;
         const data = await res.json();
@@ -3392,7 +3488,7 @@ export default function App() {
       try {
         const ctrl = new AbortController();
         const tid  = setTimeout(() => ctrl.abort(), 5000);
-        const res  = await fetch(`${base}/api/v1/search?q=${encodeURIComponent(query)}&type=video&fields=videoId,title,author,lengthSeconds,videoThumbnails`, { signal: ctrl.signal });
+        const res  = await fetch(buildInvidiousUrl(base, '/api/v1/search', { q: query, type: 'video', fields: 'videoId,title,author,lengthSeconds,videoThumbnails' }), { signal: ctrl.signal });
         clearTimeout(tid);
         if (!res.ok) continue;
         const data = await res.json();
@@ -3451,12 +3547,46 @@ export default function App() {
     if (ytTrendingLoading || ytTrending.length > 0) return; // only fetch once per session
     setYtTrendingLoading(true);
     try {
-      // Try Invidious trending (music category = 10)
+      // ── Prioritas 1: YouTube Data API v3 (paling akurat, regionCode=ID)
+      if (isYtApiEnabled()) {
+        try {
+          const ctrl = new AbortController();
+          setTimeout(() => ctrl.abort(), 7000);
+          const userKey = _USER_YT_KEY;
+          let res;
+          if (userKey) {
+            const params = new URLSearchParams({
+              key: userKey, part: 'snippet,contentDetails', chart: 'mostPopular',
+              videoCategoryId: '10', regionCode: 'ID', maxResults: '8',
+              fields: 'items(id,snippet/title,snippet/channelTitle,snippet/thumbnails/medium,contentDetails/duration)',
+            });
+            res = await fetch(`https://www.googleapis.com/youtube/v3/videos?${params}`, { signal: ctrl.signal });
+          } else {
+            const params = new URLSearchParams({ action: 'trending', regionCode: 'ID', maxResults: '8', videoCategoryId: '10' });
+            res = await fetch(`/api/youtube?${params}`, { signal: ctrl.signal });
+          }
+          if (res.ok) {
+            const data = await res.json();
+            const chips = (data.items || []).slice(0, 8).map(v => {
+              let label = v.snippet?.title || '';
+              if (label.length > 22) label = label.slice(0, 20) + '…';
+              return { label, query: v.snippet?.title || label };
+            });
+            if (chips.length > 0) {
+              setYtTrending(chips);
+              setYtTrendingLoading(false);
+              return;
+            }
+          }
+        } catch { /* fallback ke Invidious */ }
+      }
+
+      // ── Prioritas 2: Invidious trending (music category = 10)
       for (const base of INVIDIOUS_INSTANCES) {
         try {
           const ctrl = new AbortController();
           const tid  = setTimeout(() => ctrl.abort(), 5000);
-          const res  = await fetch(`${base}/api/v1/trending?type=Music&fields=title,videoId`, { signal: ctrl.signal });
+          const res  = await fetch(buildInvidiousUrl(base, '/api/v1/trending', { type: 'Music', fields: 'title,videoId' }), { signal: ctrl.signal });
           clearTimeout(tid);
           if (!res.ok) continue;
           const data = await res.json();
@@ -3478,7 +3608,7 @@ export default function App() {
         try {
           const ctrl = new AbortController();
           const tid  = setTimeout(() => ctrl.abort(), 5000);
-          const res  = await fetch(`${base}/trending?region=ID`, { signal: ctrl.signal });
+          const res  = await fetch(buildPipedUrl(base, '/trending', { region: 'ID' }), { signal: ctrl.signal });
           clearTimeout(tid);
           if (!res.ok) continue;
           const data = await res.json();
@@ -3523,10 +3653,13 @@ export default function App() {
     setYtError(p => ({...p, [platformId]: null}));
     setYtResults(p => ({...p, [platformId]: []}));
 
-    // Try Piped first
-    let items = await searchViaPiped(query);
+    // Coba YouTube Data API v3 dulu (jika key tersedia — hasil paling akurat)
+    let items = await searchViaYouTubeAPI(query);
 
-    // Fallback to Invidious
+    // Fallback: Piped
+    if (!items) items = await searchViaPiped(query);
+
+    // Fallback: Invidious
     if (!items) items = await searchViaInvidious(query);
 
     // Fallback to AI recommendation
@@ -4510,7 +4643,6 @@ export default function App() {
         // Video ended → auto next
         if (data?.event === 'onStateChange' && data.info === 0) {
           if (repeatRef.current === 'one') {
-            // Restart lagu yang sama
             try { ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'command', func:'seekTo', args:[0, true] }), '*'); } catch(_) {}
             setTimeout(() => {
               try { ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'command', func:'playVideo', args:'' }), '*'); } catch(_) {}
@@ -5783,7 +5915,7 @@ export default function App() {
 
         {/* ── SETTINGS PANEL — menutup semua tab di desktop & landscape, hanya player di portrait */}
         {showSettings && (isDesktop || layoutMode === 'mobile-landscape' || tab === 'player') && (
-          <SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} eqEnabled={!!eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset||"Normal"} setEqPreset={setEqPreset} eqGains={Array.isArray(eqGains)&&eqGains.length===5?eqGains:[0,0,0,0,0]} setEqGains={setEqGains} crossfade={typeof crossfade==="number"?crossfade:0} setCrossfade={setCrossfade} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userScId={userScId} setUserScId={setUserScId} userAiKey={userAiKey} setUserAiKey={setUserAiKey} userDsKey={userDsKey} setUserDsKey={setUserDsKey} userGrokKey={userGrokKey} setUserGrokKey={setUserGrokKey}/>
+          <SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} eqEnabled={!!eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset||"Normal"} setEqPreset={setEqPreset} eqGains={Array.isArray(eqGains)&&eqGains.length===5?eqGains:[0,0,0,0,0]} setEqGains={setEqGains} crossfade={typeof crossfade==="number"?crossfade:0} setCrossfade={setCrossfade} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userScId={userScId} setUserScId={setUserScId} userAiKey={userAiKey} setUserAiKey={setUserAiKey} userDsKey={userDsKey} setUserDsKey={setUserDsKey} userGrokKey={userGrokKey} setUserGrokKey={setUserGrokKey} userYtKey={userYtKey} setUserYtKey={setUserYtKey}/>
         )}
 
         {/* ─── PLAYER TAB */}
