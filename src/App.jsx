@@ -2338,6 +2338,76 @@ function SettingsPanel(props) {
 }
 
 // ─────────────────────────────────────────────────────────
+// ── DNS-style masked key input component
+function MaskedKeyInput({ value, onChange, onBlur, placeholder, accentColor, label }) {
+  const [editing, setEditing] = React.useState(false);
+  const [draft, setDraft] = React.useState('');
+  const inputRef = React.useRef(null);
+
+  // Fungsi masking: tampilkan 4 karakter awal + bintang
+  const maskKey = (val) => {
+    if (!val) return '';
+    const visible = val.slice(0, 6);
+    const stars = '●'.repeat(Math.min(val.length - 6, 20));
+    return visible + stars;
+  };
+
+  const handleStartEdit = () => {
+    setDraft(value);
+    setEditing(true);
+    setTimeout(() => inputRef.current?.focus(), 30);
+  };
+
+  const handleFinish = () => {
+    onChange(draft);
+    onBlur(draft);
+    setEditing(false);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') handleFinish();
+    if (e.key === 'Escape') { setEditing(false); setDraft(''); }
+  };
+
+  if (editing) {
+    return (
+      <div style={{ display:'flex', gap:5 }}>
+        <input
+          ref={inputRef}
+          type="text"
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onBlur={handleFinish}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          style={{ flex:1, padding:'8px 11px', borderRadius:10, border:`1px solid ${accentColor}55`, background:`${accentColor}10`, color:'white', fontSize:11, outline:'none', fontFamily:'monospace', boxSizing:'border-box' }}
+          autoComplete="off" spellCheck={false}
+        />
+        <button onClick={handleFinish}
+          style={{ padding:'6px 10px', borderRadius:10, border:`1px solid ${accentColor}40`, background:`${accentColor}20`, color:accentColor, fontSize:11, cursor:'pointer', fontWeight:700, flexShrink:0 }}>
+          ✓
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div onClick={handleStartEdit}
+      style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 11px', borderRadius:10, border:`1px solid ${value ? accentColor+'35' : 'rgba(255,255,255,0.1)'}`, background: value ? `${accentColor}08` : 'rgba(255,255,255,0.03)', cursor:'text', minHeight:36 }}>
+      {value ? (
+        <>
+          <span style={{ flex:1, fontFamily:'monospace', fontSize:11, color:'rgba(255,255,255,0.75)', letterSpacing:'0.04em', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+            {maskKey(value)}
+          </span>
+          <span style={{ fontSize:9, color:accentColor, fontWeight:700, flexShrink:0 }}>Edit</span>
+        </>
+      ) : (
+        <span style={{ flex:1, fontSize:11, color:'rgba(255,255,255,0.25)', fontFamily:'monospace' }}>{placeholder}</span>
+      )}
+    </div>
+  );
+}
+
 function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setEqPreset, eqGains, setEqGains, crossfade, setCrossfade, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t, userSpId, setUserSpId, userSpSecret, setUserSpSecret, userScId, setUserScId, userAiKey, setUserAiKey }) {
   const coverRef = useRef(null);
   // Defensive: eqGains harus selalu array 5 elemen
@@ -2495,15 +2565,21 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
               <span style={{ fontWeight:700, fontSize:11, color:'rgba(255,255,255,0.7)' }}>Spotify</span>
               {(userSpId && userSpSecret) && <span style={{ fontSize:9, fontWeight:700, padding:'1px 5px', borderRadius:999, background:'rgba(29,185,84,0.2)', color:'#1DB954' }}>✓ Aktif</span>}
             </div>
-            <input type="text" placeholder="Client ID" value={userSpId}
-              onChange={e => setUserSpId(e.target.value)}
-              onBlur={e => localStorage.setItem('sn_sp_id', e.target.value)}
-              style={{ width:'100%', boxSizing:'border-box', padding:'8px 11px', borderRadius:10, border:'1px solid rgba(29,185,84,0.25)', background:'rgba(29,185,84,0.06)', color:'white', fontSize:11, outline:'none', fontFamily:'monospace', marginBottom:6 }}
-            />
-            <input type="password" placeholder="Client Secret" value={userSpSecret}
-              onChange={e => setUserSpSecret(e.target.value)}
-              onBlur={e => localStorage.setItem('sn_sp_secret', e.target.value)}
-              style={{ width:'100%', boxSizing:'border-box', padding:'8px 11px', borderRadius:10, border:'1px solid rgba(29,185,84,0.25)', background:'rgba(29,185,84,0.06)', color:'white', fontSize:11, outline:'none', fontFamily:'monospace' }}
+            <div style={{ marginBottom:6 }}>
+              <MaskedKeyInput
+                value={userSpId}
+                onChange={v => setUserSpId(v)}
+                onBlur={v => localStorage.setItem('sn_sp_id', v)}
+                placeholder="Client ID"
+                accentColor="#1DB954"
+              />
+            </div>
+            <MaskedKeyInput
+              value={userSpSecret}
+              onChange={v => setUserSpSecret(v)}
+              onBlur={v => localStorage.setItem('sn_sp_secret', v)}
+              placeholder="Client Secret"
+              accentColor="#1DB954"
             />
             {(userSpId || userSpSecret) && (
               <button onClick={() => { setUserSpId(''); setUserSpSecret(''); localStorage.removeItem('sn_sp_id'); localStorage.removeItem('sn_sp_secret'); }}
@@ -2520,10 +2596,12 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
               <span style={{ fontWeight:700, fontSize:11, color:'rgba(255,255,255,0.7)' }}>SoundCloud</span>
               {userScId && <span style={{ fontSize:9, fontWeight:700, padding:'1px 5px', borderRadius:999, background:'rgba(255,85,0,0.2)', color:'#ff5500' }}>✓ Aktif</span>}
             </div>
-            <input type="password" placeholder="Client ID" value={userScId}
-              onChange={e => setUserScId(e.target.value)}
-              onBlur={e => localStorage.setItem('sn_sc_id', e.target.value)}
-              style={{ width:'100%', boxSizing:'border-box', padding:'8px 11px', borderRadius:10, border:'1px solid rgba(255,85,0,0.25)', background:'rgba(255,85,0,0.06)', color:'white', fontSize:11, outline:'none', fontFamily:'monospace' }}
+            <MaskedKeyInput
+              value={userScId}
+              onChange={v => setUserScId(v)}
+              onBlur={v => localStorage.setItem('sn_sc_id', v)}
+              placeholder="Client ID"
+              accentColor="#ff5500"
             />
             {userScId && (
               <button onClick={() => { setUserScId(''); localStorage.removeItem('sn_sc_id'); }}
@@ -2540,10 +2618,12 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
               <span style={{ fontWeight:700, fontSize:11, color:'rgba(255,255,255,0.7)' }}>AI Key</span>
               {userAiKey && <span style={{ fontSize:9, fontWeight:700, padding:'1px 5px', borderRadius:999, background:'rgba(99,102,241,0.2)', color:'#818cf8' }}>✓ Aktif</span>}
             </div>
-            <input type="password" placeholder="OpenAI sk- / OpenRouter sk-or- / Groq gsk_ / Gemini AIza / Anthropic sk-ant-" value={userAiKey}
-              onChange={e => setUserAiKey(e.target.value)}
-              onBlur={e => localStorage.setItem('sn_ai_key', e.target.value)}
-              style={{ width:'100%', boxSizing:'border-box', padding:'8px 11px', borderRadius:10, border:'1px solid rgba(99,102,241,0.25)', background:'rgba(99,102,241,0.06)', color:'white', fontSize:11, outline:'none', fontFamily:'monospace' }}
+            <MaskedKeyInput
+              value={userAiKey}
+              onChange={v => setUserAiKey(v)}
+              onBlur={v => localStorage.setItem('sn_ai_key', v)}
+              placeholder="OpenAI sk- / OpenRouter sk-or- / Groq gsk_ / Gemini AIza / Anthropic sk-ant-"
+              accentColor="#818cf8"
             />
             <div style={{ marginTop:5, fontSize:9, color:'rgba(255,255,255,0.25)', lineHeight:1.6 }}>
               Auto-detect: sk- → OpenAI · sk-or- → OpenRouter · gsk_ → Groq · AIza → Gemini · sk-ant- → Anthropic
@@ -4355,6 +4435,66 @@ export default function App() {
     { id:'ice_laut_hiphop', name:'Hip-Hop Radio', desc:'Hip-Hop & Rap 24/7', url:'https://stream.laut.fm/hiphop', genre:'Hip-Hop', country:'DE', color:'#dc2626' },
   ];
 
+  // ── Peta keyword genre → bucket
+  const GENRE_KEYWORDS = {
+    pop:        ['pop', 'top 40', 'chart', 'hits', 'electropop'],
+    rock:       ['rock', 'alternative', 'indie', 'metal', 'punk', 'grunge'],
+    jazz:       ['jazz', 'blues', 'soul', 'bossa', 'swing'],
+    classical:  ['classical', 'orchestra', 'opera', 'baroque', 'chamber'],
+    electronic: ['electronic', 'edm', 'techno', 'house', 'trance', 'dance', 'idm', 'ambient', 'chill', 'downtempo', 'lounge', 'drone'],
+    hiphop:     ['hip-hop', 'hip hop', 'rap', 'r&b', 'rnb', 'trap'],
+    reggae:     ['reggae', 'dub', 'ska', 'dancehall'],
+    folk:       ['folk', 'country', 'americana', 'bluegrass', 'singer-songwriter'],
+    news:       ['news', 'talk', 'info', 'noticias', 'nachrichten'],
+    world:      ['world', 'latin', 'afrobeat', 'bossa nova', 'samba', 'flamenco', 'asian', 'bollywood'],
+  };
+
+  const matchGenreKeywords = (label, keywords) => {
+    const low = (label||'').toLowerCase();
+    return keywords.some(k => low.includes(k));
+  };
+
+  const getGenreBucket = (genreName) => {
+    const low = (genreName||'').toLowerCase();
+    for (const [bucket, keys] of Object.entries(GENRE_KEYWORDS)) {
+      if (keys.some(k => low.includes(k))) return bucket;
+    }
+    return null;
+  };
+
+  const getExtraStationsForGenre = (genreName) => {
+    const bucket = getGenreBucket(genreName);
+    if (!bucket) return { soma: [], icecast: [], nts: [] };
+    const keywords = GENRE_KEYWORDS[bucket];
+
+    const soma = somaChannels
+      .filter(ch => matchGenreKeywords(ch.genre, keywords))
+      .slice(0, 6)
+      .map(ch => ({
+        id: `soma_extra_${ch.id}`,
+        name: ch.title,
+        city: 'San Francisco',
+        url: ch.plls?.[0]?.url || `https://ice1.somafm.com/${ch.id}-128-mp3`,
+        desc: ch.description,
+        image: ch.image,
+        sourceLabel: 'SomaFM',
+        color: '#10b981',
+        stationuuid: `soma_extra_${ch.id}`,
+      }));
+
+    const icecast = ICECAST_CURATED
+      .filter(s => matchGenreKeywords(s.genre, keywords))
+      .slice(0, 4)
+      .map(s => ({ ...s, sourceLabel: 'Icecast', stationuuid: s.id }));
+
+    const ntsRelevant = ['electronic', 'world', 'hiphop', 'folk', 'pop', 'rock'];
+    const nts = ntsRelevant.includes(bucket)
+      ? NTS_STREAMS.map(s => ({ ...s, sourceLabel: 'NTS', stationuuid: s.id }))
+      : [];
+
+    return { soma, icecast, nts };
+  };
+
   // ── Universal play function for any external radio station
   const playRbStation = (station) => {
     const streamUrl = station.url_resolved || station.url;
@@ -5204,7 +5344,7 @@ export default function App() {
               {[8,4,6].map((h,i)=>(<div key={i} style={{ width:2.5, height:h, background:track.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${i*0.15}s infinite` }}/>))}
             </div>
           )}
-          <button onClick={()=>setShowSettings(true)} style={{ width:42, height:42, borderRadius:12, border:'none', cursor:'pointer', background:'transparent', color:'rgba(255,255,255,0.25)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <button onClick={()=>setShowSettings(true)} style={{ width:42, height:42, borderRadius:12, border:'none', cursor:'pointer', background:'transparent', color:(eqEnabled||sleepTimer)?track.color:'rgba(255,255,255,0.25)', display:'flex', alignItems:'center', justifyContent:'center' }}>
             <Settings size={16}/>
           </button>
         </div>
@@ -5255,6 +5395,11 @@ export default function App() {
       )}
 
       <main style={{ flex:1, overflow:'hidden', position:'relative' }}>
+
+        {/* ── SETTINGS PANEL — menutup semua tab di desktop & landscape, hanya player di portrait */}
+        {showSettings && (isDesktop || layoutMode === 'mobile-landscape' || tab === 'player') && (
+          <SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} eqEnabled={!!eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset||"Normal"} setEqPreset={setEqPreset} eqGains={Array.isArray(eqGains)&&eqGains.length===5?eqGains:[0,0,0,0,0]} setEqGains={setEqGains} crossfade={typeof crossfade==="number"?crossfade:0} setCrossfade={setCrossfade} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userScId={userScId} setUserScId={setUserScId} userAiKey={userAiKey} setUserAiKey={setUserAiKey}/>
+        )}
 
         {/* ─── PLAYER TAB */}
         {tab==='player'&&(
@@ -5411,8 +5556,7 @@ export default function App() {
             </div>
           )}
 
-          {/* ── SETTINGS PANEL — inline dalam player */}
-          {showSettings&&<SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} eqEnabled={!!eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset||"Normal"} setEqPreset={setEqPreset} eqGains={Array.isArray(eqGains)&&eqGains.length===5?eqGains:[0,0,0,0,0]} setEqGains={setEqGains} crossfade={typeof crossfade==="number"?crossfade:0} setCrossfade={setCrossfade} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userScId={userScId} setUserScId={setUserScId} userAiKey={userAiKey} setUserAiKey={setUserAiKey}/>}
+
 
           <div style={{
             minHeight: fullscreen ? '100%' : undefined,
@@ -6408,105 +6552,9 @@ export default function App() {
                                   </>)}
                                 </div>
                               )}
-                              {/* ── SomaFM Featured — tampil saat di halaman negara (belum pilih negara) */}
-                              {!selCountry && somaChannels.length > 0 && (
-                                <div style={{ marginBottom:14 }}>
-                                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:7 }}>
-                                    <div style={{ fontSize:10, fontWeight:800, color:'#10b981', textTransform:'uppercase', letterSpacing:'0.1em', display:'flex', alignItems:'center', gap:5 }}>
-                                      <span style={{ width:6, height:6, borderRadius:'50%', background:'#10b981', display:'inline-block' }}/>
-                                      SomaFM · Curated
-                                    </div>
-                                    <span style={{ fontSize:9, color:'rgba(255,255,255,0.25)' }}>San Francisco · Free</span>
-                                  </div>
-                                  <div style={{ display:'flex', gap:7, overflowX:'auto', paddingBottom:4 }} className="scrollbar-hide">
-                                    {somaChannels.slice(0, 10).map(ch => {
-                                      const streamUrl = ch.plls?.[0]?.url || `https://ice1.somafm.com/${ch.id}-128-mp3`;
-                                      const stId = `rb_soma_${ch.id}`;
-                                      const isActive = track.isRadio && track.id === stId;
-                                      return (
-                                        <div key={ch.id} onClick={() => playRbStation({ id:`soma_${ch.id}`, name:ch.title, url:streamUrl, country:'US', tags:ch.genre, favicon:ch.image, sourceLabel:'SomaFM', color:'#10b981', stationuuid:`soma_${ch.id}` })}
-                                          style={{ flexShrink:0, width:82, display:'flex', flexDirection:'column', alignItems:'center', gap:5, cursor:'pointer', padding:'7px 5px', borderRadius:10, background: isActive ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.04)', border:`1px solid ${isActive ? '#10b98155' : 'rgba(255,255,255,0.07)'}` }}>
-                                          <div style={{ width:46, height:46, borderRadius:9, overflow:'hidden', background:'rgba(16,185,129,0.15)', display:'flex', alignItems:'center', justifyContent:'center', position:'relative' }}>
-                                            {ch.image ? <img src={ch.image} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{e.target.style.display='none';}} /> : <span style={{ fontSize:20 }}>🎵</span>}
-                                            {isActive && playing && <div style={{ position:'absolute', inset:0, background:'rgba(16,185,129,0.55)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14 }}>⏸</div>}
-                                          </div>
-                                          <div style={{ fontSize:9, fontWeight:700, color: isActive ? '#10b981' : 'white', textAlign:'center', lineHeight:1.3, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{ch.title}</div>
-                                          <div style={{ fontSize:8, color:'rgba(255,255,255,0.3)', textAlign:'center' }}>{ch.genre}</div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              )}
-                              {/* ── SomaFM Loading */}
-                              {!selCountry && somaChannels.length === 0 && (
-                                <div style={{ marginBottom:14, padding:'10px 12px', borderRadius:10, background:'rgba(16,185,129,0.06)', border:'1px dashed rgba(16,185,129,0.2)', display:'flex', alignItems:'center', gap:8 }}>
-                                  <div style={{ width:8, height:8, borderRadius:'50%', background:'#10b981', animation:'pulse 1.5s ease-in-out infinite' }}/>
-                                  <span style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>Memuat SomaFM…</span>
-                                </div>
-                              )}
 
-                              {/* ── radio.garden Quick Access */}
-                              {!selCountry && (
-                                <div style={{ marginBottom:14 }}>
-                                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:7 }}>
-                                    <div style={{ fontSize:10, fontWeight:800, color:'#818cf8', textTransform:'uppercase', letterSpacing:'0.1em', display:'flex', alignItems:'center', gap:5 }}>
-                                      <span style={{ width:6, height:6, borderRadius:'50%', background:'#818cf8', display:'inline-block' }}/>
-                                      radio.garden · Global
-                                    </div>
-                                    {gardenCountry !== null && (
-                                      <button onClick={() => { setGardenCountry(null); setGardenStations([]); }}
-                                        style={{ fontSize:9, color:'#818cf8', background:'none', border:'none', cursor:'pointer', padding:'2px 6px' }}>‹ Kembali</button>
-                                    )}
-                                  </div>
-                                  {gardenCountry === null && (
-                                    gardenPlaces.length === 0
-                                      ? <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', borderRadius:10, background:'rgba(129,140,248,0.06)', border:'1px dashed rgba(129,140,248,0.2)' }}>
-                                          <div style={{ width:8, height:8, borderRadius:'50%', background:'#818cf8', animation:'pulse 1.5s ease-in-out infinite' }}/>
-                                          <span style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>Memuat radio.garden…</span>
-                                        </div>
-                                      : <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
-                                          {[{name:'🇮🇩 Indonesia',key:'Indonesia'},{name:'🇺🇸 US',key:'United States'},{name:'🇬🇧 UK',key:'United Kingdom'},{name:'🇯🇵 Japan',key:'Japan'},{name:'🇰🇷 Korea',key:'South Korea'},{name:'🇩🇪 Germany',key:'Germany'},{name:'🇫🇷 France',key:'France'},{name:'🇧🇷 Brazil',key:'Brazil'},{name:'🇮🇳 India',key:'India'},{name:'🇦🇺 Australia',key:'Australia'}].map(c => {
-                                            const matches = gardenPlaces.filter(p => p.country === c.key).slice(0, 1);
-                                            const place = matches[0];
-                                            return (
-                                              <button key={c.key} onClick={() => { if(place){ loadGardenStations(place.id); setGardenCountry(place.id); } else { setGardenCountry(c.key); } }}
-                                                style={{ padding:'4px 10px', borderRadius:999, border:'1px solid rgba(129,140,248,0.25)', background:'rgba(129,140,248,0.07)', color:'rgba(255,255,255,0.6)', fontSize:10, cursor:'pointer', fontWeight:600 }}>
-                                                {c.name}
-                                              </button>
-                                            );
-                                          })}
-                                        </div>
-                                  )}
-                                  {gardenCountry !== null && (
-                                    <div style={{ display:'flex', flexDirection:'column', gap:4, maxHeight:160, overflowY:'auto' }} className="scrollbar-hide">
-                                      {gardenStations.length === 0
-                                        ? <div style={{ textAlign:'center', padding:'14px 0', color:'rgba(255,255,255,0.3)', fontSize:10 }}>Memuat stasiun…</div>
-                                        : gardenStations.slice(0,12).map(item => {
-                                            const channelId = item.page?.url?.split('/').pop();
-                                            if (!channelId) return null;
-                                            const streamUrl = getGardenStreamUrl(channelId);
-                                            const stId = `rb_garden_${channelId}`;
-                                            const isActive = track.isRadio && track.id === stId;
-                                            return (
-                                              <div key={channelId} onClick={() => playRbStation({ id:`garden_${channelId}`, name:item.title, url:streamUrl, country:'', stationuuid:`garden_${channelId}`, color:'#818cf8', sourceLabel:'radio.garden' })}
-                                                style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 8px', borderRadius:9, background: isActive ? 'rgba(129,140,248,0.15)' : 'rgba(255,255,255,0.04)', border:`1px solid ${isActive ? '#818cf855' : 'rgba(255,255,255,0.06)'}`, cursor:'pointer' }}>
-                                                <div style={{ width:22, height:22, borderRadius:5, background:'rgba(129,140,248,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, flexShrink:0 }}>📡</div>
-                                                <div style={{ flex:1, minWidth:0 }}>
-                                                  <div style={{ fontSize:10, fontWeight:700, color: isActive ? '#818cf8' : 'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{item.title}</div>
-                                                  <div style={{ fontSize:8, color:'rgba(255,255,255,0.25)' }}>radio.garden · Live</div>
-                                                </div>
-                                                <div style={{ width:22, height:22, borderRadius:'50%', background: isActive && playing ? '#818cf8' : 'rgba(255,255,255,0.07)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, color:'white', flexShrink:0 }}>
-                                                  {isActive && playing ? '⏸' : '▶'}
-                                                </div>
-                                              </div>
-                                            );
-                                          })
-                                      }
-                                    </div>
-                                  )}
-                                </div>
-                              )}
+
+
 
                               {/* Divider + Country Collection title */}
                               {!selCountry && (
@@ -6636,6 +6684,58 @@ export default function App() {
                                   </div>
                                 );
                               })()}
+
+                              {/* ── Extra: SomaFM + Icecast + NTS berdasarkan genre */}
+                              {selGenre && (() => {
+                                const { soma, icecast, nts } = getExtraStationsForGenre(selGenre.name);
+                                const allExtra = [
+                                  ...soma.map(s => ({ ...s, _src: 'SomaFM', _color: '#10b981' })),
+                                  ...icecast.map(s => ({ ...s, _src: 'Icecast', _color: '#6366f1' })),
+                                  ...nts.map(s => ({ ...s, _src: 'NTS', _color: '#ff4500' })),
+                                ];
+                                if (allExtra.length === 0) return null;
+                                return (
+                                  <div style={{ marginTop:10 }}>
+                                    <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:7, paddingLeft:2 }}>
+                                      <div style={{ height:1, flex:1, background:'rgba(255,255,255,0.07)' }}/>
+                                      <span style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.25)', textTransform:'uppercase', letterSpacing:'0.08em', whiteSpace:'nowrap' }}>
+                                        Sumber Lain · {selGenre.name}
+                                      </span>
+                                      <div style={{ height:1, flex:1, background:'rgba(255,255,255,0.07)' }}/>
+                                    </div>
+                                    <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+                                      {allExtra.map(station => {
+                                        const isActive = radioStation?.id === station.id || (track.isRadio && track.id === `rb_${station.stationuuid}`);
+                                        const srcColorMap = { SomaFM:'#10b981', Icecast:'#6366f1', NTS:'#ff4500' };
+                                        const srcColor = srcColorMap[station._src] || '#f59e0b';
+                                        return (
+                                          <div key={station.id}
+                                            onClick={() => playRbStation({ ...station, color: srcColor })}
+                                            style={{ display:'flex', alignItems:'center', gap:9, padding:'7px 10px', borderRadius:10, background: isActive ? `${srcColor}18` : 'rgba(255,255,255,0.03)', border:`1px solid ${isActive ? srcColor+'45' : 'rgba(255,255,255,0.06)'}`, cursor:'pointer', transition:'all 0.15s' }}>
+                                            {/* Cover / icon */}
+                                            <div style={{ width:32, height:32, borderRadius:7, overflow:'hidden', background:`${srcColor}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:11 }}>
+                                              {station.image
+                                                ? <img src={station.image} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{e.target.style.display='none';}}/>
+                                                : station._src === 'SomaFM' ? '🎵' : station._src === 'NTS' ? '📻' : '📡'
+                                              }
+                                            </div>
+                                            <div style={{ flex:1, minWidth:0 }}>
+                                              <div style={{ fontSize:11, fontWeight:700, color: isActive ? srcColor : 'rgba(255,255,255,0.85)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{station.name}</div>
+                                              <div style={{ fontSize:9, color:'rgba(255,255,255,0.3)', marginTop:1 }}>{station.city || station.desc || ''}</div>
+                                            </div>
+                                            <span style={{ fontSize:8, fontWeight:800, color:srcColor, background:`${srcColor}18`, padding:'2px 6px', borderRadius:999, flexShrink:0, letterSpacing:'0.05em' }}>{station._src}</span>
+                                            <div style={{ width:24, height:24, borderRadius:'50%', background: isActive && (playing && track.isRadio) ? srcColor : 'rgba(255,255,255,0.07)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, color:'white', flexShrink:0 }}>
+                                              {isActive && (playing && track.isRadio) ? '⏸' : '▶'}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+
+                              <div style={{ marginTop:8, fontSize:9, color:'rgba(255,255,255,0.18)', paddingLeft:2 }}>
                               <div style={{ marginTop:8, fontSize:9, color:'rgba(255,255,255,0.18)', paddingLeft:2 }}>
                                 {!selCountry ? 'Pilih negara untuk melihat genre & stasiun' : !selGenre ? 'Pilih genre untuk melihat stasiun' : 'Hanya stasiun yang dapat dijangkau yang ditampilkan'}
                               </div>
@@ -7281,6 +7381,7 @@ export default function App() {
                 </button>
               );
             })}
+
           </nav>
         </div>
       )}
