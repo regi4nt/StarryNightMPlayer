@@ -3434,6 +3434,7 @@ export default function App() {
   // ── Core playback (moved here to avoid TDZ in useCallback closures below)
   const [track, setTrack]       = useState(SONGS[0]);
   const [playing, setPlaying]   = useState(false);
+  const playingRef = useRef(false); // sync ref agar useEffect [track.src] bisa baca playing terbaru
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume]     = useState(0.75);
@@ -3550,6 +3551,7 @@ export default function App() {
 
     const cf = crossfadeRef.current;
     const doSwitch = () => {
+      stopAllMedia('embed');
       setEmbedTrack(ytTrack);
       setYtProgress(0); setYtDuration(secs||0);
       if (queue) { ytQueueRef.current = queue; ytQueueIdxRef.current = queueIdx ?? queue.findIndex(v=>(v.videoId||v.url?.includes(videoId))===videoId); }
@@ -3585,6 +3587,34 @@ export default function App() {
     } else { doSwitch(); }
   };
 
+
+  // ── Tutup semua media aktif sebelum switch ke sumber baru
+  // mode: 'radio' | 'embed' | 'local'
+  const stopAllMedia = (incomingMode) => {
+    // Tutup YouTube embed
+    if (incomingMode !== 'embed') {
+      if (embedTrack?.type === 'youtube' && ytIframeRef.current) {
+        try { ytIframeRef.current.contentWindow.postMessage(JSON.stringify({ event:'command', func:'pauseVideo', args:'' }), '*'); } catch(_) {}
+      }
+      setEmbedTrack(null);
+      setYtProgress(0); setYtDuration(0);
+      ytQueueRef.current=[]; ytQueueIdxRef.current=-1;
+    }
+    // Tutup SoundCloud widget
+    if (incomingMode !== 'embed') {
+      setScWidget({});
+    }
+    // Stop audio jika sedang radio dan incoming bukan radio
+    if (incomingMode !== 'radio' && track?.isRadio) {
+      if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
+      setRadioPlaying(false);
+    }
+    // Stop audio jika incoming adalah radio/embed (bukan lokal)
+    if (incomingMode !== 'local' && !track?.isRadio) {
+      setPlaying(false);
+    }
+  };
+
   // ── Play web-search native audio (Jamendo/FMA/ccMixter) with full queue, EQ, crossfade
   const playWsTrack = useCallback((item, queue, queueIdx) => {
     const srcColors = { jamendo:'#f0c020', fma:'#5cb85c', ccmixter:'#e74c3c' };
@@ -3605,6 +3635,7 @@ export default function App() {
       wsQueueRef.current   = queue;
       wsQueueIdxRef.current = queueIdx ?? 0;
     }
+    stopAllMedia('local');
     setEmbedTrack(null);
     setCustomSongs(prev => { const ex = prev.find(s=>s.id===nativeTrack.id); return ex ? prev : [nativeTrack, ...prev]; });
     setTrack(nativeTrack);
@@ -3634,6 +3665,7 @@ export default function App() {
       window.open(`https://soundcloud.com/search?q=${encodeURIComponent(q)}`, '_blank', 'noopener,noreferrer');
     }
   };
+
 
   const closeEmbed = () => { setEmbedTrack(null); setPlaying(false); setYtProgress(0); setYtDuration(0); ytQueueRef.current=[]; ytQueueIdxRef.current=-1; };
 
@@ -4306,7 +4338,7 @@ export default function App() {
       }
       return;
     }
-    const wasPlaying = prev && !prev.paused;
+    const wasPlaying = playingRef.current || (prev && !prev.paused);
     if (prev) { prev.pause(); prev.src = ''; }
     // Guard: jangan buat Audio jika src kosong (placeholder track)
     if (!track.src) {
@@ -4411,6 +4443,9 @@ export default function App() {
       clearInterval(durPoll);
     };
   }, [track]); // only re-attach when track changes (not customSongs)
+
+  // ── Sync playingRef
+  useEffect(() => { playingRef.current = playing; }, [playing]);
 
   // ── Play/pause
   useEffect(() => {
@@ -4779,6 +4814,7 @@ export default function App() {
   // ── Universal play function for any external radio station
   const playRbStation = (station) => {
     const streamUrl = station.url_resolved || station.url;
+    stopAllMedia('radio');
     const stationColor = station.color || '#f59e0b';
     const radioTrackObj = {
       id: `rb_${station.stationuuid || station.id}`,
@@ -4868,11 +4904,13 @@ export default function App() {
   const play = useCallback(async (t) => {
     // ── Handle fav tracks from SC / Spotify / Radio
     if (t.type === 'soundcloud') {
+      stopAllMedia('embed');
       setScWidget(p => ({ ...p, soundcloud: t.permalink || t.src }));
       setTab('stream'); return;
     }
     if (t.type === 'spotify') {
       if (t.previewUrl) {
+        stopAllMedia('embed');
         setSpTrack(t);
         setSpPlaying(false);
         setTab('stream');
@@ -4884,11 +4922,12 @@ export default function App() {
     }
     if (t.isRadio) {
       const radioTrackObj = { id: t.id, title: t.title, artist: t.artist, album: 'Live Radio', cover: t.cover, src: t.src, color: t.color||'#f59e0b', bg: t.bg||'rgba(245,158,11,0.15)', mood: 'live, radio', isRadio: true };
-      if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
+      stopAllMedia('radio');
       setRadioStation({ id: t.id.replace('radio_',''), name: t.title, url: t.src, color: t.color||'#f59e0b' });
       setRadioPlaying(true); setTrack(radioTrackObj); setPlaying(true); setTab('player'); return;
     }
     let td = { ...t };
+    stopAllMedia('local');
     if (t.isDrive && !t.src) {
       setLoadingTrack(true);
       setDriveDownProg(0);
