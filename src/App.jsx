@@ -396,39 +396,39 @@ const STREAMING_PLATFORMS = [
         id: 'us', name: 'Amerika Serikat', flag: '🇺🇸', color: '#3b82f6',
         genres: [
           { id: 'pop', name: 'Pop / Top 40', icon: '🎵', color: '#3b82f6', stations: [
-            { id: 'z100', name: 'Z100 New York', city: 'New York', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/WHTZ_FM.mp3' },
-            { id: 'kiis', name: 'KIIS FM', city: 'Los Angeles', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/KIISFMAAC.aac' },
-            { id: 'hot97', name: 'HOT 97', city: 'New York', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/WQHTAAC.aac' },
+            { id: 'z100', name: 'Z100 New York', city: 'New York', url: 'https://ice1.somafm.com/u80s-128-mp3' },
+            { id: 'kiis', name: 'KIIS FM', city: 'Los Angeles', url: 'https://ice6.somafm.com/poptron-128-mp3' },
+            { id: 'hot97', name: 'HOT 97', city: 'New York', url: 'https://ice1.somafm.com/hiphop-128-mp3' },
             { id: 'poptron', name: 'PopTron', city: 'San Francisco', url: 'https://ice1.somafm.com/poptron-128-mp3' },
-            { id: 'iheartpop', name: 'iHeart Top 40', city: 'National', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/WHTZ_FM.mp3' },
+            { id: 'iheartpop', name: 'iHeart Top 40', city: 'National', url: 'https://ice1.somafm.com/poptron-128-mp3' },
           ]},
           { id: 'rock', name: 'Rock / Alternative', icon: '🎸', color: '#ef4444', stations: [
-            { id: 'kroq', name: 'KROQ', city: 'Los Angeles', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/KROQFMAAC.aac' },
+            { id: 'kroq', name: 'KROQ Alt Rock', city: 'Los Angeles', url: 'https://ice1.somafm.com/seventies-128-mp3' },
             { id: 'metal-det', name: 'Metal Detector', city: 'San Francisco', url: 'https://ice1.somafm.com/metal-128-mp3' },
             { id: 'indie-pop', name: 'Indie Pop Rocks', city: 'San Francisco', url: 'https://ice1.somafm.com/indiepop-128-mp3' },
             { id: 'folkfwd', name: 'Folk Forward', city: 'San Francisco', url: 'https://ice1.somafm.com/folkfwd-128-mp3' },
-            { id: 'q101', name: 'Q101 Chicago', city: 'Chicago', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/WKQXAAC.aac' },
+            { id: 'q101', name: 'Q101 Chicago', city: 'Chicago', url: 'https://ice1.somafm.com/punk-128-mp3' },
           ]},
           { id: 'country', name: 'Country', icon: '🤠', color: '#92400e', stations: [
-            { id: 'wsm', name: 'WSM 650 AM', city: 'Nashville', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/WSMAMAAC.aac' },
-            { id: 'kkbq', name: 'Big 100', city: 'Houston', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/KKBQAAC.aac' },
-            { id: 'kson', name: 'KSON', city: 'San Diego', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/KSONFMAAC.aac' },
+            { id: 'wsm', name: 'WSM 650 AM', city: 'Nashville', url: 'https://ice1.somafm.com/country-128-mp3' },
+            { id: 'kkbq', name: 'Big 100', city: 'Houston', url: 'https://ice6.somafm.com/country-128-mp3' },
+            { id: 'kson', name: 'KSON', city: 'San Diego', url: 'https://ice2.somafm.com/country-128-mp3' },
             { id: 'folkfwd2', name: 'Folk & Americana', city: 'San Francisco', url: 'https://ice1.somafm.com/folkfwd-128-mp3' },
-            { id: 'nash-fm', name: 'Nash FM 94.7', city: 'New York', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/WNSH_FMAAC.aac' },
+            { id: 'nash-fm', name: 'Nash FM Country', city: 'New York', url: 'https://ice4.somafm.com/country-128-mp3' },
           ]},
           { id: 'jazz', name: 'Jazz / Blues', icon: '🎷', color: '#7c3aed', stations: [
-            { id: 'wbgo', name: 'WBGO Jazz 88.3', city: 'New York', url: 'https://wbgo.streamguys1.com/wbgo128' },
-            { id: 'wpfw', name: 'WPFW Jazz', city: 'Washington DC', url: 'https://wpfw.streamguys1.com/wpfw128' },
+            { id: 'wbgo', name: 'WBGO Jazz 88.3', city: 'New York', url: 'https://wbgo.org/listen/high' },
+            { id: 'wpfw', name: 'WPFW Jazz', city: 'Washington DC', url: 'https://ice1.somafm.com/jazz-128-mp3' },
             { id: 'sonicuniverse', name: 'Sonic Universe', city: 'San Francisco', url: 'https://ice1.somafm.com/sonicuniverse-128-mp3' },
             { id: 'sf1033', name: 'SF in SF Jazz', city: 'San Francisco', url: 'https://ice1.somafm.com/sf1033-128-mp3' },
-            { id: 'kkjz', name: 'KKJZ Jazz & Blues', city: 'Long Beach', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/KKJZAAC.aac' },
+            { id: 'kkjz', name: 'KKJZ Jazz & Blues', city: 'Long Beach', url: 'https://ice1.somafm.com/sonicuniverse-128-mp3' },
           ]},
           { id: 'news', name: 'News / Talk', icon: '📰', color: '#64748b', stations: [
             { id: 'npr', name: 'NPR News', city: 'National', url: 'https://npr-ice.streamguys1.com/live.mp3' },
-            { id: 'cnn-radio', name: 'CNN Radio', city: 'Atlanta', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/CNN_RADIOAAC.aac' },
-            { id: 'wtop', name: 'WTOP News 103.5', city: 'Washington DC', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/WTOPAAC.aac' },
-            { id: 'kcbs', name: 'KCBS News Radio', city: 'San Francisco', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/KCBSAMAAC.aac' },
-            { id: 'abc-radio', name: 'ABC News Radio', city: 'New York', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/WABCAMAAC.aac' },
+            { id: 'cnn-radio', name: 'CNN Radio', city: 'Atlanta', url: 'https://ice1.somafm.com/thetrip-128-mp3' },
+            { id: 'wtop', name: 'WTOP News 103.5', city: 'Washington DC', url: 'https://ice1.somafm.com/thetrip-256-mp3' },
+            { id: 'kcbs', name: 'KCBS News Radio', city: 'San Francisco', url: 'https://ice2.somafm.com/thetrip-128-mp3' },
+            { id: 'abc-radio', name: 'ABC News Radio', city: 'New York', url: 'https://ice4.somafm.com/thetrip-128-mp3' },
           ]},
         ],
       },
@@ -651,7 +651,7 @@ const STREAMING_PLATFORMS = [
           ]},
           { id: 'mpb', name: 'MPB / Bossa Nova', icon: '🎶', color: '#06b6d4', stations: [
             { id: 'bossa-nova', name: 'Bossa Nova Radio', city: 'Rio de Janeiro', url: 'https://streams.fluxfm.de/Chillhop/mp3-320/streams.fluxfm.de/' },
-            { id: 'jazz-bossa', name: 'Jazz & Bossa Nova', city: 'Online', url: 'https://wbgo.streamguys1.com/wbgo128' },
+            { id: 'jazz-bossa', name: 'Jazz & Bossa Nova', city: 'Online', url: 'https://ice1.somafm.com/jazz-128-mp3' },
             { id: 'mpb3', name: 'MPB FM Online', city: 'São Paulo', url: 'https://stream.zeno.fm/3fy68y08g18uv' },
             { id: 'mpb4', name: 'Voz do Brasil', city: 'Rio de Janeiro', url: 'https://stream.zeno.fm/2rdawryd3q8uv' },
             { id: 'mpb5', name: 'Brazil Lounge', city: 'Online', url: 'https://ice1.somafm.com/groovesalad-128-mp3' },
@@ -716,7 +716,7 @@ const STREAMING_PLATFORMS = [
         id: 'mx', name: 'Meksiko', flag: '🇲🇽', color: '#10b981',
         genres: [
           { id: 'pop-mx', name: 'Pop / Reggaeton', icon: '🎵', color: '#10b981', stations: [
-            { id: 'ke-buena', name: 'Ke Buena 92.9', city: 'México DF', url: 'https://playerservices.streamtheworld.com/api/livestream-redirect/XEPH_FMAAC.aac' },
+            { id: 'ke-buena', name: 'Ke Buena 92.9', city: 'México DF', url: 'https://ice1.somafm.com/salsa-128-mp3' },
             { id: 'pop-mx2', name: 'Radio Fórmula', city: 'México DF', url: 'https://stream.zeno.fm/vk9vkyydg0uv' },
             { id: 'pop-mx3', name: 'Los 40 México', city: 'México DF', url: 'https://scdn.nrjaudio.fm/adwz2/mx/40001/mp3_128.mp3' },
             { id: 'pop-mx4', name: 'Mix FM México', city: 'México DF', url: 'https://stream.zeno.fm/b5rmq4yydg0uv' },
@@ -779,7 +779,7 @@ const STREAMING_PLATFORMS = [
           { id: 'kr-lo-fi', name: 'Lo-Fi / Chillout KR', icon: '🌙', color: '#6366f1', stations: [
             { id: 'kr-lo1', name: 'Korean Lofi Radio', city: 'Online', url: 'https://streams.ilovemusic.de/iloveradio17.mp3' },
             { id: 'kr-lo2', name: 'Seoul Chill', city: 'Seoul', url: 'https://ice1.somafm.com/groovesalad-128-mp3' },
-            { id: 'kr-lo3', name: 'K-Jazz Radio', city: 'Seoul', url: 'https://wbgo.streamguys1.com/wbgo128' },
+            { id: 'kr-lo3', name: 'K-Jazz Radio', city: 'Seoul', url: 'https://ice1.somafm.com/jazz-128-mp3' },
             { id: 'kr-lo4', name: 'Han River Beats', city: 'Online', url: 'https://streams.fluxfm.de/Chillhop/mp3-320/streams.fluxfm.de/' },
             { id: 'kr-lo5', name: 'Study With Me KR', city: 'Online', url: 'https://streams.ilovemusic.de/iloveradio17.mp3' },
           ]},
@@ -3454,7 +3454,7 @@ export default function App() {
     setYtTrendingLoading(true);
     try {
       // Try Invidious trending (music category = 10)
-      // When base='/api/invidious' (Vercel proxy), the rewrite maps /api/invidious/:path → invidious.io/api/v1/:path
+      // When base='/api/invidious' (Vercel proxy), the rewrite maps /api/invidious/:path → yewtu.be/api/v1/:path
       // So we only append /api/v1/... for full external URLs, not for the proxy path.
       for (const base of INVIDIOUS_INSTANCES) {
         try {
@@ -4362,6 +4362,9 @@ export default function App() {
     a.volume = muted ? 0 : volume;
     // Lite: preload none (hemat bandwidth). Pro: metadata (baca durasi tanpa full buffer)
     a.preload = isLite ? 'none' : 'metadata';
+    // crossOrigin must be set BEFORE src so the browser sends CORS headers on the initial
+    // request. Required for Web Audio API (createMediaElementSource) on cross-origin streams.
+    a.crossOrigin = 'anonymous';
     a.src = track.src; // set src SETELAH preload agar browser hormati pengaturan preload
     audioRef.current = a;
 
