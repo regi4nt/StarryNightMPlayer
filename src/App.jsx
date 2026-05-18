@@ -1027,8 +1027,10 @@ const SLEEP_OPTIONS = [
 // ═══════════════════════════════════════════════════════
 
 // Public Piped/Invidious API instances (YouTube search, no key needed)
+// First entry uses Vercel proxy rewrites → same-origin request, no CORS issues.
+// Remaining entries are public fallbacks (may have CORS on some browsers).
 const PIPED_INSTANCES = [
-  'https://pipedapi.kavin.rocks',
+  '/api/piped',
   'https://pipedapi.tokhmi.xyz',
   'https://pipedapi.moomoo.me',
   'https://api.piped.yt',
@@ -1036,7 +1038,7 @@ const PIPED_INSTANCES = [
   'https://api.piped.projectsegfault.net',
 ];
 const INVIDIOUS_INSTANCES = [
-  'https://invidious.snopyta.org',
+  '/api/invidious',
   'https://invidious.kavin.rocks',
   'https://y.com.sb',
   'https://invidious.nerdvpn.de',
@@ -3388,7 +3390,11 @@ export default function App() {
       try {
         const ctrl = new AbortController();
         const tid  = setTimeout(() => ctrl.abort(), 5000);
-        const res  = await fetch(`${base}/api/v1/search?q=${encodeURIComponent(query)}&type=video&fields=videoId,title,author,lengthSeconds,videoThumbnails`, { signal: ctrl.signal });
+        const isProxy = base.startsWith('/');
+        const url = isProxy
+          ? `${base}/search?q=${encodeURIComponent(query)}&type=video&fields=videoId,title,author,lengthSeconds,videoThumbnails`
+          : `${base}/api/v1/search?q=${encodeURIComponent(query)}&type=video&fields=videoId,title,author,lengthSeconds,videoThumbnails`;
+        const res  = await fetch(url, { signal: ctrl.signal });
         clearTimeout(tid);
         if (!res.ok) continue;
         const data = await res.json();
@@ -3448,11 +3454,17 @@ export default function App() {
     setYtTrendingLoading(true);
     try {
       // Try Invidious trending (music category = 10)
+      // When base='/api/invidious' (Vercel proxy), the rewrite maps /api/invidious/:path → invidious.io/api/v1/:path
+      // So we only append /api/v1/... for full external URLs, not for the proxy path.
       for (const base of INVIDIOUS_INSTANCES) {
         try {
           const ctrl = new AbortController();
           const tid  = setTimeout(() => ctrl.abort(), 5000);
-          const res  = await fetch(`${base}/api/v1/trending?type=Music&fields=title,videoId`, { signal: ctrl.signal });
+          const isProxy = base.startsWith('/');
+          const url = isProxy
+            ? `${base}/trending?type=Music&fields=title,videoId`
+            : `${base}/api/v1/trending?type=Music&fields=title,videoId`;
+          const res  = await fetch(url, { signal: ctrl.signal });
           clearTimeout(tid);
           if (!res.ok) continue;
           const data = await res.json();
@@ -4704,7 +4716,8 @@ export default function App() {
   const loadGardenPlaces = async () => {
     if (gardenPlaces.length > 0) return;
     try {
-      const data = await fetch('https://radio.garden/api/ara/content/places').then(r=>r.json());
+      // Use Vercel proxy (/api/radio-garden/ → radio.garden/api/ara/) to avoid CORS
+      const data = await fetch('/api/radio-garden/content/places').then(r=>r.json());
       setGardenPlaces((data?.data?.list || []).slice(0, 500));
     } catch {
       setGardenPlaces([]);
@@ -4714,13 +4727,14 @@ export default function App() {
   const loadGardenStations = async (placeId) => {
     setGardenStations([]);
     try {
-      const data = await fetch(`https://radio.garden/api/ara/content/page/${placeId}/channels`).then(r=>r.json());
+      const data = await fetch(`/api/radio-garden/content/page/${placeId}/channels`).then(r=>r.json());
       const channels = data?.data?.content?.[0]?.items || [];
       setGardenStations(channels);
     } catch {}
   };
 
   const getGardenStreamUrl = (channelId) => {
+    // Stream URL goes directly to radio.garden (audio streaming, not an API call)
     return `https://radio.garden/api/ara/content/listen/${channelId}/channel.mp3`;
   };
 
