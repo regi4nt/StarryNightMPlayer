@@ -5119,6 +5119,10 @@ export default function App() {
   const removeFromPlaylist = useCallback((plId, songId) => {
     setPlaylists(p => p.map(pl => pl.id===plId
       ? { ...pl, songIds: pl.songIds.filter(id=>id!==songId) } : pl));
+    if (plId === 'pl_fav') {
+      setLiked(l => ({ ...l, [songId]: false }));
+      setFavSongs(p => p.filter(s => s.id !== songId));
+    }
   }, []);
 
   // ── Google
@@ -5280,7 +5284,7 @@ export default function App() {
       {!isLite && <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, overflow:'hidden' }}><div className="stars"/><div className="starsB"/><div className="starsC"/></div>}
 
       {/* ══ HEADER */}
-      {!fullscreen && <header style={{ position: isLite ? 'relative' : 'sticky', top: isLite ? undefined : 0, zIndex:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'space-between', padding: layoutMode === 'mobile-landscape' ? '5px 14px' : '9px 14px', borderBottom: isLite ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(255,255,255,0.08)', background: isLite ? 'transparent' : 'rgba(7,7,26,0.97)', backdropFilter: isLite ? 'none' : 'blur(20px)', WebkitBackdropFilter: isLite ? 'none' : 'blur(20px)' }}>
+      {!fullscreen && <header style={{ position: 'sticky', top: 0, zIndex:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'space-between', padding: layoutMode === 'mobile-landscape' ? '5px 14px' : '9px 14px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: 'rgba(7,7,26,0.85)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
         <div style={{ display:'flex', alignItems:'center', gap:9 }}>
           <AppLogo size={layoutMode === 'mobile-landscape' ? 24 : 30}/>
           <div>
@@ -6066,10 +6070,7 @@ export default function App() {
                                   <div style={{ fontSize:11, color:'rgba(255,255,255,0.6)' }}>
                                     Tempel URL SoundCloud atau cari langsung di web.
                                   </div>
-                                  <button onClick={() => { const q = unifiedQuery.trim() || scQuery[platform.id]?.trim() || ''; const url = q ? (q.includes('soundcloud.com/') ? null : `https://soundcloud.com/search?q=${encodeURIComponent(q)}`) : 'https://soundcloud.com'; if (!q.includes('soundcloud.com/')) { window.open(url, '_blank', 'noopener,noreferrer'); } else { setEmbedTrack({type:'soundcloud',src:q,title:'SoundCloud',artist:'SoundCloud',thumbnail:null}); setTab('player'); } }}
-                                    style={{ padding:'8px 14px', borderRadius:999, border:'none', background:'#ff5500', color:'white', fontSize:12, fontWeight:800, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-                                    <span>🔊</span> Buka SoundCloud Web ↗
-                                  </button>
+
                                 </div>
                               </div>
                             )}
@@ -7051,7 +7052,7 @@ export default function App() {
                 const songs = filteredCustom;
                 return (
                   <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
-                    <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
+                    <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0, position:'sticky', top:0, zIndex:5, background:'rgba(7,7,26,0.97)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                         <button onClick={()=>{ setActivePl(null); setPlView('list'); }} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.5)', padding:4, display:'flex' }}>
                           <ChevronLeft size={20}/>
@@ -7115,7 +7116,7 @@ export default function App() {
                 const songs = history.slice(1);
                 return (
                   <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
-                    <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
+                    <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0, position:'sticky', top:0, zIndex:5, background:'rgba(7,7,26,0.97)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                         <button onClick={()=>{ setActivePl(null); setPlView('list'); }} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.5)', padding:4, display:'flex' }}>
                           <ChevronLeft size={20}/>
@@ -7161,7 +7162,7 @@ export default function App() {
                 const songs = filteredSongs;
                 return (
                   <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
-                    <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
+                    <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0, position:'sticky', top:0, zIndex:5, background:'rgba(7,7,26,0.97)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                         <button onClick={()=>{ setActivePl(null); setPlView('list'); }} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.5)', padding:4, display:'flex' }}>
                           <ChevronLeft size={20}/>
@@ -7196,7 +7197,7 @@ export default function App() {
               return (
                 <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
                   {/* Header */}
-                  <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
+                  <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0, position:'sticky', top:0, zIndex:5, background:'rgba(7,7,26,0.97)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                       <button onClick={()=>setPlView('list')} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.5)', padding:4, display:'flex' }}>
                         <ChevronLeft size={20}/>
@@ -7299,8 +7300,8 @@ export default function App() {
               <div style={{ display:'flex', justifyContent:'center', gap:0, marginBottom:0, borderBottom:'1px solid rgba(255,255,255,0.06)', overflowX:'auto' }} className="scrollbar-hide">
                 {[
                   { id:'chat', label:'💬 Chat' },
-                  { id:'lyrics', label:`🎵 ${t?.lyricsTab||'Lyrics'}` },
                   { id:'foryou', label:'🎯 For You' },
+                  { id:'lyrics', label:`🎵 ${t?.lyricsTab||'Lyrics'}` },
                 ].map(({id, label})=>(
                   <button key={id} onClick={()=>setAiSubView(id)}
                     style={{ padding:'9px 22px', borderRadius:0, border:'none', background:'none', color:aiSubView===id?'white':'rgba(255,255,255,0.4)', fontSize:13, fontWeight:aiSubView===id?800:600, cursor:'pointer', borderBottom:aiSubView===id?`2px solid ${track.color}`:'2px solid transparent', marginBottom:-1, flexShrink:0, whiteSpace:'nowrap' }}>
@@ -7314,13 +7315,24 @@ export default function App() {
             {aiSubView==='foryou' ? (
               /* ── FOR YOU / PERSONALISASI VIEW */
               <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'16px 20px 24px' }}>
-                {personaStep==='onboard' ? (
+                {isLite ? (
+                  /* ── LITE MODE GATE */
+                  <div style={{ textAlign:'center', paddingTop:40 }}>
+                    <div style={{ fontSize:40, marginBottom:14 }}>🎯</div>
+                    <div style={{ fontSize:15, fontWeight:800, color:'rgba(255,255,255,0.5)', marginBottom:8 }}>For You tidak tersedia</div>
+                    <div style={{ fontSize:12, color:'rgba(255,255,255,0.3)', lineHeight:1.7, marginBottom:24, whiteSpace:'pre-line' }}>{'Mode Lite aktif — fitur For You\ndinonaktifkan untuk hemat data.\n\nAktifkan Mode Pro untuk\npersonalisasi rekomendasimu.'}</div>
+                    <button onClick={toggleMode} style={{ padding:'9px 20px', borderRadius:999, border:'1px solid rgba(99,102,241,0.4)', background:'rgba(99,102,241,0.12)', color:'#a5b4fc', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+                      ✨ Switch ke Pro Mode
+                    </button>
+                  </div>
+                ) : personaStep==='onboard' ? (
                   /* ── ONBOARDING FORM */
                   <div>
                     <div style={{ textAlign:'center', marginBottom:20 }}>
-                      <div style={{ fontSize:32, marginBottom:8 }}>🎯</div>
-                      <div style={{ fontWeight:800, fontSize:16, marginBottom:6 }}>Personalisasi Audio</div>
-                      <div style={{ fontSize:12, color:'rgba(255,255,255,0.4)', lineHeight:1.6 }}>Beritahu Starry AI tentang preferensimu — kami pilihkan musik, radio, dan podcast yang tepat untukmu.</div>
+                      <div style={{ fontSize:32, marginBottom:8 }}>🎧</div>
+                      <div style={{ fontWeight:800, fontSize:16, marginBottom:4 }}>Halo Musisi! 👋</div>
+                      <div style={{ fontSize:13, color:'rgba(255,255,255,0.5)', marginBottom:8 }}>Cobalah mendengarkan</div>
+                      <div style={{ fontSize:12, color:'rgba(255,255,255,0.35)', lineHeight:1.6 }}>Beritahu Starry AI tentang preferensimu — kami pilihkan musik, radio, dan podcast yang tepat untukmu.</div>
                     </div>
 
                     {/* Kategori audio */}
@@ -7568,15 +7580,11 @@ Berikan response HANYA dalam JSON ini (tanpa markdown, tanpa teks lain):
                           </div>
                         )}
 
-                        {/* Reset & regenerate */}
+                        {/* Ubah preferensi */}
                         <div style={{ display:'flex', gap:8, marginTop:8 }}>
                           <button onClick={()=>{ setPersonaStep('onboard'); localStorage.removeItem('sn_persona_done'); }}
                             style={{ flex:1, padding:'10px', borderRadius:12, border:'1px solid rgba(255,255,255,0.1)', background:'transparent', color:'rgba(255,255,255,0.5)', fontSize:12, fontWeight:700, cursor:'pointer' }}>
                             ✏️ Ubah Preferensi
-                          </button>
-                          <button onClick={()=>{ localStorage.removeItem('sn_persona_done'); setPersonaStep('onboard'); setPersonaRecs(null); setPersonaPrefs({ categories:[], moods:[], timeOfDay:'', lang:'' }); }}
-                            style={{ flex:1, padding:'10px', borderRadius:12, border:'1px solid rgba(255,255,255,0.1)', background:'transparent', color:'rgba(255,255,255,0.5)', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-                            🔄 Reset
                           </button>
                         </div>
                       </>
