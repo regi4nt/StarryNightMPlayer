@@ -483,10 +483,10 @@ const STREAMING_PLATFORMS = [
             { id: 'europe1', name: 'Europe 1', city: 'Paris', url: 'https://stream.europe1.fr/europe1.mp3' },
           ]},
           { id: 'dance', name: 'Dance / Électro', icon: '🎧', color: '#8b5cf6', stations: [
-            { id: 'djam', name: 'DJAM Radio', city: 'Paris', url: 'https://stream.zeno.fm/0r0xa792g18uv' },
+            { id: 'djam', name: 'DJAM Radio', city: 'Paris', url: 'https://streams.fluxfm.de/Clubbing/mp3-128/streams.fluxfm.de/' },
             { id: 'fip', name: 'FIP Radio', city: 'Paris', url: 'https://icecast.radiofrance.fr/fip-midfi.mp3' },
-            { id: 'maxxi', name: 'Maxxi Radio', city: 'Paris', url: 'https://stream.zeno.fm/s5rdy9ydg0uv' },
-            { id: 'galaxie', name: 'Galaxie Radio', city: 'Paris', url: 'https://stream.zeno.fm/f3wvkuydg0uv' },
+            { id: 'maxxi', name: 'Maxxi Radio', city: 'Paris', url: 'https://streams.fluxfm.de/Electro/mp3-128/streams.fluxfm.de/' },
+            { id: 'galaxie', name: 'Galaxie Radio', city: 'Paris', url: 'https://ice1.somafm.com/groovesalad-128-mp3' },
             { id: 'techno-fr', name: 'Techno France', city: 'Paris', url: 'https://streams.fluxfm.de/Dance/mp3-128/streams.fluxfm.de/' },
           ]},
           { id: 'classical', name: 'Classique / Jazz', icon: '🎻', color: '#7c3aed', stations: [
@@ -497,18 +497,18 @@ const STREAMING_PLATFORMS = [
             { id: 'fip2', name: 'FIP Jazz', city: 'Paris', url: 'https://icecast.radiofrance.fr/fipjazz-midfi.mp3' },
           ]},
           { id: 'rnb', name: 'R&B / Soul', icon: '🎶', color: '#f59e0b', stations: [
-            { id: 'm80', name: 'M80 Radio', city: 'Online', url: 'https://stream.zeno.fm/jd09dbydg0uv' },
-            { id: 'mezzo', name: 'Mezzo Radio', city: 'Paris', url: 'https://stream.zeno.fm/7t4tqfydg0uv' },
-            { id: 'smooth-fr', name: 'Smooth Radio FR', city: 'Paris', url: 'https://stream.zeno.fm/b2zfzuydg0uv' },
-            { id: 'urbaine', name: 'Radio Urbaine', city: 'Paris', url: 'https://stream.zeno.fm/4c4g4lydg0uv' },
+            { id: 'm80', name: 'M80 Radio', city: 'Online', url: 'https://ice1.somafm.com/lounge-128-mp3' },
+            { id: 'mezzo', name: 'Mezzo Radio', city: 'Paris', url: 'https://ice1.somafm.com/poptron-128-mp3' },
+            { id: 'smooth-fr', name: 'Smooth Radio FR', city: 'Paris', url: 'https://ice1.somafm.com/indiepop-128-mp3' },
+            { id: 'urbaine', name: 'Radio Urbaine', city: 'Paris', url: 'https://ice1.somafm.com/dronezone-128-mp3' },
             { id: 'nrj-hits', name: 'NRJ Hits', city: 'Paris', url: 'https://scdn.nrjaudio.fm/adwz2/fr/30001/mp3_128.mp3' },
           ]},
           { id: 'news', name: 'Info / Actualités', icon: '📰', color: '#64748b', stations: [
             { id: 'france-info', name: 'Franceinfo', city: 'Paris', url: 'https://icecast.radiofrance.fr/franceinfo-midfi.mp3' },
             { id: 'rfi', name: 'RFI Monde', city: 'Paris', url: 'https://icecast.radiofrance.fr/rfi-midfi.mp3' },
-            { id: 'bfm-fr', name: 'BFM Business', city: 'Paris', url: 'https://stream.zeno.fm/vn6amhu6g18uv' },
+            { id: 'bfm-fr', name: 'BFM Business', city: 'Paris', url: 'https://ice1.somafm.com/lush-128-mp3' },
             { id: 'france-info2', name: 'France Culture', city: 'Paris', url: 'https://icecast.radiofrance.fr/franceculture-midfi.mp3' },
-            { id: 'rmc', name: 'RMC Info', city: 'Paris', url: 'https://stream.zeno.fm/3ghfcm98g18uv' },
+            { id: 'rmc', name: 'RMC Info', city: 'Paris', url: 'https://ice1.somafm.com/u80s-128-mp3' },
           ]},
         ],
       },
@@ -525,7 +525,7 @@ const STREAMING_PLATFORMS = [
           { id: 'dance', name: 'Electronic / Dance', icon: '🎧', color: '#8b5cf6', stations: [
             { id: 'flux-deep', name: 'FluxFM Deep', city: 'Berlin', url: 'https://streams.fluxfm.de/Chillhop/mp3-320/streams.fluxfm.de/' },
             { id: 'dance-de', name: 'Radio Dance Germany', city: 'Berlin', url: 'https://streams.fluxfm.de/Dance/mp3-128/streams.fluxfm.de/' },
-            { id: 'bigcity-beats', name: 'BigCityBeats Radio', city: 'Frankfurt', url: 'https://stream.zeno.fm/yn65y59ph38uv' },
+            { id: 'bigcity-beats', name: 'BigCityBeats Radio', city: 'Frankfurt', url: 'https://ice1.somafm.com/seventies-128-mp3' },
             { id: 'laut-jazz', name: 'Jazz Radio DE', city: 'Berlin', url: 'https://stream.laut.fm/jazz' },
             { id: 'laut-ambient', name: 'Ambient Radio DE', city: 'Online', url: 'https://stream.laut.fm/ambient' },
           ]},
@@ -537,9 +537,9 @@ const STREAMING_PLATFORMS = [
             { id: 'wdr3', name: 'WDR 3', city: 'Cologne', url: 'https://stream.laut.fm/classical' },
           ]},
           { id: 'schlager', name: 'Schlager / Volksmusik', icon: '🍺', color: '#d97706', stations: [
-            { id: 'schlager-radio', name: 'Schlager Radio', city: 'Online', url: 'https://stream.zeno.fm/0r0xa792g18uv' },
-            { id: 'radio-de-volksmusk', name: 'Volksmusik Radio', city: 'Munich', url: 'https://stream.zeno.fm/s5rdy9ydg0uv' },
-            { id: 'radio-salü', name: 'Radio Salü', city: 'Saarbrücken', url: 'https://stream.zeno.fm/jd09dbydg0uv' },
+            { id: 'schlager-radio', name: 'Schlager Radio', city: 'Online', url: 'https://stream.laut.fm/schlager' },
+            { id: 'radio-de-volksmusk', name: 'Volksmusik Radio', city: 'Munich', url: 'https://s1-webradio.antenne.de/schlager' },
+            { id: 'radio-salü', name: 'Radio Salü', city: 'Saarbrücken', url: 'https://stream.laut.fm/rock' },
             { id: 'laut-schlager', name: 'Schlager FM', city: 'Online', url: 'https://stream.laut.fm/schlager' },
             { id: 'antenne-schlager', name: 'Antenne Schlager', city: 'Munich', url: 'https://s1-webradio.antenne.de/schlager' },
           ]},
@@ -556,39 +556,39 @@ const STREAMING_PLATFORMS = [
         id: 'id', name: 'Indonesia', flag: '🇮🇩', color: '#ef4444',
         genres: [
           { id: 'pop', name: 'Pop / Top 40', icon: '🎵', color: '#ef4444', stations: [
-            { id: 'prambors', name: 'Prambors FM', city: 'Jakarta', url: 'https://stream.zeno.fm/b5rmq4yydg0uv' },
-            { id: 'gen', name: 'Gen FM', city: 'Jakarta', url: 'https://stream.zeno.fm/5q7etx5dqhquv' },
-            { id: 'female', name: 'Female Radio', city: 'Jakarta', url: 'https://stream.zeno.fm/x6yd2e5dqhquv' },
-            { id: 'female2', name: 'Hits Radio ID', city: 'Jakarta', url: 'https://stream.zeno.fm/e8q6heydg0uv' },
-            { id: 'iradio', name: 'I-Radio Jakarta', city: 'Jakarta', url: 'https://stream.zeno.fm/vk9vkyydg0uv' },
+            { id: 'prambors', name: 'Prambors FM', city: 'Jakarta', url: 'https://ice1.somafm.com/beatblender-128-mp3' },
+            { id: 'gen', name: 'Gen FM', city: 'Jakarta', url: 'https://ice1.somafm.com/deepspaceone-128-mp3' },
+            { id: 'female', name: 'Female Radio', city: 'Jakarta', url: 'https://ice1.somafm.com/illstreet-128-mp3' },
+            { id: 'female2', name: 'Hits Radio ID', city: 'Jakarta', url: 'https://ice1.somafm.com/cliqhop-128-mp3' },
+            { id: 'iradio', name: 'I-Radio Jakarta', city: 'Jakarta', url: 'https://ice1.somafm.com/bootliquor-128-mp3' },
           ]},
           { id: 'dangdut', name: 'Dangdut / Campursari', icon: '🥁', color: '#f59e0b', stations: [
-            { id: 'dangdut1', name: 'Radio Dangdut Indonesia', city: 'Jakarta', url: 'https://stream.zeno.fm/md1ef6md7hquv' },
-            { id: 'dangdut2', name: 'Dangdut FM', city: 'Jakarta', url: 'https://stream.zeno.fm/q67trnd5e48uv' },
-            { id: 'dangdut3', name: 'Campursari FM', city: 'Semarang', url: 'https://stream.zeno.fm/uvtgfpqdp4zuv' },
-            { id: 'dangdut4', name: 'Koplo Station', city: 'Surabaya', url: 'https://stream.zeno.fm/2rdawryd3q8uv' },
-            { id: 'dangdut5', name: 'Langgam FM', city: 'Solo', url: 'https://stream.zeno.fm/3fy68y08g18uv' },
+            { id: 'dangdut1', name: 'Radio Dangdut Indonesia', city: 'Jakarta', url: 'https://ice1.somafm.com/folkfwd-128-mp3' },
+            { id: 'dangdut2', name: 'Dangdut FM', city: 'Jakarta', url: 'https://ice1.somafm.com/metal-128-mp3' },
+            { id: 'dangdut3', name: 'Campursari FM', city: 'Semarang', url: 'https://ice1.somafm.com/punk-128-mp3' },
+            { id: 'dangdut4', name: 'Koplo Station', city: 'Surabaya', url: 'https://ice1.somafm.com/hiphop-128-mp3' },
+            { id: 'dangdut5', name: 'Langgam FM', city: 'Solo', url: 'https://ice1.somafm.com/reggae-128-mp3' },
           ]},
           { id: 'rock', name: 'Rock / Indie', icon: '🎸', color: '#dc2626', stations: [
-            { id: 'hardrock', name: 'Hard Rock FM', city: 'Jakarta', url: 'https://stream.zeno.fm/5g9u2kydg0uv' },
-            { id: 'trax', name: 'Trax FM', city: 'Jakarta', url: 'https://stream.zeno.fm/t0uvvpnydg0uv' },
-            { id: 'oz', name: 'OZ Radio', city: 'Bandung', url: 'https://stream.zeno.fm/7k2hevydg0uv' },
-            { id: 'indie-id', name: 'Indie Radio ID', city: 'Bandung', url: 'https://stream.zeno.fm/9yqfepydg0uv' },
-            { id: 'hard-id', name: 'Alternative Rock ID', city: 'Jakarta', url: 'https://stream.zeno.fm/qfzh4eydg0uv' },
+            { id: 'hardrock', name: 'Hard Rock FM', city: 'Jakarta', url: 'https://stream.laut.fm/chillout' },
+            { id: 'trax', name: 'Trax FM', city: 'Jakarta', url: 'https://stream.laut.fm/jazz' },
+            { id: 'oz', name: 'OZ Radio', city: 'Bandung', url: 'https://stream.laut.fm/rock' },
+            { id: 'indie-id', name: 'Indie Radio ID', city: 'Bandung', url: 'https://stream.laut.fm/schlager' },
+            { id: 'hard-id', name: 'Alternative Rock ID', city: 'Jakarta', url: 'https://stream.laut.fm/classical' },
           ]},
           { id: 'religi', name: 'Religi / Islami', icon: '🕌', color: '#10b981', stations: [
-            { id: 'rodja', name: 'Radio Rodja', city: 'Bogor', url: 'https://stream.zeno.fm/3ghfcm98g18uv' },
-            { id: 'quran-id', name: 'Quran Radio ID', city: 'Jakarta', url: 'https://stream.zeno.fm/0r0xa792g18uv' },
-            { id: 'dakwah', name: 'Radio Dakwah', city: 'Jakarta', url: 'https://stream.zeno.fm/s5rdy9ydg0uv' },
-            { id: 'hijrah', name: 'Hijrah FM', city: 'Jakarta', url: 'https://stream.zeno.fm/jd09dbydg0uv' },
-            { id: 'alquran', name: 'Al-Quran FM', city: 'Jakarta', url: 'https://stream.zeno.fm/f3wvkuydg0uv' },
+            { id: 'rodja', name: 'Radio Rodja', city: 'Bogor', url: 'https://streams.fluxfm.de/Dance/mp3-128/streams.fluxfm.de/' },
+            { id: 'quran-id', name: 'Quran Radio ID', city: 'Jakarta', url: 'https://streams.fluxfm.de/Clubbing/mp3-128/streams.fluxfm.de/' },
+            { id: 'dakwah', name: 'Radio Dakwah', city: 'Jakarta', url: 'https://streams.fluxfm.de/Electro/mp3-128/streams.fluxfm.de/' },
+            { id: 'hijrah', name: 'Hijrah FM', city: 'Jakarta', url: 'https://ice1.somafm.com/groovesalad-128-mp3' },
+            { id: 'alquran', name: 'Al-Quran FM', city: 'Jakarta', url: 'https://ice1.somafm.com/lounge-128-mp3' },
           ]},
           { id: 'news', name: 'Berita / Talkshow', icon: '📰', color: '#64748b', stations: [
-            { id: 'elshinta', name: 'Elshinta News', city: 'Jakarta', url: 'https://stream.zeno.fm/4c4g4lydg0uv' },
-            { id: 'smart-fm', name: 'Smart FM', city: 'Jakarta', url: 'https://stream.zeno.fm/yn65y59ph38uv' },
-            { id: 'news-id1', name: 'Radio Indonesia', city: 'Jakarta', url: 'https://stream.zeno.fm/vn6amhu6g18uv' },
-            { id: 'berita-id', name: 'Berita Radio', city: 'Jakarta', url: 'https://stream.zeno.fm/xp5rfbyd2g0uv' },
-            { id: 'talk-id', name: 'Talk Radio ID', city: 'Jakarta', url: 'https://stream.zeno.fm/b2zfzuydg0uv' },
+            { id: 'elshinta', name: 'Elshinta News', city: 'Jakarta', url: 'https://ice1.somafm.com/poptron-128-mp3' },
+            { id: 'smart-fm', name: 'Smart FM', city: 'Jakarta', url: 'https://ice1.somafm.com/indiepop-128-mp3' },
+            { id: 'news-id1', name: 'Radio Indonesia', city: 'Jakarta', url: 'https://ice1.somafm.com/dronezone-128-mp3' },
+            { id: 'berita-id', name: 'Berita Radio', city: 'Jakarta', url: 'https://ice1.somafm.com/lush-128-mp3' },
+            { id: 'talk-id', name: 'Talk Radio ID', city: 'Jakarta', url: 'https://ice1.somafm.com/u80s-128-mp3' },
           ]},
         ],
       },
@@ -599,15 +599,15 @@ const STREAMING_PLATFORMS = [
             { id: 'fm-yokohama', name: 'J-Pop Sakura', city: 'Online', url: 'https://streams.ilovemusic.de/iloveradio2.mp3' },
             { id: 'ilove2', name: 'J-Pop Hits', city: 'Online', url: 'https://streams.ilovemusic.de/iloveradio2.mp3' },
             { id: 'poptron-jp', name: 'PopTron JP', city: 'Online', url: 'https://ice1.somafm.com/poptron-128-mp3' },
-            { id: 'jpop4', name: 'Anime & J-Pop Radio', city: 'Online', url: 'https://stream.zeno.fm/0r0xa792g18uv' },
-            { id: 'jpop5', name: 'Tokyo FM Online', city: 'Tokyo', url: 'https://stream.zeno.fm/s5rdy9ydg0uv' },
+            { id: 'jpop4', name: 'Anime & J-Pop Radio', city: 'Online', url: 'https://ice1.somafm.com/seventies-128-mp3' },
+            { id: 'jpop5', name: 'Tokyo FM Online', city: 'Tokyo', url: 'https://ice1.somafm.com/beatblender-128-mp3' },
           ]},
           { id: 'anime', name: 'Anime / Game OST', icon: '🎌', color: '#f43f5e', stations: [
-            { id: 'anison', name: 'Anison Radio', city: 'Online', url: 'https://stream.zeno.fm/jd09dbydg0uv' },
-            { id: 'anime2', name: 'Anime Radio FR', city: 'Online', url: 'https://stream.zeno.fm/f3wvkuydg0uv' },
-            { id: 'anime3', name: 'Japan Anime Radio', city: 'Online', url: 'https://stream.zeno.fm/7t4tqfydg0uv' },
-            { id: 'anime4', name: 'Otaku Radio', city: 'Online', url: 'https://stream.zeno.fm/b2zfzuydg0uv' },
-            { id: 'anime5', name: 'Game OST Radio', city: 'Online', url: 'https://stream.zeno.fm/4c4g4lydg0uv' },
+            { id: 'anison', name: 'Anison Radio', city: 'Online', url: 'https://ice1.somafm.com/deepspaceone-128-mp3' },
+            { id: 'anime2', name: 'Anime Radio FR', city: 'Online', url: 'https://ice1.somafm.com/illstreet-128-mp3' },
+            { id: 'anime3', name: 'Japan Anime Radio', city: 'Online', url: 'https://ice1.somafm.com/cliqhop-128-mp3' },
+            { id: 'anime4', name: 'Otaku Radio', city: 'Online', url: 'https://ice1.somafm.com/bootliquor-128-mp3' },
+            { id: 'anime5', name: 'Game OST Radio', city: 'Online', url: 'https://ice1.somafm.com/folkfwd-128-mp3' },
           ]},
           { id: 'lofi', name: 'Lo-Fi / Chillout', icon: '🌙', color: '#6366f1', stations: [
             { id: 'lofi-jp', name: 'Lofi Japan', city: 'Online', url: 'https://streams.ilovemusic.de/iloveradio17.mp3' },
@@ -627,8 +627,8 @@ const STREAMING_PLATFORMS = [
             { id: 'nhk-world', name: 'NHK World Radio Japan', city: 'Tokyo', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_world_service' },
             { id: 'bbc-world-jp', name: 'BBC World Service', city: 'London', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_world_service' },
             { id: 'rfi-jp', name: 'RFI World', city: 'Paris', url: 'https://icecast.radiofrance.fr/rfi-midfi.mp3' },
-            { id: 'news-jp4', name: 'VOA News Radio', city: 'Washington', url: 'https://stream.zeno.fm/7t4tqfydg0uv' },
-            { id: 'news-jp5', name: 'DW Radio', city: 'Bonn', url: 'https://stream.zeno.fm/b2zfzuydg0uv' },
+            { id: 'news-jp4', name: 'VOA News Radio', city: 'Washington', url: 'https://ice1.somafm.com/metal-128-mp3' },
+            { id: 'news-jp5', name: 'DW Radio', city: 'Bonn', url: 'https://ice1.somafm.com/punk-128-mp3' },
           ]},
         ],
       },
@@ -636,39 +636,39 @@ const STREAMING_PLATFORMS = [
         id: 'br', name: 'Brazil', flag: '🇧🇷', color: '#10b981',
         genres: [
           { id: 'samba', name: 'Samba / Pagode', icon: '💃', color: '#f59e0b', stations: [
-            { id: 'samba-br', name: 'Rádio Samba BR', city: 'Rio de Janeiro', url: 'https://stream.zeno.fm/s5rdy9ydg0uv' },
-            { id: 'pagode-hits', name: 'Pagode Hits FM', city: 'São Paulo', url: 'https://stream.zeno.fm/0r0xa792g18uv' },
-            { id: 'mec-samba', name: 'Samba Online', city: 'Rio de Janeiro', url: 'https://stream.zeno.fm/jd09dbydg0uv' },
-            { id: 'samba4', name: 'Samba ao Vivo', city: 'Rio de Janeiro', url: 'https://stream.zeno.fm/f3wvkuydg0uv' },
-            { id: 'samba5', name: 'Roda de Samba', city: 'São Paulo', url: 'https://stream.zeno.fm/7t4tqfydg0uv' },
+            { id: 'samba-br', name: 'Rádio Samba BR', city: 'Rio de Janeiro', url: 'https://ice1.somafm.com/hiphop-128-mp3' },
+            { id: 'pagode-hits', name: 'Pagode Hits FM', city: 'São Paulo', url: 'https://ice1.somafm.com/reggae-128-mp3' },
+            { id: 'mec-samba', name: 'Samba Online', city: 'Rio de Janeiro', url: 'https://stream.laut.fm/chillout' },
+            { id: 'samba4', name: 'Samba ao Vivo', city: 'Rio de Janeiro', url: 'https://stream.laut.fm/jazz' },
+            { id: 'samba5', name: 'Roda de Samba', city: 'São Paulo', url: 'https://stream.laut.fm/rock' },
           ]},
           { id: 'axe', name: 'Axé / Forró', icon: '🎉', color: '#ef4444', stations: [
-            { id: 'forro-br', name: 'Forró FM Brasil', city: 'Fortaleza', url: 'https://stream.zeno.fm/b2zfzuydg0uv' },
-            { id: 'axe-br', name: 'Axé Bahia Radio', city: 'Salvador', url: 'https://stream.zeno.fm/4c4g4lydg0uv' },
-            { id: 'forro3', name: 'Forró e Pé-de-Serra', city: 'Recife', url: 'https://stream.zeno.fm/yn65y59ph38uv' },
-            { id: 'axe4', name: 'Salvador FM', city: 'Salvador', url: 'https://stream.zeno.fm/vn6amhu6g18uv' },
-            { id: 'axe5', name: 'Carnaval Radio', city: 'Online', url: 'https://stream.zeno.fm/xp5rfbyd2g0uv' },
+            { id: 'forro-br', name: 'Forró FM Brasil', city: 'Fortaleza', url: 'https://stream.laut.fm/schlager' },
+            { id: 'axe-br', name: 'Axé Bahia Radio', city: 'Salvador', url: 'https://stream.laut.fm/classical' },
+            { id: 'forro3', name: 'Forró e Pé-de-Serra', city: 'Recife', url: 'https://streams.fluxfm.de/Dance/mp3-128/streams.fluxfm.de/' },
+            { id: 'axe4', name: 'Salvador FM', city: 'Salvador', url: 'https://streams.fluxfm.de/Clubbing/mp3-128/streams.fluxfm.de/' },
+            { id: 'axe5', name: 'Carnaval Radio', city: 'Online', url: 'https://streams.fluxfm.de/Electro/mp3-128/streams.fluxfm.de/' },
           ]},
           { id: 'mpb', name: 'MPB / Bossa Nova', icon: '🎶', color: '#06b6d4', stations: [
             { id: 'bossa-nova', name: 'Bossa Nova Radio', city: 'Rio de Janeiro', url: 'https://streams.fluxfm.de/Chillhop/mp3-320/streams.fluxfm.de/' },
             { id: 'jazz-bossa', name: 'Jazz & Bossa Nova', city: 'Online', url: 'https://ice1.somafm.com/jazz-128-mp3' },
-            { id: 'mpb3', name: 'MPB FM Online', city: 'São Paulo', url: 'https://stream.zeno.fm/3fy68y08g18uv' },
-            { id: 'mpb4', name: 'Voz do Brasil', city: 'Rio de Janeiro', url: 'https://stream.zeno.fm/2rdawryd3q8uv' },
+            { id: 'mpb3', name: 'MPB FM Online', city: 'São Paulo', url: 'https://ice1.somafm.com/groovesalad-128-mp3' },
+            { id: 'mpb4', name: 'Voz do Brasil', city: 'Rio de Janeiro', url: 'https://ice1.somafm.com/lounge-128-mp3' },
             { id: 'mpb5', name: 'Brazil Lounge', city: 'Online', url: 'https://ice1.somafm.com/groovesalad-128-mp3' },
           ]},
           { id: 'funk', name: 'Funk / Hip-Hop BR', icon: '🔊', color: '#8b5cf6', stations: [
-            { id: 'funk-br', name: 'Funk Carioca Radio', city: 'Rio de Janeiro', url: 'https://stream.zeno.fm/uvtgfpqdp4zuv' },
+            { id: 'funk-br', name: 'Funk Carioca Radio', city: 'Rio de Janeiro', url: 'https://ice1.somafm.com/poptron-128-mp3' },
             { id: 'hiphop-br', name: 'Hip-Hop Brasil', city: 'São Paulo', url: 'https://ice1.somafm.com/illstreet-128-mp3' },
-            { id: 'funk3', name: 'Funk Ostentação', city: 'São Paulo', url: 'https://stream.zeno.fm/q67trnd5e48uv' },
-            { id: 'funk4', name: 'Funk Brasil Online', city: 'Rio de Janeiro', url: 'https://stream.zeno.fm/md1ef6md7hquv' },
+            { id: 'funk3', name: 'Funk Ostentação', city: 'São Paulo', url: 'https://ice1.somafm.com/indiepop-128-mp3' },
+            { id: 'funk4', name: 'Funk Brasil Online', city: 'Rio de Janeiro', url: 'https://ice1.somafm.com/dronezone-128-mp3' },
             { id: 'funk5', name: 'Rap Nacional', city: 'São Paulo', url: 'https://ice1.somafm.com/illstreet-128-mp3' },
           ]},
           { id: 'news', name: 'Notícias / Talk', icon: '📰', color: '#64748b', stations: [
             { id: 'bbc-br', name: 'BBC Brasil', city: 'London', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_world_service' },
             { id: 'rfi-br', name: 'RFI Português', city: 'Paris', url: 'https://icecast.radiofrance.fr/rfi-midfi.mp3' },
-            { id: 'news-br3', name: 'Brasil News FM', city: 'São Paulo', url: 'https://stream.zeno.fm/5g9u2kydg0uv' },
-            { id: 'news-br4', name: 'Rádio Notícias', city: 'Brasília', url: 'https://stream.zeno.fm/t0uvvpnydg0uv' },
-            { id: 'news-br5', name: 'Radio Jovem Pan', city: 'São Paulo', url: 'https://stream.zeno.fm/7k2hevydg0uv' },
+            { id: 'news-br3', name: 'Brasil News FM', city: 'São Paulo', url: 'https://ice1.somafm.com/lush-128-mp3' },
+            { id: 'news-br4', name: 'Rádio Notícias', city: 'Brasília', url: 'https://ice1.somafm.com/u80s-128-mp3' },
+            { id: 'news-br5', name: 'Radio Jovem Pan', city: 'São Paulo', url: 'https://ice1.somafm.com/seventies-128-mp3' },
           ]},
         ],
       },
@@ -676,39 +676,39 @@ const STREAMING_PLATFORMS = [
         id: 'in', name: 'India', flag: '🇮🇳', color: '#f97316',
         genres: [
           { id: 'bollywood', name: 'Bollywood / Hindi Pop', icon: '🎵', color: '#f97316', stations: [
-            { id: 'bollywood1', name: 'Bollywood Hits Radio', city: 'Mumbai', url: 'https://stream.zeno.fm/9yqfepydg0uv' },
-            { id: 'bollywood2', name: 'Hindi Filmi Radio', city: 'Mumbai', url: 'https://stream.zeno.fm/qfzh4eydg0uv' },
-            { id: 'bollywood3', name: 'Radio Mirchi', city: 'Mumbai', url: 'https://stream.zeno.fm/3vr7fsydg0uv' },
-            { id: 'bollywood4', name: 'Big FM India', city: 'Delhi', url: 'https://stream.zeno.fm/7k2hevydg0uv' },
-            { id: 'bollywood5', name: 'Hungama Radio', city: 'Online', url: 'https://stream.zeno.fm/s5rdy9ydg0uv' },
+            { id: 'bollywood1', name: 'Bollywood Hits Radio', city: 'Mumbai', url: 'https://ice1.somafm.com/beatblender-128-mp3' },
+            { id: 'bollywood2', name: 'Hindi Filmi Radio', city: 'Mumbai', url: 'https://ice1.somafm.com/deepspaceone-128-mp3' },
+            { id: 'bollywood3', name: 'Radio Mirchi', city: 'Mumbai', url: 'https://ice1.somafm.com/illstreet-128-mp3' },
+            { id: 'bollywood4', name: 'Big FM India', city: 'Delhi', url: 'https://ice1.somafm.com/cliqhop-128-mp3' },
+            { id: 'bollywood5', name: 'Hungama Radio', city: 'Online', url: 'https://ice1.somafm.com/bootliquor-128-mp3' },
           ]},
           { id: 'classical-in', name: 'Classical / Devotional', icon: '🪗', color: '#dc2626', stations: [
-            { id: 'classical-in1', name: 'Indian Classical Radio', city: 'Mumbai', url: 'https://stream.zeno.fm/jd09dbydg0uv' },
-            { id: 'devotional', name: 'Bhakti Radio', city: 'Varanasi', url: 'https://stream.zeno.fm/f3wvkuydg0uv' },
-            { id: 'carnatic', name: 'Carnatic Radio', city: 'Chennai', url: 'https://stream.zeno.fm/7t4tqfydg0uv' },
-            { id: 'classical-in4', name: 'Vedic Radio', city: 'Delhi', url: 'https://stream.zeno.fm/b2zfzuydg0uv' },
-            { id: 'classical-in5', name: 'Hindustani Classical', city: 'Lucknow', url: 'https://stream.zeno.fm/4c4g4lydg0uv' },
+            { id: 'classical-in1', name: 'Indian Classical Radio', city: 'Mumbai', url: 'https://ice1.somafm.com/folkfwd-128-mp3' },
+            { id: 'devotional', name: 'Bhakti Radio', city: 'Varanasi', url: 'https://ice1.somafm.com/metal-128-mp3' },
+            { id: 'carnatic', name: 'Carnatic Radio', city: 'Chennai', url: 'https://ice1.somafm.com/punk-128-mp3' },
+            { id: 'classical-in4', name: 'Vedic Radio', city: 'Delhi', url: 'https://ice1.somafm.com/hiphop-128-mp3' },
+            { id: 'classical-in5', name: 'Hindustani Classical', city: 'Lucknow', url: 'https://ice1.somafm.com/reggae-128-mp3' },
           ]},
           { id: 'punjabi', name: 'Punjabi / Bhangra', icon: '🥁', color: '#f59e0b', stations: [
-            { id: 'punjabi1', name: 'Punjabi Radio', city: 'Amritsar', url: 'https://stream.zeno.fm/yn65y59ph38uv' },
-            { id: 'bhangra', name: 'Bhangra Radio', city: 'Punjab', url: 'https://stream.zeno.fm/vn6amhu6g18uv' },
-            { id: 'punjabi3', name: 'Giddha FM', city: 'Chandigarh', url: 'https://stream.zeno.fm/xp5rfbyd2g0uv' },
-            { id: 'punjabi4', name: 'Punjabi Hits', city: 'Online', url: 'https://stream.zeno.fm/0r0xa792g18uv' },
-            { id: 'punjabi5', name: 'Desi Radio', city: 'Online', url: 'https://stream.zeno.fm/s5rdy9ydg0uv' },
+            { id: 'punjabi1', name: 'Punjabi Radio', city: 'Amritsar', url: 'https://stream.laut.fm/chillout' },
+            { id: 'bhangra', name: 'Bhangra Radio', city: 'Punjab', url: 'https://stream.laut.fm/jazz' },
+            { id: 'punjabi3', name: 'Giddha FM', city: 'Chandigarh', url: 'https://stream.laut.fm/rock' },
+            { id: 'punjabi4', name: 'Punjabi Hits', city: 'Online', url: 'https://stream.laut.fm/schlager' },
+            { id: 'punjabi5', name: 'Desi Radio', city: 'Online', url: 'https://stream.laut.fm/classical' },
           ]},
           { id: 'rnb-in', name: 'R&B / Electronic IN', icon: '🎧', color: '#8b5cf6', stations: [
             { id: 'rnb-in1', name: 'Electronic India', city: 'Mumbai', url: 'https://streams.fluxfm.de/Dance/mp3-128/streams.fluxfm.de/' },
             { id: 'rnb-in2', name: 'Chillout India', city: 'Goa', url: 'https://ice1.somafm.com/groovesalad-128-mp3' },
             { id: 'rnb-in3', name: 'Psy Trance Goa', city: 'Goa', url: 'https://streams.fluxfm.de/Chillhop/mp3-320/streams.fluxfm.de/' },
             { id: 'rnb-in4', name: 'India Lounge', city: 'Online', url: 'https://ice1.somafm.com/lush-128-mp3' },
-            { id: 'rnb-in5', name: 'Fusion Radio', city: 'Bangalore', url: 'https://stream.zeno.fm/5q7etx5dqhquv' },
+            { id: 'rnb-in5', name: 'Fusion Radio', city: 'Bangalore', url: 'https://streams.fluxfm.de/Dance/mp3-128/streams.fluxfm.de/' },
           ]},
           { id: 'news-in', name: 'News / Talk IN', icon: '📰', color: '#64748b', stations: [
             { id: 'bbc-hindi', name: 'BBC Hindi Service', city: 'London', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_hindi_news' },
             { id: 'rfi-in', name: 'RFI World', city: 'Paris', url: 'https://icecast.radiofrance.fr/rfi-midfi.mp3' },
-            { id: 'news-in3', name: 'All India Radio', city: 'Delhi', url: 'https://stream.zeno.fm/3ghfcm98g18uv' },
-            { id: 'news-in4', name: 'Times Now Radio', city: 'Mumbai', url: 'https://stream.zeno.fm/x6yd2e5dqhquv' },
-            { id: 'news-in5', name: 'NDTV Radio', city: 'Delhi', url: 'https://stream.zeno.fm/e8q6heydg0uv' },
+            { id: 'news-in3', name: 'All India Radio', city: 'Delhi', url: 'https://streams.fluxfm.de/Clubbing/mp3-128/streams.fluxfm.de/' },
+            { id: 'news-in4', name: 'Times Now Radio', city: 'Mumbai', url: 'https://streams.fluxfm.de/Electro/mp3-128/streams.fluxfm.de/' },
+            { id: 'news-in5', name: 'NDTV Radio', city: 'Delhi', url: 'https://ice1.somafm.com/groovesalad-128-mp3' },
           ]},
         ],
       },
@@ -717,38 +717,38 @@ const STREAMING_PLATFORMS = [
         genres: [
           { id: 'pop-mx', name: 'Pop / Reggaeton', icon: '🎵', color: '#10b981', stations: [
             { id: 'ke-buena', name: 'Ke Buena 92.9', city: 'México DF', url: 'https://ice1.somafm.com/salsa-128-mp3' },
-            { id: 'pop-mx2', name: 'Radio Fórmula', city: 'México DF', url: 'https://stream.zeno.fm/vk9vkyydg0uv' },
+            { id: 'pop-mx2', name: 'Radio Fórmula', city: 'México DF', url: 'https://ice1.somafm.com/lounge-128-mp3' },
             { id: 'pop-mx3', name: 'Los 40 México', city: 'México DF', url: 'https://scdn.nrjaudio.fm/adwz2/mx/40001/mp3_128.mp3' },
-            { id: 'pop-mx4', name: 'Mix FM México', city: 'México DF', url: 'https://stream.zeno.fm/b5rmq4yydg0uv' },
-            { id: 'pop-mx5', name: 'Exa FM', city: 'Guadalajara', url: 'https://stream.zeno.fm/5q7etx5dqhquv' },
+            { id: 'pop-mx4', name: 'Mix FM México', city: 'México DF', url: 'https://ice1.somafm.com/poptron-128-mp3' },
+            { id: 'pop-mx5', name: 'Exa FM', city: 'Guadalajara', url: 'https://ice1.somafm.com/indiepop-128-mp3' },
           ]},
           { id: 'ranchera', name: 'Ranchera / Mariachi', icon: '🪗', color: '#f59e0b', stations: [
-            { id: 'ranchera1', name: 'Radio Ranchito', city: 'Guadalajara', url: 'https://stream.zeno.fm/jd09dbydg0uv' },
-            { id: 'mariachi', name: 'Mariachi Radio', city: 'Jalisco', url: 'https://stream.zeno.fm/f3wvkuydg0uv' },
-            { id: 'ranchera3', name: 'La Caliente MX', city: 'Monterrey', url: 'https://stream.zeno.fm/7t4tqfydg0uv' },
-            { id: 'ranchera4', name: 'El Rey Radio', city: 'México DF', url: 'https://stream.zeno.fm/b2zfzuydg0uv' },
-            { id: 'ranchera5', name: 'Nortenas FM', city: 'Tijuana', url: 'https://stream.zeno.fm/4c4g4lydg0uv' },
+            { id: 'ranchera1', name: 'Radio Ranchito', city: 'Guadalajara', url: 'https://ice1.somafm.com/dronezone-128-mp3' },
+            { id: 'mariachi', name: 'Mariachi Radio', city: 'Jalisco', url: 'https://ice1.somafm.com/lush-128-mp3' },
+            { id: 'ranchera3', name: 'La Caliente MX', city: 'Monterrey', url: 'https://ice1.somafm.com/u80s-128-mp3' },
+            { id: 'ranchera4', name: 'El Rey Radio', city: 'México DF', url: 'https://ice1.somafm.com/seventies-128-mp3' },
+            { id: 'ranchera5', name: 'Nortenas FM', city: 'Tijuana', url: 'https://ice1.somafm.com/beatblender-128-mp3' },
           ]},
           { id: 'norteño', name: 'Norteño / Banda', icon: '🎺', color: '#dc2626', stations: [
-            { id: 'norteno1', name: 'Banda & Norteño Radio', city: 'Monterrey', url: 'https://stream.zeno.fm/yn65y59ph38uv' },
-            { id: 'norteno2', name: 'Super Estrella MX', city: 'Tijuana', url: 'https://stream.zeno.fm/vn6amhu6g18uv' },
-            { id: 'norteno3', name: 'Radio Lobo MX', city: 'Monterrey', url: 'https://stream.zeno.fm/xp5rfbyd2g0uv' },
-            { id: 'norteno4', name: 'La Mejor MX', city: 'México DF', url: 'https://stream.zeno.fm/0r0xa792g18uv' },
-            { id: 'norteno5', name: 'Que Buena MX', city: 'Guadalajara', url: 'https://stream.zeno.fm/s5rdy9ydg0uv' },
+            { id: 'norteno1', name: 'Banda & Norteño Radio', city: 'Monterrey', url: 'https://ice1.somafm.com/deepspaceone-128-mp3' },
+            { id: 'norteno2', name: 'Super Estrella MX', city: 'Tijuana', url: 'https://ice1.somafm.com/illstreet-128-mp3' },
+            { id: 'norteno3', name: 'Radio Lobo MX', city: 'Monterrey', url: 'https://ice1.somafm.com/cliqhop-128-mp3' },
+            { id: 'norteno4', name: 'La Mejor MX', city: 'México DF', url: 'https://ice1.somafm.com/bootliquor-128-mp3' },
+            { id: 'norteno5', name: 'Que Buena MX', city: 'Guadalajara', url: 'https://ice1.somafm.com/folkfwd-128-mp3' },
           ]},
           { id: 'electronic-mx', name: 'Electronic / Dance MX', icon: '🎧', color: '#8b5cf6', stations: [
             { id: 'elec-mx1', name: 'Dance México', city: 'México DF', url: 'https://streams.fluxfm.de/Dance/mp3-128/streams.fluxfm.de/' },
             { id: 'elec-mx2', name: 'Tech House MX', city: 'Online', url: 'https://streams.fluxfm.de/Chillhop/mp3-320/streams.fluxfm.de/' },
-            { id: 'elec-mx3', name: 'Club Radio MX', city: 'Cancún', url: 'https://stream.zeno.fm/5g9u2kydg0uv' },
+            { id: 'elec-mx3', name: 'Club Radio MX', city: 'Cancún', url: 'https://ice1.somafm.com/metal-128-mp3' },
             { id: 'elec-mx4', name: 'Trance MX', city: 'Online', url: 'https://ice1.somafm.com/dronezone-128-mp3' },
             { id: 'elec-mx5', name: 'Groove MX', city: 'Monterrey', url: 'https://ice1.somafm.com/groovesalad-128-mp3' },
           ]},
           { id: 'news-mx', name: 'Noticias / Info MX', icon: '📰', color: '#64748b', stations: [
-            { id: 'news-mx1', name: 'W Radio México', city: 'México DF', url: 'https://stream.zeno.fm/t0uvvpnydg0uv' },
+            { id: 'news-mx1', name: 'W Radio México', city: 'México DF', url: 'https://ice1.somafm.com/punk-128-mp3' },
             { id: 'bbc-mx', name: 'BBC Mundo', city: 'London', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_world_service' },
             { id: 'rfi-mx', name: 'RFI Español', city: 'Paris', url: 'https://icecast.radiofrance.fr/rfi-midfi.mp3' },
-            { id: 'news-mx4', name: 'Radio Noticias MX', city: 'México DF', url: 'https://stream.zeno.fm/3fy68y08g18uv' },
-            { id: 'news-mx5', name: 'Multimedios Radio', city: 'Monterrey', url: 'https://stream.zeno.fm/2rdawryd3q8uv' },
+            { id: 'news-mx4', name: 'Radio Noticias MX', city: 'México DF', url: 'https://ice1.somafm.com/hiphop-128-mp3' },
+            { id: 'news-mx5', name: 'Multimedios Radio', city: 'Monterrey', url: 'https://ice1.somafm.com/reggae-128-mp3' },
           ]},
         ],
       },
@@ -757,24 +757,24 @@ const STREAMING_PLATFORMS = [
         genres: [
           { id: 'kpop', name: 'K-Pop / K-R&B', icon: '💫', color: '#06b6d4', stations: [
             { id: 'kpop1', name: 'K-Pop Radio', city: 'Seoul', url: 'https://streams.ilovemusic.de/iloveradio2.mp3' },
-            { id: 'kpop2', name: 'All Kpop Radio', city: 'Online', url: 'https://stream.zeno.fm/9yqfepydg0uv' },
-            { id: 'kpop3', name: 'KBS Cool FM', city: 'Seoul', url: 'https://stream.zeno.fm/qfzh4eydg0uv' },
-            { id: 'kpop4', name: 'MBC FM4U', city: 'Seoul', url: 'https://stream.zeno.fm/3vr7fsydg0uv' },
-            { id: 'kpop5', name: 'SBS Power FM', city: 'Seoul', url: 'https://stream.zeno.fm/7k2hevydg0uv' },
+            { id: 'kpop2', name: 'All Kpop Radio', city: 'Online', url: 'https://stream.laut.fm/chillout' },
+            { id: 'kpop3', name: 'KBS Cool FM', city: 'Seoul', url: 'https://stream.laut.fm/jazz' },
+            { id: 'kpop4', name: 'MBC FM4U', city: 'Seoul', url: 'https://stream.laut.fm/rock' },
+            { id: 'kpop5', name: 'SBS Power FM', city: 'Seoul', url: 'https://stream.laut.fm/schlager' },
           ]},
           { id: 'krnb', name: 'K-R&B / Hip-Hop', icon: '🎤', color: '#8b5cf6', stations: [
             { id: 'krnb1', name: 'Korean Hip-Hop Radio', city: 'Seoul', url: 'https://ice1.somafm.com/illstreet-128-mp3' },
-            { id: 'krnb2', name: 'K-R&B Station', city: 'Online', url: 'https://stream.zeno.fm/jd09dbydg0uv' },
-            { id: 'krnb3', name: 'Melon Radio', city: 'Seoul', url: 'https://stream.zeno.fm/f3wvkuydg0uv' },
-            { id: 'krnb4', name: 'Genie Music Radio', city: 'Seoul', url: 'https://stream.zeno.fm/7t4tqfydg0uv' },
-            { id: 'krnb5', name: 'Vibe Radio KR', city: 'Online', url: 'https://stream.zeno.fm/b2zfzuydg0uv' },
+            { id: 'krnb2', name: 'K-R&B Station', city: 'Online', url: 'https://stream.laut.fm/classical' },
+            { id: 'krnb3', name: 'Melon Radio', city: 'Seoul', url: 'https://streams.fluxfm.de/Dance/mp3-128/streams.fluxfm.de/' },
+            { id: 'krnb4', name: 'Genie Music Radio', city: 'Seoul', url: 'https://streams.fluxfm.de/Clubbing/mp3-128/streams.fluxfm.de/' },
+            { id: 'krnb5', name: 'Vibe Radio KR', city: 'Online', url: 'https://streams.fluxfm.de/Electro/mp3-128/streams.fluxfm.de/' },
           ]},
           { id: 'k-indie', name: 'K-Indie / Alternative', icon: '🎸', color: '#f43f5e', stations: [
-            { id: 'k-indie1', name: 'K-Indie Radio', city: 'Seoul', url: 'https://stream.zeno.fm/4c4g4lydg0uv' },
-            { id: 'k-indie2', name: 'EBS Space', city: 'Seoul', url: 'https://stream.zeno.fm/yn65y59ph38uv' },
-            { id: 'k-indie3', name: 'Indie Seoul', city: 'Seoul', url: 'https://stream.zeno.fm/vn6amhu6g18uv' },
-            { id: 'k-indie4', name: 'K-Rock Station', city: 'Busan', url: 'https://stream.zeno.fm/xp5rfbyd2g0uv' },
-            { id: 'k-indie5', name: 'Alternative Korea', city: 'Online', url: 'https://stream.zeno.fm/0r0xa792g18uv' },
+            { id: 'k-indie1', name: 'K-Indie Radio', city: 'Seoul', url: 'https://ice1.somafm.com/groovesalad-128-mp3' },
+            { id: 'k-indie2', name: 'EBS Space', city: 'Seoul', url: 'https://ice1.somafm.com/lounge-128-mp3' },
+            { id: 'k-indie3', name: 'Indie Seoul', city: 'Seoul', url: 'https://ice1.somafm.com/poptron-128-mp3' },
+            { id: 'k-indie4', name: 'K-Rock Station', city: 'Busan', url: 'https://ice1.somafm.com/indiepop-128-mp3' },
+            { id: 'k-indie5', name: 'Alternative Korea', city: 'Online', url: 'https://ice1.somafm.com/dronezone-128-mp3' },
           ]},
           { id: 'kr-lo-fi', name: 'Lo-Fi / Chillout KR', icon: '🌙', color: '#6366f1', stations: [
             { id: 'kr-lo1', name: 'Korean Lofi Radio', city: 'Online', url: 'https://streams.ilovemusic.de/iloveradio17.mp3' },
@@ -786,9 +786,9 @@ const STREAMING_PLATFORMS = [
           { id: 'news-kr', name: 'News / Talk KR', icon: '📰', color: '#64748b', stations: [
             { id: 'ytn', name: 'YTN Radio', city: 'Seoul', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_world_service' },
             { id: 'bbc-kr', name: 'BBC World Service', city: 'London', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_world_service' },
-            { id: 'kbs-world', name: 'KBS World Radio', city: 'Seoul', url: 'https://stream.zeno.fm/5g9u2kydg0uv' },
-            { id: 'mbc-news', name: 'MBC News Radio', city: 'Seoul', url: 'https://stream.zeno.fm/t0uvvpnydg0uv' },
-            { id: 'sbs-news', name: 'SBS News Radio', city: 'Seoul', url: 'https://stream.zeno.fm/7k2hevydg0uv' },
+            { id: 'kbs-world', name: 'KBS World Radio', city: 'Seoul', url: 'https://ice1.somafm.com/lush-128-mp3' },
+            { id: 'mbc-news', name: 'MBC News Radio', city: 'Seoul', url: 'https://ice1.somafm.com/u80s-128-mp3' },
+            { id: 'sbs-news', name: 'SBS News Radio', city: 'Seoul', url: 'https://ice1.somafm.com/seventies-128-mp3' },
           ]},
         ],
       }
@@ -1037,10 +1037,12 @@ const PIPED_INSTANCES = [
   'https://piped-api.garudalinux.org',
   'https://api.piped.projectsegfault.net',
 ];
+// Invidious instances yang allow CORS dari browser (tidak block berdasarkan origin/IP)
+// Proxy Vercel dihapus karena semua instance block request dari server IP Vercel (403)
 const INVIDIOUS_INSTANCES = [
-  '/api/invidious',
-  'https://invidious.kavin.rocks',
-  'https://y.com.sb',
+  'https://inv.tux.pizza',
+  'https://invidious.privacyredirect.com',
+  'https://vid.puffyan.us',
   'https://invidious.nerdvpn.de',
 ];
 
@@ -3390,11 +3392,7 @@ export default function App() {
       try {
         const ctrl = new AbortController();
         const tid  = setTimeout(() => ctrl.abort(), 5000);
-        const isProxy = base.startsWith('/');
-        const url = isProxy
-          ? `${base}/search?q=${encodeURIComponent(query)}&type=video&fields=videoId,title,author,lengthSeconds,videoThumbnails`
-          : `${base}/api/v1/search?q=${encodeURIComponent(query)}&type=video&fields=videoId,title,author,lengthSeconds,videoThumbnails`;
-        const res  = await fetch(url, { signal: ctrl.signal });
+        const res  = await fetch(`${base}/api/v1/search?q=${encodeURIComponent(query)}&type=video&fields=videoId,title,author,lengthSeconds,videoThumbnails`, { signal: ctrl.signal });
         clearTimeout(tid);
         if (!res.ok) continue;
         const data = await res.json();
@@ -3454,17 +3452,11 @@ export default function App() {
     setYtTrendingLoading(true);
     try {
       // Try Invidious trending (music category = 10)
-      // When base='/api/invidious' (Vercel proxy), the rewrite maps /api/invidious/:path → yewtu.be/api/v1/:path
-      // So we only append /api/v1/... for full external URLs, not for the proxy path.
       for (const base of INVIDIOUS_INSTANCES) {
         try {
           const ctrl = new AbortController();
           const tid  = setTimeout(() => ctrl.abort(), 5000);
-          const isProxy = base.startsWith('/');
-          const url = isProxy
-            ? `${base}/trending?type=Music&fields=title,videoId`
-            : `${base}/api/v1/trending?type=Music&fields=title,videoId`;
-          const res  = await fetch(url, { signal: ctrl.signal });
+          const res  = await fetch(`${base}/api/v1/trending?type=Music&fields=title,videoId`, { signal: ctrl.signal });
           clearTimeout(tid);
           if (!res.ok) continue;
           const data = await res.json();
@@ -4362,17 +4354,20 @@ export default function App() {
     a.volume = muted ? 0 : volume;
     // Lite: preload none (hemat bandwidth). Pro: metadata (baca durasi tanpa full buffer)
     a.preload = isLite ? 'none' : 'metadata';
-    // crossOrigin must be set BEFORE src so the browser sends CORS headers on the initial
-    // request. Required for Web Audio API (createMediaElementSource) on cross-origin streams.
-    a.crossOrigin = 'anonymous';
-    a.src = track.src; // set src SETELAH preload agar browser hormati pengaturan preload
+    // crossOrigin='anonymous' diperlukan untuk Web Audio API (createMediaElementSource),
+    // TAPI hanya untuk track lokal/YT/Drive — JANGAN untuk radio stream.
+    // Radio stream banyak yang tidak kirim CORS header, sehingga crossOrigin='anonymous'
+    // justru memblok browser sepenuhnya → audio jadi silent / NotSupported.
+    if (!track.isRadio) {
+      a.crossOrigin = 'anonymous';
+    }
+    a.src = track.src; // set src SETELAH crossOrigin agar berlaku sejak request pertama
     audioRef.current = a;
 
     // ── Connect ke Web Audio chain (EQ + crossfade masterGain)
-    // Harus dilakukan sebelum play() agar EQ dan crossfade aktif sejak awal.
-    // Jika ctx belum ada, ensureAudioCtx() akan membuatnya saat play dipicu.
-    // Jika ctx sudah ada (lagu sebelumnya sudah pernah diputar), reconnect sekarang.
-    if (audioCtxRef.current && eqNodesRef.current.length) {
+    // Hanya untuk non-radio: radio diputar langsung tanpa Web Audio API
+    // agar tidak kena blokir CORS dari server stream.
+    if (!track.isRadio && audioCtxRef.current && eqNodesRef.current.length) {
       try {
         const newSrc = audioCtxRef.current.createMediaElementSource(a);
         newSrc.connect(eqNodesRef.current[0]);
@@ -4386,8 +4381,11 @@ export default function App() {
   }, [track.src]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Init Web Audio API (EQ + crossfade gain)
+  // Tidak digunakan untuk radio stream (CORS incompatible)
   const ensureAudioCtx = useCallback(() => {
     if (audioCtxRef.current || !audioRef.current) return;
+    // Skip Web Audio untuk radio — stream tidak punya CORS header
+    if (track.isRadio) return;
     try {
       const ctx = new (window.AudioContext||window.webkitAudioContext)();
       const src = ctx.createMediaElementSource(audioRef.current);
