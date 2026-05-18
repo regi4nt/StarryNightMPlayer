@@ -1113,8 +1113,6 @@ function getProviders() {
     // OpenRouter
     ...([
       (import.meta.env?.VITE_OPENROUTER_KEY_1 || ''),
-      (import.meta.env?.VITE_OPENROUTER_KEY_2 || ''),
-      (import.meta.env?.VITE_OPENROUTER_KEY_3 || ''),
     ].filter(k => k && k.length > 10).flatMap(k => [
       { provider:'OpenRouter', key:k, model:'deepseek/deepseek-chat-v3-0324:free',    endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true, extra:{ 'HTTP-Referer':origin,'X-Title':'Starry Night' } },
       { provider:'OpenRouter', key:k, model:'meta-llama/llama-4-maverick:free',        endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true, extra:{ 'HTTP-Referer':origin,'X-Title':'Starry Night' } },
@@ -1125,7 +1123,6 @@ function getProviders() {
     // Gemini
     ...([
       (import.meta.env?.VITE_GEMINI_KEY_1 || ''),
-      (import.meta.env?.VITE_GEMINI_KEY_2 || ''),
     ].filter(k => k && k.length > 10).flatMap(k => [
       { provider:'Gemini', key:k, model:'gemini-2.0-flash', endpoint:'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', isOpenAI:true, extra:{} },
       { provider:'Gemini', key:k, model:'gemini-1.5-flash', endpoint:'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', isOpenAI:true, extra:{} },
@@ -1133,7 +1130,6 @@ function getProviders() {
     // Groq
     ...([
       (import.meta.env?.VITE_GROQ_KEY_1 || ''),
-      (import.meta.env?.VITE_GROQ_KEY_2 || ''),
     ].filter(k => k && k.length > 10).flatMap(k => [
       { provider:'Groq', key:k, model:'llama-3.3-70b-versatile', endpoint:'https://api.groq.com/openai/v1/chat/completions', isOpenAI:true, extra:{} },
       { provider:'Groq', key:k, model:'gemma2-9b-it',            endpoint:'https://api.groq.com/openai/v1/chat/completions', isOpenAI:true, extra:{} },
@@ -1142,7 +1138,6 @@ function getProviders() {
     // DeepSeek
     ...([
       (import.meta.env?.VITE_DEEPSEEK_KEY_1 || ''),
-      (import.meta.env?.VITE_DEEPSEEK_KEY_2 || ''),
     ].filter(k => k && k.length > 10).flatMap(k => [
       { provider:'DeepSeek', key:k, model:'deepseek-chat',     endpoint:'https://api.deepseek.com/v1/chat/completions', isOpenAI:true, extra:{} },
       { provider:'DeepSeek', key:k, model:'deepseek-reasoner', endpoint:'https://api.deepseek.com/v1/chat/completions', isOpenAI:true, extra:{} },
@@ -1150,7 +1145,6 @@ function getProviders() {
     // Grok (xAI)
     ...([
       (import.meta.env?.VITE_GROK_KEY_1 || ''),
-      (import.meta.env?.VITE_GROK_KEY_2 || ''),
     ].filter(k => k && k.length > 10).flatMap(k => [
       { provider:'Grok', key:k, model:'grok-3',      endpoint:'https://api.x.ai/v1/chat/completions', isOpenAI:true, extra:{} },
       { provider:'Grok', key:k, model:'grok-3-mini', endpoint:'https://api.x.ai/v1/chat/completions', isOpenAI:true, extra:{} },
