@@ -6834,7 +6834,6 @@ export default function App() {
                         })()}
                         {isRadio && (() => {
                           const countries = platform.countries || [];
-                          const countries = platform.countries || [];
                           const selCountry = countries.find(c => c.id === radioCountry) || null;
                           const selGenre = selCountry ? (selCountry.genres.find(g => g.id === radioGenre) || null) : null;
                           const playStation = (station, genreColor) => {
