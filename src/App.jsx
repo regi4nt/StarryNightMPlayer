@@ -371,30 +371,6 @@ const STREAMING_PLATFORMS = [
     hint: 'Cari lagu, artis, atau tempel link YouTube…',
   },
   {
-    id: 'soundcloud',
-    name: 'SoundCloud',
-    icon: '🟠',
-    embedType: 'soundcloud',
-    description: 'Cari & putar langsung via SoundCloud embed',
-    color: '#ff5500',
-    logo: null,
-    searchUrl: (q) => `https://soundcloud.com/search?q=${encodeURIComponent(q)}`,
-    openUrl: 'https://soundcloud.com',
-    hint: 'Cari track, artis, genre…',
-  },
-  {
-    id: 'spotify',
-    name: 'Spotify',
-    icon: '🟢',
-    embedType: 'spotify',
-    description: 'Cari & preview 30 detik via Spotify API',
-    color: '#1DB954',
-    logo: null,
-    searchUrl: (q) => `https://open.spotify.com/search/${encodeURIComponent(q)}`,
-    openUrl: 'https://open.spotify.com',
-    hint: 'Cari judul lagu, artis, album…',
-  },
-  {
     id: 'websearch',
     name: 'Web',
     icon: '🌐',
@@ -6272,17 +6248,13 @@ export default function App() {
                 <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
                   {STREAMING_PLATFORMS.map(platform => {
                     const isYT = platform.embedType === 'youtube';
-                    const isSC = platform.embedType === 'soundcloud';
                     const isRedirect = platform.embedType === 'redirect';
-                    const isSpotify = platform.embedType === 'spotify';
                     const isRadio = platform.embedType === 'radio';
                     const isWebSearch = platform.embedType === 'websearch';
                     const ytQ = ytQuery[platform.id] || '';
-                    const scQ = scQuery[platform.id] || '';
                     const results = ytResults[platform.id] || [];
                     const loading = ytLoading[platform.id];
                     const error   = ytError[platform.id];
-                    const activeWidget = scWidget[platform.id];
                     return (
                       <div key={platform.id} ref={platform.id === 'ytmusic' ? ytMusicSectionRef : null}
                         style={{ borderRadius:16, background:`${platform.color}0e`, border:`1px solid ${platform.color}30`, overflow:'hidden', display: (isYT||isWebSearch) && unifiedPlatform !== platform.id ? 'none' : 'block' }}>
@@ -6294,7 +6266,7 @@ export default function App() {
                           <div style={{ flex:1, minWidth:0 }}>
                             <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                               <span style={{ fontWeight:700, fontSize:13, color:'white' }}>{platform.name}</span>
-                              {(isYT||isSC||isSpotify||isWebSearch) && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:999, background:`${platform.color}25`, color:platform.color }}>{isWebSearch ? 'IN-APP ▶' : 'IN-APP ▶'}</span>}
+                              {(isYT||isWebSearch) && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:999, background:`${platform.color}25`, color:platform.color }}>{isWebSearch ? 'IN-APP ▶' : 'IN-APP ▶'}</span>}
                               {isRadio && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:999, background:`${platform.color}25`, color:platform.color }}>● LIVE</span>}
                               {isRedirect && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:999, background:'rgba(255,255,255,0.07)', color:'rgba(255,255,255,0.35)' }}>REDIRECT ↗</span>}
                             </div>
