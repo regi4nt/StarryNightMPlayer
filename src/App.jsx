@@ -6778,17 +6778,45 @@ export default function App() {
                                     <span style={{ color:'#6366f1', fontWeight:700 }}>● Icecast</span>
                                     <span style={{ color:'#ff4500', fontWeight:700 }}>● NTS</span>
                                   </div>
-                                  {/* Genre tags from RadioBrowser */}
-                                  {rbTopTags.length > 0 && (
-                                    <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginBottom:10 }}>
-                                      {['', ...rbTopTags.slice(0,9)].map((tag, i) => (
-                                        <button key={i} onClick={() => { setRbSelectedTag(tag||null); setRbQuery(''); rbSearch('', tag||null); multiSearch('', tag||null); }}
-                                          style={{ padding:'3px 9px', borderRadius:999, border:`1px solid ${(rbSelectedTag===tag||(tag===''&&rbSelectedTag===null)) ? '#f59e0b' : 'rgba(255,255,255,0.12)'}`, background:(rbSelectedTag===tag||(tag===''&&rbSelectedTag===null)) ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.04)', color:(rbSelectedTag===tag||(tag===''&&rbSelectedTag===null)) ? '#f59e0b' : 'rgba(255,255,255,0.45)', fontSize:10, cursor:'pointer', fontWeight:600 }}>
-                                          {tag || '🔥 Top'}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  )}
+                                  {/* Genre tags — 10 genre populer dari semua sumber (RadioBrowser + SomaFM + Icecast) */}
+                                  {(() => {
+                                    const genreCount = {};
+                                    const bump = (raw, weight) => {
+                                      if (!raw) return;
+                                      String(raw).split(/[,;|/]/).forEach(g => {
+                                        const k = g.trim().toLowerCase();
+                                        if (k && k.length > 1 && k.length < 25)
+                                          genreCount[k] = (genreCount[k] || 0) + weight;
+                                      });
+                                    };
+                                    somaChannels.forEach(ch => bump(ch.genre, 3));
+                                    ['drum & bass','chillout','trance','house','techno','ambient','lounge','jazz','rock','metal','pop','reggae','classical','hip-hop','electronic'].forEach(g => bump(g, 2));
+                                    rbTopTags.forEach(t => bump(t, 1));
+                                    const aliases = { 'hip hop':'hip-hop','hiphop':'hip-hop','r&b':'hip-hop','rnb':'hip-hop','edm':'electronic','dance':'electronic','downtempo':'electronic','idm':'electronic','chill':'chillout','drum and bass':'drum & bass','dnb':'drum & bass','d&b':'drum & bass','talk':'news','news talk':'news','blues':'jazz','soul':'jazz','latin':'world','afrobeat':'world','country':'folk','americana':'folk' };
+                                    Object.entries(aliases).forEach(([alias, canon]) => {
+                                      if (genreCount[alias]) { genreCount[canon] = (genreCount[canon]||0) + genreCount[alias]; delete genreCount[alias]; }
+                                    });
+                                    const exclude = new Set(['music','radio','stream','stereo','fm','am','station','internet','online','misc','other','various','general','mixed','all']);
+                                    const top10 = Object.entries(genreCount)
+                                      .filter(([k]) => !exclude.has(k))
+                                      .sort((a,b) => b[1]-a[1])
+                                      .slice(0,10)
+                                      .map(([k]) => ({ label: k.replace(/\b\w/g,c=>c.toUpperCase()), tag: k }));
+                                    const pills = [{ label:'🔥 Top', tag: null }, ...top10];
+                                    return (
+                                      <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginBottom:10 }}>
+                                        {pills.map((p, i) => {
+                                          const isActive = p.tag === null ? rbSelectedTag === null : rbSelectedTag === p.tag;
+                                          return (
+                                            <button key={i} onClick={() => { setRbSelectedTag(p.tag); setRbQuery(''); rbSearch('', p.tag); multiSearch('', p.tag); }}
+                                              style={{ padding:'3px 9px', borderRadius:999, border:`1px solid ${isActive ? '#f59e0b' : 'rgba(255,255,255,0.12)'}`, background:isActive ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.04)', color:isActive ? '#f59e0b' : 'rgba(255,255,255,0.45)', fontSize:10, cursor:'pointer', fontWeight:600 }}>
+                                              {p.label}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    );
+                                  })()}
                                   {/* Loading */}
                                   {(rbLoading || multiLoading) && (
                                     <div style={{ textAlign:'center', padding:'20px 0', color:'rgba(255,255,255,0.35)', fontSize:11 }}>
