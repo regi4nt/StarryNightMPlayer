@@ -9,7 +9,7 @@ import {
   ChevronRight, SlidersHorizontal, History,
   Search, Mic2, Trash2, ListPlus, FolderOpen,
   PenLine, ChevronLeft, Radio, Maximize2, Minimize2,
-  Download
+  Download, Share2, Wand2, Copy, Check, Star, Headphones as HeadphonesIcon, BookOpen, Waves
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════
@@ -3608,7 +3608,20 @@ export default function App() {
   const [searchQuery, setSearchQuery]   = useState('');
 
   // ── AI
-  const [aiSubView, setAiSubView] = useState('chat'); // 'chat' | 'lyrics'
+  const [aiSubView, setAiSubView] = useState('chat'); // 'chat' | 'lyrics' | 'foryou'
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+  // ── Personalisasi state
+  const [personaStep, setPersonaStep] = useState(() => {
+    try { return localStorage.getItem('sn_persona_done') === '1' ? 'result' : 'onboard'; } catch { return 'onboard'; }
+  });
+  const [personaPrefs, setPersonaPrefs] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('sn_persona_prefs') || 'null') || { categories: [], moods: [], timeOfDay: '', lang: '' }; } catch { return { categories: [], moods: [], timeOfDay: '', lang: '' }; }
+  });
+  const [personaRecs, setPersonaRecs] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('sn_persona_recs') || 'null') || null; } catch { return null; }
+  });
+  const [personaLoading, setPL] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
 
   // ── AI
@@ -5396,6 +5409,66 @@ export default function App() {
 
       <main style={{ flex:1, overflow:'hidden', position:'relative' }}>
 
+        {/* ── SHARE MENU OVERLAY */}
+        {showShareMenu && (
+          <div style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(0,0,0,0.7)', display:'flex', alignItems:'flex-end', justifyContent:'center' }}
+            onClick={e=>e.target===e.currentTarget&&setShowShareMenu(false)}>
+            <div style={{ width:'100%', maxWidth:520, background:'#0f0f2a', borderRadius:'20px 20px 0 0', padding:'20px 0 calc(20px + env(safe-area-inset-bottom))', border:'1px solid rgba(255,255,255,0.1)', borderBottom:'none' }}>
+              {/* Handle */}
+              <div style={{ width:40, height:4, borderRadius:999, background:'rgba(255,255,255,0.15)', margin:'0 auto 18px' }}/>
+              {/* Title */}
+              <div style={{ padding:'0 20px 14px', borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
+                <div style={{ fontWeight:800, fontSize:15, marginBottom:4 }}>🔗 Bagikan Stream</div>
+                <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                  {embedTrack?.title || track.title} — {embedTrack?.artist || track.artist}
+                </div>
+              </div>
+              {/* Options */}
+              <div style={{ padding:'12px 16px', display:'flex', flexDirection:'column', gap:6 }}>
+                {/* Copy Link */}
+                {(() => {
+                  const url = embedTrack?.type==='youtube' ? `https://youtu.be/${embedTrack.videoId}` :
+                    embedTrack?.type==='soundcloud' ? (embedTrack.src||'') :
+                    track.isRadio ? (radioStation?.url||track.src||window.location.href) :
+                    (track.src || window.location.href);
+                  const shareItems = [
+                    { icon:'📋', label: shareCopied ? '✓ Tersalin!' : 'Salin Link', color:'#6366f1', action: async () => {
+                      try { await navigator.clipboard.writeText(url); setShareCopied(true); setTimeout(()=>setShareCopied(false), 2500); } catch {}
+                    }},
+                    { icon:'💬', label:'WhatsApp', color:'#25D366', action: () => window.open(`https://wa.me/?text=${encodeURIComponent((embedTrack?.title||track.title)+' — '+url)}`, '_blank', 'noopener') },
+                    { icon:'✈️', label:'Telegram', color:'#2AABEE', action: () => window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(embedTrack?.title||track.title)}`, '_blank', 'noopener') },
+                    { icon:'𝕏', label:'Twitter / X', color:'#e7e9ea', action: () => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent('Dengerin ini bareng: '+(embedTrack?.title||track.title))}&url=${encodeURIComponent(url)}`, '_blank', 'noopener') },
+                    { icon:'📧', label:'Email', color:'#f59e0b', action: () => window.open(`mailto:?subject=${encodeURIComponent('Lagu/Stream: '+(embedTrack?.title||track.title))}&body=${encodeURIComponent(url)}`, '_blank', 'noopener') },
+                    { icon:'📱', label:'Share via App', color:'#a78bfa', action: async () => {
+                      if (navigator.share) { try { await navigator.share({ title: embedTrack?.title||track.title, url }); } catch {} }
+                      else { try { await navigator.clipboard.writeText(url); setShareCopied(true); setTimeout(()=>setShareCopied(false), 2500); } catch {} }
+                    }},
+                  ];
+                  return shareItems.map((item, i) => (
+                    <button key={i} onClick={item.action}
+                      style={{ display:'flex', alignItems:'center', gap:14, padding:'12px 16px', borderRadius:14, border:'none', background:'rgba(255,255,255,0.04)', cursor:'pointer', textAlign:'left', width:'100%', transition:'background 0.15s' }}
+                      onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.08)'}
+                      onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
+                      <div style={{ width:36, height:36, borderRadius:10, background:`${item.color}18`, border:`1px solid ${item.color}35`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, flexShrink:0 }}>{item.icon}</div>
+                      <span style={{ fontSize:14, fontWeight:600, color:'rgba(255,255,255,0.88)' }}>{item.label}</span>
+                    </button>
+                  ));
+                })()}
+                {/* URL display */}
+                <div style={{ marginTop:6, padding:'10px 14px', borderRadius:12, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', fontSize:11, color:'rgba(255,255,255,0.3)', fontFamily:'monospace', wordBreak:'break-all', lineHeight:1.5 }}>
+                  {embedTrack?.type==='youtube' ? `https://youtu.be/${embedTrack.videoId}` :
+                    embedTrack?.type==='soundcloud' ? (embedTrack.src||'—') :
+                    track.isRadio ? (radioStation?.url||track.src||window.location.href) :
+                    (track.src || window.location.href)}
+                </div>
+              </div>
+              <div style={{ padding:'0 16px' }}>
+                <button onClick={()=>setShowShareMenu(false)} style={{ width:'100%', padding:'12px', borderRadius:14, border:'1px solid rgba(255,255,255,0.1)', background:'transparent', color:'rgba(255,255,255,0.5)', fontSize:13, fontWeight:700, cursor:'pointer' }}>Tutup</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── SETTINGS PANEL — menutup semua tab di desktop & landscape, hanya player di portrait */}
         {showSettings && (isDesktop || layoutMode === 'mobile-landscape' || tab === 'player') && (
           <SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} eqEnabled={!!eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset||"Normal"} setEqPreset={setEqPreset} eqGains={Array.isArray(eqGains)&&eqGains.length===5?eqGains:[0,0,0,0,0]} setEqGains={setEqGains} crossfade={typeof crossfade==="number"?crossfade:0} setCrossfade={setCrossfade} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userScId={userScId} setUserScId={setUserScId} userAiKey={userAiKey} setUserAiKey={setUserAiKey}/>
@@ -5729,6 +5802,10 @@ export default function App() {
                     );
                   })()
               }
+              {/* Share Stream */}
+              <button onClick={()=>setShowShareMenu(true)} title="Share Stream" style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:layoutVars.actionPad, borderRadius:12, background:'none', border:'none', color:'rgba(255,255,255,0.35)' }}>
+                <Share2 size={16}/>
+              </button>
               {/* Queue */}
               <button onClick={()=>setShowQueue(q=>!q)} title={t?.queue||"Queue"} style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:layoutVars.actionPad, borderRadius:12, background:'none', border:'none', color:showQueue?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):'rgba(255,255,255,0.35)' }}>
                 <ListMusic size={16}/>
@@ -7157,21 +7234,295 @@ export default function App() {
 
 
               {/* Sub-nav tabs — centered */}
-              <div style={{ display:'flex', justifyContent:'center', gap:0, marginBottom:0, borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ display:'flex', justifyContent:'center', gap:0, marginBottom:0, borderBottom:'1px solid rgba(255,255,255,0.06)', overflowX:'auto' }} className="scrollbar-hide">
                 {[
                   { id:'chat', label:'💬 Chat' },
                   { id:'lyrics', label:`🎵 ${t?.lyricsTab||'Lyrics'}` },
+                  { id:'foryou', label:'🎯 For You' },
                 ].map(({id, label})=>(
                   <button key={id} onClick={()=>setAiSubView(id)}
-                    style={{ padding:'9px 32px', borderRadius:0, border:'none', background:'none', color:aiSubView===id?'white':'rgba(255,255,255,0.4)', fontSize:13, fontWeight:aiSubView===id?800:600, cursor:'pointer', borderBottom:aiSubView===id?`2px solid ${track.color}`:'2px solid transparent', marginBottom:-1 }}>
+                    style={{ padding:'9px 22px', borderRadius:0, border:'none', background:'none', color:aiSubView===id?'white':'rgba(255,255,255,0.4)', fontSize:13, fontWeight:aiSubView===id?800:600, cursor:'pointer', borderBottom:aiSubView===id?`2px solid ${track.color}`:'2px solid transparent', marginBottom:-1, flexShrink:0, whiteSpace:'nowrap' }}>
                     {label}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Chat + Vibe result area OR Lyrics */}
-            {aiSubView==='lyrics' ? (
+            {/* Chat + Vibe result area OR Lyrics OR For You */}
+            {aiSubView==='foryou' ? (
+              /* ── FOR YOU / PERSONALISASI VIEW */
+              <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'16px 20px 24px' }}>
+                {personaStep==='onboard' ? (
+                  /* ── ONBOARDING FORM */
+                  <div>
+                    <div style={{ textAlign:'center', marginBottom:20 }}>
+                      <div style={{ fontSize:32, marginBottom:8 }}>🎯</div>
+                      <div style={{ fontWeight:800, fontSize:16, marginBottom:6 }}>Personalisasi Audio</div>
+                      <div style={{ fontSize:12, color:'rgba(255,255,255,0.4)', lineHeight:1.6 }}>Beritahu Starry AI tentang preferensimu — kami pilihkan musik, radio, dan podcast yang tepat untukmu.</div>
+                    </div>
+
+                    {/* Kategori audio */}
+                    <div style={{ marginBottom:18 }}>
+                      <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>Apa yang sering kamu dengarkan?</div>
+                      <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+                        {[
+                          { id:'music', icon:'🎵', label:'Musik' },
+                          { id:'podcast', icon:'🎙️', label:'Podcast' },
+                          { id:'radio', icon:'📻', label:'Radio Live' },
+                          { id:'ambient', icon:'🌿', label:'Ambient/Nature' },
+                          { id:'lofi', icon:'☕', label:'Lo-Fi / Chill' },
+                          { id:'classical', icon:'🎻', label:'Klasik' },
+                          { id:'edm', icon:'⚡', label:'EDM / Electronic' },
+                          { id:'indopop', icon:'🇮🇩', label:'Indo Pop' },
+                        ].map(c => {
+                          const selected = personaPrefs.categories.includes(c.id);
+                          return (
+                            <button key={c.id} onClick={()=>setPersonaPrefs(p=>({ ...p, categories: selected ? p.categories.filter(x=>x!==c.id) : [...p.categories, c.id] }))}
+                              style={{ padding:'8px 14px', borderRadius:999, border:`1px solid ${selected?track.color+'80':'rgba(255,255,255,0.15)'}`, background:selected?`${track.color}25`:'transparent', color:selected?'white':'rgba(255,255,255,0.6)', fontSize:12, fontWeight:selected?700:500, cursor:'pointer', display:'flex', alignItems:'center', gap:6, transition:'all 0.15s' }}>
+                              {c.icon} {c.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Mood / Suasana */}
+                    <div style={{ marginBottom:18 }}>
+                      <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>Suasana yang sering kamu cari</div>
+                      <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+                        {[
+                          { id:'relax', icon:'😌', label:'Santai' },
+                          { id:'focus', icon:'🎯', label:'Fokus Kerja' },
+                          { id:'energetic', icon:'🔥', label:'Semangat' },
+                          { id:'sad', icon:'🌧️', label:'Sendu / Galau' },
+                          { id:'sleep', icon:'😴', label:'Tidur / Meditasi' },
+                          { id:'party', icon:'🎉', label:'Party / Happy' },
+                        ].map(m => {
+                          const selected = personaPrefs.moods.includes(m.id);
+                          return (
+                            <button key={m.id} onClick={()=>setPersonaPrefs(p=>({ ...p, moods: selected ? p.moods.filter(x=>x!==m.id) : [...p.moods, m.id] }))}
+                              style={{ padding:'8px 14px', borderRadius:999, border:`1px solid ${selected?track.color+'80':'rgba(255,255,255,0.15)'}`, background:selected?`${track.color}25`:'transparent', color:selected?'white':'rgba(255,255,255,0.6)', fontSize:12, fontWeight:selected?700:500, cursor:'pointer', display:'flex', alignItems:'center', gap:6, transition:'all 0.15s' }}>
+                              {m.icon} {m.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Waktu mendengarkan */}
+                    <div style={{ marginBottom:18 }}>
+                      <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>Kapan kamu paling sering mendengarkan?</div>
+                      <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+                        {[
+                          { id:'morning', icon:'🌅', label:'Pagi' },
+                          { id:'afternoon', icon:'☀️', label:'Siang' },
+                          { id:'evening', icon:'🌆', label:'Sore' },
+                          { id:'night', icon:'🌙', label:'Malam' },
+                          { id:'anytime', icon:'🔁', label:'Kapan saja' },
+                        ].map(tod => (
+                          <button key={tod.id} onClick={()=>setPersonaPrefs(p=>({ ...p, timeOfDay: tod.id }))}
+                            style={{ padding:'8px 14px', borderRadius:999, border:`1px solid ${personaPrefs.timeOfDay===tod.id?track.color+'80':'rgba(255,255,255,0.15)'}`, background:personaPrefs.timeOfDay===tod.id?`${track.color}25`:'transparent', color:personaPrefs.timeOfDay===tod.id?'white':'rgba(255,255,255,0.6)', fontSize:12, fontWeight:personaPrefs.timeOfDay===tod.id?700:500, cursor:'pointer', display:'flex', alignItems:'center', gap:6, transition:'all 0.15s' }}>
+                            {tod.icon} {tod.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Bahasa konten */}
+                    <div style={{ marginBottom:24 }}>
+                      <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>Preferensi bahasa konten</div>
+                      <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+                        {[
+                          { id:'id', icon:'🇮🇩', label:'Indonesia' },
+                          { id:'en', icon:'🌍', label:'Internasional' },
+                          { id:'mix', icon:'🎲', label:'Campur' },
+                        ].map(l => (
+                          <button key={l.id} onClick={()=>setPersonaPrefs(p=>({ ...p, lang: l.id }))}
+                            style={{ padding:'8px 14px', borderRadius:999, border:`1px solid ${personaPrefs.lang===l.id?track.color+'80':'rgba(255,255,255,0.15)'}`, background:personaPrefs.lang===l.id?`${track.color}25`:'transparent', color:personaPrefs.lang===l.id?'white':'rgba(255,255,255,0.6)', fontSize:12, fontWeight:personaPrefs.lang===l.id?700:500, cursor:'pointer', display:'flex', alignItems:'center', gap:6, transition:'all 0.15s' }}>
+                            {l.icon} {l.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <button
+                      disabled={personaLoading || (personaPrefs.categories.length===0 && personaPrefs.moods.length===0)}
+                      onClick={async () => {
+                        if (!hasKey()) { alert(t?.aiOffline||'Tambahkan API key di Settings untuk menggunakan fitur ini.'); return; }
+                        setPL(true);
+                        try {
+                          const prompt = `Kamu adalah kurator audio personal. Berdasarkan preferensi user berikut, berikan rekomendasi audio yang dipersonalisasi dalam format JSON.
+
+Preferensi user:
+- Kategori favorit: ${personaPrefs.categories.join(', ') || 'tidak disebutkan'}
+- Suasana yang dicari: ${personaPrefs.moods.join(', ') || 'tidak disebutkan'}
+- Waktu mendengarkan: ${personaPrefs.timeOfDay || 'kapan saja'}
+- Bahasa konten: ${personaPrefs.lang || 'mix'}
+
+Berikan response HANYA dalam JSON ini (tanpa markdown, tanpa teks lain):
+{
+  "greeting": "sapa user dengan hangat dan personal berdasarkan preferensinya (max 2 kalimat)",
+  "music": [
+    {"title":"Nama Lagu","artist":"Artis","reason":"alasan singkat kenapa cocok (max 10 kata)"},
+    {"title":"...","artist":"...","reason":"..."},
+    {"title":"...","artist":"...","reason":"..."}
+  ],
+  "radio": [
+    {"name":"Nama Stasiun","genre":"genre/kategori","reason":"alasan singkat"},
+    {"name":"...","genre":"...","reason":"..."}
+  ],
+  "podcast": [
+    {"name":"Nama Podcast","category":"kategori","reason":"alasan singkat"},
+    {"name":"...","category":"...","reason":"..."}
+  ],
+  "tip": "satu tips pendek untuk pengalaman mendengarkan yang lebih baik"
+}`;
+                          const providers = getProviders();
+                          let result = null;
+                          for (const prov of providers) {
+                            try {
+                              const body = prov.isOpenAI
+                                ? { model:prov.model, max_tokens:800, messages:[{role:'user',content:prompt}], ...prov.extra }
+                                : { model:prov.model, max_tokens:800, messages:[{role:'user',content:[{type:'text',text:prompt}]}] };
+                              const resp = await fetch(prov.endpoint, { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${prov.key}`, ...(prov.extra||{}) }, body:JSON.stringify(body) });
+                              const data = await resp.json();
+                              const text = prov.isOpenAI ? data?.choices?.[0]?.message?.content : data?.content?.[0]?.text;
+                              if (text) {
+                                const clean = text.replace(/```json|```/g,'').trim();
+                                const parsed = JSON.parse(clean);
+                                result = parsed;
+                                break;
+                              }
+                            } catch {}
+                          }
+                          if (result) {
+                            setPersonaRecs(result);
+                            localStorage.setItem('sn_persona_recs', JSON.stringify(result));
+                            localStorage.setItem('sn_persona_prefs', JSON.stringify(personaPrefs));
+                            localStorage.setItem('sn_persona_done', '1');
+                            setPersonaStep('result');
+                          } else {
+                            alert('Gagal memuat rekomendasi. Coba lagi.');
+                          }
+                        } catch (e) {
+                          alert('Error: ' + e.message);
+                        } finally { setPL(false); }
+                      }}
+                      style={{ width:'100%', padding:'14px', borderRadius:16, border:'none', background:personaPrefs.categories.length>0||personaPrefs.moods.length>0 ? `linear-gradient(135deg,${track.color},#a855f7)` : 'rgba(255,255,255,0.1)', color:'white', fontSize:14, fontWeight:800, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, opacity:personaLoading?0.7:1 }}>
+                      {personaLoading ? <><Loader2 size={16} style={{ animation:'spin 1s linear infinite' }}/> Menganalisis preferensimu…</> : <><Wand2 size={16}/> Buat Rekomendasiku!</>}
+                    </button>
+                  </div>
+                ) : (
+                  /* ── RESULT VIEW */
+                  <div>
+                    {personaRecs && (
+                      <>
+                        {/* Greeting */}
+                        <div style={{ padding:'14px 16px', borderRadius:16, background:`${track.color}15`, border:`1px solid ${track.color}30`, marginBottom:16, display:'flex', alignItems:'flex-start', gap:10 }}>
+                          <div style={{ width:32, height:32, borderRadius:10, background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Bot size={15} style={{ color:'white' }}/></div>
+                          <div style={{ fontSize:13, color:'rgba(255,255,255,0.85)', lineHeight:1.65 }}>{personaRecs.greeting}</div>
+                        </div>
+
+                        {/* Musik */}
+                        {personaRecs.music?.length > 0 && (
+                          <div style={{ marginBottom:18 }}>
+                            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10, display:'flex', alignItems:'center', gap:6 }}>
+                              🎵 Rekomendasi Musik
+                            </div>
+                            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                              {personaRecs.music.map((m,i)=>(
+                                <div key={i} style={{ padding:'10px 14px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', display:'flex', alignItems:'center', gap:12 }}>
+                                  <div style={{ width:36, height:36, borderRadius:10, background:`${track.color}20`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>🎵</div>
+                                  <div style={{ flex:1, minWidth:0 }}>
+                                    <div style={{ fontWeight:700, fontSize:13, color:'white', marginBottom:2 }}>{m.title}</div>
+                                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)' }}>{m.artist}</div>
+                                    <div style={{ fontSize:10, color:track.color, marginTop:3 }}>{m.reason}</div>
+                                  </div>
+                                  <button onClick={()=>{ const query=`${m.title} ${m.artist}`; setYtQuery(p=>({...p,ytmusic:query})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic',query); ytMusicSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },120); }}
+                                    style={{ padding:'6px 12px', borderRadius:999, border:`1px solid ${track.color}50`, background:`${track.color}18`, color:track.color, fontSize:10, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
+                                    ▶ Play
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Radio */}
+                        {personaRecs.radio?.length > 0 && (
+                          <div style={{ marginBottom:18 }}>
+                            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>
+                              📻 Rekomendasi Radio
+                            </div>
+                            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                              {personaRecs.radio.map((r,i)=>(
+                                <div key={i} style={{ padding:'10px 14px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', display:'flex', alignItems:'center', gap:12 }}>
+                                  <div style={{ width:36, height:36, borderRadius:10, background:'rgba(245,158,11,0.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>📻</div>
+                                  <div style={{ flex:1, minWidth:0 }}>
+                                    <div style={{ fontWeight:700, fontSize:13, color:'white', marginBottom:2 }}>{r.name}</div>
+                                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)' }}>{r.genre}</div>
+                                    <div style={{ fontSize:10, color:'#f59e0b', marginTop:3 }}>{r.reason}</div>
+                                  </div>
+                                  <button onClick={()=>{ setTab('stream'); }}
+                                    style={{ padding:'6px 12px', borderRadius:999, border:'1px solid rgba(245,158,11,0.4)', background:'rgba(245,158,11,0.12)', color:'#f59e0b', fontSize:10, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
+                                    Cari
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Podcast */}
+                        {personaRecs.podcast?.length > 0 && (
+                          <div style={{ marginBottom:18 }}>
+                            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>
+                              🎙️ Rekomendasi Podcast
+                            </div>
+                            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                              {personaRecs.podcast.map((p,i)=>(
+                                <div key={i} style={{ padding:'10px 14px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', display:'flex', alignItems:'center', gap:12 }}>
+                                  <div style={{ width:36, height:36, borderRadius:10, background:'rgba(168,85,247,0.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>🎙️</div>
+                                  <div style={{ flex:1, minWidth:0 }}>
+                                    <div style={{ fontWeight:700, fontSize:13, color:'white', marginBottom:2 }}>{p.name}</div>
+                                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)' }}>{p.category}</div>
+                                    <div style={{ fontSize:10, color:'#a855f7', marginTop:3 }}>{p.reason}</div>
+                                  </div>
+                                  <button onClick={()=>{ const query=p.name+' podcast'; setYtQuery(prev=>({...prev,ytmusic:query})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic',query); ytMusicSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },120); }}
+                                    style={{ padding:'6px 12px', borderRadius:999, border:'1px solid rgba(168,85,247,0.4)', background:'rgba(168,85,247,0.12)', color:'#a855f7', fontSize:10, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
+                                    Cari
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Tip */}
+                        {personaRecs.tip && (
+                          <div style={{ padding:'12px 16px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', marginBottom:16, display:'flex', alignItems:'flex-start', gap:10 }}>
+                            <span style={{ fontSize:16 }}>💡</span>
+                            <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)', lineHeight:1.65 }}>{personaRecs.tip}</div>
+                          </div>
+                        )}
+
+                        {/* Reset & regenerate */}
+                        <div style={{ display:'flex', gap:8, marginTop:8 }}>
+                          <button onClick={()=>{ setPersonaStep('onboard'); localStorage.removeItem('sn_persona_done'); }}
+                            style={{ flex:1, padding:'10px', borderRadius:12, border:'1px solid rgba(255,255,255,0.1)', background:'transparent', color:'rgba(255,255,255,0.5)', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                            ✏️ Ubah Preferensi
+                          </button>
+                          <button onClick={()=>{ localStorage.removeItem('sn_persona_done'); setPersonaStep('onboard'); setPersonaRecs(null); setPersonaPrefs({ categories:[], moods:[], timeOfDay:'', lang:'' }); }}
+                            style={{ flex:1, padding:'10px', borderRadius:12, border:'1px solid rgba(255,255,255,0.1)', background:'transparent', color:'rgba(255,255,255,0.5)', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                            🔄 Reset
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : aiSubView==='lyrics' ? (
               /* ── LYRICS VIEW inside AI tab */
               <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'16px 20px 24px' }}>
                 <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:14 }}>
