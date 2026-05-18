@@ -9,7 +9,7 @@ import {
   ChevronRight, SlidersHorizontal, History,
   Search, Mic2, Trash2, ListPlus, FolderOpen,
   PenLine, ChevronLeft, Radio, Maximize2, Minimize2,
-  Download, Share2, Wand2, Copy, Check, Star, Headphones as HeadphonesIcon, BookOpen, Waves
+  Download, Share2, Wand2, Copy, Check, Star, Headphones as HeadphonesIcon, BookOpen, Waves, RefreshCw
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════
@@ -7281,7 +7281,7 @@ export default function App() {
           <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
 
             {/* ── AI Header: title + status + now playing */}
-            <div style={{ padding:'14px 16px 0', flexShrink:0 }}>
+            <div style={{ padding:'14px 16px 0', flexShrink:0, background:'transparent' }}>
               {/* Row 1: icon + title + status */}
               <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
                 <div style={{ width:36, height:36, borderRadius:12, background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 0 16px #6366f160' }}><Bot size={18} style={{ color:'white' }}/></div>
@@ -7330,8 +7330,6 @@ export default function App() {
                   <div>
                     <div style={{ textAlign:'center', marginBottom:20 }}>
                       <div style={{ fontSize:32, marginBottom:8 }}>🎧</div>
-                      <div style={{ fontWeight:800, fontSize:16, marginBottom:4 }}>Halo Musisi! 👋</div>
-                      <div style={{ fontSize:13, color:'rgba(255,255,255,0.5)', marginBottom:8 }}>Cobalah mendengarkan</div>
                       <div style={{ fontSize:12, color:'rgba(255,255,255,0.35)', lineHeight:1.6 }}>Beritahu Starry AI tentang preferensimu — kami pilihkan musik, radio, dan podcast yang tepat untukmu.</div>
                     </div>
 
@@ -7580,11 +7578,51 @@ Berikan response HANYA dalam JSON ini (tanpa markdown, tanpa teks lain):
                           </div>
                         )}
 
-                        {/* Ubah preferensi */}
-                        <div style={{ display:'flex', gap:8, marginTop:8 }}>
+                        {/* Tombol aksi bawah For You */}
+                        <div style={{ display:'flex', gap:8, marginTop:12 }}>
+                          <button
+                            onClick={async () => {
+                              if (!hasKey()) { alert(t?.aiOffline||'Tambahkan API key di Settings untuk menggunakan fitur ini.'); return; }
+                              setPL(true);
+                              try {
+                                const savedPrefs = (() => { try { return JSON.parse(localStorage.getItem('sn_persona_prefs')||'{}'); } catch { return personaPrefs; } })();
+                                const prompt = `Kamu adalah kurator audio personal. Berdasarkan preferensi user berikut, berikan rekomendasi audio yang dipersonalisasi dalam format JSON.\n\nPreferensi user:\n- Kategori favorit: ${savedPrefs.categories?.join(', ') || personaPrefs.categories.join(', ') || 'tidak disebutkan'}\n- Suasana yang dicari: ${savedPrefs.moods?.join(', ') || personaPrefs.moods.join(', ') || 'tidak disebutkan'}\n- Waktu mendengarkan: ${savedPrefs.timeOfDay || personaPrefs.timeOfDay || 'kapan saja'}\n- Bahasa konten: ${savedPrefs.lang || personaPrefs.lang || 'mix'}\n\nBerikan response HANYA dalam JSON ini (tanpa markdown, tanpa teks lain):\n{"greeting":"sapa user dengan hangat dan personal berdasarkan preferensinya (max 2 kalimat)","music":[{"title":"Nama Lagu","artist":"Artis","reason":"alasan singkat kenapa cocok (max 10 kata)"},{"title":"...","artist":"...","reason":"..."},{"title":"...","artist":"...","reason":"..."}],"radio":[{"name":"Nama Stasiun","genre":"genre/kategori","reason":"alasan singkat"},{"name":"...","genre":"...","reason":"..."}],"podcast":[{"name":"Nama Podcast","category":"kategori","reason":"alasan singkat"},{"name":"...","category":"...","reason":"..."}],"tip":"satu tips pendek untuk pengalaman mendengarkan yang lebih baik"}`;
+                                const providers = getProviders();
+                                let result = null;
+                                for (const prov of providers) {
+                                  try {
+                                    const body = prov.isOpenAI
+                                      ? { model:prov.model, max_tokens:800, messages:[{role:'user',content:prompt}], ...prov.extra }
+                                      : { model:prov.model, max_tokens:800, messages:[{role:'user',content:[{type:'text',text:prompt}]}] };
+                                    const resp = await fetch(prov.endpoint, { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${prov.key}`, ...(prov.extra||{}) }, body:JSON.stringify(body) });
+                                    const data = await resp.json();
+                                    const text = prov.isOpenAI ? data?.choices?.[0]?.message?.content : data?.content?.[0]?.text;
+                                    if (text) {
+                                      const clean = text.replace(/```json|```/g,'').trim();
+                                      const parsed = JSON.parse(clean);
+                                      result = parsed;
+                                      break;
+                                    }
+                                  } catch {}
+                                }
+                                if (result) {
+                                  setPersonaRecs(result);
+                                  localStorage.setItem('sn_persona_recs', JSON.stringify(result));
+                                  localStorage.setItem('sn_persona_done', '1');
+                                } else {
+                                  alert('Gagal memuat rekomendasi. Coba lagi.');
+                                }
+                              } catch (e) {
+                                alert('Error: ' + e.message);
+                              } finally { setPL(false); }
+                            }}
+                            disabled={personaLoading}
+                            style={{ flex:1, padding:'10px', borderRadius:12, border:`1px solid ${track.color}50`, background:`${track.color}18`, color:track.color, fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, opacity:personaLoading?0.6:1 }}>
+                            {personaLoading ? <><Loader2 size={13} style={{ animation:'spin 1s linear infinite' }}/> Menyegarkan…</> : <><RefreshCw size={13}/> Segarkan</>}
+                          </button>
                           <button onClick={()=>{ setPersonaStep('onboard'); localStorage.removeItem('sn_persona_done'); }}
-                            style={{ flex:1, padding:'10px', borderRadius:12, border:'1px solid rgba(255,255,255,0.1)', background:'transparent', color:'rgba(255,255,255,0.5)', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-                            ✏️ Ubah Preferensi
+                            style={{ flex:1, padding:'10px', borderRadius:12, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.05)', color:'rgba(255,255,255,0.6)', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                            <SlidersHorizontal size={13}/> Preferensi
                           </button>
                         </div>
                       </>
