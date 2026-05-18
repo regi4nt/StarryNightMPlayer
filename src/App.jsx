@@ -368,7 +368,7 @@ const STREAMING_PLATFORMS = [
     logo: null, // use inline SVG
     searchUrl: (q) => `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`,
     openUrl: 'https://www.youtube.com',
-    hint: 'Cari judul lagu, artis, album…',
+    hint: 'Cari lagu, artis, atau tempel link YouTube…',
   },
   {
     id: 'soundcloud',
@@ -399,11 +399,11 @@ const STREAMING_PLATFORMS = [
     name: 'Web',
     icon: '🌐',
     embedType: 'websearch',
-    description: 'Jamendo · FMA · ccMixter · archive.org · Vimeo · DM · Odysee & lainnya',
+    description: 'SoundCloud · Spotify · Jamendo · FMA · ccMixter · archive.org & lainnya',
     color: '#6366f1',
     logo: null,
     openUrl: 'https://www.youtube.com',
-    hint: 'Cari lagu/artis atau tempel URL Vimeo, Odysee, Audiomack, Mixcloud…',
+    hint: 'Cari lagu/artis — SoundCloud, Spotify, Jamendo, Vimeo, Audiomack, Mixcloud…',
   },
   {
     id: 'radio',
@@ -2423,6 +2423,79 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
         </div>
 
         {/* ── EQUALIZER */}
+        <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <span style={{ fontSize:16 }}>🎚️</span>
+              <span style={{ fontWeight:800, fontSize:14 }}>Equalizer</span>
+            </div>
+            <button onClick={() => setEqEnabled(v => !v)}
+              style={{ padding:'4px 14px', borderRadius:999, border:'none', fontSize:11, fontWeight:800, cursor:'pointer',
+                background: eqEnabled ? color : 'rgba(255,255,255,0.08)',
+                color: eqEnabled ? 'white' : 'rgba(255,255,255,0.4)' }}>
+              {eqEnabled ? 'ON' : 'OFF'}
+            </button>
+          </div>
+          {/* Preset chips */}
+          <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:14 }}>
+            {Object.keys(EQ_PRESETS).map(name => (
+              <button key={name} onClick={() => { setEqPreset(name); setEqGains(EQ_PRESETS[name]); if(!eqEnabled) setEqEnabled(true); }}
+                style={{ padding:'5px 12px', borderRadius:999, border:'none', fontSize:11, fontWeight:700, cursor:'pointer',
+                  background: eqPreset === name && eqEnabled ? color : 'rgba(255,255,255,0.08)',
+                  color: eqPreset === name && eqEnabled ? 'white' : 'rgba(255,255,255,0.45)' }}>
+                {name}
+              </button>
+            ))}
+          </div>
+          {/* 5-band sliders */}
+          <div style={{ display:'flex', gap:8, justifyContent:'space-between', opacity: eqEnabled ? 1 : 0.35, transition:'opacity 0.2s' }}>
+            {EQ_LABELS.map((label, i) => (
+              <div key={label} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6, flex:1 }}>
+                <span style={{ fontSize:10, color: safeGains[i] !== 0 ? color : 'rgba(255,255,255,0.35)', fontWeight:700, fontFamily:'monospace', minWidth:28, textAlign:'center' }}>
+                  {safeGains[i] > 0 ? '+' : ''}{safeGains[i]}
+                </span>
+                <input type="range" min="-12" max="12" step="1" value={safeGains[i]}
+                  disabled={!eqEnabled}
+                  onChange={e => {
+                    const val = Number(e.target.value);
+                    const next = safeGains.map((g, j) => j === i ? val : g);
+                    setEqGains(next);
+                    setEqPreset('Custom');
+                  }}
+                  style={{ writingMode:'vertical-lr', direction:'rtl', width:28, height:80, cursor:'pointer', accentColor: color }}
+                />
+                <span style={{ fontSize:9, color:'rgba(255,255,255,0.3)', textAlign:'center', lineHeight:1.2 }}>{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── CROSSFADE */}
+        <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <span style={{ fontSize:16 }}>🔀</span>
+              <div>
+                <div style={{ fontWeight:800, fontSize:14 }}>Crossfade</div>
+                <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>Transisi mulus antar lagu</div>
+              </div>
+            </div>
+            <span style={{ fontSize:13, fontWeight:800, color: crossfade > 0 ? color : 'rgba(255,255,255,0.3)', fontFamily:'monospace', minWidth:36, textAlign:'right' }}>
+              {crossfade > 0 ? crossfade + 's' : 'OFF'}
+            </span>
+          </div>
+          <input type="range" min="0" max="6" step="1" value={crossfade}
+            onChange={e => { const v = Number(e.target.value); setCrossfade(v); localStorage.setItem('sn_crossfade', v); }}
+            style={{ width:'100%', accentColor: color }}
+          />
+          <div style={{ display:'flex', justifyContent:'space-between', marginTop:4 }}>
+            <span style={{ fontSize:10, color:'rgba(255,255,255,0.25)' }}>OFF</span>
+            {[1,2,3,4,5,6].map(v => (
+              <span key={v} style={{ fontSize:10, color: crossfade === v ? color : 'rgba(255,255,255,0.25)' }}>{v}s</span>
+            ))}
+          </div>
+        </div>
+
         {/* ── SLEEP TIMER */}
         <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
@@ -2928,19 +3001,30 @@ export default function App() {
   const [wsLoading, setWsLoading] = useState(false);
   const [wsError,   setWsError]   = useState(null);
   const [wsEmbedUrl, setWsEmbedUrl] = useState(null); // active embed URL
+  const wsQueueRef  = useRef([]);   // current ws native audio queue
+  const wsQueueIdxRef = useRef(-1);
 
   const doWebSearch = async (q) => {
     if (!q.trim()) return;
     setWsLoading(true); setWsError(null); setWsResults([]); setWsEmbedUrl(null);
     try {
-      // ── Tolak URL YT / SC / Spotify
-      const isBlockedUrl = q.match(/youtube\.com|youtu\.be|soundcloud\.com|spotify\.com/);
-      if (isBlockedUrl) {
-        setWsError('Gunakan tab YouTube, SoundCloud, atau Spotify untuk platform tersebut.');
+      // ── Deteksi URL langsung SoundCloud → embed
+      if (q.includes('soundcloud.com/')) {
+        setWsResults([{ type:'sc_redirect', source:'soundcloud_redirect', query: q, directUrl: q }]);
         setWsLoading(false); return;
       }
-
-      // ── Deteksi URL langsung
+      // ── Deteksi URL langsung Spotify → embed
+      const spUrlMatch2 = q.match(/open\.spotify\.com\/(track|album|playlist|episode|show)\/([A-Za-z0-9]+)/);
+      if (spUrlMatch2) {
+        const embedUrl = `https://open.spotify.com/embed/${spUrlMatch2[1]}/${spUrlMatch2[2]}`;
+        setWsResults([{ type:'sp_embed_direct', source:'spotify_embed', embedUrl, query: q }]);
+        setWsLoading(false); return;
+      }
+      // ── Tolak URL YT
+      if (q.match(/youtube\.com|youtu\.be/)) {
+        setWsError('Gunakan tab YouTube untuk link YouTube.');
+        setWsLoading(false); return;
+      }
       const vimeoM       = q.match(/vimeo\.com\/(\d+)/);
       const dailymotionM = q.match(/dailymotion\.com\/video\/([a-z0-9]+)/i);
       const archiveM     = q.match(/archive\.org(?:\/(?:details|embed|download))?\/?([^/?#]+)/);
@@ -3092,9 +3176,24 @@ export default function App() {
         return [];
       })();
 
-      const [archRes, jamRes, fmaRes, ccRes] = await Promise.all([archivePromise, jamendoPromise, fmaPromise, ccmixtPromise]);
+      // ── SoundCloud: API search jika ada key
+      const scPromise = scHasKey ? (async () => {
+        try { const items = await searchSoundCloud(q, 4); return (items||[]).map(t=>({...t,source:'soundcloud',type:'soundcloud'})); } catch { return []; }
+      })() : Promise.resolve([]);
+      // ── Spotify: API search jika ada key
+      const spPromise = spHasKey ? (async () => {
+        try { const items = await searchSpotify(q, 4); return (items||[]).map(t=>({...t,source:'spotify',type:'spotify_track'})); } catch { return []; }
+      })() : Promise.resolve([]);
+
+      const [archRes, jamRes, fmaRes, ccRes, scWsRes, spWsRes] = await Promise.all([archivePromise, jamendoPromise, fmaPromise, ccmixtPromise, scPromise, spPromise]);
       // interleave sources agar tidak monoton
       const merged = [];
+      // SoundCloud redirect card jika tidak ada key
+      if (!scHasKey) merged.push({ type:'sc_redirect', source:'soundcloud_redirect', query: q });
+      else if (scWsRes.length > 0) merged.push({ type:'sc_section', source:'soundcloud_section', _items: scWsRes });
+      // Spotify redirect card jika tidak ada key
+      if (!spHasKey) merged.push({ type:'sp_redirect', source:'spotify_redirect', query: q });
+      else if (spWsRes.length > 0) merged.push({ type:'sp_section', source:'spotify_section', _items: spWsRes });
       const maxLen = Math.max(archRes.length, jamRes.length, fmaRes.length, ccRes.length);
       for (let i = 0; i < maxLen; i++) {
         if (jamRes[i])  merged.push(jamRes[i]);
@@ -3102,7 +3201,8 @@ export default function App() {
         if (archRes[i]) merged.push(archRes[i]);
         if (ccRes[i])   merged.push(ccRes[i]);
       }
-      if (merged.length === 0) setWsError('Tidak ada hasil. Coba kata kunci lain atau tempel URL langsung.');
+      const hasRealResults = archRes.length+jamRes.length+fmaRes.length+ccRes.length+scWsRes.length+spWsRes.length > 0;
+      if (!hasRealResults && scHasKey && spHasKey) setWsError('Tidak ada hasil. Coba kata kunci lain atau tempel URL langsung.');
       else setWsResults(merged);
     } catch(e) { setWsError('Pencarian gagal: ' + (e.message||'error')); }
     setWsLoading(false);
@@ -3419,6 +3519,46 @@ export default function App() {
     } else { doSwitch(); }
   };
 
+  // ── Play web-search native audio (Jamendo/FMA/ccMixter) with full queue, EQ, crossfade
+  const playWsTrack = useCallback((item, queue, queueIdx) => {
+    const srcColors = { jamendo:'#f0c020', fma:'#5cb85c', ccmixter:'#e74c3c' };
+    const srcBgs    = { jamendo:'rgba(240,192,32,0.15)', fma:'rgba(92,184,92,0.15)', ccmixter:'rgba(231,76,60,0.15)' };
+    const nativeTrack = {
+      id: `ws_${item.source}_${item.id||item.audioUrl}`,
+      title: item.title,
+      artist: item.artist || item.source,
+      album: item.source === 'jamendo' ? 'Jamendo' : item.source === 'fma' ? 'Free Music Archive' : 'ccMixter',
+      cover: item.thumbnail || '',
+      src: item.audioUrl,
+      color: srcColors[item.source] || '#6366f1',
+      bg: srcBgs[item.source] || 'rgba(99,102,241,0.15)',
+      mood: '',
+      _wsSource: item.source,
+    };
+    if (queue) {
+      wsQueueRef.current   = queue;
+      wsQueueIdxRef.current = queueIdx ?? 0;
+    }
+    setEmbedTrack(null);
+    setCustomSongs(prev => { const ex = prev.find(s=>s.id===nativeTrack.id); return ex ? prev : [nativeTrack, ...prev]; });
+    setTrack(nativeTrack);
+    setProgress(0); setDuration(0);
+    setPlaying(true);
+    setTab('player');
+  }, []); // eslint-disable-line
+
+  const wsNext = useCallback(() => {
+    const q = wsQueueRef.current; if (!q.length) return;
+    const nextIdx = wsQueueIdxRef.current + 1;
+    if (nextIdx < q.length) { wsQueueIdxRef.current = nextIdx; playWsTrack(q[nextIdx], q, nextIdx); }
+  }, [playWsTrack]);
+
+  const wsPrev = useCallback(() => {
+    const q = wsQueueRef.current; if (!q.length) return;
+    const prevIdx = wsQueueIdxRef.current - 1;
+    if (prevIdx >= 0) { wsQueueIdxRef.current = prevIdx; playWsTrack(q[prevIdx], q, prevIdx); }
+  }, [playWsTrack]);
+
   const playSoundCloud = (platformId, query) => {
     if (!query.trim()) return;
     const q = query.trim();
@@ -3492,6 +3632,13 @@ export default function App() {
     ytQueueIdxRef.current = idx;
     playYouTube(q[idx], q, idx);
   }, []); // eslint-disable-line
+
+  const wsShuffle = useCallback(() => {
+    const q = wsQueueRef.current; if (!q.length) return;
+    const idx = Math.floor(Math.random()*q.length);
+    wsQueueIdxRef.current = idx;
+    playWsTrack(q[idx], q, idx);
+  }, [playWsTrack]);
 
   // ── Helper: update ❤️ Favorit playlist on like/unlike
   const updateFavPlaylist = useCallback((id, isLiked) => {
@@ -3612,7 +3759,7 @@ export default function App() {
   // ── New playback features
   const [shuffle, setShuffle] = useState(() => localStorage.getItem('sn_shuffle') === 'true');
   const [repeat, setRepeat]   = useState(() => localStorage.getItem('sn_repeat') || 'off');
-  const [crossfade, setCrossfade] = useState(0);
+  const [crossfade, setCrossfade] = useState(() => { const v = parseInt(localStorage.getItem('sn_crossfade')||'0',10); return isNaN(v)?0:Math.min(6,Math.max(0,v)); });
   const [history, setHistory]   = useState([]);
 
   // ── EQ
@@ -3753,6 +3900,7 @@ export default function App() {
   const repeatRef     = useRef(repeat);
   const goNextRef     = useRef(null); // avoids stale closure in onEnd
   const ytNextRef     = useRef(null); // avoids stale closure in YT onStateChange
+  const wsNextRef     = useRef(null); // avoids stale closure in ws queue auto-advance
   const audioCtxRef   = useRef(null);
   const eqNodesRef    = useRef([]);
   const masterGainRef = useRef(null);
@@ -4083,6 +4231,14 @@ export default function App() {
   // ── Audio init
   useEffect(() => {
     const prev = audioRef.current;
+    // Jika elemen audio yang sama sudah punya src ini (dari doSwitch/doSwitchCached),
+    // jangan buat new Audio() — cukup pastikan EQ tersambung dan lanjut.
+    if (prev && prev.src && (prev.src === track.src || prev.src.endsWith(encodeURI(track.src)) || prev.src.endsWith(track.src))) {
+      if (audioCtxRef.current && eqNodesRef.current.length) {
+        try { const s = audioCtxRef.current.createMediaElementSource(prev); s.connect(eqNodesRef.current[0]); } catch(_) {}
+      }
+      return;
+    }
     const wasPlaying = prev && !prev.paused;
     if (prev) { prev.pause(); prev.src = ''; }
     // Guard: jangan buat Audio jika src kosong (placeholder track)
@@ -4097,11 +4253,23 @@ export default function App() {
     a.preload = isLite ? 'none' : 'metadata';
     a.src = track.src; // set src SETELAH preload agar browser hormati pengaturan preload
     audioRef.current = a;
+
+    // ── Connect ke Web Audio chain (EQ + crossfade masterGain)
+    // Harus dilakukan sebelum play() agar EQ dan crossfade aktif sejak awal.
+    // Jika ctx belum ada, ensureAudioCtx() akan membuatnya saat play dipicu.
+    // Jika ctx sudah ada (lagu sebelumnya sudah pernah diputar), reconnect sekarang.
+    if (audioCtxRef.current && eqNodesRef.current.length) {
+      try {
+        const newSrc = audioCtxRef.current.createMediaElementSource(a);
+        newSrc.connect(eqNodesRef.current[0]);
+      } catch(e) { console.warn('AudioContext reconnect:', e); }
+    }
+
     if (wasPlaying) {
       a.play().catch(e => { console.warn('autoplay blocked:', e); setPlaying(false); });
     }
     return () => { a.pause(); a.src = ''; };
-  }, [track.src]);
+  }, [track.src]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Init Web Audio API (EQ + crossfade gain)
   const ensureAudioCtx = useCallback(() => {
@@ -4830,6 +4998,18 @@ export default function App() {
 
   // ── NEXT / PREV
   const goNext = useCallback(() => {
+    // ── WS queue: advance within web-search audio queue
+    if (track._wsSource && wsQueueRef.current.length > 0) {
+      const nextIdx = wsQueueIdxRef.current + 1;
+      if (nextIdx < wsQueueRef.current.length) {
+        wsQueueIdxRef.current = nextIdx;
+        playWsTrack(wsQueueRef.current[nextIdx], wsQueueRef.current, nextIdx);
+      } else if (repeatRef.current === 'all') {
+        wsQueueIdxRef.current = 0;
+        playWsTrack(wsQueueRef.current[0], wsQueueRef.current, 0);
+      }
+      return;
+    }
     const songs = [...builtinSongs, ...customSongs, ...ytSongs];
     if (repeatRef.current==='one') { if(audioRef.current){audioRef.current.currentTime=0;audioRef.current.play().catch(()=>{});} return; }
     if (shuffleRef.current) {
@@ -4840,18 +5020,29 @@ export default function App() {
       const next = songs[(i+1)%songs.length];
       if (next) play(next);
     }
-  }, [track, play, customSongs, ytSongs]);
+  }, [track, play, playWsTrack, customSongs, ytSongs]);
 
   // Keep goNextRef always pointing to latest goNext
   useEffect(() => { goNextRef.current = goNext; }, [goNext]);
   useEffect(() => { ytNextRef.current = ytNext; }, [ytNext]);
+  useEffect(() => { wsNextRef.current = goNext; }, [goNext]); // ws uses goNext which handles ws queue
 
   const goPrev = useCallback(() => {
+    // ── WS queue: go back within web-search audio queue
+    if (track._wsSource && wsQueueRef.current.length > 0) {
+      if (progress > 3) { if(audioRef.current){audioRef.current.currentTime=0;setProgress(0);} return; }
+      const prevIdx = wsQueueIdxRef.current - 1;
+      if (prevIdx >= 0) {
+        wsQueueIdxRef.current = prevIdx;
+        playWsTrack(wsQueueRef.current[prevIdx], wsQueueRef.current, prevIdx);
+      }
+      return;
+    }
     if (progress > 3) { if(audioRef.current){audioRef.current.currentTime=0;setProgress(0);} return; }
     const songs = [...builtinSongs, ...customSongs, ...ytSongs];
     const i = songs.findIndex(s=>s.id===track.id);
     play(songs[(i-1+songs.length)%songs.length]);
-  }, [track, play, customSongs, ytSongs, progress]);
+  }, [track, play, playWsTrack, customSongs, ytSongs, progress]);
 
   // ── SEEK
   const seekByPct = useCallback((p) => {
@@ -5477,7 +5668,7 @@ export default function App() {
                             const rg = rc?.genres?.find(g => g.id === radioStation?.genreId);
                             return `${rg?.stations?.length || 0} stasiun`;
                           })()
-                        : embedTrack?.type==='youtube' ? `${ytQueueRef.current.length} ${t?.songsCount||'songs'}` : `${[...builtinSongs,...customSongs,...ytSongs].length} ${t?.songsCount||'songs'}`
+                        : embedTrack?.type==='youtube' ? `${ytQueueRef.current.length} ${t?.songsCount||'songs'}` : track._wsSource && wsQueueRef.current.length > 0 ? `${wsQueueRef.current.length} ${t?.songsCount||'songs'}` : `${[...builtinSongs,...customSongs,...ytSongs].length} ${t?.songsCount||'songs'}`
                       }
                     </div>
                   </div>
@@ -5551,7 +5742,27 @@ export default function App() {
                       })}
                     </>
                   );
-                })() : embedTrack?.type==='youtube' ? (
+                })() : track._wsSource && wsQueueRef.current.length > 0 ? (
+                  wsQueueRef.current.map((item,i) => {
+                    const wsId = `ws_${item.source}_${item.id||item.audioUrl}`;
+                    const isCur = track.id === wsId;
+                    const srcColors3 = { jamendo:'#f0c020', fma:'#5cb85c', ccmixter:'#e74c3c' };
+                    const sc3 = srcColors3[item.source] || '#6366f1';
+                    return (
+                      <div key={i} onClick={()=>{ playWsTrack(item, wsQueueRef.current, i); setShowQueue(false); }}
+                        style={{ display:'flex', alignItems:'center', gap:11, padding:'9px 18px', background:isCur?`${sc3}12`:'transparent', cursor:'pointer' }}>
+                        <div style={{ width:20, textAlign:'center', fontSize:10, color:'rgba(255,255,255,0.25)', fontWeight:600, flexShrink:0 }}>{isCur ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12, justifyContent:'center' }}>{[9,5,7].map((h2,j)=>(<div key={j} style={{ width:2.5, height:h2, background:sc3, borderRadius:1, animation:{"`"}bounce 0.8s ease-in-out ${j*0.15}s infinite{"`"} }}/>))}</div> : i+1}</div>
+                        {item.thumbnail
+                          ? <img src={item.thumbnail} style={{ width:38, height:38, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
+                          : <div style={{ width:38, height:38, borderRadius:8, background:`${sc3}22`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><span style={{ color:sc3, fontSize:14 }}>♪</span></div>}
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontSize:12, fontWeight:isCur?700:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:isCur?sc3:'rgba(255,255,255,0.88)' }}>{item.title}</div>
+                          <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:2 }}>{item.artist}</div>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : embedTrack?.type==='youtube' ? (
                   ytQueueRef.current.length > 0 ? (
                     ytQueueRef.current.map((item,i)=>{
                       const isCur = i === ytQueueIdxRef.current;
@@ -5791,7 +6002,7 @@ export default function App() {
 
             {/* Main controls: Shuffle | Prev | Play | Next | Repeat */}
             <div style={{ display:'flex', alignItems:'center', gap:layoutVars.controlsGap, marginTop: fullscreen ? 0 : layoutVars.controlsMt }}>
-              {!track.isRadio && <button onClick={()=>{ if(embedTrack?.type==='youtube'){ setShuffle(s=>{ const next=!s; if(next){ setRepeat('off'); ytShuffle(); } return next; }); } else { setShuffle(s=>{ const next=!s; if(next) setRepeat("off"); return next; }); } }} style={{ ...btn, color:shuffle?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', position:'relative', padding:'clamp(5px,1.2vw,8px)' }}>
+              {!track.isRadio && <button onClick={()=>{ if(embedTrack?.type==='youtube'){ setShuffle(s=>{ const next=!s; if(next){ setRepeat('off'); ytShuffle(); } return next; }); } else if(track._wsSource && wsQueueRef.current.length > 0){ setShuffle(s=>{ const next=!s; if(next){ setRepeat('off'); wsShuffle(); } return next; }); } else { setShuffle(s=>{ const next=!s; if(next) setRepeat("off"); return next; }); } }} style={{ ...btn, color:shuffle?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', position:'relative', padding:'clamp(5px,1.2vw,8px)' }}>
                 <Shuffle size={18}/>
                 {shuffle&&<div style={{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:embedTrack?.type==='youtube'?'#ff4444':track.color }}/>}
               </button>}
@@ -5893,7 +6104,7 @@ export default function App() {
 
               {/* ── Unified search bar */}
               {(() => {
-                const searchPlatforms = STREAMING_PLATFORMS.filter(p => ['ytmusic','soundcloud','spotify','websearch'].includes(p.id));
+                const searchPlatforms = STREAMING_PLATFORMS.filter(p => ['ytmusic','websearch'].includes(p.id));
                 const activePlat = searchPlatforms.find(p => p.id === unifiedPlatform) || searchPlatforms[0];
                 const handleUnifiedSearch = () => {
                   if (!unifiedQuery.trim()) return;
@@ -5999,7 +6210,7 @@ export default function App() {
                           <div style={{ flex:1, minWidth:0 }}>
                             <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                               <span style={{ fontWeight:700, fontSize:13, color:'white' }}>{platform.name}</span>
-                              {(isYT||isSC||isSpotify||isWebSearch) && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:999, background:`${platform.color}25`, color:platform.color }}>{isWebSearch ? '🌐 EMBED' : 'IN-APP ▶'}</span>}
+                              {(isYT||isSC||isSpotify||isWebSearch) && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:999, background:`${platform.color}25`, color:platform.color }}>{isWebSearch ? 'IN-APP ▶' : 'IN-APP ▶'}</span>}
                               {isRadio && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:999, background:`${platform.color}25`, color:platform.color }}>● LIVE</span>}
                               {isRedirect && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:999, background:'rgba(255,255,255,0.07)', color:'rgba(255,255,255,0.35)' }}>REDIRECT ↗</span>}
                             </div>
@@ -6030,23 +6241,31 @@ export default function App() {
                                 </div>
                               </div>
                             )}
-                            {/* Results — no thumbnail, cleaner list */}
+                            {/* Results — with thumbnail & playing indicator */}
                             {!loading && results.length > 0 && (
                               <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:4 }}>
                                 {results.map((v, vi) => {
                                   const secs = v.duration || v.lengthSeconds || 0;
                                   const dur  = secs > 0 ? `${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}` : '';
                                   const ch   = v.uploaderName || v.author || v.channel || 'YouTube';
+                                  const thumb = v.thumbnail || `https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`;
+                                  const isCurrentYt = embedTrack?.type === 'youtube' && embedTrack.videoId === v.videoId;
                                   return (
                                     <div key={v.videoId || vi}
-                                      style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)' }}
-                                      onMouseEnter={e=>e.currentTarget.style.background='rgba(255,0,0,0.08)'}
-                                      onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
-                                      <div onClick={() => playYouTube(v, results, vi)} style={{ width:32, height:32, borderRadius:8, background:`${platform.color}20`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, cursor:'pointer' }}>
-                                        <Play size={13} style={{ color:platform.color, marginLeft:2 }}/>
+                                      style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background: isCurrentYt ? 'rgba(255,68,68,0.1)' : 'rgba(255,255,255,0.04)', border: isCurrentYt ? '1px solid rgba(255,68,68,0.35)' : '1px solid rgba(255,255,255,0.08)' }}
+                                      onMouseEnter={e=>{ if(!isCurrentYt) e.currentTarget.style.background='rgba(255,0,0,0.08)'; }}
+                                      onMouseLeave={e=>{ if(!isCurrentYt) e.currentTarget.style.background='rgba(255,255,255,0.04)'; }}>
+                                      <div onClick={() => { if(isCurrentYt) setPlaying(p=>!p); else playYouTube(v, results, vi); }}
+                                        style={{ width:38, height:38, borderRadius:8, background:`${platform.color}20`, flexShrink:0, cursor:'pointer', overflow:'hidden', position:'relative' }}>
+                                        {!isLite && <img src={thumb} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{ e.target.style.display='none'; }}/>}
+                                        <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background: isCurrentYt ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.3)', borderRadius:8 }}>
+                                          {isCurrentYt && playing
+                                            ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12 }}>{[8,5,7].map((h,i)=>(<div key={i} style={{ width:2.5, height:h, background:'#ff4444', borderRadius:1, animation:`bounce 0.8s ease-in-out ${i*0.15}s infinite` }}/>))}</div>
+                                            : <Play size={13} style={{ color: isCurrentYt ? '#ff6b6b' : platform.color, marginLeft:2 }}/>}
+                                        </div>
                                       </div>
                                       <div onClick={() => playYouTube(v, results, vi)} style={{ flex:1, minWidth:0, cursor:'pointer' }}>
-                                        <div style={{ fontSize:12, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'rgba(255,255,255,0.9)' }}>{v.title}</div>
+                                        <div style={{ fontSize:12, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color: isCurrentYt ? '#ff6b6b' : 'rgba(255,255,255,0.9)' }}>{v.title}</div>
                                         <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{ch}{dur ? ` · ${dur}` : ''}</div>
                                       </div>
                                       <button onClick={e => { e.stopPropagation(); openNewTab(`https://www.youtube.com/watch?v=${v.videoId}`); }}
@@ -6357,24 +6576,31 @@ export default function App() {
                           );
                         })()}
                         {isWebSearch && (() => {
+                          // Audio-only sources that can play natively in player
+                          const wsAudioItems = wsResults.filter(it => it.audioUrl && ['jamendo','fma','ccmixter'].includes(it.source));
+                          const srcColors2 = { jamendo:'#f0c020', fma:'#5cb85c', ccmixter:'#e74c3c' };
                           return (
                             <div style={{ padding:'0 10px 12px' }}>
                               {/* Tips */}
                               <div style={{ fontSize:10, color:'rgba(255,255,255,0.3)', marginBottom:8, lineHeight:1.5 }}>
-                                💡 Cari kata kunci: <b style={{color:'rgba(255,255,255,0.5)'}}>Jamendo · FMA · ccMixter · archive.org</b>. Tempel URL: <b style={{color:'rgba(255,255,255,0.5)'}}>Vimeo · Dailymotion · Audiomack · Mixcloud · Odysee · Rumble · PeerTube · Bandcamp · Newgrounds</b>
+                                💡 <b style={{color:'rgba(255,255,255,0.5)'}}>Jamendo · FMA · ccMixter</b> putar in-app penuh (EQ, crossfade, antrean). Tempel URL: <b style={{color:'rgba(255,255,255,0.5)'}}>Vimeo · Audiomack · Mixcloud · Odysee · Dailymotion · Bandcamp</b>
                               </div>
-                              {/* Loading */}
+                              {/* Loading skeleton */}
                               {wsLoading && (
                                 <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                                  {[1,2,3].map(i => (
-                                    <div key={i} style={{ display:'flex', gap:8, alignItems:'center', padding:'7px 0' }}>
-                                      <div style={{ width:36, height:36, borderRadius:8, background:'rgba(255,255,255,0.08)', flexShrink:0 }}/>
-                                      <div style={{ flex:1 }}>
-                                        <div style={{ height:10, width:`${60+i*10}%`, borderRadius:4, background:'rgba(255,255,255,0.08)', marginBottom:5 }}/>
-                                        <div style={{ height:8, width:'40%', borderRadius:4, background:'rgba(255,255,255,0.05)' }}/>
+                                  {[1,2,3,4].map(i => (
+                                    <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)' }}>
+                                      <div style={{ width:32, height:32, borderRadius:8, background:'rgba(99,102,241,0.15)', flexShrink:0, animation:'pulse 1.4s ease-in-out infinite', animationDelay:`${i*0.12}s` }}/>
+                                      <div style={{ flex:1, display:'flex', flexDirection:'column', gap:5 }}>
+                                        <div style={{ height:10, borderRadius:6, background:'rgba(255,255,255,0.08)', width:`${72-i*6}%`, animation:'pulse 1.4s ease-in-out infinite', animationDelay:`${i*0.12}s` }}/>
+                                        <div style={{ height:8, borderRadius:6, background:'rgba(255,255,255,0.05)', width:'40%', animation:'pulse 1.4s ease-in-out infinite', animationDelay:`${i*0.18}s` }}/>
                                       </div>
                                     </div>
                                   ))}
+                                  <div style={{ textAlign:'center', paddingTop:4, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                                    <Loader2 size={12} style={{ color:'rgba(99,102,241,0.6)', animation:'spin 0.8s linear infinite' }}/>
+                                    <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)' }}>Mencari…</span>
+                                  </div>
                                 </div>
                               )}
                               {/* Error */}
@@ -6383,78 +6609,203 @@ export default function App() {
                               )}
                               {/* Results */}
                               {!wsLoading && wsResults.length > 0 && (
-                                <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
+                                <div style={{ display:'flex', flexDirection:'column', gap:4, marginTop:4 }}>
                                   {wsResults.map((item, idx) => {
+                                    // ── Spotify direct embed
+                                    if (item.type === 'sp_embed_direct') return (
+                                      <div key={idx} style={{ borderRadius:10, overflow:'hidden', border:'1px solid rgba(29,185,84,0.3)', marginBottom:6 }}>
+                                        <iframe key={`sp-ws-direct-${item.embedUrl}`} src={`${item.embedUrl}?utm_source=generator&theme=0`} width="100%" height="152" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" style={{ display:'block' }}/>
+                                      </div>
+                                    );
+                                    // ── SoundCloud redirect card
+                                    if (item.type === 'sc_redirect') return (
+                                      <div key={idx} style={{ marginBottom:6 }}>
+                                        {item.directUrl ? (
+                                          <div style={{ borderRadius:10, overflow:'hidden', border:'1px solid rgba(255,85,0,0.3)' }}>
+                                            <iframe key={`sc-ws-direct-${item.directUrl}`}
+                                              src={`https://w.soundcloud.com/player/?url=${encodeURIComponent(item.directUrl)}&color=%23ff5500&auto_play=false&buying=false&liking=false&download=false&sharing=false&show_artwork=true&show_comments=false&show_playcount=false&show_user=true&hide_related=true&visual=true`}
+                                              width="100%" height="166" frameBorder="0" allow="autoplay" style={{ display:'block' }}/>
+                                          </div>
+                                        ) : (
+                                          <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background:'rgba(255,85,0,0.08)', border:'1px solid rgba(255,85,0,0.25)' }}>
+                                            <PlatformLogo id="soundcloud" size={20}/>
+                                            <div style={{ flex:1, minWidth:0 }}>
+                                              <div style={{ fontSize:11, fontWeight:700, color:'#ff5500' }}>SoundCloud</div>
+                                              <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)' }}>Cari di SoundCloud Web</div>
+                                            </div>
+                                            <button onClick={() => window.open(`https://soundcloud.com/search?q=${encodeURIComponent(item.query)}`, '_blank', 'noopener,noreferrer')}
+                                              style={{ padding:'5px 12px', borderRadius:999, border:'none', background:'#ff5500', color:'white', fontSize:11, fontWeight:800, cursor:'pointer', flexShrink:0 }}>Buka ↗</button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                    // ── Spotify redirect card
+                                    if (item.type === 'sp_redirect') return (
+                                      <div key={idx} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background:'rgba(29,185,84,0.08)', border:'1px solid rgba(29,185,84,0.25)', marginBottom:6 }}>
+                                        <PlatformLogo id="spotify" size={20}/>
+                                        <div style={{ flex:1, minWidth:0 }}>
+                                          <div style={{ fontSize:11, fontWeight:700, color:'#1DB954' }}>Spotify</div>
+                                          <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)' }}>Cari di Spotify Web</div>
+                                        </div>
+                                        <button onClick={() => window.open(`https://open.spotify.com/search/${encodeURIComponent(item.query)}`, '_blank', 'noopener,noreferrer')}
+                                          style={{ padding:'5px 12px', borderRadius:999, border:'none', background:'#1DB954', color:'black', fontSize:11, fontWeight:800, cursor:'pointer', flexShrink:0 }}>Buka ↗</button>
+                                      </div>
+                                    );
+                                    // ── SoundCloud API section
+                                    if (item.type === 'sc_section') return (
+                                      <div key={idx} style={{ marginBottom:8 }}>
+                                        <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:5, paddingLeft:2 }}>
+                                          <PlatformLogo id="soundcloud" size={11}/>
+                                          <span style={{ fontSize:10, fontWeight:700, color:'#ff5500' }}>SoundCloud</span>
+                                        </div>
+                                        <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                                          {item._items.map((t2, ti) => {
+                                            const mins = Math.floor((t2.duration||0)/60), secs2 = String((t2.duration||0)%60).padStart(2,'0');
+                                            return (
+                                              <div key={t2.id||ti}
+                                                style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 9px', borderRadius:9, background:'rgba(255,85,0,0.06)', border:'1px solid rgba(255,85,0,0.15)', cursor:'pointer' }}
+                                                onMouseEnter={e=>e.currentTarget.style.background='rgba(255,85,0,0.13)'}
+                                                onMouseLeave={e=>e.currentTarget.style.background='rgba(255,85,0,0.06)'}
+                                                onClick={() => { const url = t2.permalinkUrl||t2.streamUrl; if(url&&url.includes('soundcloud.com/')) { setScWidget(p=>({...p,soundcloud:url})); } else window.open(`https://soundcloud.com/search?q=${encodeURIComponent(t2.title||'')}`, '_blank','noopener,noreferrer'); }}>
+                                                <div style={{ width:30, height:30, borderRadius:7, background:'rgba(255,85,0,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Play size={11} style={{ color:'#ff5500', marginLeft:1 }}/></div>
+                                                <div style={{ flex:1, minWidth:0 }}>
+                                                  <div style={{ fontSize:11, fontWeight:600, color:'rgba(255,255,255,0.9)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t2.title}</div>
+                                                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{t2.artist}{t2.duration?` · ${mins}:${secs2}`:''}</div>
+                                                </div>
+                                                <span style={{ fontSize:9, color:'#ff5500', background:'rgba(255,85,0,0.15)', padding:'2px 5px', borderRadius:4, fontWeight:700, flexShrink:0 }}>SC</span>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                        {scWidget['soundcloud'] && scWidget['soundcloud'].includes('soundcloud.com/') && (
+                                          <div style={{ marginTop:8, borderRadius:10, overflow:'hidden', border:'1px solid rgba(255,85,0,0.3)' }}>
+                                            <iframe key={`sc-ws-${scWidget['soundcloud']}`}
+                                              src={`https://w.soundcloud.com/player/?url=${encodeURIComponent(scWidget['soundcloud'])}&color=%23ff5500&auto_play=false&buying=false&liking=false&download=false&sharing=false&show_artwork=true&show_comments=false&show_playcount=false&show_user=true&hide_related=true&visual=true`}
+                                              width="100%" height="120" frameBorder="0" allow="autoplay" style={{ display:'block' }}/>
+                                            <div style={{ display:'flex', justifyContent:'flex-end', padding:'4px 8px', background:'rgba(0,0,0,0.4)', gap:6 }}>
+                                              <button onClick={()=>setScWidget(p=>({...p,soundcloud:null}))} style={{ fontSize:10, color:'rgba(255,255,255,0.4)', background:'none', border:'none', cursor:'pointer' }}>✕</button>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                    // ── Spotify API section
+                                    if (item.type === 'sp_section') return (
+                                      <div key={idx} style={{ marginBottom:8 }}>
+                                        <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:5, paddingLeft:2 }}>
+                                          <PlatformLogo id="spotify" size={11}/>
+                                          <span style={{ fontSize:10, fontWeight:700, color:'#1DB954' }}>Spotify</span>
+                                        </div>
+                                        <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                                          {item._items.map(t3 => {
+                                            const mins3 = Math.floor(t3.duration/60000), secs3 = String(Math.floor((t3.duration%60000)/1000)).padStart(2,'0');
+                                            const hasPreview = !!t3.previewUrl;
+                                            const isActive = spTrack?.id === t3.id;
+                                            return (
+                                              <div key={t3.id}
+                                                style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 9px', borderRadius:9, background: isActive ? 'rgba(29,185,84,0.12)' : 'rgba(29,185,84,0.06)', border: isActive ? '1px solid rgba(29,185,84,0.4)' : '1px solid rgba(29,185,84,0.15)', cursor:'pointer' }}
+                                                onMouseEnter={e=>{ if(!isActive) e.currentTarget.style.background='rgba(29,185,84,0.12)'; }}
+                                                onMouseLeave={e=>{ if(!isActive) e.currentTarget.style.background='rgba(29,185,84,0.06)'; }}
+                                                onClick={() => { if(hasPreview) playSpotifyPreview(t3); else if(t3.spotifyUrl) window.open(t3.spotifyUrl,'_blank','noopener,noreferrer'); }}>
+                                                <div style={{ position:'relative', flexShrink:0 }}>
+                                                  <img src={t3.cover} alt={t3.title} loading="lazy" style={{ width:30, height:30, borderRadius:6, objectFit:'cover', display:'block' }} onError={e=>{e.target.style.display='none';}}/>
+                                                  <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.4)', borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center', opacity: isActive ? 1 : 0 }} onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>{ if(!isActive) e.currentTarget.style.opacity=0; }}>
+                                                    {isActive && spPlaying ? <span style={{ fontSize:10, color:'white' }}>⏸</span> : hasPreview ? <Play size={10} style={{ color:'white', marginLeft:1 }}/> : <span style={{ fontSize:10 }}>↗</span>}
+                                                  </div>
+                                                </div>
+                                                <div style={{ flex:1, minWidth:0 }}>
+                                                  <div style={{ fontSize:11, fontWeight:600, color: isActive ? '#1DB954' : 'rgba(255,255,255,0.9)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t3.title}</div>
+                                                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t3.artist}</div>
+                                                </div>
+                                                <span style={{ fontSize:9, color:'rgba(255,255,255,0.3)', flexShrink:0 }}>{mins3}:{secs3}</span>
+                                                {hasPreview
+                                                  ? <span style={{ fontSize:9, color:'#1DB954', background:'rgba(29,185,84,0.18)', padding:'2px 5px', borderRadius:4, fontWeight:700, flexShrink:0 }}>30s</span>
+                                                  : <span style={{ fontSize:9, color:'#1DB954', background:'rgba(29,185,84,0.1)', padding:'2px 5px', borderRadius:4, fontWeight:700, flexShrink:0 }}>SP</span>}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    );
+                                    // ── Native audio items (Jamendo, FMA, ccMixter) — in-app player, queue, EQ, crossfade
+                                    if (item.audioUrl && ['jamendo','fma','ccmixter'].includes(item.source)) {
+                                      const srcC = srcColors2[item.source] || '#6366f1';
+                                      const dur2 = item.duration ? `${Math.floor(item.duration/60)}:${String(item.duration%60).padStart(2,'0')}` : '';
+                                      const srcLabels = { jamendo:'Jamendo', fma:'FMA', ccmixter:'ccMixter' };
+                                      const currentId = `ws_${item.source}_${item.id||item.audioUrl}`;
+                                      const isCurrentTrack = track.id === currentId && !embedTrack;
+                                      const isPlaying2 = isCurrentTrack && playing;
+                                      return (
+                                        <div key={idx}
+                                          style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background: isCurrentTrack ? `${srcC}18` : 'rgba(255,255,255,0.04)', border: isCurrentTrack ? `1px solid ${srcC}40` : '1px solid rgba(255,255,255,0.08)' }}
+                                          onMouseEnter={e=>{ if(!isCurrentTrack) e.currentTarget.style.background=`${srcC}10`; }}
+                                          onMouseLeave={e=>{ if(!isCurrentTrack) e.currentTarget.style.background='rgba(255,255,255,0.04)'; }}>
+                                          {/* Play button */}
+                                          <div onClick={() => { if(isCurrentTrack) { setPlaying(p=>!p); } else { playWsTrack(item, wsAudioItems, wsAudioItems.indexOf(item)); } }}
+                                            style={{ width:32, height:32, borderRadius:8, background:`${srcC}25`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, cursor:'pointer' }}>
+                                            {isPlaying2
+                                              ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12 }}>{[8,5,7].map((h2,i2)=>(<div key={i2} style={{ width:2.5, height:h2, background:srcC, borderRadius:1, animation:`bounce 0.8s ease-in-out ${i2*0.15}s infinite` }}/>))}</div>
+                                              : <Play size={13} style={{ color:srcC, marginLeft:2 }}/>}
+                                          </div>
+                                          {/* Info */}
+                                          <div onClick={() => playWsTrack(item, wsAudioItems, wsAudioItems.indexOf(item))} style={{ flex:1, minWidth:0, cursor:'pointer' }}>
+                                            <div style={{ fontSize:12, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color: isCurrentTrack ? srcC : 'rgba(255,255,255,0.9)' }}>{item.title}</div>
+                                            <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{item.artist}{dur2 ? ` · ${dur2}` : ''}</div>
+                                          </div>
+                                          {/* Badge */}
+                                          <span style={{ fontSize:9, fontWeight:800, color:srcC, background:`${srcC}18`, padding:'2px 5px', borderRadius:4, flexShrink:0 }}>{srcLabels[item.source]}</span>
+                                          {/* Add to queue */}
+                                          <button onClick={e => { e.stopPropagation(); setCustomSongs(prev => { const nid = `ws_${item.source}_${item.id||item.audioUrl}`; const ex = prev.find(s=>s.id===nid); if(ex) return prev; const srcColors3={jamendo:'#f0c020',fma:'#5cb85c',ccmixter:'#e74c3c'}; return [{ id:nid, title:item.title, artist:item.artist||item.source, album:srcLabels[item.source], cover:item.thumbnail||'', src:item.audioUrl, color:srcColors3[item.source]||'#6366f1', bg:`rgba(99,102,241,0.15)`, mood:'', _wsSource:item.source }, ...prev]; }); }}
+                                            title="Tambah ke antrean"
+                                            style={{ background:'none', border:`1px solid ${srcC}40`, borderRadius:6, color:srcC, fontSize:10, fontWeight:700, padding:'3px 7px', cursor:'pointer', flexShrink:0, lineHeight:1.2 }}>+</button>
+                                        </div>
+                                      );
+                                    }
+                                    // ── Embeddable sources (Vimeo, archive, audiomack, mixcloud, odysee, rumble, peertube, dailymotion)
                                     const BADGES = {
                                       vimeo:      { label:'Vimeo',    color:'#1ab7ea' },
                                       dailymotion:{ label:'DM',       color:'#0066DC' },
-                                      jamendo:    { label:'Jamendo',  color:'#f0c020' },
-                                      bandcamp:   { label:'BC',       color:'#1da0c3' },
                                       archive:    { label:'Archive',  color:'#8b5cf6' },
-                                      fma:        { label:'FMA',      color:'#5cb85c' },
-                                      ccmixter:   { label:'ccMixter', color:'#e74c3c' },
                                       audiomack:  { label:'Audiomack',color:'#ffcc00' },
                                       mixcloud:   { label:'Mixcloud', color:'#52aad8' },
                                       odysee:     { label:'Odysee',   color:'#ef5b5b' },
                                       rumble:     { label:'Rumble',   color:'#85c742' },
                                       peertube:   { label:'PeerTube', color:'#f2690d' },
+                                      bandcamp:   { label:'BC',       color:'#1da0c3' },
+                                      fma:        { label:'FMA',      color:'#5cb85c' },
+                                      ccmixter:   { label:'ccMixter', color:'#e74c3c' },
                                       newgrounds: { label:'NG',       color:'#ff6600' },
                                     };
                                     const srcBadge = BADGES[item.source] || { label:'Web', color:'#6366f1' };
                                     const isEmbeddable = ['archive','vimeo','dailymotion','audiomack','mixcloud','odysee','rumble','peertube'].includes(item.source);
-                                    const isAudio = ['jamendo','fma','ccmixter'].includes(item.source) && item.audioUrl;
                                     const isExternal = ['bandcamp','fma','ccmixter','newgrounds'].includes(item.source) && !item.audioUrl;
                                     return (
                                       <div key={idx}
                                         onClick={() => {
-                                          if (isAudio && item.audioUrl) {
-                                            // Audio native → putar di player bawaan
-                                            const srcColors = { jamendo:'#f0c020', fma:'#5cb85c', ccmixter:'#e74c3c' };
-                                            const srcBgs = { jamendo:'rgba(240,192,32,0.15)', fma:'rgba(92,184,92,0.15)', ccmixter:'rgba(231,76,60,0.15)' };
-                                            const nativeTrack = {
-                                              id:`ws_${item.source}_${item.id||Date.now()}`,
-                                              title:item.title, artist:item.artist,
-                                              album: item.source === 'jamendo' ? 'Jamendo' : item.source === 'fma' ? 'Free Music Archive' : 'ccMixter',
-                                              cover:item.thumbnail||'', src:item.audioUrl,
-                                              color:srcColors[item.source]||'#6366f1',
-                                              bg:srcBgs[item.source]||'rgba(99,102,241,0.15)', mood:'',
-                                            };
-                                            setEmbedTrack(null);
-                                            setCustomSongs(prev => { const ex = prev.find(s=>s.id===nativeTrack.id); return ex ? prev : [nativeTrack,...prev]; });
-                                            setTrack(nativeTrack);
-                                            setPlaying(true);
-                                            setTab('player');
-                                          } else if (isExternal) {
-                                            openNewTab(item.externalUrl);
-                                          } else if (item.embedUrl) {
-                                            setWsEmbedUrl(prev => prev === item.embedUrl ? null : item.embedUrl);
-                                          }
+                                          if (isExternal) { openNewTab(item.externalUrl); }
+                                          else if (item.embedUrl) { setWsEmbedUrl(prev => prev === item.embedUrl ? null : item.embedUrl); }
                                         }}
                                         style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 6px', borderRadius:8, cursor:'pointer', transition:'background 0.1s' }}
                                         onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}
                                         onMouseLeave={e => e.currentTarget.style.background='transparent'}
                                       >
-                                        {/* Thumbnail */}
                                         <div style={{ width:44, height:44, borderRadius:7, background:'rgba(255,255,255,0.07)', flexShrink:0, overflow:'hidden', position:'relative' }}>
                                           {item.thumbnail && <img src={item.thumbnail} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>e.target.style.display='none'}/>}
                                           <div style={{ position:'absolute', bottom:2, right:2, background: srcBadge.color, color:'white', fontSize:7, fontWeight:800, padding:'1px 3px', borderRadius:3 }}>{srcBadge.label}</div>
-                                          {isAudio && <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,0.3)' }}><span style={{ fontSize:14 }}>♪</span></div>}
                                         </div>
-                                        {/* Info */}
                                         <div style={{ flex:1, minWidth:0 }}>
                                           <div style={{ fontSize:12, fontWeight:600, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{item.title}</div>
                                           <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{item.artist}{item.duration ? ` · ${Math.floor(item.duration/60)}:${String(item.duration%60).padStart(2,'0')}` : ''}</div>
                                         </div>
-                                        {/* Action icon */}
                                         <div style={{ width:28, height:28, borderRadius:'50%', background:`${platform.color}25`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                                          <span style={{ fontSize:10, color:platform.color }}>{isExternal ? '↗' : isAudio ? '▶' : wsEmbedUrl === item.embedUrl ? '▼' : '▶'}</span>
+                                          <span style={{ fontSize:10, color:platform.color }}>{isExternal ? '↗' : wsEmbedUrl === item.embedUrl ? '▼' : '▶'}</span>
                                         </div>
                                       </div>
                                     );
                                   })}
                                 </div>
                               )}
-                              {/* Embed player for vimeo/archive */}
+                              {/* Inline embed player */}
                               {wsEmbedUrl && (
                                 <div style={{ marginTop:8, borderRadius:10, overflow:'hidden', border:`1px solid ${platform.color}30` }}>
                                   <iframe
@@ -6475,13 +6826,14 @@ export default function App() {
                               {/* Empty state */}
                               {!wsLoading && !wsError && wsResults.length === 0 && !wsEmbedUrl && (
                                 <div style={{ marginTop:6, fontSize:10, color:'rgba(255,255,255,0.2)', lineHeight:1.6 }}>
-                                  Belum ada hasil — cari nama lagu/artis atau tempel URL Vimeo, Audiomack, Mixcloud, Odysee, Rumble, PeerTube, Dailymotion, Bandcamp… ↑
+                                  Belum ada hasil — cari nama lagu/artis, atau tempel URL Vimeo, Audiomack, Mixcloud, Odysee, Rumble, PeerTube, Dailymotion, Bandcamp… ↑
                                 </div>
                               )}
                             </div>
                           );
                         })()}
                         {isRadio && (() => {
+                          const countries = platform.countries || [];
                           const countries = platform.countries || [];
                           const selCountry = countries.find(c => c.id === radioCountry) || null;
                           const selGenre = selCountry ? (selCountry.genres.find(g => g.id === radioGenre) || null) : null;
@@ -7489,10 +7841,52 @@ Berikan response HANYA dalam JSON ini (tanpa markdown, tanpa teks lain):
                   <div>
                     {personaRecs && (
                       <>
-                        {/* Greeting */}
-                        <div style={{ padding:'14px 16px', borderRadius:16, background:`${track.color}15`, border:`1px solid ${track.color}30`, marginBottom:16, display:'flex', alignItems:'flex-start', gap:10 }}>
-                          <div style={{ width:32, height:32, borderRadius:10, background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Bot size={15} style={{ color:'white' }}/></div>
-                          <div style={{ fontSize:13, color:'rgba(255,255,255,0.85)', lineHeight:1.65 }}>{personaRecs.greeting}</div>
+                        {/* Tombol aksi atas For You */}
+                        <div style={{ display:'flex', gap:8, marginBottom:16 }}>
+                          <button
+                            onClick={async () => {
+                              if (!hasKey()) { alert(t?.aiOffline||'Tambahkan API key di Settings untuk menggunakan fitur ini.'); return; }
+                              setPL(true);
+                              try {
+                                const savedPrefs = (() => { try { return JSON.parse(localStorage.getItem('sn_persona_prefs')||'{}'); } catch { return personaPrefs; } })();
+                                const prompt = `Kamu adalah kurator audio personal. Berdasarkan preferensi user berikut, berikan rekomendasi audio yang dipersonalisasi dalam format JSON.\n\nPreferensi user:\n- Kategori favorit: ${savedPrefs.categories?.join(', ') || personaPrefs.categories.join(', ') || 'tidak disebutkan'}\n- Suasana yang dicari: ${savedPrefs.moods?.join(', ') || personaPrefs.moods.join(', ') || 'tidak disebutkan'}\n- Waktu mendengarkan: ${savedPrefs.timeOfDay || personaPrefs.timeOfDay || 'kapan saja'}\n- Bahasa konten: ${savedPrefs.lang || personaPrefs.lang || 'mix'}\n\nBerikan response HANYA dalam JSON ini (tanpa markdown, tanpa teks lain):\n{"greeting":"sapa user dengan hangat dan personal berdasarkan preferensinya (max 2 kalimat)","music":[{"title":"Nama Lagu","artist":"Artis","reason":"alasan singkat kenapa cocok (max 10 kata)"},{"title":"...","artist":"...","reason":"..."},{"title":"...","artist":"...","reason":"..."}],"radio":[{"name":"Nama Stasiun","genre":"genre/kategori","reason":"alasan singkat"},{"name":"...","genre":"...","reason":"..."}],"podcast":[{"name":"Nama Podcast","category":"kategori","reason":"alasan singkat"},{"name":"...","category":"...","reason":"..."}],"tip":"satu tips pendek untuk pengalaman mendengarkan yang lebih baik"}`;
+                                const providers = getProviders();
+                                let result = null;
+                                for (const prov of providers) {
+                                  try {
+                                    const body = prov.isOpenAI
+                                      ? { model:prov.model, max_tokens:800, messages:[{role:'user',content:prompt}], ...prov.extra }
+                                      : { model:prov.model, max_tokens:800, messages:[{role:'user',content:[{type:'text',text:prompt}]}] };
+                                    const resp = await fetch(prov.endpoint, { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${prov.key}`, ...(prov.extra||{}) }, body:JSON.stringify(body) });
+                                    const data = await resp.json();
+                                    const text = prov.isOpenAI ? data?.choices?.[0]?.message?.content : data?.content?.[0]?.text;
+                                    if (text) {
+                                      const clean = text.replace(/```json|```/g,'').trim();
+                                      const parsed = JSON.parse(clean);
+                                      result = parsed;
+                                      break;
+                                    }
+                                  } catch {}
+                                }
+                                if (result) {
+                                  setPersonaRecs(result);
+                                  localStorage.setItem('sn_persona_recs', JSON.stringify(result));
+                                  localStorage.setItem('sn_persona_done', '1');
+                                } else {
+                                  alert('Gagal memuat rekomendasi. Coba lagi.');
+                                }
+                              } catch (e) {
+                                alert('Error: ' + e.message);
+                              } finally { setPL(false); }
+                            }}
+                            disabled={personaLoading}
+                            style={{ flex:1, padding:'10px', borderRadius:12, border:`1px solid ${track.color}50`, background:`${track.color}18`, color:track.color, fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, opacity:personaLoading?0.6:1 }}>
+                            {personaLoading ? <><Loader2 size={13} style={{ animation:'spin 1s linear infinite' }}/> Menyegarkan…</> : <><RefreshCw size={13}/> Segarkan</>}
+                          </button>
+                          <button onClick={()=>{ setPersonaStep('onboard'); localStorage.removeItem('sn_persona_done'); }}
+                            style={{ flex:1, padding:'10px', borderRadius:12, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.05)', color:'rgba(255,255,255,0.6)', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                            <SlidersHorizontal size={13}/> Preferensi
+                          </button>
                         </div>
 
                         {/* Musik */}
@@ -7578,53 +7972,6 @@ Berikan response HANYA dalam JSON ini (tanpa markdown, tanpa teks lain):
                           </div>
                         )}
 
-                        {/* Tombol aksi bawah For You */}
-                        <div style={{ display:'flex', gap:8, marginTop:12 }}>
-                          <button
-                            onClick={async () => {
-                              if (!hasKey()) { alert(t?.aiOffline||'Tambahkan API key di Settings untuk menggunakan fitur ini.'); return; }
-                              setPL(true);
-                              try {
-                                const savedPrefs = (() => { try { return JSON.parse(localStorage.getItem('sn_persona_prefs')||'{}'); } catch { return personaPrefs; } })();
-                                const prompt = `Kamu adalah kurator audio personal. Berdasarkan preferensi user berikut, berikan rekomendasi audio yang dipersonalisasi dalam format JSON.\n\nPreferensi user:\n- Kategori favorit: ${savedPrefs.categories?.join(', ') || personaPrefs.categories.join(', ') || 'tidak disebutkan'}\n- Suasana yang dicari: ${savedPrefs.moods?.join(', ') || personaPrefs.moods.join(', ') || 'tidak disebutkan'}\n- Waktu mendengarkan: ${savedPrefs.timeOfDay || personaPrefs.timeOfDay || 'kapan saja'}\n- Bahasa konten: ${savedPrefs.lang || personaPrefs.lang || 'mix'}\n\nBerikan response HANYA dalam JSON ini (tanpa markdown, tanpa teks lain):\n{"greeting":"sapa user dengan hangat dan personal berdasarkan preferensinya (max 2 kalimat)","music":[{"title":"Nama Lagu","artist":"Artis","reason":"alasan singkat kenapa cocok (max 10 kata)"},{"title":"...","artist":"...","reason":"..."},{"title":"...","artist":"...","reason":"..."}],"radio":[{"name":"Nama Stasiun","genre":"genre/kategori","reason":"alasan singkat"},{"name":"...","genre":"...","reason":"..."}],"podcast":[{"name":"Nama Podcast","category":"kategori","reason":"alasan singkat"},{"name":"...","category":"...","reason":"..."}],"tip":"satu tips pendek untuk pengalaman mendengarkan yang lebih baik"}`;
-                                const providers = getProviders();
-                                let result = null;
-                                for (const prov of providers) {
-                                  try {
-                                    const body = prov.isOpenAI
-                                      ? { model:prov.model, max_tokens:800, messages:[{role:'user',content:prompt}], ...prov.extra }
-                                      : { model:prov.model, max_tokens:800, messages:[{role:'user',content:[{type:'text',text:prompt}]}] };
-                                    const resp = await fetch(prov.endpoint, { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${prov.key}`, ...(prov.extra||{}) }, body:JSON.stringify(body) });
-                                    const data = await resp.json();
-                                    const text = prov.isOpenAI ? data?.choices?.[0]?.message?.content : data?.content?.[0]?.text;
-                                    if (text) {
-                                      const clean = text.replace(/```json|```/g,'').trim();
-                                      const parsed = JSON.parse(clean);
-                                      result = parsed;
-                                      break;
-                                    }
-                                  } catch {}
-                                }
-                                if (result) {
-                                  setPersonaRecs(result);
-                                  localStorage.setItem('sn_persona_recs', JSON.stringify(result));
-                                  localStorage.setItem('sn_persona_done', '1');
-                                } else {
-                                  alert('Gagal memuat rekomendasi. Coba lagi.');
-                                }
-                              } catch (e) {
-                                alert('Error: ' + e.message);
-                              } finally { setPL(false); }
-                            }}
-                            disabled={personaLoading}
-                            style={{ flex:1, padding:'10px', borderRadius:12, border:`1px solid ${track.color}50`, background:`${track.color}18`, color:track.color, fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, opacity:personaLoading?0.6:1 }}>
-                            {personaLoading ? <><Loader2 size={13} style={{ animation:'spin 1s linear infinite' }}/> Menyegarkan…</> : <><RefreshCw size={13}/> Segarkan</>}
-                          </button>
-                          <button onClick={()=>{ setPersonaStep('onboard'); localStorage.removeItem('sn_persona_done'); }}
-                            style={{ flex:1, padding:'10px', borderRadius:12, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.05)', color:'rgba(255,255,255,0.6)', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-                            <SlidersHorizontal size={13}/> Preferensi
-                          </button>
-                        </div>
                       </>
                     )}
                   </div>
