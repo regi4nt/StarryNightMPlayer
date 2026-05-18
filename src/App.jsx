@@ -1139,6 +1139,22 @@ function getProviders() {
       { provider:'Groq', key:k, model:'gemma2-9b-it',            endpoint:'https://api.groq.com/openai/v1/chat/completions', isOpenAI:true, extra:{} },
       { provider:'Groq', key:k, model:'llama3-8b-8192',          endpoint:'https://api.groq.com/openai/v1/chat/completions', isOpenAI:true, extra:{} },
     ])),
+    // DeepSeek
+    ...([
+      (import.meta.env?.VITE_DEEPSEEK_KEY_1 || ''),
+      (import.meta.env?.VITE_DEEPSEEK_KEY_2 || ''),
+    ].filter(k => k && k.length > 10).flatMap(k => [
+      { provider:'DeepSeek', key:k, model:'deepseek-chat',     endpoint:'https://api.deepseek.com/v1/chat/completions', isOpenAI:true, extra:{} },
+      { provider:'DeepSeek', key:k, model:'deepseek-reasoner', endpoint:'https://api.deepseek.com/v1/chat/completions', isOpenAI:true, extra:{} },
+    ])),
+    // Grok (xAI)
+    ...([
+      (import.meta.env?.VITE_GROK_KEY_1 || ''),
+      (import.meta.env?.VITE_GROK_KEY_2 || ''),
+    ].filter(k => k && k.length > 10).flatMap(k => [
+      { provider:'Grok', key:k, model:'grok-3',      endpoint:'https://api.x.ai/v1/chat/completions', isOpenAI:true, extra:{} },
+      { provider:'Grok', key:k, model:'grok-3-mini', endpoint:'https://api.x.ai/v1/chat/completions', isOpenAI:true, extra:{} },
+    ])),
   ];
 }
 
@@ -1151,20 +1167,27 @@ let slotIdx = 0;
 const _ENV_SP_ID     = (import.meta.env?.VITE_SPOTIFY_CLIENT_ID     || '');
 const _ENV_SP_SECRET = (import.meta.env?.VITE_SPOTIFY_CLIENT_SECRET || '');
 const _ENV_SC_ID     = (import.meta.env?.VITE_SOUNDCLOUD_CLIENT_ID  || '');
+const _ENV_DS_KEY    = (import.meta.env?.VITE_DEEPSEEK_KEY_1        || '');
+const _ENV_GROK_KEY  = (import.meta.env?.VITE_GROK_KEY_1            || '');
 // Runtime mutable — diupdate oleh App saat settings berubah
 let _USER_SP_ID     = '';
 let _USER_SP_SECRET = '';
 let _USER_SC_ID     = '';
 let _USER_AI_KEY    = ''; // OpenRouter / OpenAI / Groq key dari user
-export const setRuntimeKeys = (sp_id, sp_secret, sc_id, ai_key) => {
+let _USER_DS_KEY    = ''; // DeepSeek API key
+let _USER_GROK_KEY  = ''; // xAI Grok API key
+export const setRuntimeKeys = (sp_id, sp_secret, sc_id, ai_key, ds_key, grok_key) => {
   _USER_SP_ID = sp_id || ''; _USER_SP_SECRET = sp_secret || '';
   _USER_SC_ID = sc_id || ''; _USER_AI_KEY    = ai_key    || '';
+  _USER_DS_KEY = ds_key || ''; _USER_GROK_KEY = grok_key || '';
   _spToken = null; _spTokenExp = 0; // invalidate cached Spotify token
 };
-const getSpId     = () => _USER_SP_ID     || _ENV_SP_ID;
-const getSpSecret = () => _USER_SP_SECRET || _ENV_SP_SECRET;
-const getScId     = () => _USER_SC_ID     || _ENV_SC_ID;
-const getUserAiKey = () => _USER_AI_KEY;
+const getSpId      = () => _USER_SP_ID     || _ENV_SP_ID;
+const getSpSecret  = () => _USER_SP_SECRET || _ENV_SP_SECRET;
+const getScId      = () => _USER_SC_ID     || _ENV_SC_ID;
+const getUserAiKey  = () => _USER_AI_KEY;
+const getUserDsKey  = () => _USER_DS_KEY  || _ENV_DS_KEY;
+const getUserGrokKey = () => _USER_GROK_KEY || _ENV_GROK_KEY;
 
 // ═══════════════════════════════════════════════════════
 //  SPOTIFY — Client Credentials token + search
@@ -2408,7 +2431,7 @@ function MaskedKeyInput({ value, onChange, onBlur, placeholder, accentColor, lab
   );
 }
 
-function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setEqPreset, eqGains, setEqGains, crossfade, setCrossfade, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t, userSpId, setUserSpId, userSpSecret, setUserSpSecret, userScId, setUserScId, userAiKey, setUserAiKey }) {
+function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setEqPreset, eqGains, setEqGains, crossfade, setCrossfade, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t, userSpId, setUserSpId, userSpSecret, setUserSpSecret, userScId, setUserScId, userAiKey, setUserAiKey, userDsKey, setUserDsKey, userGrokKey, setUserGrokKey }) {
   const coverRef = useRef(null);
   const [apiKeyTab, setApiKeyTab] = React.useState('spotify');
   // Defensive: eqGains harus selalu array 5 elemen
@@ -2637,7 +2660,8 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
             {[
               { id:'spotify', label:'Spotify', icon:<svg width={11} height={11} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="12" fill="#1DB954"/><path d="M17.9 10.9C14.7 9 9.35 8.8 6.3 9.75c-.5.15-1-.15-1.15-.6-.15-.5.15-1 .6-1.15C9.65 6.8 15.5 7 19.1 9.15c.45.25.6.85.35 1.3-.25.35-.85.5-1.55.45zM17.75 13.55c-.2.35-.65.45-1 .25-2.65-1.6-6.65-2.05-9.75-1.1-.4.1-.8-.1-.9-.5-.1-.4.1-.8.5-.9 3.55-1.1 7.95-.55 11 1.3.3.15.4.6.15.95zM16.6 16.1c-.15.3-.5.4-.8.25-2.3-1.4-5.2-1.7-8.6-.95-.35.1-.65-.15-.75-.45-.1-.35.15-.65.45-.75 3.75-.85 6.95-.5 9.5 1.1.35.15.4.5.2.8z" fill="white"/></svg>, activeColor:'#1DB954', activeBg:'rgba(29,185,84,0.15)', dot: (userSpId && userSpSecret) },
               { id:'soundcloud', label:'SoundCloud', icon:<svg width={11} height={11} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="5" fill="#ff5500"/><rect x="5.5" y="10" width="2" height="7" rx="1" fill="white"/><rect x="8.5" y="8.5" width="2" height="8.5" rx="1" fill="white"/><rect x="11.5" y="7" width="2" height="10" rx="1" fill="white"/><rect x="14.5" y="8" width="2" height="9" rx="1" fill="white"/><rect x="17.5" y="9.5" width="2" height="7.5" rx="1" fill="white"/></svg>, activeColor:'#ff5500', activeBg:'rgba(255,85,0,0.15)', dot: !!userScId },
-              { id:'ai', label:'AI Key', icon:<svg width={11} height={11} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#6366f1"/><circle cx="12" cy="12" r="4" fill="none" stroke="white" strokeWidth="1.5"/><circle cx="12" cy="12" r="1.5" fill="white"/><line x1="12" y1="4" x2="12" y2="7" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="12" y1="17" x2="12" y2="20" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="4" y1="12" x2="7" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="17" y1="12" x2="20" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>, activeColor:'#818cf8', activeBg:'rgba(99,102,241,0.15)', dot: !!userAiKey },
+              { id:'ai', label:'AI Key', icon:<svg width={11} height={11} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#6366f1"/><circle cx="12" cy="12" r="4" fill="none" stroke="white" strokeWidth="1.5"/><circle cx="12" cy="12" r="1.5" fill="white"/><line x1="12" y1="4" x2="12" y2="7" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="12" y1="17" x2="12" y2="20" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="4" y1="12" x2="7" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="17" y1="12" x2="20" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>, activeColor:'#818cf8', activeBg:'rgba(99,102,241,0.15)', dot: !!(userAiKey || userDsKey || userGrokKey) },
+
             ].map(({ id, label, icon, activeColor, activeBg, dot }) => {
               const isActive = apiKeyTab === id;
               return (
@@ -2713,32 +2737,90 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
             </div>
           )}
 
-          {/* ── AI Key Panel */}
+          {/* ── AI Key Panel (OpenAI/OR/Groq + DeepSeek + Grok) */}
           {apiKeyTab === 'ai' && (
-            <div>
-              <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
-                <svg width={13} height={13} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#6366f1"/><circle cx="12" cy="12" r="4" fill="none" stroke="white" strokeWidth="1.5"/><circle cx="12" cy="12" r="1.5" fill="white"/><line x1="12" y1="4" x2="12" y2="7" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="12" y1="17" x2="12" y2="20" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="4" y1="12" x2="7" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="17" y1="12" x2="20" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                <span style={{ fontWeight:700, fontSize:12, color:'rgba(255,255,255,0.85)' }}>AI Key</span>
-                {userAiKey && <span style={{ fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:999, background:'rgba(99,102,241,0.2)', color:'#818cf8' }}>✓ Aktif</span>}
+            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+
+              {/* OpenAI / OpenRouter / Groq / Gemini / Anthropic */}
+              <div>
+                <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
+                  <svg width={13} height={13} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#6366f1"/><circle cx="12" cy="12" r="4" fill="none" stroke="white" strokeWidth="1.5"/><circle cx="12" cy="12" r="1.5" fill="white"/><line x1="12" y1="4" x2="12" y2="7" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="12" y1="17" x2="12" y2="20" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="4" y1="12" x2="7" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="17" y1="12" x2="20" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                  <span style={{ fontWeight:700, fontSize:11, color:'rgba(255,255,255,0.85)' }}>OpenAI / OpenRouter / Groq</span>
+                  {userAiKey && <span style={{ fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:999, background:'rgba(99,102,241,0.2)', color:'#818cf8' }}>✓ Aktif</span>}
+                </div>
+                <MaskedKeyInput
+                  value={userAiKey}
+                  onChange={v => setUserAiKey(v)}
+                  onBlur={v => localStorage.setItem('sn_ai_key', v)}
+                  placeholder="sk- / sk-or- / gsk_ / AIza / sk-ant-"
+                  accentColor="#818cf8"
+                />
+                <div style={{ marginTop:5, fontSize:9, color:'rgba(255,255,255,0.25)', lineHeight:1.7 }}>
+                  <span style={{ color:'rgba(255,255,255,0.35)' }}>sk-</span> → OpenAI &nbsp;·&nbsp; <span style={{ color:'rgba(255,255,255,0.35)' }}>sk-or-</span> → OpenRouter &nbsp;·&nbsp; <span style={{ color:'rgba(255,255,255,0.35)' }}>gsk_</span> → Groq<br/>
+                  <span style={{ color:'rgba(255,255,255,0.35)' }}>AIza</span> → Gemini &nbsp;·&nbsp; <span style={{ color:'rgba(255,255,255,0.35)' }}>sk-ant-</span> → Anthropic
+                </div>
+                {userAiKey && (
+                  <button onClick={() => { setUserAiKey(''); localStorage.removeItem('sn_ai_key'); }}
+                    style={{ marginTop:5, padding:'3px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.08)', color:'#fca5a5', fontSize:10, cursor:'pointer' }}>
+                    Hapus
+                  </button>
+                )}
               </div>
-              <MaskedKeyInput
-                value={userAiKey}
-                onChange={v => setUserAiKey(v)}
-                onBlur={v => localStorage.setItem('sn_ai_key', v)}
-                placeholder="OpenAI sk- / OpenRouter sk-or- / Groq gsk_ / Gemini AIza / Anthropic sk-ant-"
-                accentColor="#818cf8"
-              />
-              <div style={{ marginTop:6, fontSize:9, color:'rgba(255,255,255,0.25)', lineHeight:1.7 }}>
-                Auto-detect provider:<br/>
-                <span style={{ color:'rgba(255,255,255,0.35)' }}>sk-</span> → OpenAI &nbsp;·&nbsp; <span style={{ color:'rgba(255,255,255,0.35)' }}>sk-or-</span> → OpenRouter<br/>
-                <span style={{ color:'rgba(255,255,255,0.35)' }}>gsk_</span> → Groq &nbsp;·&nbsp; <span style={{ color:'rgba(255,255,255,0.35)' }}>AIza</span> → Gemini &nbsp;·&nbsp; <span style={{ color:'rgba(255,255,255,0.35)' }}>sk-ant-</span> → Anthropic
+
+              <div style={{ height:1, background:'rgba(255,255,255,0.07)', borderRadius:1 }}/>
+
+              {/* DeepSeek */}
+              <div>
+                <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
+                  <svg width={13} height={13} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#4D6BFE"/><path d="M6 12c0-3.31 2.69-6 6-6s6 2.69 6 6-2.69 6-6 6-6-2.69-6-6z" fill="none" stroke="white" strokeWidth="1.4"/><path d="M12 8v4l3 2" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <span style={{ fontWeight:700, fontSize:11, color:'rgba(255,255,255,0.85)' }}>DeepSeek</span>
+                  {userDsKey && <span style={{ fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:999, background:'rgba(77,107,254,0.2)', color:'#4D6BFE' }}>✓ Aktif</span>}
+                </div>
+                <MaskedKeyInput
+                  value={userDsKey}
+                  onChange={v => setUserDsKey(v)}
+                  onBlur={v => localStorage.setItem('sn_ds_key', v)}
+                  placeholder="sk-xxxx · platform.deepseek.com"
+                  accentColor="#4D6BFE"
+                />
+                <div style={{ marginTop:5, fontSize:9, color:'rgba(255,255,255,0.25)', lineHeight:1.7 }}>
+                  <span style={{ color:'rgba(255,255,255,0.35)' }}>deepseek-chat</span> (V3) &nbsp;·&nbsp; <span style={{ color:'rgba(255,255,255,0.35)' }}>deepseek-reasoner</span> (R1)
+                </div>
+                {userDsKey && (
+                  <button onClick={() => { setUserDsKey(''); localStorage.removeItem('sn_ds_key'); }}
+                    style={{ marginTop:5, padding:'3px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.08)', color:'#fca5a5', fontSize:10, cursor:'pointer' }}>
+                    Hapus
+                  </button>
+                )}
               </div>
-              {userAiKey && (
-                <button onClick={() => { setUserAiKey(''); localStorage.removeItem('sn_ai_key'); }}
-                  style={{ marginTop:6, padding:'4px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.08)', color:'#fca5a5', fontSize:10, cursor:'pointer' }}>
-                  Hapus AI Key
-                </button>
-              )}
+
+              <div style={{ height:1, background:'rgba(255,255,255,0.07)', borderRadius:1 }}/>
+
+              {/* xAI Grok */}
+              <div>
+                <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
+                  <svg width={13} height={13} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#1a1a1a" stroke="rgba(255,255,255,0.15)" strokeWidth="1"/><text x="4" y="17" fontSize="14" fontWeight="900" fill="white">X</text></svg>
+                  <span style={{ fontWeight:700, fontSize:11, color:'rgba(255,255,255,0.85)' }}>xAI Grok</span>
+                  {userGrokKey && <span style={{ fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:999, background:'rgba(229,231,235,0.15)', color:'#e5e7eb' }}>✓ Aktif</span>}
+                </div>
+                <MaskedKeyInput
+                  value={userGrokKey}
+                  onChange={v => setUserGrokKey(v)}
+                  onBlur={v => localStorage.setItem('sn_grok_key', v)}
+                  placeholder="xai-xxxx · console.x.ai"
+                  accentColor="#e5e7eb"
+                />
+                <div style={{ marginTop:5, fontSize:9, color:'rgba(255,255,255,0.25)', lineHeight:1.7 }}>
+                  <span style={{ color:'rgba(255,255,255,0.35)' }}>grok-3</span> &nbsp;·&nbsp; <span style={{ color:'rgba(255,255,255,0.35)' }}>grok-3-mini</span> &nbsp;·&nbsp; <span style={{ color:'rgba(255,255,255,0.35)' }}>grok-2-vision</span>
+                </div>
+                {userGrokKey && (
+                  <button onClick={() => { setUserGrokKey(''); localStorage.removeItem('sn_grok_key'); }}
+                    style={{ marginTop:5, padding:'3px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.08)', color:'#fca5a5', fontSize:10, cursor:'pointer' }}>
+                    Hapus
+                  </button>
+                )}
+              </div>
+
             </div>
           )}
         </div>
@@ -2891,6 +2973,18 @@ function UploadModal({ onClose, onUpload, uploading, uploadProgress, color, isLi
 // ═══════════════════════════════════════════════════════
 //  MAIN APP
 // ═══════════════════════════════════════════════════════
+// ── Device type detection — phone vs tablet/desktop
+// Phone: mobile UA (not iPad/tablet) AND small physical screen (min dimension < 500px)
+// Tablet/Desktop: everything else gets desktop UI
+function isPhoneDevice() {
+  const ua = navigator.userAgent;
+  const isMobileUA = /android|iphone|ipod|blackberry|windows phone/i.test(ua);
+  const isTabletUA = /ipad|tablet|(android(?!.*mobile))/i.test(ua);
+  const smallScreen = Math.min(window.screen.width, window.screen.height) < 500;
+  // Phone = mobile UA but NOT tablet UA; OR very small physical screen
+  return (isMobileUA && !isTabletUA) || smallScreen;
+}
+
 export default function App() {
   // ── Mode: Lite (ringan + hemat data) vs Pro (penuh)
   // Lite otomatis mengaktifkan semua penghematan: cover, buffer, prefetch, AI, animasi
@@ -2917,7 +3011,9 @@ export default function App() {
   const [userSpSecret, setUserSpSecret] = useState(() => localStorage.getItem('sn_sp_secret')||'');
   const [userScId,     setUserScId]     = useState(() => localStorage.getItem('sn_sc_id')    ||'');
   const [userAiKey,    setUserAiKey]    = useState(() => localStorage.getItem('sn_ai_key')   ||'');
-  useEffect(() => { setRuntimeKeys(userSpId, userSpSecret, userScId, userAiKey); }, [userSpId, userSpSecret, userScId, userAiKey]);
+  const [userDsKey,    setUserDsKey]    = useState(() => localStorage.getItem('sn_ds_key')   ||'');
+  const [userGrokKey,  setUserGrokKey]  = useState(() => localStorage.getItem('sn_grok_key') ||'');
+  useEffect(() => { setRuntimeKeys(userSpId, userSpSecret, userScId, userAiKey, userDsKey, userGrokKey); }, [userSpId, userSpSecret, userScId, userAiKey, userDsKey, userGrokKey]);
 
   // ── Built-in songs dihapus; semua musik dicari di platform eksternal
   // builtinSongs is defined at module level as empty array
@@ -3001,12 +3097,13 @@ export default function App() {
   const [wsLoading, setWsLoading] = useState(false);
   const [wsError,   setWsError]   = useState(null);
   const [wsEmbedUrl, setWsEmbedUrl] = useState(null); // active embed URL
+  const [spWsEmbedId, setSpWsEmbedId] = useState(null); // Spotify track ID for embed in web search
   const wsQueueRef  = useRef([]);   // current ws native audio queue
   const wsQueueIdxRef = useRef(-1);
 
   const doWebSearch = async (q) => {
     if (!q.trim()) return;
-    setWsLoading(true); setWsError(null); setWsResults([]); setWsEmbedUrl(null);
+    setWsLoading(true); setWsError(null); setWsResults([]); setWsEmbedUrl(null); setSpWsEmbedId(null);
     try {
       // ── Deteksi URL langsung SoundCloud → embed
       if (q.includes('soundcloud.com/')) {
@@ -3874,15 +3971,16 @@ export default function App() {
 
   // ── Responsive
   const [ringSize, setRingSize] = useState(260);
-  const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= window.innerHeight && window.innerWidth >= 600);
+  const [isDesktop, setIsDesktop] = useState(() => !isPhoneDevice());
   // layoutMode: 'mobile-portrait' | 'mobile-landscape' | 'desktop-portrait' | 'desktop-landscape'
+  // Phone → mobile layout; Tablet/Desktop/Laptop → desktop layout
   const [layoutMode, setLayoutMode] = useState(() => {
     const vw = window.innerWidth, vh = window.innerHeight;
     const isLandscape = vw > vh;
-    const isLargeScreen = Math.max(vw, vh) >= 900;
-    if (isLargeScreen && isLandscape) return 'desktop-landscape';
-    if (isLargeScreen && !isLandscape) return 'desktop-portrait';
-    if (!isLargeScreen && isLandscape) return 'mobile-landscape';
+    const isPhone = isPhoneDevice();
+    if (!isPhone && isLandscape) return 'desktop-landscape';
+    if (!isPhone && !isLandscape) return 'desktop-portrait';
+    if (isPhone && isLandscape) return 'mobile-landscape';
     return 'mobile-portrait';
   });
   const [layoutVars, setLayoutVars] = useState({
@@ -4112,13 +4210,13 @@ export default function App() {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       const isFs = document.fullscreenElement != null || fullscreenRef.current;
-      // Determine layout mode
+      // Determine layout mode — phone gets mobile UI, tablet/desktop/laptop gets desktop UI
       const isLandscape = vw > vh;
-      const isLargeScreen = Math.max(vw, vh) >= 900;
+      const isPhone = isPhoneDevice();
       let mode = 'mobile-portrait';
-      if (isLargeScreen && isLandscape) mode = 'desktop-landscape';
-      else if (isLargeScreen && !isLandscape) mode = 'desktop-portrait';
-      else if (!isLargeScreen && isLandscape) mode = 'mobile-landscape';
+      if (!isPhone && isLandscape) mode = 'desktop-landscape';
+      else if (!isPhone && !isLandscape) mode = 'desktop-portrait';
+      else if (isPhone && isLandscape) mode = 'mobile-landscape';
       setLayoutMode(mode);
       setIsDesktop(mode === 'desktop-landscape' || mode === 'desktop-portrait');
 
@@ -5641,7 +5739,7 @@ export default function App() {
 
         {/* ── SETTINGS PANEL — menutup semua tab di desktop & landscape, hanya player di portrait */}
         {showSettings && (isDesktop || layoutMode === 'mobile-landscape' || tab === 'player') && (
-          <SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} eqEnabled={!!eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset||"Normal"} setEqPreset={setEqPreset} eqGains={Array.isArray(eqGains)&&eqGains.length===5?eqGains:[0,0,0,0,0]} setEqGains={setEqGains} crossfade={typeof crossfade==="number"?crossfade:0} setCrossfade={setCrossfade} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userScId={userScId} setUserScId={setUserScId} userAiKey={userAiKey} setUserAiKey={setUserAiKey}/>
+          <SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} eqEnabled={!!eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset||"Normal"} setEqPreset={setEqPreset} eqGains={Array.isArray(eqGains)&&eqGains.length===5?eqGains:[0,0,0,0,0]} setEqGains={setEqGains} crossfade={typeof crossfade==="number"?crossfade:0} setCrossfade={setCrossfade} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userScId={userScId} setUserScId={setUserScId} userAiKey={userAiKey} setUserAiKey={setUserAiKey} userDsKey={userDsKey} setUserDsKey={setUserDsKey} userGrokKey={userGrokKey} setUserGrokKey={setUserGrokKey}/>
         )}
 
         {/* ─── PLAYER TAB */}
@@ -5751,7 +5849,7 @@ export default function App() {
                     return (
                       <div key={i} onClick={()=>{ playWsTrack(item, wsQueueRef.current, i); setShowQueue(false); }}
                         style={{ display:'flex', alignItems:'center', gap:11, padding:'9px 18px', background:isCur?`${sc3}12`:'transparent', cursor:'pointer' }}>
-                        <div style={{ width:20, textAlign:'center', fontSize:10, color:'rgba(255,255,255,0.25)', fontWeight:600, flexShrink:0 }}>{isCur ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12, justifyContent:'center' }}>{[9,5,7].map((h2,j)=>(<div key={j} style={{ width:2.5, height:h2, background:sc3, borderRadius:1, animation:{"`"}bounce 0.8s ease-in-out ${j*0.15}s infinite{"`"} }}/>))}</div> : i+1}</div>
+                        <div style={{ width:20, textAlign:'center', fontSize:10, color:'rgba(255,255,255,0.25)', fontWeight:600, flexShrink:0 }}>{isCur ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12, justifyContent:'center' }}>{[9,5,7].map((h2,j)=>(<div key={j} style={{ width:2.5, height:h2, background:sc3, borderRadius:1, animation:`bounce 0.8s ease-in-out ${j*0.15}s infinite` }}/>))}</div> : i+1}</div>
                         {item.thumbnail
                           ? <img src={item.thumbnail} style={{ width:38, height:38, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
                           : <div style={{ width:38, height:38, borderRadius:8, background:`${sc3}22`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><span style={{ color:sc3, fontSize:14 }}>♪</span></div>}
@@ -6376,18 +6474,22 @@ export default function App() {
                         {/* ── Spotify: search in-app + 30s preview + redirect */}
                         {isSpotify && (
                           <div style={{ padding:'0 10px 12px' }}>
-                            {/* Jika tidak ada API key — tampilkan redirect */}
-                            {!spHasKey && (
-                              <div style={{ marginTop:6, padding:'10px 12px', borderRadius:10, background:'rgba(29,185,84,0.08)', border:'1px solid rgba(29,185,84,0.2)', display:'flex', flexDirection:'column', gap:8 }}>
-                                <div style={{ fontSize:11, color:'rgba(255,255,255,0.6)' }}>
-                                  Cari lagu, artis, atau album langsung di Spotify.
+                            {/* Jika tidak ada API key — redirect langsung ke Spotify */}
+                            {!spHasKey && (() => {
+                              const spQ = unifiedQuery.trim() || spQuery.trim();
+                              const spUrl = spQ ? `https://open.spotify.com/search/${encodeURIComponent(spQ)}` : 'https://open.spotify.com';
+                              return (
+                                <div style={{ marginTop:6, padding:'10px 12px', borderRadius:10, background:'rgba(29,185,84,0.08)', border:'1px solid rgba(29,185,84,0.2)', display:'flex', flexDirection:'column', gap:8 }}>
+                                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.6)' }}>
+                                    Spotify tidak dapat di-embed tanpa API key. Klik untuk mencari langsung di Spotify Web.
+                                  </div>
+                                  <button onClick={() => openNewTab(spUrl)}
+                                    style={{ padding:'8px 14px', borderRadius:999, border:'none', background:'#1DB954', color:'black', fontSize:12, fontWeight:800, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                                    <span>🎵</span> Cari di Spotify ↗
+                                  </button>
                                 </div>
-                                <button onClick={() => { const q = unifiedQuery.trim() || spQuery.trim(); const url = q ? `https://open.spotify.com/search/${encodeURIComponent(q)}` : 'https://open.spotify.com'; window.open(url, '_blank', 'noopener,noreferrer'); }}
-                                  style={{ padding:'8px 14px', borderRadius:999, border:'none', background:'#1DB954', color:'black', fontSize:12, fontWeight:800, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-                                  <span>🎵</span> Buka Spotify Web ↗
-                                </button>
-                              </div>
-                            )}
+                              );
+                            })()}
                             {/* Error */}
                             {spError && <div style={{ fontSize:11, color:'#fca5a5', marginBottom:6, padding:'6px 10px', borderRadius:8, background:'rgba(239,68,68,0.1)' }}>{spError}</div>}
 
@@ -6549,29 +6651,21 @@ export default function App() {
                                   {t?.searchBtn||'Search'}
                                 </button>
                               </div>
-                              {/* In-app iframe embed */}
-                              {iframeUrl && (
-                                <div style={{ marginTop:8, borderRadius:10, overflow:'hidden', border:`1px solid ${platform.color}30` }}>
-                                  <iframe
-                                    key={`redirect-${platform.id}-${iframeUrl}`}
-                                    src={iframeUrl}
-                                    width="100%" height="340" frameBorder="0"
-                                    allow="autoplay; clipboard-write; encrypted-media"
-                                    style={{ display:'block', minHeight:340 }}
-                                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"
-                                  />
-                                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'5px 10px', background:'rgba(0,0,0,0.35)' }}>
-                                    <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1 }}>🌐 {platform.name}</span>
-                                    <button onClick={() => setPlatformIframe(p=>({...p,[platform.id]:null}))}
-                                      style={{ fontSize:10, color:'rgba(255,255,255,0.4)', background:'none', border:'none', cursor:'pointer', flexShrink:0 }}>{t?.closeBtn||'Close ✕'}</button>
-                                  </div>
+                              {/* Redirect langsung — tidak embed karena platform sering blokir iframe */}
+                              <div style={{ marginTop:8, padding:'10px 12px', borderRadius:10, background:`${platform.color}0a`, border:`1px solid ${platform.color}20`, display:'flex', flexDirection:'column', gap:8 }}>
+                                <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)', lineHeight:1.5 }}>
+                                  Platform ini tidak dapat di-embed. Klik Buka untuk mencari langsung di situs {platform.name}.
                                 </div>
-                              )}
-                              {!iframeUrl && (
-                                <div style={{ marginTop:7, fontSize:10, color:'rgba(255,255,255,0.25)', paddingLeft:2 }}>
-                                  Ketik nama lagu/artis lalu tekan Cari — hasilnya tampil di sini dalam app.
-                                </div>
-                              )}
+                                <button
+                                  onClick={() => {
+                                    const sq = q.trim();
+                                    const url = sq ? platform.searchUrl(sq) : platform.openUrl;
+                                    openNewTab(url);
+                                  }}
+                                  style={{ padding:'8px 14px', borderRadius:999, border:'none', background:`${platform.color}cc`, color:'white', fontSize:12, fontWeight:800, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                                  <span>↗</span> Buka {platform.name}
+                                </button>
+                              </div>
                             </div>
                           );
                         })()}
@@ -6627,28 +6721,42 @@ export default function App() {
                                               width="100%" height="166" frameBorder="0" allow="autoplay" style={{ display:'block' }}/>
                                           </div>
                                         ) : (
-                                          <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background:'rgba(255,85,0,0.08)', border:'1px solid rgba(255,85,0,0.25)' }}>
-                                            <PlatformLogo id="soundcloud" size={20}/>
-                                            <div style={{ flex:1, minWidth:0 }}>
-                                              <div style={{ fontSize:11, fontWeight:700, color:'#ff5500' }}>SoundCloud</div>
-                                              <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)' }}>Cari di SoundCloud Web</div>
+                                          <>
+                                            <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background:'rgba(255,85,0,0.08)', border:'1px solid rgba(255,85,0,0.25)' }}>
+                                              <PlatformLogo id="soundcloud" size={20}/>
+                                              <div style={{ flex:1, minWidth:0 }}>
+                                                <div style={{ fontSize:11, fontWeight:700, color:'#ff5500' }}>SoundCloud</div>
+                                                <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)' }}>Cari di SoundCloud Web</div>
+                                              </div>
+                                              <button onClick={() => window.open(`https://soundcloud.com/search?q=${encodeURIComponent(item.query)}`, '_blank', 'noopener,noreferrer')}
+                                                style={{ padding:'5px 12px', borderRadius:999, border:'none', background:'#ff5500', color:'white', fontSize:11, fontWeight:800, cursor:'pointer', flexShrink:0 }}>Buka ↗</button>
                                             </div>
-                                            <button onClick={() => window.open(`https://soundcloud.com/search?q=${encodeURIComponent(item.query)}`, '_blank', 'noopener,noreferrer')}
-                                              style={{ padding:'5px 12px', borderRadius:999, border:'none', background:'#ff5500', color:'white', fontSize:11, fontWeight:800, cursor:'pointer', flexShrink:0 }}>Buka ↗</button>
-                                          </div>
+                                            <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background:'rgba(29,185,84,0.08)', border:'1px solid rgba(29,185,84,0.25)', marginTop:6 }}>
+                                              <PlatformLogo id="spotify" size={20}/>
+                                              <div style={{ flex:1, minWidth:0 }}>
+                                                <div style={{ fontSize:11, fontWeight:700, color:'#1DB954' }}>Spotify</div>
+                                                <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)' }}>Cari di Spotify Web</div>
+                                              </div>
+                                              <button onClick={() => window.open(`https://open.spotify.com/search/${encodeURIComponent(item.query)}`, '_blank', 'noopener,noreferrer')}
+                                                style={{ padding:'5px 12px', borderRadius:999, border:'none', background:'#1DB954', color:'black', fontSize:11, fontWeight:800, cursor:'pointer', flexShrink:0 }}>Buka ↗</button>
+                                            </div>
+                                          </>
                                         )}
                                       </div>
                                     );
-                                    // ── Spotify redirect card
+                                    // ── Spotify redirect card — klik langsung ke Spotify
                                     if (item.type === 'sp_redirect') return (
-                                      <div key={idx} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background:'rgba(29,185,84,0.08)', border:'1px solid rgba(29,185,84,0.25)', marginBottom:6 }}>
+                                      <div key={idx}
+                                        onClick={() => openNewTab(`https://open.spotify.com/search/${encodeURIComponent(item.query)}`)}
+                                        style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background:'rgba(29,185,84,0.08)', border:'1px solid rgba(29,185,84,0.25)', marginBottom:6, cursor:'pointer' }}
+                                        onMouseEnter={e=>e.currentTarget.style.background='rgba(29,185,84,0.15)'}
+                                        onMouseLeave={e=>e.currentTarget.style.background='rgba(29,185,84,0.08)'}>
                                         <PlatformLogo id="spotify" size={20}/>
                                         <div style={{ flex:1, minWidth:0 }}>
                                           <div style={{ fontSize:11, fontWeight:700, color:'#1DB954' }}>Spotify</div>
-                                          <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)' }}>Cari di Spotify Web</div>
+                                          <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)' }}>Tidak bisa di-embed — klik untuk buka langsung</div>
                                         </div>
-                                        <button onClick={() => window.open(`https://open.spotify.com/search/${encodeURIComponent(item.query)}`, '_blank', 'noopener,noreferrer')}
-                                          style={{ padding:'5px 12px', borderRadius:999, border:'none', background:'#1DB954', color:'black', fontSize:11, fontWeight:800, cursor:'pointer', flexShrink:0 }}>Buka ↗</button>
+                                        <span style={{ padding:'5px 12px', borderRadius:999, background:'#1DB954', color:'black', fontSize:11, fontWeight:800, flexShrink:0 }}>Buka ↗</span>
                                       </div>
                                     );
                                     // ── SoundCloud API section
@@ -6700,27 +6808,52 @@ export default function App() {
                                           {item._items.map(t3 => {
                                             const mins3 = Math.floor(t3.duration/60000), secs3 = String(Math.floor((t3.duration%60000)/1000)).padStart(2,'0');
                                             const hasPreview = !!t3.previewUrl;
-                                            const isActive = spTrack?.id === t3.id;
+                                            const isEmbedActive = spWsEmbedId === t3.id;
+                                            const isPreviewActive = spTrack?.id === t3.id;
                                             return (
-                                              <div key={t3.id}
-                                                style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 9px', borderRadius:9, background: isActive ? 'rgba(29,185,84,0.12)' : 'rgba(29,185,84,0.06)', border: isActive ? '1px solid rgba(29,185,84,0.4)' : '1px solid rgba(29,185,84,0.15)', cursor:'pointer' }}
-                                                onMouseEnter={e=>{ if(!isActive) e.currentTarget.style.background='rgba(29,185,84,0.12)'; }}
-                                                onMouseLeave={e=>{ if(!isActive) e.currentTarget.style.background='rgba(29,185,84,0.06)'; }}
-                                                onClick={() => { if(hasPreview) playSpotifyPreview(t3); else if(t3.spotifyUrl) window.open(t3.spotifyUrl,'_blank','noopener,noreferrer'); }}>
-                                                <div style={{ position:'relative', flexShrink:0 }}>
-                                                  <img src={t3.cover} alt={t3.title} loading="lazy" style={{ width:30, height:30, borderRadius:6, objectFit:'cover', display:'block' }} onError={e=>{e.target.style.display='none';}}/>
-                                                  <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.4)', borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center', opacity: isActive ? 1 : 0 }} onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>{ if(!isActive) e.currentTarget.style.opacity=0; }}>
-                                                    {isActive && spPlaying ? <span style={{ fontSize:10, color:'white' }}>⏸</span> : hasPreview ? <Play size={10} style={{ color:'white', marginLeft:1 }}/> : <span style={{ fontSize:10 }}>↗</span>}
+                                              <div key={t3.id} style={{ display:'flex', flexDirection:'column', gap:0 }}>
+                                                <div
+                                                  style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 9px', borderRadius: isEmbedActive ? '9px 9px 0 0' : 9, background: isEmbedActive ? 'rgba(29,185,84,0.15)' : isPreviewActive ? 'rgba(29,185,84,0.12)' : 'rgba(29,185,84,0.06)', border: isEmbedActive ? '1px solid rgba(29,185,84,0.5)' : isPreviewActive ? '1px solid rgba(29,185,84,0.4)' : '1px solid rgba(29,185,84,0.15)', borderBottom: isEmbedActive ? 'none' : undefined, cursor:'pointer' }}
+                                                  onMouseEnter={e=>{ if(!isEmbedActive&&!isPreviewActive) e.currentTarget.style.background='rgba(29,185,84,0.12)'; }}
+                                                  onMouseLeave={e=>{ if(!isEmbedActive&&!isPreviewActive) e.currentTarget.style.background='rgba(29,185,84,0.06)'; }}
+                                                  onClick={() => { setSpWsEmbedId(prev => prev === t3.id ? null : t3.id); }}>
+                                                  <div style={{ position:'relative', flexShrink:0 }}>
+                                                    <img src={t3.cover} alt={t3.title} loading="lazy" style={{ width:30, height:30, borderRadius:6, objectFit:'cover', display:'block' }} onError={e=>{e.target.style.display='none';}}/>
+                                                    <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.45)', borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                                                      {isEmbedActive ? <span style={{ fontSize:11, color:'#1DB954' }}>▼</span> : <Play size={10} style={{ color:'white', marginLeft:1 }}/>}
+                                                    </div>
                                                   </div>
+                                                  <div style={{ flex:1, minWidth:0 }}>
+                                                    <div style={{ fontSize:11, fontWeight:600, color: isEmbedActive ? '#1DB954' : 'rgba(255,255,255,0.9)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t3.title}</div>
+                                                    <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t3.artist}</div>
+                                                  </div>
+                                                  <span style={{ fontSize:9, color:'rgba(255,255,255,0.3)', flexShrink:0 }}>{mins3}:{secs3}</span>
+                                                  {hasPreview
+                                                    ? <span onClick={e=>{ e.stopPropagation(); playSpotifyPreview(t3); }} style={{ fontSize:9, color:'#1DB954', background:'rgba(29,185,84,0.18)', padding:'2px 5px', borderRadius:4, fontWeight:700, flexShrink:0, cursor:'pointer' }} title="Preview 30 detik">30s</span>
+                                                    : null}
+                                                  <span style={{ fontSize:9, color: isEmbedActive ? '#1DB954' : 'rgba(29,185,84,0.7)', background: isEmbedActive ? 'rgba(29,185,84,0.25)' : 'rgba(29,185,84,0.1)', padding:'2px 5px', borderRadius:4, fontWeight:700, flexShrink:0 }}>
+                                                    {isEmbedActive ? 'Tutup' : 'Embed'}
+                                                  </span>
                                                 </div>
-                                                <div style={{ flex:1, minWidth:0 }}>
-                                                  <div style={{ fontSize:11, fontWeight:600, color: isActive ? '#1DB954' : 'rgba(255,255,255,0.9)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t3.title}</div>
-                                                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t3.artist}</div>
-                                                </div>
-                                                <span style={{ fontSize:9, color:'rgba(255,255,255,0.3)', flexShrink:0 }}>{mins3}:{secs3}</span>
-                                                {hasPreview
-                                                  ? <span style={{ fontSize:9, color:'#1DB954', background:'rgba(29,185,84,0.18)', padding:'2px 5px', borderRadius:4, fontWeight:700, flexShrink:0 }}>30s</span>
-                                                  : <span style={{ fontSize:9, color:'#1DB954', background:'rgba(29,185,84,0.1)', padding:'2px 5px', borderRadius:4, fontWeight:700, flexShrink:0 }}>SP</span>}
+                                                {isEmbedActive && (
+                                                  <div style={{ borderRadius:'0 0 9px 9px', overflow:'hidden', border:'1px solid rgba(29,185,84,0.5)', borderTop:'none' }}>
+                                                    <iframe
+                                                      key={`sp-ws-embed-${t3.id}`}
+                                                      src={`https://open.spotify.com/embed/track/${t3.id}?utm_source=generator&theme=0`}
+                                                      width="100%" height="152" frameBorder="0"
+                                                      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                                                      loading="lazy"
+                                                      style={{ display:'block' }}
+                                                    />
+                                                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'4px 8px', background:'rgba(0,0,0,0.4)', gap:6 }}>
+                                                      <span style={{ fontSize:10, color:'#1DB954', fontWeight:700 }}>🎵 Spotify Embed</span>
+                                                      <div style={{ display:'flex', gap:6 }}>
+                                                        {t3.spotifyUrl && <button onClick={()=>window.open(t3.spotifyUrl,'_blank','noopener,noreferrer')} style={{ fontSize:10, color:'rgba(255,255,255,0.5)', background:'none', border:'none', cursor:'pointer' }}>Buka ↗</button>}
+                                                        <button onClick={()=>setSpWsEmbedId(null)} style={{ fontSize:10, color:'rgba(255,255,255,0.4)', background:'none', border:'none', cursor:'pointer' }}>✕</button>
+                                                      </div>
+                                                    </div>
+                                                  </div>
+                                                )}
                                               </div>
                                             );
                                           })}
@@ -6815,11 +6948,12 @@ export default function App() {
                                     allow="autoplay; clipboard-write; encrypted-media; fullscreen"
                                     style={{ display:'block' }}
                                     sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"
+                                    onError={() => { openNewTab(wsEmbedUrl); setWsEmbedUrl(null); }}
                                   />
                                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'5px 10px', background:'rgba(0,0,0,0.35)', gap:8 }}>
                                     <span style={{ fontSize:10, color:'rgba(255,255,255,0.35)', flex:1 }}>🌐 Web Embed</span>
                                     <button onClick={() => setWsEmbedUrl(null)}
-                                      style={{ fontSize:10, color:'rgba(255,255,255,0.4)', background:'none', border:'none', cursor:'pointer' }}>Close ✕</button>
+                                      style={{ fontSize:10, color:'rgba(255,255,255,0.4)', background:'none', border:'none', cursor:'pointer' }}>✕</button>
                                   </div>
                                 </div>
                               )}
@@ -6833,7 +6967,6 @@ export default function App() {
                           );
                         })()}
                         {isRadio && (() => {
-                          const countries = platform.countries || [];
                           const countries = platform.countries || [];
                           const selCountry = countries.find(c => c.id === radioCountry) || null;
                           const selGenre = selCountry ? (selCountry.genres.find(g => g.id === radioGenre) || null) : null;
