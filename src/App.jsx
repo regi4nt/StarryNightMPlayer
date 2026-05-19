@@ -4526,7 +4526,6 @@ export default function App() {
         setSpPlaying(false);
         // SoundCloud embed — tutup widget agar iframe berhenti autoplay
         setScWidget({});
-        }
       }
     }, 1000);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
