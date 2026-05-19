@@ -498,7 +498,7 @@ const STREAMING_PLATFORMS = [
           ]},
           { id: 'rnb', name: 'R&B / Hip-Hop / Urban', icon: '🎤', color: '#f59e0b', stations: [
             { id: 'skyrock', name: 'Skyrock (Hip-Hop/RnB)', city: 'Paris', url: 'https://stream.skyrock.com/skyrock-128.mp3' },
-            { id: 'mouv2', name: 'Mouv' 100% Urban', city: 'Paris', url: 'https://icecast.radiofrance.fr/mouv-midfi.mp3' },
+            { id: 'mouv2', name: "Mouv' 100% Urban", city: 'Paris', url: 'https://icecast.radiofrance.fr/mouv-midfi.mp3' },
             { id: 'rfm', name: 'RFM (Soul/Variété)', city: 'Paris', url: 'https://rfm.ice.infomaniak.ch/rfm-high.mp3' },
             { id: 'fun-radio', name: 'Fun Radio (Dance/RnB)', city: 'Paris', url: 'https://stream.funradio.fr/fun-1-48-128' },
             { id: 'virgin-radio', name: 'Virgin Radio France', city: 'Paris', url: 'https://virgin.ice.infomaniak.ch/virgin-high.mp3' },
