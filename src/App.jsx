@@ -3230,10 +3230,12 @@ export default function App() {
 
       // ── SoundCloud: API search jika ada key
       const scPromise = scHasKey ? (async () => {
-        try { const items = await searchSoundCloud(q, 5); return (items||[]).map(t=>({...t,source:'soundcloud',type:'soundcloud'})); } catch { return []; }\n      })() : Promise.resolve([]);
+        try { const items = await searchSoundCloud(q, 5); return (items||[]).map(t=>({...t,source:'soundcloud',type:'soundcloud'})); } catch { return []; }
+      })() : Promise.resolve([]);
       // ── Spotify: API search jika ada key
       const spPromise = spHasKey ? (async () => {
-        try { const items = await searchSpotify(q, 5); return (items||[]).map(t=>({...t,source:'spotify',type:'spotify_track'})); } catch { return []; }\n      })() : Promise.resolve([]);
+        try { const items = await searchSpotify(q, 5); return (items||[]).map(t=>({...t,source:'spotify',type:'spotify_track'})); } catch { return []; }
+      })() : Promise.resolve([]);
 
       const [archRes, jamRes, fmaRes, ccRes, scWsRes, spWsRes, scPubRes, spPubRes] = await Promise.all([archivePromise, jamendoPromise, fmaPromise, ccmixtPromise, scPromise, spPromise, scPublicPromise, spPublicPromise]);
       // interleave sources agar tidak monoton
