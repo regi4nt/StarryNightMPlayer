@@ -486,7 +486,7 @@ const STREAMING_PLATFORMS = [
             { id: 'fip', name: 'FIP (Jazz/Électro/World)', city: 'Paris', url: 'https://icecast.radiofrance.fr/fip-midfi.mp3' },
             { id: 'fip-electro', name: 'FIP Électro', city: 'Paris', url: 'https://icecast.radiofrance.fr/fipelectro-midfi.mp3' },
             { id: 'radio-meuh', name: 'Radio Meuh (Electro/Indie)', city: 'Paris', url: 'https://radiomeuh.ice.infomaniak.ch/radiomeuh-128.mp3' },
-            { id: 'mouv', name: 'Mouv' (Urban/Electro)', city: 'Paris', url: 'https://icecast.radiofrance.fr/mouv-midfi.mp3' },
+            { id: 'mouv', name: "Mouv' (Urban/Electro)", city: 'Paris', url: 'https://icecast.radiofrance.fr/mouv-midfi.mp3' },
             { id: 'fip-groove', name: 'FIP Groove', city: 'Paris', url: 'https://icecast.radiofrance.fr/fipgroove-midfi.mp3' },
           ]},
           { id: 'classical', name: 'Classique / Jazz', icon: '🎻', color: '#7c3aed', stations: [
