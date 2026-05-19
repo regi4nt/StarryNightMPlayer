@@ -486,7 +486,7 @@ const STREAMING_PLATFORMS = [
             { id: 'fip', name: 'FIP (Jazz/Électro/World)', city: 'Paris', url: 'https://icecast.radiofrance.fr/fip-midfi.mp3' },
             { id: 'fip-electro', name: 'FIP Électro', city: 'Paris', url: 'https://icecast.radiofrance.fr/fipelectro-midfi.mp3' },
             { id: 'radio-meuh', name: 'Radio Meuh (Electro/Indie)', city: 'Paris', url: 'https://radiomeuh.ice.infomaniak.ch/radiomeuh-128.mp3' },
-            { id: 'mouv', name: "Mouv' (Urban/Electro)", city: 'Paris', url: 'https://icecast.radiofrance.fr/mouv-midfi.mp3' },
+            { id: 'mouv', name: 'Mouv' (Urban/Electro)', city: 'Paris', url: 'https://icecast.radiofrance.fr/mouv-midfi.mp3' },
             { id: 'fip-groove', name: 'FIP Groove', city: 'Paris', url: 'https://icecast.radiofrance.fr/fipgroove-midfi.mp3' },
           ]},
           { id: 'classical', name: 'Classique / Jazz', icon: '🎻', color: '#7c3aed', stations: [
@@ -498,7 +498,7 @@ const STREAMING_PLATFORMS = [
           ]},
           { id: 'rnb', name: 'R&B / Hip-Hop / Urban', icon: '🎤', color: '#f59e0b', stations: [
             { id: 'skyrock', name: 'Skyrock (Hip-Hop/RnB)', city: 'Paris', url: 'https://stream.skyrock.com/skyrock-128.mp3' },
-            { id: 'mouv2', name: "Mouv' 100% Urban", city: 'Paris', url: 'https://icecast.radiofrance.fr/mouv-midfi.mp3' },
+            { id: 'mouv2', name: 'Mouv' 100% Urban', city: 'Paris', url: 'https://icecast.radiofrance.fr/mouv-midfi.mp3' },
             { id: 'rfm', name: 'RFM (Soul/Variété)', city: 'Paris', url: 'https://rfm.ice.infomaniak.ch/rfm-high.mp3' },
             { id: 'fun-radio', name: 'Fun Radio (Dance/RnB)', city: 'Paris', url: 'https://stream.funradio.fr/fun-1-48-128' },
             { id: 'virgin-radio', name: 'Virgin Radio France', city: 'Paris', url: 'https://virgin.ice.infomaniak.ch/virgin-high.mp3' },
@@ -610,25 +610,25 @@ const STREAMING_PLATFORMS = [
             { id: 'otakufm', name: 'OtakuFM', city: 'Online', url: 'https://stream.otakufm.de/otakufm' },
           ]},
           { id: 'lofi', name: 'Lo-Fi / Chillout', icon: '🌙', color: '#6366f1', stations: [
-            { id: 'chillhop', name: 'Chillhop Radio', city: 'Online', url: 'https://streams.fluxfm.de/Chillhop/mp3-320/streams.fluxfm.de/' },
-            { id: 'groovesalad', name: 'Groove Salad (SomaFM)', city: 'Online', url: 'https://ice1.somafm.com/groovesalad-128-mp3' },
-            { id: 'dronezone', name: 'Drone Zone (SomaFM)', city: 'Online', url: 'https://ice1.somafm.com/dronezone-128-mp3' },
-            { id: 'deepspace', name: 'Deep Space (SomaFM)', city: 'Online', url: 'https://ice1.somafm.com/deepspaceone-128-mp3' },
-            { id: 'beat-blender', name: 'Beat Blender (SomaFM)', city: 'Online', url: 'https://ice1.somafm.com/beatblender-128-mp3' },
+            { id: 'j1-lofi', name: 'J1 Lo-Fi Japan', city: 'Online', url: 'https://j1.streams.radiomast.io/fm/j1lofi/stream.mp3' },
+            { id: 'tokyo-lofi', name: 'Tokyo Lo-Fi (Zeno)', city: 'Tokyo', url: 'https://stream.zeno.fm/tokyo-lofi-beats' },
+            { id: 'sakura-lofi', name: 'Sakura Lo-Fi Beats', city: 'Online', url: 'https://stream.zeno.fm/sakuralofi128' },
+            { id: 'kyoto-chill', name: 'Kyoto Chillout Radio', city: 'Kyoto', url: 'https://stream.zeno.fm/kyoto-chill-jp' },
+            { id: 'nippon-lofi', name: 'Nippon Lo-Fi & Jazz', city: 'Online', url: 'https://stream.laut.fm/japanlofi' },
           ]},
           { id: 'classical', name: 'Classical / Instrumental', icon: '🎻', color: '#7c3aed', stations: [
-            { id: 'classic-fm-jp', name: 'Classic FM (UK)', city: 'London', url: 'https://media-ice.musicradio.com/ClassicFMMP3' },
-            { id: 'france-musique-jp', name: 'France Musique', city: 'Paris', url: 'https://icecast.radiofrance.fr/francemusique-midfi.mp3' },
-            { id: 'br-klassik-jp', name: 'BR-Klassik', city: 'Munich', url: 'https://dispatcher.rndfnk.com/br/brklassik/live/mp3/low' },
-            { id: 'classical-laut', name: 'Classical Radio (Laut.fm)', city: 'Online', url: 'https://stream.laut.fm/classical' },
-            { id: 'baroque-jp', name: 'Baroque Radio', city: 'Online', url: 'https://stream.laut.fm/baroque' },
+            { id: 'nhk-fm-jp', name: 'NHK-FM (Classical/Culture)', city: 'Tokyo', url: 'https://nhkworld.nhk.or.jp/common/player/radio/?lang=en&band=fm&station=tokyo' },
+            { id: 'nhk-world-jp', name: 'NHK World Premium', city: 'Tokyo', url: 'https://nhkworldradio.nhk.or.jp/english/media/r_english_mhi128.m3u8' },
+            { id: 'alpha-station-jp', name: 'Alpha Station FM Kyoto', city: 'Kyoto', url: 'https://stream.zeno.fm/f5l4n5bhsc8uv' },
+            { id: 'classical-jp-laut', name: 'Anime Instrumental (Laut.fm)', city: 'Online', url: 'https://stream.laut.fm/animeinstrumental' },
+            { id: 'piano-jp', name: 'Piano Radio Japan', city: 'Online', url: 'https://stream.laut.fm/japanpiano' },
           ]},
-          { id: 'news', name: 'NHK / News', icon: '📰', color: '#64748b', stations: [
+          { id: 'news', name: 'NHK / Berita', icon: '📰', color: '#64748b', stations: [
             { id: 'nhk-world', name: 'NHK World Radio Japan', city: 'Tokyo', url: 'https://nhkworldradio.nhk.or.jp/english/media/r_english_mhi128.m3u8' },
-            { id: 'bbc-world-jp', name: 'BBC World Service', city: 'London', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_world_service' },
-            { id: 'rfi-jp', name: 'RFI World', city: 'Paris', url: 'https://icecast.radiofrance.fr/rfi-midfi.mp3' },
-            { id: 'voa-jp', name: 'VOA News Radio', city: 'Washington', url: 'https://voa-instreams.akamaized.net/voa/mp3/englishnews' },
-            { id: 'dw-jp', name: 'DW Radio English', city: 'Bonn', url: 'https://dw-streams.com/stream/dw-english-hls' },
+            { id: 'nhk-r1-jp', name: 'NHK Radio 1 (日本語)', city: 'Tokyo', url: 'https://stream.zeno.fm/nhkr1japan' },
+            { id: 'tbsradio-jp', name: 'TBS Radio 954 kHz', city: 'Tokyo', url: 'https://stream.zeno.fm/tbsradiotokyo' },
+            { id: 'joqr-jp', name: 'Bunka Hoso (文化放送)', city: 'Tokyo', url: 'https://stream.zeno.fm/joqr1134' },
+            { id: 'interfm-jp', name: 'InterFM 897', city: 'Tokyo', url: 'https://stream.zeno.fm/interfm897' },
           ]},
         ],
       },
@@ -667,8 +667,8 @@ const STREAMING_PLATFORMS = [
             { id: 'jovem-pan', name: 'Rádio Jovem Pan', city: 'São Paulo', url: 'https://cdnjp.joovip.net.br/joovip_jovempan/JovemPan.mp3' },
             { id: 'band-news', name: 'Band News FM', city: 'São Paulo', url: 'https://stream.zeno.fm/9b18h1x0xtzuv' },
             { id: 'gaucha', name: 'Rádio Gaúcha (GZH)', city: 'Porto Alegre', url: 'https://stream.gaucha.com.br/gaucha' },
-            { id: 'bbc-br', name: 'BBC Brasil', city: 'London', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_world_service' },
             { id: 'cbn-sp', name: 'CBN São Paulo', city: 'São Paulo', url: 'https://stream.zeno.fm/5b6yq08hfhzuv' },
+            { id: 'radio-nacional-br', name: 'Rádio Nacional Brasília', city: 'Brasília', url: 'https://radios.ebc.com.br/radio-nacional/icecast.audio' },
           ]},
         ],
       },
@@ -699,14 +699,14 @@ const STREAMING_PLATFORMS = [
           { id: 'rnb-in', name: 'Electronic / Indie IN', icon: '🎧', color: '#8b5cf6', stations: [
             { id: 'indie-in', name: 'Indie Radio India (Zeno)', city: 'Mumbai', url: 'https://stream.zeno.fm/3u6hhtfhfpzuv' },
             { id: 'chill-goa', name: 'Psy Trance / Goa Chill', city: 'Goa', url: 'https://stream.laut.fm/goatrance' },
-            { id: 'lounge-in', name: 'India Lounge (SomaFM)', city: 'Online', url: 'https://ice1.somafm.com/groovesalad-128-mp3' },
+            { id: 'lounge-in', name: 'India Lounge (Zeno)', city: 'Mumbai', url: 'https://stream.zeno.fm/indialounge128' },
             { id: 'electroindian', name: 'Electronic India (Zeno)', city: 'Online', url: 'https://stream.zeno.fm/azhbv0eafdzuv' },
             { id: 'fusion-in', name: 'Fusion Radio India', city: 'Bangalore', url: 'https://stream.zeno.fm/t9gvqp4kzuzuv' },
           ]},
           { id: 'news-in', name: 'News / Talk IN', icon: '📰', color: '#64748b', stations: [
             { id: 'bbc-hindi', name: 'BBC Hindi Service', city: 'London', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_hindi_news' },
             { id: 'air-news', name: 'All India Radio News', city: 'Delhi', url: 'https://air.pc.cdn.bitgravity.com/air/live/pbaudio002/chunklist.m3u8' },
-            { id: 'rfi-in', name: 'RFI World English', city: 'Paris', url: 'https://icecast.radiofrance.fr/rfi-midfi.mp3' },
+            { id: 'air-fm-gold', name: 'AIR FM Gold 106.4', city: 'Delhi', url: 'https://air.pc.cdn.bitgravity.com/air/live/pbaudio003/chunklist.m3u8' },
             { id: 'voa-hindi', name: 'VOA Hindi', city: 'Washington', url: 'https://voa-instreams.akamaized.net/voa/mp3/urdu' },
             { id: 'dw-hindi', name: 'DW Hindi', city: 'Bonn', url: 'https://stream.laut.fm/dwhindi' },
           ]},
@@ -737,18 +737,18 @@ const STREAMING_PLATFORMS = [
             { id: 'rcm-norteno', name: 'RCM Norteño', city: 'Monterrey', url: 'https://stream.zeno.fm/1xv5eycobyzuv' },
           ]},
           { id: 'electronic-mx', name: 'Electronic / Dance MX', icon: '🎧', color: '#8b5cf6', stations: [
-            { id: 'elec-mx1', name: 'FluxFM Dance', city: 'Online', url: 'https://streams.fluxfm.de/Dance/mp3-128/streams.fluxfm.de/' },
-            { id: 'sunshine-mx', name: 'sunshine live (Techno)', city: 'Online', url: 'https://stream.sunshine-live.de/live/mp3-128' },
-            { id: 'ibiza-mx', name: 'Ibiza Global Radio', city: 'Ibiza', url: 'https://ibizaglobalradio.streaming.es:7002/;' },
-            { id: 'soma-groove', name: 'Groove Salad (SomaFM)', city: 'Online', url: 'https://ice1.somafm.com/groovesalad-128-mp3' },
-            { id: 'poptron-mx', name: 'PopTron (SomaFM)', city: 'Online', url: 'https://ice1.somafm.com/poptron-128-mp3' },
+            { id: 'reactor-mx', name: 'Reactor 105.7 FM', city: 'México DF', url: 'https://stream.zeno.fm/reactor1057mx' },
+            { id: 'ibero-mx', name: 'Ibero 90.9 FM (Indie/Alt)', city: 'México DF', url: 'https://stream.zeno.fm/ibero909fmmx' },
+            { id: 'wfm-mx', name: 'WFM 96.9 FM (Electronic)', city: 'México DF', url: 'https://stream.zeno.fm/wfm969mx' },
+            { id: 'ritmo-mx', name: 'Ritmo 92.9 (Dance/House)', city: 'Guadalajara', url: 'https://stream.zeno.fm/ritmo929mx' },
+            { id: 'hitz-mx', name: 'Hitz FM México (EDM)', city: 'Online', url: 'https://stream.zeno.fm/hitzfmmx' },
           ]},
           { id: 'news-mx', name: 'Noticias / Info MX', icon: '📰', color: '#64748b', stations: [
             { id: 'w-radio-news', name: 'W Radio Noticias', city: 'México DF', url: 'https://stream.w-radio.com.mx/w-radio-128.mp3' },
             { id: 'radio-formula', name: 'Radio Fórmula', city: 'México DF', url: 'https://stream.radioformula.com.mx/formula-128.mp3' },
-            { id: 'bbc-mx', name: 'BBC Mundo', city: 'London', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_world_service' },
-            { id: 'rfi-mx', name: 'RFI Español', city: 'Paris', url: 'https://www.rfi.fr/es/medias/live/rfi-es-128.mp3' },
             { id: 'noticias-mx', name: 'Noticias MVS Radio', city: 'México DF', url: 'https://stream.zeno.fm/oj8tpbwfbhzuv' },
+            { id: 'radio-red-mx', name: 'Radio Red 88.1 FM', city: 'México DF', url: 'https://stream.zeno.fm/radiored881mx' },
+            { id: 'imagen-radio-mx', name: 'Imagen Radio 90.5', city: 'México DF', url: 'https://stream.zeno.fm/imagen905mx' },
           ]},
         ],
       },
@@ -780,15 +780,15 @@ const STREAMING_PLATFORMS = [
             { id: 'kr-lofi1', name: 'Korean Lofi (Zeno)', city: 'Online', url: 'https://stream.zeno.fm/baq0u5e8nzzuv' },
             { id: 'seoul-chill', name: 'Seoul Chill Beats', city: 'Seoul', url: 'https://stream.zeno.fm/6v2rqbpey7zuv' },
             { id: 'k-jazz', name: 'K-Jazz Radio (Laut.fm)', city: 'Seoul', url: 'https://stream.laut.fm/kjazz' },
-            { id: 'han-river', name: 'Han River Beats', city: 'Online', url: 'https://streams.fluxfm.de/Chillhop/mp3-320/streams.fluxfm.de/' },
-            { id: 'study-kr', name: 'Study With Me KR', city: 'Online', url: 'https://ice1.somafm.com/deepspaceone-128-mp3' },
+            { id: 'han-river', name: 'Han River Lo-Fi', city: 'Seoul', url: 'https://stream.zeno.fm/han-river-lofi' },
+            { id: 'study-kr', name: 'Study With Me Korea', city: 'Seoul', url: 'https://stream.zeno.fm/study-kr-beats' },
           ]},
           { id: 'news-kr', name: 'News / Talk KR', icon: '📰', color: '#64748b', stations: [
             { id: 'kbs-world-news', name: 'KBS World Radio', city: 'Seoul', url: 'https://serpent.kbs.co.kr/mediaproxy/manifest/world/hls/live.m3u8' },
-            { id: 'bbc-kr', name: 'BBC World Service', city: 'London', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_world_service' },
             { id: 'ytn-radio', name: 'YTN Radio', city: 'Seoul', url: 'https://stream.zeno.fm/aqr4rp4x3rzuv' },
             { id: 'mbc-news-kr', name: 'MBC Standard FM', city: 'Seoul', url: 'https://stream.zeno.fm/3b06nj0d84zuv' },
-            { id: 'rfi-kr', name: 'RFI World English', city: 'Paris', url: 'https://icecast.radiofrance.fr/rfi-midfi.mp3' },
+            { id: 'sbs-love-fm', name: 'SBS Love FM', city: 'Seoul', url: 'https://stream.zeno.fm/sbs-love-fm-kr' },
+            { id: 'tbs-efm', name: 'TBS eFM 101.3 (영어뉴스)', city: 'Seoul', url: 'https://stream.zeno.fm/tbsefm1013' },
           ]},
         ],
       }
@@ -2427,7 +2427,7 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
   const [apiKeyTab, setApiKeyTab] = React.useState('spotify');
   return (
     <div style={{ position:'absolute', inset:0, zIndex:150, background:'rgba(0,0,0,0.6)', ...(isLite?{}:{backdropFilter:'blur(4px)'}), display:'flex', alignItems:'stretch' }} onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="scrollbar-hide" style={{ width:'100%', height:'100%', overflowY:'auto', overflowX:'hidden', background:'#0d0d24', border:'none', borderRadius:0, padding:'0 0 32px' }}>
+      <div className="scrollbar-hide" style={{ width:'100%', height:'100%', overflowY:'auto', overflowX:'hidden', background:'#0d0d24', border:'none', borderRadius:0, padding:'0 0 env(safe-area-inset-bottom, 24px)' }}>
         {/* Header */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 18px 0', marginBottom:6 }}>
           <div style={{ fontWeight:900, fontSize:15, letterSpacing:'-0.02em' }}>{t ? t.settings : 'Pengaturan'}</div>
@@ -4222,12 +4222,12 @@ export default function App() {
         // Fullscreen: maximize ring for both orientations
         if (isLandscape) {
           // Landscape fullscreen: ring limited by height, leave room for controls on the right
-          const size = Math.min(vw * 0.40, vh - 64);
-          setRingSize(Math.max(150, Math.min(400, size)));
+          const size = Math.min(vw * 0.42, vh - 80);
+          setRingSize(Math.max(140, Math.min(380, size)));
         } else {
           // Portrait fullscreen: centered, leave room for controls below
-          const size = Math.min(vw - 40, vh - 220);
-          setRingSize(Math.max(190, Math.min(500, size)));
+          const size = Math.min(vw - 48, vh - 240);
+          setRingSize(Math.max(180, Math.min(480, size)));
         }
         return;
       }
@@ -4271,52 +4271,50 @@ export default function App() {
           infoMt: `${Math.max(6, Math.min(14, Math.round(vpad * 0.6)))}px`,
         });
       } else if (mode === 'mobile-landscape') {
-        // Mobile Landscape — slim side icon nav (54px) + horizontal player layout
-        const sideNavW = 54;
+        // Mobile Landscape — slim side icon nav (52px) + horizontal player layout
+        const sideNavW = 52;
         const mainW = vw - sideNavW;
-        const mainH = vh - 44; // minus header
+        const mainH = vh - 40; // minus slim header
         // Ring column takes ~40% of mainW; remaining is info+controls
         const ringColW = Math.round(mainW * 0.40);
-        // Ring: fit in column width and height with comfortable padding
-        const byH = mainH - 16; // some vertical padding
-        const ring = Math.max(110, Math.min(190, Math.min(byH, ringColW - 16)));
+        // Ring limited by both column width and available height
+        const byH = mainH - 12; // minimal vertical padding
+        const ring = Math.max(110, Math.min(180, Math.min(byH, ringColW - 12)));
         setRingSize(ring);
-        const infoColW = mainW - ringColW - 12;
-        // Good typography scaling based on info column width
+        // Compact but readable margins
         setLayoutVars({
           playerPad: '4px 10px 4px',
-          trackTitleSize: `clamp(13px,${Math.round(infoColW * 0.075)}px,18px)`,
-          artistSize: '11px',
-          controlsGap: '12px',
-          actionPad: '5px 0',
-          volumeMt: '4px',
-          controlsMt: '5px',
-          infoMt: '4px',
+          trackTitleSize: `clamp(13px,${Math.round((mainW - ringColW) * 0.065)}px,17px)`,
+          artistSize: '10px',
+          controlsGap: '10px',
+          actionPad: '4px 0',
+          volumeMt: '3px',
+          controlsMt: '4px',
+          infoMt: '3px',
         });
       } else {
         // Portrait: full-width stacked
-        // Measured fixed slots: header~54, clock~28, badge~22, info~48,
-        //   controls~56, volume~34, actions~44, bottomNav~76, gaps~24
-        const fixed = 54 + 28 + 22 + 48 + 56 + 34 + 44 + 76 + 24;
+        // Measured fixed slots: header~46, clock~24, badge~18, info~40,
+        //   controls~52, volume~30, actions~44, bottomNav~68, gaps~16
+        const fixed = 46 + 24 + 18 + 40 + 52 + 30 + 44 + 68 + 16;
         const byH = vh - fixed;
         const byW = vw - 32;
-        // ring: min 160, max 300, scale with screen
-        const ring = Math.max(160, Math.min(300, Math.min(byH, byW)));
+        const ring = Math.max(160, Math.min(280, Math.min(byH, byW)));
         setRingSize(ring);
-        // Distribute remaining space generously
+        // Distribute remaining space tightly
         const spare = Math.max(0, vh - fixed - ring);
-        const u = Math.round(spare / 10);
+        const u = Math.round(spare / 12);
         const clampPx = (min, max) => `${Math.max(min, Math.min(max, u))}px`;
-        const vpadTop = Math.max(4, Math.min(12, u));
+        const vpadTop = Math.max(4, Math.min(10, u));
         const vpadBot = Math.max(2, Math.min(6, Math.floor(u * 0.5)));
         setLayoutVars({
-          playerPad: `${vpadTop}px 20px ${vpadBot}px`,
+          playerPad: `${vpadTop}px 16px ${vpadBot}px`,
           trackTitleSize: vw >= 390 ? '17px' : '15px',
-          artistSize: '12px',
-          controlsGap: vw >= 390 ? '16px' : '12px',
-          actionPad: `${clampPx(5, 10)} 0`,
+          artistSize: '11px',
+          controlsGap: vw >= 390 ? '14px' : '10px',
+          actionPad: `${clampPx(5, 9)} 0`,
           volumeMt: clampPx(4, 10),
-          controlsMt: clampPx(6, 14),
+          controlsMt: clampPx(5, 12),
           infoMt: clampPx(4, 10),
         });
       }
@@ -5630,35 +5628,35 @@ export default function App() {
 
       {/* Mobile Landscape — vertical icon nav on left */}
       {layoutMode === 'mobile-landscape' && !fullscreen && (
-        <div style={{ width:54, flexShrink:0, borderRight:'1px solid rgba(255,255,255,0.08)', background:'rgba(0,0,0,0.30)', display:'flex', flexDirection:'column', alignItems:'center', padding:'6px 0 10px', gap:1 }}>
-          <button onClick={()=>setTab('player')} style={{ width:44, height:44, borderRadius:12, border:'none', cursor:'pointer', background:tab==='player'?`${track.color}28`:'transparent', color:tab==='player'?track.color:'rgba(255,255,255,0.40)', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:1, position:'relative' }}>
-            <Compass size={20}/>
-            {tab==='player'&&<div style={{ position:'absolute', right:3, top:'50%', transform:'translateY(-50%)', width:3, height:18, borderRadius:999, background:track.color }}/>}
+        <div style={{ width:52, flexShrink:0, borderRight:'1px solid rgba(255,255,255,0.07)', background:'rgba(0,0,0,0.25)', display:'flex', flexDirection:'column', alignItems:'center', padding:'6px 0 10px', gap:2 }}>
+          <button onClick={()=>setTab('player')} style={{ width:42, height:42, borderRadius:12, border:'none', cursor:'pointer', background:tab==='player'?`${track.color}25`:'transparent', color:tab==='player'?track.color:'rgba(255,255,255,0.35)', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:1, position:'relative' }}>
+            <Compass size={18}/>
+            {tab==='player'&&<div style={{ position:'absolute', right:4, top:'50%', transform:'translateY(-50%)', width:3, height:16, borderRadius:999, background:track.color }}/>}
           </button>
-          <div style={{ width:26, height:1, background:'rgba(255,255,255,0.08)', margin:'2px 0' }}/>
+          <div style={{ width:24, height:1, background:'rgba(255,255,255,0.07)', margin:'3px 0' }}/>
           {/* Mini album art */}
           {tab !== 'player' && (
-            <div onClick={()=>setTab('player')} style={{ width:40, height:40, borderRadius:10, overflow:'hidden', cursor:'pointer', marginBottom:2, border:`2px solid ${track.color}45`, flexShrink:0 }}>
-              {isLite ? <div style={{ width:'100%', height:'100%', background:track.bg, display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={15} color={track.color}/></div> : <img src={getCover(track)} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>}
+            <div onClick={()=>setTab('player')} style={{ width:38, height:38, borderRadius:10, overflow:'hidden', cursor:'pointer', marginBottom:4, border:`2px solid ${track.color}40`, flexShrink:0 }}>
+              {isLite ? <div style={{ width:'100%', height:'100%', background:track.bg, display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={14} color={track.color}/></div> : <img src={getCover(track)} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>}
             </div>
           )}
           {tabs.map(t=>{
             const active=tab===t.id;
             return (
-              <button key={t.id} onClick={()=>setTab(t.id)} style={{ width:44, height:44, borderRadius:12, border:'none', cursor:'pointer', background:active?`${track.color}28`:'transparent', color:active?track.color:'rgba(255,255,255,0.40)', display:'flex', alignItems:'center', justifyContent:'center', position:'relative' }}>
+              <button key={t.id} onClick={()=>setTab(t.id)} style={{ width:42, height:42, borderRadius:12, border:'none', cursor:'pointer', background:active?`${track.color}25`:'transparent', color:active?track.color:'rgba(255,255,255,0.35)', display:'flex', alignItems:'center', justifyContent:'center', position:'relative' }}>
                 {t.icon}
-                {active&&<div style={{ position:'absolute', right:3, top:'50%', transform:'translateY(-50%)', width:3, height:18, borderRadius:999, background:track.color }}/>}
+                {active&&<div style={{ position:'absolute', right:4, top:'50%', transform:'translateY(-50%)', width:3, height:16, borderRadius:999, background:track.color }}/>}
               </button>
             );
           })}
           <div style={{ flex:1 }}/>
           {playing && (
-            <div style={{ display:'flex', gap:2, alignItems:'flex-end', height:16, marginBottom:4 }}>
-              {[9,5,7].map((h,i)=>(<div key={i} style={{ width:2.5, height:h, background:track.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${i*0.15}s infinite` }}/>))}
+            <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:14, marginBottom:4 }}>
+              {[8,4,6].map((h,i)=>(<div key={i} style={{ width:2.5, height:h, background:track.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${i*0.15}s infinite` }}/>))}
             </div>
           )}
-          <button onClick={()=>setShowSettings(v=>!v)} style={{ width:44, height:44, borderRadius:12, border:'none', cursor:'pointer', background: showSettings ? 'rgba(255,255,255,0.09)' : 'transparent', color:sleepTimer?track.color:(showSettings?'rgba(255,255,255,0.75)':'rgba(255,255,255,0.28)'), display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <Settings size={17}/>
+          <button onClick={()=>setShowSettings(v=>!v)} style={{ width:42, height:42, borderRadius:12, border:'none', cursor:'pointer', background: showSettings ? 'rgba(255,255,255,0.08)' : 'transparent', color:sleepTimer?track.color:(showSettings?'rgba(255,255,255,0.7)':'rgba(255,255,255,0.25)'), display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <Settings size={16}/>
           </button>
         </div>
       )}
@@ -5971,11 +5969,11 @@ export default function App() {
             justifyContent: fullscreen
               ? (window.innerWidth > window.innerHeight ? 'center' : 'space-evenly')
               : layoutMode === 'mobile-landscape' ? 'flex-start' : 'flex-start',
-            padding: fullscreen ? (window.innerWidth > window.innerHeight ? '8px 24px 10px' : '8px 20px 10px') : layoutVars.playerPad,
+            padding: fullscreen ? '8px 24px 10px' : layoutVars.playerPad,
             position: 'relative',
             boxSizing: 'border-box',
             overflow: 'hidden',
-            gap: (layoutMode === 'mobile-landscape' || (fullscreen && window.innerWidth > window.innerHeight)) ? '16px' : 0,
+            gap: (layoutMode === 'mobile-landscape' || (fullscreen && window.innerWidth > window.innerHeight)) ? '10px' : 0,
           }}>
 
             {/* ── JAM — pojok kiri atas area player (desktop only) */}
@@ -5995,7 +5993,7 @@ export default function App() {
 
             {/* ── Mobile: jam kiri atas + ring tengah | Desktop: ring tengah saja */}
             {(layoutMode === 'mobile-portrait' || layoutMode === 'mobile-landscape') ? (
-              <div style={{ position:'relative', width: layoutMode === 'mobile-landscape' ? (ringSize + 16) + 'px' : '100%', height: layoutMode === 'mobile-landscape' ? '100%' : undefined, flexShrink:0, display:'flex', justifyContent:'center', alignItems:'center' }}>
+              <div style={{ position:'relative', width: layoutMode === 'mobile-landscape' ? ringSize + 'px' : '100%', height: layoutMode === 'mobile-landscape' ? '100%' : undefined, flexShrink:0, display:'flex', justifyContent:'center', alignItems:'center' }}>
                 {/* Jam mobile — pojok kiri, tidak overlap ring — hide on landscape (clock is in header) */}
                 {layoutMode === 'mobile-portrait' && (
                 <div style={{ position:'absolute', left:0, top:6, userSelect:'none' }}>
@@ -6019,10 +6017,13 @@ export default function App() {
               marginTop: fullscreen ? 0 : layoutMode === 'mobile-landscape' ? 0 : layoutVars.infoMt,
               width: '100%',
               maxWidth: fullscreen ? 440 : layoutMode === 'mobile-landscape' ? undefined : 340,
-              padding: layoutMode === 'mobile-landscape' ? '0 4px' : '0 8px',
+              padding: layoutMode === 'mobile-landscape' ? '0 6px' : '0 8px',
+              minWidth: 0,
+              overflow: 'hidden',
               ...(layoutMode === 'mobile-landscape' ? {
-                display: 'flex', flexDirection: 'column', alignItems: 'center',
-                justifyContent: 'center', flex: 1, minWidth: 0, textAlign: 'left',
+                display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+                justifyContent: 'center', flex: 1, minWidth: 0,
+                textAlign: 'left',
               } : {}),
               ...((fullscreen && typeof window !== 'undefined' && window.innerWidth > window.innerHeight) ? {
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -6045,7 +6046,7 @@ export default function App() {
               ) : track.isDrive ? (
                 <div style={{ display:'inline-flex', alignItems:'center', gap:3, padding:'2px 7px', borderRadius:999, marginBottom:3, background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)' }}><Cloud size={9} style={{ color:track.color }}/><span style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em' }}>Drive</span></div>
               ) : null}
-              <h2 style={{ margin:0, fontWeight:900, letterSpacing:'-0.03em', lineHeight:1.1, fontSize: fullscreen ? 'clamp(18px,4.8vw,28px)' : layoutVars.trackTitleSize, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{embedTrack?.type==='youtube'?embedTrack.title:embedTrack?.type==='soundcloud'?embedTrack.title:track.title}</h2>
+              <h2 style={{ margin:0, fontWeight:900, letterSpacing:'-0.03em', lineHeight:1.1, fontSize: fullscreen ? 'clamp(18px,4.8vw,28px)' : layoutVars.trackTitleSize, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'100%' }}>{embedTrack?.type==='youtube'?embedTrack.title:embedTrack?.type==='soundcloud'?embedTrack.title:track.title}</h2>
               <p style={{ margin:'2px 0 0', fontSize: fullscreen ? 'clamp(11px,2.8vw,14px)' : layoutVars.artistSize, color:'rgba(255,255,255,0.45)', fontWeight:600 }}>
                 {embedTrack?.type==='youtube' ? embedTrack.artist : embedTrack?.type==='soundcloud' ? embedTrack.artist : `${track.artist} — ${track.album}`}
               </p>
@@ -6090,14 +6091,14 @@ export default function App() {
             </div>
 
             {/* ── Volume row */}
-            <div style={{ display:'flex', alignItems:'center', gap:10, marginTop: fullscreen ? 0 : layoutVars.volumeMt, width:'100%', maxWidth: (fullscreen || layoutMode === 'mobile-landscape') ? '100%' : 340, padding:'4px 2px' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginTop: fullscreen ? 0 : layoutVars.volumeMt, width:'100%', maxWidth: fullscreen ? '100%' : layoutMode === 'mobile-landscape' ? 320 : 340, padding:'4px 2px' }}>
               <button onClick={()=>setMuted(m=>!m)} style={{ ...btn, color:muted?'#ef4444':'rgba(255,255,255,0.38)', padding:4, flexShrink:0 }}>{muted?<VolumeX size={16}/>:<Volume2 size={16}/>}</button>
               <input type="range" min="0" max="1" step="0.01" value={muted?0:volume} onChange={e=>{setVolume(+e.target.value);setMuted(false)}} style={{ flex:1, accentColor:embedTrack?.type==='youtube'?'#ff4444':track.color, height:3, cursor:'pointer' }}/>
               <span style={{ fontSize:10, color:'rgba(255,255,255,0.28)', fontWeight:700, minWidth:28, textAlign:'right', fontFamily:'monospace', flexShrink:0 }}>{muted?'0':Math.round(volume*100)}%</span>
             </div>
 
             {/* ── Action buttons row */}
-            <div style={{ display:'flex', alignItems:'center', gap:6, marginTop: fullscreen ? 0 : layoutVars.volumeMt, width:'100%', maxWidth: (fullscreen || layoutMode === 'mobile-landscape') ? '100%' : 340 }}>
+            <div style={{ display:'flex', alignItems:'center', flexWrap: layoutMode === 'mobile-portrait' ? 'wrap' : 'nowrap', gap:4, marginTop: fullscreen ? 0 : layoutVars.volumeMt, width:'100%', maxWidth: (fullscreen || layoutMode === 'mobile-landscape') ? '100%' : 340, justifyContent:'center' }}>
               {/* Like */}
               {embedTrack?.type==='youtube'
                 ? (() => {
@@ -8055,58 +8056,58 @@ Berikan response HANYA dalam JSON ini (tanpa markdown, tanpa teks lain):
 
       {/* ══ BOTTOM NAV — Mobile Portrait only */}
       {layoutMode === 'mobile-portrait' && !fullscreen && (
-        <div style={{ position:'relative', zIndex:10, flexShrink:0, display:'flex', flexDirection:'column', background:'rgba(7,7,26,0.97)', ...(isLite ? {} : { backdropFilter:'blur(20px)' }), borderTop:'1px solid rgba(255,255,255,0.10)' }}>
+        <div style={{ position:'relative', zIndex:10, flexShrink:0, display:'flex', flexDirection:'column', background:'rgba(7,7,26,0.97)', ...(isLite ? {} : { backdropFilter:'blur(20px)' }), borderTop:'1px solid rgba(255,255,255,0.08)' }}>
 
           {/* Mini Now-Playing Bar — visible when NOT on player tab */}
           {tab !== 'player' && (
-            <div onClick={()=>setTab('player')} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 16px 8px', cursor:'pointer', borderBottom:'1px solid rgba(255,255,255,0.07)', background: embedTrack ? 'rgba(255,68,68,0.08)' : `${track.color}0d` }}>
+            <div onClick={()=>setTab('player')} style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 14px 6px', cursor:'pointer', borderBottom:'1px solid rgba(255,255,255,0.06)', background: embedTrack ? 'rgba(255,68,68,0.07)' : `${track.color}0a` }}>
               {/* Cover / icon */}
               {embedTrack
-                ? <div style={{ width:40, height:40, borderRadius:10, background:'rgba(255,68,68,0.18)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:16 }}>▶</div>
+                ? <div style={{ width:36, height:36, borderRadius:9, background:'rgba(255,68,68,0.18)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:14 }}>▶</div>
                 : track.isRadio
-                  ? <div style={{ width:40, height:40, borderRadius:10, background:`${track.color}25`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, position:'relative' }}>
-                      <Radio size={17} color={track.color}/>
-                      {playing && <div style={{ position:'absolute', top:3, right:3, width:6, height:6, borderRadius:'50%', background:track.color, animation:'pulse 1.2s infinite' }}/>}
+                  ? <div style={{ width:36, height:36, borderRadius:9, background:`${track.color}25`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, position:'relative' }}>
+                      <Radio size={15} color={track.color}/>
+                      {playing && <div style={{ position:'absolute', top:3, right:3, width:5, height:5, borderRadius:'50%', background:track.color, animation:'pulse 1.2s infinite' }}/>}
                     </div>
                   : isLite
-                    ? <div style={{ width:40, height:40, borderRadius:10, background:track.bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Music size={17} color={track.color}/></div>
-                    : <img src={getCover(track)} style={{ width:40, height:40, borderRadius:10, objectFit:'cover', flexShrink:0 }}/>
+                    ? <div style={{ width:36, height:36, borderRadius:9, background:track.bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Music size={15} color={track.color}/></div>
+                    : <img src={getCover(track)} style={{ width:36, height:36, borderRadius:9, objectFit:'cover', flexShrink:0 }}/>
               }
               {/* Track info */}
               <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontSize:14, fontWeight:700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'rgba(255,255,255,0.95)' }}>
+                <div style={{ fontSize:13, fontWeight:700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'rgba(255,255,255,0.95)' }}>
                   {embedTrack ? embedTrack.title : track.title}
                 </div>
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                   {embedTrack ? (embedTrack.type==='youtube' ? '▶ YouTube' : '☁️ SoundCloud') : track.isRadio ? `📻 ${track.artist}` : `${track.artist} — ${t?.miniPlayerHint||'Tap for player'}`}
                 </div>
               </div>
               {/* Playback indicator */}
-              <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0, paddingRight:4 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
                 {playing
-                  ? <div style={{ display:'flex', gap:2, alignItems:'flex-end', height:16 }}>{[11,6,9].map((h,i)=>(<div key={i} style={{ width:3, height:h, background:embedTrack?.type==='youtube'?'#ff4444':embedTrack?.type==='soundcloud'?'#ff5500':track.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${i*0.15}s infinite` }}/>))}</div>
-                  : <div style={{ width:7, height:7, borderRadius:'50%', background:'rgba(255,255,255,0.2)' }}/>
+                  ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:14 }}>{[10,5,8].map((h,i)=>(<div key={i} style={{ width:3, height:h, background:embedTrack?.type==='youtube'?'#ff4444':embedTrack?.type==='soundcloud'?'#ff5500':track.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${i*0.15}s infinite` }}/>))}</div>
+                  : <div style={{ width:6, height:6, borderRadius:'50%', background:'rgba(255,255,255,0.2)' }}/>
                 }
               </div>
             </div>
           )}
 
-          {/* Tab bar — Player, Stream, Playlist, AI */}
-          <nav style={{ display:'flex', alignItems:'stretch', padding:'4px 6px', paddingBottom:'max(10px,env(safe-area-inset-bottom))' }}>
-            {/* Player shortcut button — leftmost */}
-            <button onClick={()=>setTab('player')} style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3, padding:'7px 10px', background:'none', border:'none', cursor:'pointer', color:tab==='player'?track.color:'rgba(255,255,255,0.40)', flexShrink:0, minWidth:58 }}>
-              <div style={{ padding:'4px 10px', borderRadius:999, background:tab==='player'?`${track.color}25`:'transparent', display:'flex', alignItems:'center', justifyContent:'center' }}><Compass size={19}/></div>
-              <span style={{ fontSize:10, fontWeight:tab==='player'?700:500, letterSpacing:'0.02em' }}>Player</span>
+          {/* Tab bar — Stream, Playlist, AI */}
+          <nav style={{ display:'flex', alignItems:'center', padding:'4px 8px', paddingBottom:'max(6px,env(safe-area-inset-bottom))' }}>
+            {/* Player shortcut button — leftmost, compact */}
+            <button onClick={()=>setTab('player')} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2, padding:'6px 10px', background:'none', border:'none', cursor:'pointer', color:tab==='player'?track.color:'rgba(255,255,255,0.35)', flexShrink:0 }}>
+              <div style={{ padding:'3px 10px', borderRadius:999, background:tab==='player'?`${track.color}22`:'transparent' }}><Compass size={18}/></div>
+              <span style={{ fontSize:9, fontWeight:tab==='player'?700:500, letterSpacing:'0.02em' }}>Player</span>
             </button>
             {/* Divider */}
-            <div style={{ width:1, height:28, background:'rgba(255,255,255,0.09)', margin:'auto 2px', flexShrink:0 }}/>
+            <div style={{ width:1, height:24, background:'rgba(255,255,255,0.08)', margin:'0 2px', flexShrink:0 }}/>
             {/* Stream, Playlist, AI */}
             {tabs.map(t=>{
               const active=tab===t.id;
               return (
-                <button key={t.id} onClick={()=>setTab(t.id)} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3, padding:'7px 0', background:'none', border:'none', cursor:'pointer', color:active?track.color:'rgba(255,255,255,0.40)' }}>
-                  <div style={{ padding:'4px 12px', borderRadius:999, background:active?`${track.color}25`:'transparent', display:'flex', alignItems:'center', justifyContent:'center' }}>{t.icon}</div>
-                  <span style={{ fontSize:10, fontWeight:active?700:500, letterSpacing:'0.02em' }}>{t.label}</span>
+                <button key={t.id} onClick={()=>setTab(t.id)} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:2, padding:'6px 0', background:'none', border:'none', cursor:'pointer', color:active?track.color:'rgba(255,255,255,0.35)' }}>
+                  <div style={{ padding:'3px 12px', borderRadius:999, background:active?`${track.color}22`:'transparent' }}>{t.icon}</div>
+                  <span style={{ fontSize:9, fontWeight:active?700:500, letterSpacing:'0.02em' }}>{t.label}</span>
                 </button>
               );
             })}
@@ -8162,30 +8163,19 @@ Berikan response HANYA dalam JSON ini (tanpa markdown, tanpa teks lain):
 
         /* ══ LAYOUT MODE — Mobile Portrait ══ */
         .layout-mobile-portrait header {
-          background: rgba(7,7,26,0.96);
-          backdrop-filter: blur(14px);
-          -webkit-backdrop-filter: blur(14px);
-        }
-        /* Bigger tap targets on portrait */
-        .layout-mobile-portrait button {
-          min-height: 36px;
+          background: rgba(7,7,26,0.95);
+          backdrop-filter: blur(12px);
         }
 
         /* ══ LAYOUT MODE — Mobile Landscape ══ */
         .layout-mobile-landscape header {
-          background: linear-gradient(90deg, rgba(7,7,26,0.98) 0%, rgba(15,10,40,0.96) 100%);
+          background: linear-gradient(90deg, rgba(7,7,26,0.98) 0%, rgba(15,10,40,0.95) 100%);
           backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
-          border-bottom-color: rgba(255,255,255,0.06);
+          border-bottom-color: rgba(255,255,255,0.05);
         }
         /* In mobile-landscape: player inner layout is row, ring left, controls right */
         .layout-mobile-landscape main {
-          overflow-y: hidden;
-          overflow-x: hidden;
-        }
-        /* Landscape: keep controls compact but readable */
-        .layout-mobile-landscape input[type=range] {
-          height: 3px;
+          overflow-y: auto;
         }
 
         /* ══ LAYOUT MODE — Desktop Portrait ══ */
