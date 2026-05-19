@@ -401,27 +401,47 @@ const STREAMING_PLATFORMS = [
             { id: 'hot97', name: 'HOT 97 Hip-Hop', city: 'New York', url: 'https://ice9.securenetsystems.net/HOT97' },
             { id: 'top40-sf', name: 'Wild 94.9 SF', city: 'San Francisco', url: 'https://stream.revma.ihrhls.com/zc258' },
             { id: 'y100-miami', name: 'Y100 Miami', city: 'Miami', url: 'https://stream.revma.ihrhls.com/zc1178' },
+            { id: 'power106', name: 'Power 106 LA (Hip-Hop/RnB)', city: 'Los Angeles', url: 'https://stream.revma.ihrhls.com/zc1866' },
           ]},
           { id: 'rock', name: 'Rock / Alternative', icon: '🎸', color: '#ef4444', stations: [
             { id: 'kroq', name: 'KROQ Alt Rock LA', city: 'Los Angeles', url: 'https://stream.revma.ihrhls.com/zc2922' },
             { id: 'metal-soma', name: 'Metal Detector (SomaFM)', city: 'San Francisco', url: 'https://ice1.somafm.com/metal-128-mp3' },
             { id: 'indie-pop', name: 'Indie Pop Rocks (SomaFM)', city: 'San Francisco', url: 'https://ice1.somafm.com/indiepop-128-mp3' },
             { id: 'folkfwd', name: 'Folk Forward (SomaFM)', city: 'San Francisco', url: 'https://ice1.somafm.com/folkfwd-128-mp3' },
-            { id: 'punk-soma', name: 'Doomed (SomaFM Punk)', city: 'San Francisco', url: 'https://ice1.somafm.com/doomed-128-mp3' },
+            { id: 'punk-soma', name: 'Doomed (SomaFM Dark/Metal)', city: 'San Francisco', url: 'https://ice1.somafm.com/doomed-128-mp3' },
+            { id: 'thetrip-soma', name: 'The Trip (SomaFM Psychedelic)', city: 'San Francisco', url: 'https://ice1.somafm.com/thetrip-128-mp3' },
           ]},
-          { id: 'country', name: 'Country', icon: '🤠', color: '#92400e', stations: [
-            { id: 'wsm', name: 'WSM 650 Nashville (Country)', city: 'Nashville', url: 'https://stream.revma.ihrhls.com/zc3226' },
+          { id: 'country', name: 'Country / Americana', icon: '🤠', color: '#92400e', stations: [
+            { id: 'wsm', name: 'WSM 650 Nashville', city: 'Nashville', url: 'https://stream.revma.ihrhls.com/zc3226' },
             { id: 'nash-fm', name: 'Nash FM Country', city: 'National', url: 'https://stream.revma.ihrhls.com/zc3050' },
-            { id: 'kix-country', name: 'KIX Country 100.7', city: 'Chicago', url: 'https://ice1.somafm.com/country-128-mp3' },
-            { id: 'folkfwd2', name: 'Folk & Americana (SomaFM)', city: 'San Francisco', url: 'https://ice1.somafm.com/folkfwd-128-mp3' },
             { id: 'boot-liquor', name: 'Boot Liquor (Americana)', city: 'San Francisco', url: 'https://ice1.somafm.com/bootliquor-128-mp3' },
+            { id: 'folkfwd2', name: 'Folk Forward (SomaFM)', city: 'San Francisco', url: 'https://ice1.somafm.com/folkfwd-128-mp3' },
+            { id: 'country-bbq', name: 'Lonestar (Country BBQ)', city: 'Texas', url: 'https://stream.zeno.fm/lonestar-country' },
+            { id: 'whiskey-soma', name: 'Whiskey Before Breakfast (SomaFM)', city: 'San Francisco', url: 'https://ice1.somafm.com/Whiskeybeforebr-128-mp3' },
           ]},
-          { id: 'jazz', name: 'Jazz / Blues', icon: '🎷', color: '#7c3aed', stations: [
+          { id: 'jazz', name: 'Jazz / Blues / Soul', icon: '🎷', color: '#7c3aed', stations: [
             { id: 'wbgo', name: 'WBGO Jazz 88.3 FM', city: 'New York', url: 'https://wbgo.streamguys1.com/wbgo128.mp3' },
             { id: 'sonicuniverse', name: 'Sonic Universe (SomaFM)', city: 'San Francisco', url: 'https://ice1.somafm.com/sonicuniverse-128-mp3' },
-            { id: 'sf1033', name: 'SF in SF (Jazz/Talk)', city: 'San Francisco', url: 'https://ice1.somafm.com/sf1033-128-mp3' },
             { id: 'jazz-soma', name: 'Jazz (SomaFM)', city: 'San Francisco', url: 'https://ice1.somafm.com/jazz-128-mp3' },
-            { id: 'blues-soma', name: 'Illinois Street (Blues)', city: 'San Francisco', url: 'https://ice1.somafm.com/illstreet-128-mp3' },
+            { id: 'blues-soma', name: 'Illinois Street Lounge (Blues)', city: 'San Francisco', url: 'https://ice1.somafm.com/illstreet-128-mp3' },
+            { id: 'sf1033', name: 'SF in SF (Jazz/Talk)', city: 'San Francisco', url: 'https://ice1.somafm.com/sf1033-128-mp3' },
+            { id: 'groove-salad', name: 'Groove Salad (SomaFM)', city: 'San Francisco', url: 'https://ice1.somafm.com/groovesalad-128-mp3' },
+          ]},
+          { id: 'hiphop', name: 'Hip-Hop / R&B', icon: '🎤', color: '#f59e0b', stations: [
+            { id: 'soulful-soma', name: 'SoulfulSide (SomaFM)', city: 'San Francisco', url: 'https://ice1.somafm.com/SoulfulSide-128-mp3' },
+            { id: 'hiphop-zeno', name: 'Hip-Hop Radio USA', city: 'New York', url: 'https://stream.zeno.fm/hiphop-usa' },
+            { id: 'oldschool-hiphop', name: 'Old School Hip-Hop', city: 'Online', url: 'https://stream.laut.fm/oldschoolhiphop' },
+            { id: 'rnb-zeno', name: 'R&B United States', city: 'Atlanta', url: 'https://stream.zeno.fm/rnb-united-states' },
+            { id: 'trap-radio', name: 'Trap Nation Radio', city: 'Online', url: 'https://stream.zeno.fm/trap-nation' },
+            { id: 'rap-us', name: 'Rap Radio USA', city: 'Online', url: 'https://stream.laut.fm/rap' },
+          ]},
+          { id: 'electronic', name: 'Electronic / Dance', icon: '🎧', color: '#8b5cf6', stations: [
+            { id: 'deptstore-soma', name: 'Dept. Store (SomaFM Lo-Fi)', city: 'San Francisco', url: 'https://ice1.somafm.com/deptstore-128-mp3' },
+            { id: 'cliqhop', name: 'cliqhop idm (SomaFM)', city: 'San Francisco', url: 'https://ice1.somafm.com/cliqhop-128-mp3' },
+            { id: 'edm-radio', name: 'EDM Radio US', city: 'New York', url: 'https://stream.zeno.fm/edm-radio' },
+            { id: 'house-nation', name: 'House Nation Radio', city: 'Chicago', url: 'https://stream.laut.fm/house' },
+            { id: 'dubstep-radio', name: 'Dubstep Radio US', city: 'Online', url: 'https://stream.zeno.fm/dubstep-radio' },
+            { id: 'techno-us', name: 'Techno USA (Laut.fm)', city: 'Online', url: 'https://stream.laut.fm/techno' },
           ]},
           { id: 'news', name: 'News / Talk', icon: '📰', color: '#64748b', stations: [
             { id: 'npr', name: 'NPR News Now', city: 'National', url: 'https://npr-ice.streamguys1.com/live.mp3' },
@@ -429,25 +449,28 @@ const STREAMING_PLATFORMS = [
             { id: 'kcbs', name: 'KCBS News Radio', city: 'San Francisco', url: 'https://stream.revma.ihrhls.com/zc578' },
             { id: 'wbbm', name: 'WBBM Newsradio', city: 'Chicago', url: 'https://stream.revma.ihrhls.com/zc402' },
             { id: 'kogo', name: 'KOGO News San Diego', city: 'San Diego', url: 'https://stream.revma.ihrhls.com/zc2474' },
+            { id: 'bbc-world-us', name: 'BBC World Service', city: 'London/National', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_world_service' },
           ]},
         ],
       },
       {
         id: 'uk', name: 'Inggris', flag: '🇬🇧', color: '#e11d48',
         genres: [
-          { id: 'pop', name: 'Pop / Chart', icon: '🎵', color: '#e11d48', stations: [
+          { id: 'pop', name: 'Pop / Chart Hits', icon: '🎵', color: '#e11d48', stations: [
             { id: 'bbc-r1', name: 'BBC Radio 1', city: 'London', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_radio_one' },
             { id: 'heart', name: 'Heart FM', city: 'London', url: 'https://media-ice.musicradio.com/HeartUKMP3' },
             { id: 'capital', name: 'Capital FM', city: 'London', url: 'https://media-ice.musicradio.com/CapitalUKMP3' },
             { id: 'absolute', name: 'Absolute Radio', city: 'London', url: 'https://media-ice.musicradio.com/AbsoluteRadioMP3' },
             { id: 'magic-uk', name: 'Magic FM', city: 'London', url: 'https://media-ice.musicradio.com/MagicUKMP3' },
+            { id: 'bbc-r2', name: 'BBC Radio 2 (Easy Listening)', city: 'London', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_radio_two' },
           ]},
           { id: 'rock', name: 'Rock / Alternative', icon: '🎸', color: '#dc2626', stations: [
             { id: 'kerrang', name: 'Kerrang! Radio', city: 'Birmingham', url: 'https://media-ice.musicradio.com/KerrangMP3' },
             { id: 'planet-rock', name: 'Planet Rock', city: 'London', url: 'https://media-ice.musicradio.com/PlanetRockMP3' },
             { id: 'absolute-rock', name: 'Absolute Radio Rock', city: 'London', url: 'https://media-ice.musicradio.com/AbsoluteRadioRockMP3' },
             { id: 'radio-x', name: 'Radio X', city: 'London', url: 'https://media-ice.musicradio.com/RadioXUKMP3' },
-            { id: 'bbc-r2', name: 'BBC Radio 2', city: 'London', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_radio_two' },
+            { id: 'absolute-80s', name: 'Absolute 80s', city: 'London', url: 'https://media-ice.musicradio.com/Absolute80sMP3' },
+            { id: 'absolute-90s', name: 'Absolute 90s', city: 'London', url: 'https://media-ice.musicradio.com/Absolute90sMP3' },
           ]},
           { id: 'classical', name: 'Classical / Jazz', icon: '🎻', color: '#7c3aed', stations: [
             { id: 'bbc-r3', name: 'BBC Radio 3 (Classical)', city: 'London', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_radio_three' },
@@ -455,13 +478,31 @@ const STREAMING_PLATFORMS = [
             { id: 'smooth', name: 'Smooth Radio', city: 'London', url: 'https://media-ice.musicradio.com/SmoothUKMP3' },
             { id: 'jazz-fm', name: 'Jazz FM', city: 'London', url: 'https://streaming.radio.co/s2a648cde8/listen' },
             { id: 'lyric-fm', name: 'Lyric FM (Ireland)', city: 'Dublin', url: 'https://icecast.rte.ie/lyricfm.mp3' },
+            { id: 'bbc-r3-jazz', name: 'BBC Radio 3 Late Jn (Jazz)', city: 'London', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_radio_three' },
           ]},
           { id: 'dance', name: 'Dance / Electronic', icon: '🎧', color: '#8b5cf6', stations: [
             { id: 'kiss-uk', name: 'KISS FM UK', city: 'London', url: 'https://media-ice.musicradio.com/KISSUKHD' },
             { id: 'capital-xtra', name: 'Capital XTRA', city: 'London', url: 'https://media-ice.musicradio.com/CapitalXtraMP3' },
-            { id: 'absolute-80s', name: 'Absolute 80s', city: 'London', url: 'https://media-ice.musicradio.com/Absolute80sMP3' },
-            { id: 'magic-chilled', name: 'Magic Chilled', city: 'London', url: 'https://media-ice.musicradio.com/MagicChilledMP3' },
             { id: 'kiss-fresh', name: 'KISS Fresh', city: 'London', url: 'https://media-ice.musicradio.com/KISSFRESHMP3' },
+            { id: 'magic-chilled', name: 'Magic Chilled', city: 'London', url: 'https://media-ice.musicradio.com/MagicChilledMP3' },
+            { id: 'radio-1xtra', name: 'BBC Radio 1Xtra (Urban)', city: 'London', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_1xtra' },
+            { id: 'bbc-r6', name: 'BBC Radio 6 Music (Alternative)', city: 'London', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_6music' },
+          ]},
+          { id: 'hiphop-uk', name: 'Hip-Hop / Grime / RnB', icon: '🎤', color: '#f59e0b', stations: [
+            { id: 'bbc-1xtra-uk', name: 'BBC Radio 1Xtra', city: 'London', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_1xtra' },
+            { id: 'rinse-fm', name: 'Rinse FM (Grime/Electronic)', city: 'London', url: 'https://stream.zeno.fm/rinse-fm-uk' },
+            { id: 'complex-uk', name: 'Complex UK Urban', city: 'London', url: 'https://stream.zeno.fm/complex-uk' },
+            { id: 'kiss-uk-urban', name: 'KISS FM UK Urban', city: 'London', url: 'https://media-ice.musicradio.com/KISSUKHD' },
+            { id: 'reprezent', name: 'Reprezent Radio 107.3 FM', city: 'London', url: 'https://stream.zeno.fm/reprezent-uk' },
+            { id: 'uk-rnb', name: 'UK R&B Station (Laut.fm)', city: 'Online', url: 'https://stream.laut.fm/rnb' },
+          ]},
+          { id: 'oldies', name: 'Oldies / Heritage', icon: '🕰️', color: '#d97706', stations: [
+            { id: 'magic-uk2', name: 'Magic Radio (Gold Hits)', city: 'London', url: 'https://media-ice.musicradio.com/MagicUKMP3' },
+            { id: 'gold-uk', name: 'Gold Radio UK', city: 'London', url: 'https://media-ice.musicradio.com/GoldMP3' },
+            { id: 'greatest-hits', name: 'Greatest Hits Radio', city: 'London', url: 'https://media-ice.musicradio.com/GreatestHitsMP3' },
+            { id: 'bbc-r4extra', name: 'BBC Radio 4 Extra (Vintage)', city: 'London', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_radio_four_extra' },
+            { id: 'absolute-classic', name: 'Absolute Classic Rock', city: 'London', url: 'https://media-ice.musicradio.com/AbsoluteClassicRockMP3' },
+            { id: 'bbc-sounds-uk', name: 'BBC Radio 2 (Pop Oldies)', city: 'London', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_radio_two' },
           ]},
           { id: 'news', name: 'News / Talk', icon: '📰', color: '#64748b', stations: [
             { id: 'bbc-world', name: 'BBC World Service', city: 'London', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_world_service' },
@@ -469,6 +510,7 @@ const STREAMING_PLATFORMS = [
             { id: 'lbc', name: 'LBC News', city: 'London', url: 'https://media-ice.musicradio.com/LBCMP3' },
             { id: 'times-radio', name: 'Times Radio', city: 'London', url: 'https://timesradio.wireless.radio/stream' },
             { id: 'bbc-r5', name: 'BBC Radio 5 Live', city: 'London', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_radio_five_live' },
+            { id: 'talkradio-uk', name: 'Talk Radio UK', city: 'London', url: 'https://media-ice.musicradio.com/TalkRadioUKMP3' },
           ]},
         ],
       },
@@ -481,27 +523,47 @@ const STREAMING_PLATFORMS = [
             { id: 'cherie', name: 'Chérie FM', city: 'Paris', url: 'https://scdn.nrjaudio.fm/adwz2/fr/30201/mp3_128.mp3' },
             { id: 'france-inter', name: 'France Inter', city: 'Paris', url: 'https://icecast.radiofrance.fr/franceinter-midfi.mp3' },
             { id: 'europe1', name: 'Europe 1', city: 'Paris', url: 'https://stream.europe1.fr/europe1.mp3' },
+            { id: 'rtl-fr', name: 'RTL France', city: 'Paris', url: 'https://streaming.radio.rtl.fr/rtl-1-44-96' },
           ]},
           { id: 'dance', name: 'Dance / Électro', icon: '🎧', color: '#8b5cf6', stations: [
-            { id: 'fip', name: 'FIP (Jazz/Électro/World)', city: 'Paris', url: 'https://icecast.radiofrance.fr/fip-midfi.mp3' },
             { id: 'fip-electro', name: 'FIP Électro', city: 'Paris', url: 'https://icecast.radiofrance.fr/fipelectro-midfi.mp3' },
+            { id: 'fip', name: 'FIP (Jazz/Électro/World)', city: 'Paris', url: 'https://icecast.radiofrance.fr/fip-midfi.mp3' },
             { id: 'radio-meuh', name: 'Radio Meuh (Electro/Indie)', city: 'Paris', url: 'https://radiomeuh.ice.infomaniak.ch/radiomeuh-128.mp3' },
             { id: 'mouv', name: "Mouv' (Urban/Electro)", city: 'Paris', url: 'https://icecast.radiofrance.fr/mouv-midfi.mp3' },
             { id: 'fip-groove', name: 'FIP Groove', city: 'Paris', url: 'https://icecast.radiofrance.fr/fipgroove-midfi.mp3' },
+            { id: 'fun-radio', name: 'Fun Radio (Dance/RnB)', city: 'Paris', url: 'https://stream.funradio.fr/fun-1-48-128' },
           ]},
           { id: 'classical', name: 'Classique / Jazz', icon: '🎻', color: '#7c3aed', stations: [
             { id: 'france-musique', name: 'France Musique', city: 'Paris', url: 'https://icecast.radiofrance.fr/francemusique-midfi.mp3' },
             { id: 'radio-classique', name: 'Radio Classique', city: 'Paris', url: 'https://radioclassique.ice.infomaniak.ch/radioclassique-high' },
             { id: 'tsfjazz', name: 'TSF Jazz', city: 'Paris', url: 'https://tsfjazz.ice.infomaniak.ch/tsfjazz-high' },
             { id: 'fip-jazz', name: 'FIP Jazz', city: 'Paris', url: 'https://icecast.radiofrance.fr/fipjazz-midfi.mp3' },
+            { id: 'fip-world', name: 'FIP Monde (World Music)', city: 'Paris', url: 'https://icecast.radiofrance.fr/fipworld-midfi.mp3' },
             { id: 'fip-reggae', name: 'FIP Reggae', city: 'Paris', url: 'https://icecast.radiofrance.fr/fipreggae-midfi.mp3' },
           ]},
           { id: 'rnb', name: 'R&B / Hip-Hop / Urban', icon: '🎤', color: '#f59e0b', stations: [
             { id: 'skyrock', name: 'Skyrock (Hip-Hop/RnB)', city: 'Paris', url: 'https://stream.skyrock.com/skyrock-128.mp3' },
             { id: 'mouv2', name: "Mouv' 100% Urban", city: 'Paris', url: 'https://icecast.radiofrance.fr/mouv-midfi.mp3' },
             { id: 'rfm', name: 'RFM (Soul/Variété)', city: 'Paris', url: 'https://rfm.ice.infomaniak.ch/rfm-high.mp3' },
-            { id: 'fun-radio', name: 'Fun Radio (Dance/RnB)', city: 'Paris', url: 'https://stream.funradio.fr/fun-1-48-128' },
             { id: 'virgin-radio', name: 'Virgin Radio France', city: 'Paris', url: 'https://virgin.ice.infomaniak.ch/virgin-high.mp3' },
+            { id: 'rap-fr', name: 'Rap Radio France (Laut.fm)', city: 'Paris', url: 'https://stream.laut.fm/rap' },
+            { id: 'oui-fm', name: 'OUI FM (Rock/Urban)', city: 'Paris', url: 'https://ouifm.ice.infomaniak.ch/ouifm-high.mp3' },
+          ]},
+          { id: 'rock-fr', name: 'Rock / Metal', icon: '🎸', color: '#dc2626', stations: [
+            { id: 'riffx', name: 'RIFFX (Metal/Punk)', city: 'Paris', url: 'https://stream.riffx.fr/riffx-128.mp3' },
+            { id: 'nova-fr', name: 'Radio Nova (Funk/Soul/Indie)', city: 'Paris', url: 'https://novazz.ice.infomaniak.ch/nova-high.mp3' },
+            { id: 'radio-metal-fr', name: 'Radio Metal France', city: 'Lyon', url: 'https://stream.zeno.fm/radiometal-fr' },
+            { id: 'oui-rock', name: 'OUI FM Rock', city: 'Paris', url: 'https://ouifm.ice.infomaniak.ch/ouifm-high.mp3' },
+            { id: 'heavy1-fr', name: 'Heavy One (Metal/Hardcore)', city: 'Paris', url: 'https://stream.laut.fm/heavy1' },
+            { id: 'fip-pop', name: 'FIP Pop (Indie/Altpop)', city: 'Paris', url: 'https://icecast.radiofrance.fr/fippop-midfi.mp3' },
+          ]},
+          { id: 'chanson', name: 'Chanson Française', icon: '🇫🇷', color: '#1d4ed8', stations: [
+            { id: 'france-bleu', name: 'France Bleu (Chanson/Régional)', city: 'Paris', url: 'https://icecast.radiofrance.fr/francebleu-midfi.mp3' },
+            { id: 'rire-chansons', name: 'Rire et Chansons', city: 'Paris', url: 'https://scdn.nrjaudio.fm/adwz2/fr/30401/mp3_128.mp3' },
+            { id: 'chanson-classique', name: 'Chanson Classique (Nostalgie)', city: 'Paris', url: 'https://scdn.nrjaudio.fm/adwz2/fr/30700/mp3_128.mp3' },
+            { id: 'vibration-fr', name: 'Vibration FM', city: 'Paris', url: 'https://stream.vibration.fr/vibration-128.mp3' },
+            { id: 'radio-bleue', name: 'Radio Bleue (Variété/Chanson)', city: 'Paris', url: 'https://stream.zeno.fm/radio-bleue-fr' },
+            { id: 'voltage-fr', name: 'Voltage FM', city: 'Paris', url: 'https://stream.voltage.fr/voltage-128.mp3' },
           ]},
           { id: 'news', name: 'Info / Actualités', icon: '📰', color: '#64748b', stations: [
             { id: 'france-info', name: 'Franceinfo', city: 'Paris', url: 'https://icecast.radiofrance.fr/franceinfo-midfi.mp3' },
@@ -509,6 +571,7 @@ const STREAMING_PLATFORMS = [
             { id: 'rfi', name: 'RFI Monde', city: 'Paris', url: 'https://icecast.radiofrance.fr/rfi-midfi.mp3' },
             { id: 'bfm-radio', name: 'BFM Radio', city: 'Paris', url: 'https://bfmradio.ice.infomaniak.ch/bfmradio-high.mp3' },
             { id: 'rmc', name: 'RMC Info', city: 'Paris', url: 'https://rmc.bfmtv.com/rmc-128.mp3' },
+            { id: 'france-inter-news', name: 'France Inter (News/Talk)', city: 'Paris', url: 'https://icecast.radiofrance.fr/franceinter-midfi.mp3' },
           ]},
         ],
       },
@@ -521,6 +584,7 @@ const STREAMING_PLATFORMS = [
             { id: 'hit-ffh', name: 'Hit Radio FFH', city: 'Frankfurt', url: 'https://streams.ffh.de/radioffh/mp3/256' },
             { id: 'nrj-de', name: 'Energy Radio', city: 'München', url: 'https://scdn.nrjaudio.fm/adwz2/de/33001/mp3_128.mp3' },
             { id: 'radio-bob', name: 'Radio BOB! (Rock/Pop)', city: 'Kassel', url: 'https://streams.radiobob.de/bob-national/mp3-192/streams.radiobob.de/' },
+            { id: 'hr3-de', name: 'HR3 (Pop/80s)', city: 'Frankfurt', url: 'https://hr-hr3-live.cast.addradio.de/hr/hr3/live/mp3/128/stream.mp3' },
           ]},
           { id: 'dance', name: 'Electronic / Dance', icon: '🎧', color: '#8b5cf6', stations: [
             { id: 'sunshine-live', name: 'sunshine live (Techno/House)', city: 'Mannheim', url: 'https://stream.sunshine-live.de/live/mp3-128' },
@@ -528,6 +592,7 @@ const STREAMING_PLATFORMS = [
             { id: 'dance-de', name: 'FluxFM Dance', city: 'Berlin', url: 'https://streams.fluxfm.de/Dance/mp3-128/streams.fluxfm.de/' },
             { id: 'bigfm-dance', name: 'BigFM Dance', city: 'Stuttgart', url: 'https://streams.bigfm.de/bigfm-dance-128-mp3' },
             { id: 'clubbing-fluxfm', name: 'FluxFM Clubbing', city: 'Berlin', url: 'https://streams.fluxfm.de/Clubbing/mp3-128/streams.fluxfm.de/' },
+            { id: 'techno-de', name: 'Techno Station DE (Laut.fm)', city: 'Berlin', url: 'https://stream.laut.fm/techno' },
           ]},
           { id: 'classical', name: 'Klassik / Kultur', icon: '🎻', color: '#7c3aed', stations: [
             { id: 'deutschlandradio', name: 'Deutschlandradio Kultur', city: 'Berlin', url: 'https://st01.sslstream.dlf.de/dlf/01/128/mp3/stream.mp3' },
@@ -535,13 +600,31 @@ const STREAMING_PLATFORMS = [
             { id: 'wdr3', name: 'WDR 3 (Klassik/Kultur)', city: 'Cologne', url: 'https://wdr-wdr3-live.icecastssl.wdr.de/wdr/wdr3/live/mp3/128/stream.mp3' },
             { id: 'br-klassik', name: 'BR-Klassik', city: 'Munich', url: 'https://dispatcher.rndfnk.com/br/brklassik/live/mp3/low' },
             { id: 'rbb-kultur', name: 'rbb Kulturradio', city: 'Berlin', url: 'https://rbb-kulturradio-live.sslcast.addradio.de/rbb/kulturradio/live/mp3/128/stream.mp3' },
+            { id: 'ndr-kultur', name: 'NDR Kultur', city: 'Hamburg', url: 'https://ndr-ndrkultur-live.sslcast.addradio.de/ndr/ndrkultur/live/mp3/128/stream.mp3' },
           ]},
           { id: 'schlager', name: 'Schlager / Volksmusik', icon: '🍺', color: '#d97706', stations: [
             { id: 'schlager-radio', name: 'Schlager Radio', city: 'Online', url: 'https://stream.laut.fm/schlager' },
             { id: 'antenne-schlager', name: 'Antenne Bayern Schlager', city: 'Munich', url: 'https://s4-webradio.antenne.de/schlager' },
             { id: 'bigfm-schlager', name: 'BigFM Schlager', city: 'Stuttgart', url: 'https://streams.bigfm.de/bigfm-schlager-128-mp3' },
-            { id: 'radio-schlagerparadies', name: 'Schlagerparadies', city: 'Online', url: 'https://sc-nbl.antenne.de:80/schlager' },
             { id: 'volksmusik', name: 'Antenne Bayern Volksmusik', city: 'Munich', url: 'https://s5-webradio.antenne.de/volksmusik' },
+            { id: 'mdr-jump', name: 'MDR Jump (Schlager/Pop)', city: 'Leipzig', url: 'https://mdr-jump-live.icecastssl.mdr.de/mdr/jump/live/mp3/128/stream.mp3' },
+            { id: 'schlagerplanet', name: 'Schlagerplanet Radio', city: 'Online', url: 'https://stream.zeno.fm/schlagerplanet' },
+          ]},
+          { id: 'rock-de', name: 'Rock / Metal', icon: '🎸', color: '#ef4444', stations: [
+            { id: 'metal1-de', name: 'Metal 1 Radio', city: 'Online', url: 'https://stream.metal1.eu/metal1' },
+            { id: 'radiobob-metal', name: 'Radio BOB! Metal', city: 'Kassel', url: 'https://streams.radiobob.de/bob-metal/mp3-128/streams.radiobob.de/' },
+            { id: 'rock-antenne', name: 'Rock Antenne Bayern', city: 'Munich', url: 'https://s5-webradio.antenne.de/rock-antenne' },
+            { id: 'radio-fritz', name: 'Radio Fritz (Alternative)', city: 'Berlin', url: 'https://fritz-live.sslcast.addradio.de/fritz/live/mp3/128/stream.mp3' },
+            { id: 'flux-berlin', name: 'FluxFM Berlin (Indie Rock)', city: 'Berlin', url: 'https://streams.fluxfm.de/fluxfm/mp3-128/streams.fluxfm.de/' },
+            { id: 'bigfm-rock', name: 'BigFM Rock', city: 'Stuttgart', url: 'https://streams.bigfm.de/bigfm-rock-128-mp3' },
+          ]},
+          { id: 'hiphop-de', name: 'Hip-Hop / RnB DE', icon: '🎤', color: '#10b981', stations: [
+            { id: 'bigfm-hiphop', name: 'BigFM Hip-Hop', city: 'Stuttgart', url: 'https://streams.bigfm.de/bigfm-hiphop-128-mp3' },
+            { id: 'energy-hiphop', name: 'Energy Hip-Hop DE', city: 'München', url: 'https://scdn.nrjaudio.fm/adwz2/de/33009/mp3_128.mp3' },
+            { id: 'rap-de', name: 'Rap Radio Deutschland', city: 'Berlin', url: 'https://stream.laut.fm/rapde' },
+            { id: 'rnb-de', name: 'R&B Radio DE (Zeno)', city: 'Berlin', url: 'https://stream.zeno.fm/rnb-deutschland' },
+            { id: 'flavor-de', name: 'Flavor Radio DE (Urban)', city: 'Hamburg', url: 'https://stream.zeno.fm/flavor-radio-de' },
+            { id: 'flux-hiphop', name: 'FluxFM Hip-Hop', city: 'Berlin', url: 'https://streams.fluxfm.de/HipHop/mp3-128/streams.fluxfm.de/' },
           ]},
           { id: 'news', name: 'News / Nachrichten', icon: '📰', color: '#64748b', stations: [
             { id: 'inforadio', name: 'Inforadio rbb', city: 'Berlin', url: 'https://rbb-inforadio-live.sslcast.addradio.de/rbb/inforadio/live/mp3/128/stream.mp3' },
@@ -549,6 +632,7 @@ const STREAMING_PLATFORMS = [
             { id: 'wdr5', name: 'WDR 5 (News/Talk)', city: 'Cologne', url: 'https://wdr-wdr5-live.icecastssl.wdr.de/wdr/wdr5/live/mp3/128/stream.mp3' },
             { id: 'swr-aktuell', name: 'SWR Aktuell', city: 'Stuttgart', url: 'https://liveradio.swr.de/sw282p3/swr-aktuell/play.mp3' },
             { id: 'ndr-info', name: 'NDR Info', city: 'Hamburg', url: 'https://ndr-ndrinfo-live.sslcast.addradio.de/ndr/ndrinfo/live/mp3/128/stream.mp3' },
+            { id: 'deutschlandradio-news', name: 'Deutschlandfunk Nova', city: 'Cologne', url: 'https://st03.sslstream.dlf.de/dlf/03/128/mp3/stream.mp3' },
           ]},
         ],
       },
@@ -559,36 +643,57 @@ const STREAMING_PLATFORMS = [
             { id: 'prambors', name: 'Prambors FM', city: 'Jakarta', url: 'https://n06.radiojar.com/prambors.mp3' },
             { id: 'gen', name: 'Gen FM Jakarta', city: 'Jakarta', url: 'https://n06.radiojar.com/genfm.mp3' },
             { id: 'jak-fm', name: 'Jak FM', city: 'Jakarta', url: 'https://edge.iono.fm/c/546/icecast.audio' },
-            { id: 'female', name: 'Female Radio', city: 'Jakarta', url: 'https://stream.zeno.fm/y3u7jfkhc0zuv' },
-            { id: 'hardrock-fm', name: 'Hard Rock FM Jakarta', city: 'Jakarta', url: 'https://edge.iono.fm/c/533/icecast.audio' },
+            { id: 'female', name: 'Female Radio Jakarta', city: 'Jakarta', url: 'https://stream.zeno.fm/y3u7jfkhc0zuv' },
+            { id: 'ria-fm', name: 'Ria FM Jakarta', city: 'Jakarta', url: 'https://stream.zeno.fm/riafm-jakarta' },
+            { id: 'trenda-fm', name: 'Trenda 97.5 FM', city: 'Jakarta', url: 'https://stream.zeno.fm/trendafm975' },
           ]},
-          { id: 'dangdut', name: 'Dangdut / Campursari', icon: '🥁', color: '#f59e0b', stations: [
+          { id: 'dangdut', name: 'Dangdut / Koplo', icon: '🥁', color: '#f59e0b', stations: [
             { id: 'dangdut-id', name: 'Radio Dangdut Indonesia', city: 'Jakarta', url: 'https://edge.iono.fm/c/562/icecast.audio' },
-            { id: 'om-soneta', name: 'Elshinta (Dangdut/Berita)', city: 'Jakarta', url: 'https://edge.iono.fm/c/538/icecast.audio' },
             { id: 'dangdut3', name: 'Nada FM (Dangdut)', city: 'Semarang', url: 'https://stream.zeno.fm/8k8p44uu9feuv' },
             { id: 'dangdut4', name: 'Koplo Station', city: 'Surabaya', url: 'https://stream.zeno.fm/4g0vf8mzwhzuv' },
-            { id: 'langgam', name: 'Suara Surabaya FM', city: 'Surabaya', url: 'https://edge.iono.fm/c/554/icecast.audio' },
+            { id: 'ms-tri', name: 'Ms Tri FM (Dangdut Jawa)', city: 'Semarang', url: 'https://stream.zeno.fm/mstrifm' },
+            { id: 'irama-fm', name: 'Irama FM (Dangdut Klasik)', city: 'Bandung', url: 'https://stream.zeno.fm/iramafm-bdg' },
+            { id: 'rhoma-station', name: 'Rhoma Irama Station', city: 'Jakarta', url: 'https://stream.zeno.fm/dangdut-klasik-id' },
           ]},
-          { id: 'rock', name: 'Rock / Indie', icon: '🎸', color: '#dc2626', stations: [
-            { id: 'hardrock-jkt', name: 'Hard Rock FM', city: 'Jakarta', url: 'https://edge.iono.fm/c/533/icecast.audio' },
+          { id: 'rock', name: 'Rock / Indie / Metal', icon: '🎸', color: '#dc2626', stations: [
+            { id: 'hardrock-jkt', name: 'Hard Rock FM Jakarta', city: 'Jakarta', url: 'https://edge.iono.fm/c/533/icecast.audio' },
             { id: 'trax', name: 'Trax FM Jakarta', city: 'Jakarta', url: 'https://edge.iono.fm/c/543/icecast.audio' },
             { id: 'oz-bdg', name: 'OZ Radio Bandung', city: 'Bandung', url: 'https://stream.zeno.fm/7qhq1k7d5fzuv' },
             { id: 'ardan', name: 'Ardan Radio Bandung', city: 'Bandung', url: 'https://edge.iono.fm/c/558/icecast.audio' },
-            { id: 'i-radio', name: 'I-Radio Jakarta', city: 'Jakarta', url: 'https://edge.iono.fm/c/541/icecast.audio' },
+            { id: 'metal-id', name: 'Metal Radio Indonesia', city: 'Online', url: 'https://stream.zeno.fm/metal-indonesia' },
+            { id: 'indie-id', name: 'Indie Radio Indonesia', city: 'Bandung', url: 'https://stream.zeno.fm/indie-id-bdg' },
           ]},
           { id: 'religi', name: 'Religi / Islami', icon: '🕌', color: '#10b981', stations: [
             { id: 'rodja', name: 'Radio Rodja 756 AM', city: 'Bogor', url: 'https://stream.rodja.com:8000/stream.mp3' },
-            { id: 'quran-id', name: 'MQ Radio (Dangdut Religi)', city: 'Bandung', url: 'https://stream.zeno.fm/yw8tyaay7jzuv' },
-            { id: 'alquran-rt', name: 'Radio Al-Quran RT', city: 'Jakarta', url: 'https://stream.zeno.fm/vhbpetpjtpzuv' },
             { id: 'dakwah', name: 'Suara Muslim Radio', city: 'Surabaya', url: 'https://stream.zeno.fm/rxy5bwgq7eeuv' },
             { id: 'hijrah-fm', name: 'Hijrah FM', city: 'Jakarta', url: 'https://stream.zeno.fm/1g4pf5e8gh8uv' },
+            { id: 'alquran-rt', name: 'Radio Al-Quran RT', city: 'Jakarta', url: 'https://stream.zeno.fm/vhbpetpjtpzuv' },
+            { id: 'mqfm-bdg', name: 'MQ FM Bandung (Religi)', city: 'Bandung', url: 'https://stream.zeno.fm/yw8tyaay7jzuv' },
+            { id: 'global-fm-religi', name: 'Global FM (Islami)', city: 'Surabaya', url: 'https://stream.zeno.fm/globalfm-sby-religi' },
+          ]},
+          { id: 'campursari', name: 'Campursari / Jawa', icon: '🎎', color: '#a16207', stations: [
+            { id: 'cs-solo', name: 'Radio Silaturahim (Campursari)', city: 'Solo', url: 'https://stream.zeno.fm/campursari-solo' },
+            { id: 'cs-jogja', name: 'Geronimo FM Jogja (Jawa)', city: 'Yogyakarta', url: 'https://stream.zeno.fm/geronimofm-jog' },
+            { id: 'retjo-buntung', name: 'Retjo Buntung FM', city: 'Yogyakarta', url: 'https://stream.zeno.fm/retjobuntung-fm' },
+            { id: 'sas-fm', name: 'SAS FM Surakarta (Campursari)', city: 'Solo', url: 'https://stream.zeno.fm/sasfm-solo' },
+            { id: 'gamelan-id', name: 'Gamelan Indonesia Radio', city: 'Online', url: 'https://stream.zeno.fm/gamelan-indonesia' },
+            { id: 'kiai-kanjeng', name: 'Jawa Klasik (Ketoprak/Wayang)', city: 'Semarang', url: 'https://stream.zeno.fm/wayang-jawa-id' },
+          ]},
+          { id: 'rnb-id', name: 'R&B / Hip-Hop / Urban', icon: '🎤', color: '#8b5cf6', stations: [
+            { id: 'i-radio', name: 'I-Radio Jakarta', city: 'Jakarta', url: 'https://edge.iono.fm/c/541/icecast.audio' },
+            { id: 'pass-fm', name: 'Pass FM Jakarta (RnB/Urban)', city: 'Jakarta', url: 'https://stream.zeno.fm/passfm-jkt' },
+            { id: 'hiphop-id', name: 'Hip-Hop Indonesia Radio', city: 'Online', url: 'https://stream.zeno.fm/hiphop-indonesia' },
+            { id: 'urban-id', name: 'Urban Radio Indonesia', city: 'Jakarta', url: 'https://stream.zeno.fm/urban-radio-id' },
+            { id: 'rnb-id-zeno', name: 'R&B Indonesia (Zeno)', city: 'Jakarta', url: 'https://stream.zeno.fm/rnb-id-jkt' },
+            { id: 'kiss-fm-id', name: 'Kiss FM Jakarta', city: 'Jakarta', url: 'https://stream.zeno.fm/kissfm-jkt' },
           ]},
           { id: 'news', name: 'Berita / Talkshow', icon: '📰', color: '#64748b', stations: [
             { id: 'elshinta', name: 'Elshinta News & Talk', city: 'Jakarta', url: 'https://edge.iono.fm/c/538/icecast.audio' },
             { id: 'smart-fm', name: 'Smart FM Jakarta', city: 'Jakarta', url: 'https://edge.iono.fm/c/548/icecast.audio' },
-            { id: 'metro-jaya', name: 'Radio Metro Jaya', city: 'Jakarta', url: 'https://stream.zeno.fm/ksbmhpb0e8zuv' },
             { id: 'sonora', name: 'Sonora FM (Kompas)', city: 'Jakarta', url: 'https://edge.iono.fm/c/544/icecast.audio' },
             { id: 'rri-pro3', name: 'RRI Pro 3 Jakarta', city: 'Jakarta', url: 'https://edge.iono.fm/c/3/icecast.audio' },
+            { id: 'rri-pro1', name: 'RRI Pro 1 Nasional', city: 'Jakarta', url: 'https://edge.iono.fm/c/1/icecast.audio' },
+            { id: 'metro-jaya', name: 'Radio Metro Jaya', city: 'Jakarta', url: 'https://stream.zeno.fm/ksbmhpb0e8zuv' },
           ]},
         ],
       },
@@ -598,37 +703,50 @@ const STREAMING_PLATFORMS = [
           { id: 'jpop', name: 'J-Pop / City Pop', icon: '🌸', color: '#e11d48', stations: [
             { id: 'j1-jpop', name: 'J1 Radio J-Pop', city: 'Online', url: 'https://j1.streams.radiomast.io/fm/j1jpop/stream.mp3' },
             { id: 'j1-hits', name: 'J1 Hits', city: 'Online', url: 'https://j1.streams.radiomast.io/fm/j1hits/stream.mp3' },
-            { id: 'j1-oldschool', name: 'J1 Old School', city: 'Online', url: 'https://j1.streams.radiomast.io/fm/j1oldschool/stream.mp3' },
+            { id: 'j1-oldschool', name: 'J1 Old School J-Pop', city: 'Online', url: 'https://j1.streams.radiomast.io/fm/j1oldschool/stream.mp3' },
             { id: 'j-pop-sakura', name: 'J-Pop Sakura 108', city: 'Online', url: 'https://igor.torontocast.com:1025/;' },
             { id: 'nack5', name: 'NACK5 (FM埼玉)', city: 'Saitama', url: 'https://nack5-hls-stream.nack5.co.jp/nack5/nack5.m3u8' },
+            { id: 'citypop-jp', name: 'City Pop Japan Radio', city: 'Online', url: 'https://stream.laut.fm/citypop' },
           ]},
           { id: 'anime', name: 'Anime / Game OST', icon: '🎌', color: '#f43f5e', stations: [
             { id: 'anison1', name: 'Anison Radio (AnimeNfo)', city: 'Online', url: 'https://pool.anr.io/anisonfm.mp3' },
-            { id: 'hikarionline', name: 'Hikari Online (Anime)', city: 'Online', url: 'https://hikarinakama.stream/stream' },
             { id: 'j1-anime', name: 'J1 Anime', city: 'Online', url: 'https://j1.streams.radiomast.io/fm/j1anime/stream.mp3' },
             { id: 'listen-anime', name: 'Listen.moe Anime', city: 'Online', url: 'https://listen.moe/stream' },
             { id: 'otakufm', name: 'OtakuFM', city: 'Online', url: 'https://stream.otakufm.de/otakufm' },
+            { id: 'anison2', name: 'AniSong Radio JP', city: 'Online', url: 'https://stream.zeno.fm/anisong-jp' },
+            { id: 'gameost-jp', name: 'Game OST Radio Japan', city: 'Online', url: 'https://stream.laut.fm/gameost' },
           ]},
           { id: 'lofi', name: 'Lo-Fi / Chillout', icon: '🌙', color: '#6366f1', stations: [
             { id: 'j1-lofi', name: 'J1 Lo-Fi Japan', city: 'Online', url: 'https://j1.streams.radiomast.io/fm/j1lofi/stream.mp3' },
-            { id: 'tokyo-lofi', name: 'Tokyo Lo-Fi (Zeno)', city: 'Tokyo', url: 'https://stream.zeno.fm/tokyo-lofi-beats' },
-            { id: 'sakura-lofi', name: 'Sakura Lo-Fi Beats', city: 'Online', url: 'https://stream.zeno.fm/sakuralofi128' },
-            { id: 'kyoto-chill', name: 'Kyoto Chillout Radio', city: 'Kyoto', url: 'https://stream.zeno.fm/kyoto-chill-jp' },
             { id: 'nippon-lofi', name: 'Nippon Lo-Fi & Jazz', city: 'Online', url: 'https://stream.laut.fm/japanlofi' },
-          ]},
-          { id: 'classical', name: 'Classical / Instrumental', icon: '🎻', color: '#7c3aed', stations: [
-            { id: 'nhk-fm-jp', name: 'NHK-FM (Classical/Culture)', city: 'Tokyo', url: 'https://nhkworld.nhk.or.jp/common/player/radio/?lang=en&band=fm&station=tokyo' },
-            { id: 'nhk-world-jp', name: 'NHK World Premium', city: 'Tokyo', url: 'https://nhkworldradio.nhk.or.jp/english/media/r_english_mhi128.m3u8' },
             { id: 'alpha-station-jp', name: 'Alpha Station FM Kyoto', city: 'Kyoto', url: 'https://stream.zeno.fm/f5l4n5bhsc8uv' },
+            { id: 'sakura-lofi', name: 'Sakura Lo-Fi Beats', city: 'Online', url: 'https://stream.zeno.fm/sakuralofi128' },
+            { id: 'tokyo-lofi', name: 'Tokyo Lo-Fi (Zeno)', city: 'Tokyo', url: 'https://stream.zeno.fm/tokyo-lofi-beats' },
+            { id: 'kyoto-chill', name: 'Kyoto Chillout Radio', city: 'Kyoto', url: 'https://stream.zeno.fm/kyoto-chill-jp' },
+          ]},
+          { id: 'jrock', name: 'J-Rock / Visual Kei', icon: '🎸', color: '#7c3aed', stations: [
+            { id: 'j1-jrock', name: 'J1 Rock Japan', city: 'Online', url: 'https://j1.streams.radiomast.io/fm/j1rock/stream.mp3' },
+            { id: 'jrock-laut', name: 'J-Rock Radio (Laut.fm)', city: 'Online', url: 'https://stream.laut.fm/jrock' },
+            { id: 'visualkei-jp', name: 'Visual Kei Radio', city: 'Online', url: 'https://stream.zeno.fm/visualkei-japan' },
+            { id: 'jmetal-jp', name: 'Japanese Metal Radio', city: 'Online', url: 'https://stream.laut.fm/japanmetal' },
+            { id: 'jrock2-zeno', name: 'J-Rock Station (Zeno)', city: 'Online', url: 'https://stream.zeno.fm/jrock-station-jp' },
+            { id: 'punk-jp', name: 'Japanese Punk Radio', city: 'Online', url: 'https://stream.zeno.fm/jpunk-radio' },
+          ]},
+          { id: 'classical', name: 'Classical / Instrumental', icon: '🎻', color: '#0891b2', stations: [
+            { id: 'nhk-fm-jp', name: 'NHK-FM (Classical/Culture)', city: 'Tokyo', url: 'https://nhkworldradio.nhk.or.jp/english/media/r_english_mhi128.m3u8' },
             { id: 'classical-jp-laut', name: 'Anime Instrumental (Laut.fm)', city: 'Online', url: 'https://stream.laut.fm/animeinstrumental' },
             { id: 'piano-jp', name: 'Piano Radio Japan', city: 'Online', url: 'https://stream.laut.fm/japanpiano' },
+            { id: 'koto-jp', name: 'Traditional Japan Koto/Shakuhachi', city: 'Online', url: 'https://stream.laut.fm/japonaise' },
+            { id: 'jazz-jp', name: 'Japanese Jazz Radio', city: 'Tokyo', url: 'https://stream.laut.fm/japanjazz' },
+            { id: 'smooth-jp', name: 'Smooth Jazz Japan', city: 'Online', url: 'https://stream.zeno.fm/smooth-jazz-jp' },
           ]},
           { id: 'news', name: 'NHK / Berita', icon: '📰', color: '#64748b', stations: [
             { id: 'nhk-world', name: 'NHK World Radio Japan', city: 'Tokyo', url: 'https://nhkworldradio.nhk.or.jp/english/media/r_english_mhi128.m3u8' },
-            { id: 'nhk-r1-jp', name: 'NHK Radio 1 (日本語)', city: 'Tokyo', url: 'https://stream.zeno.fm/nhkr1japan' },
             { id: 'tbsradio-jp', name: 'TBS Radio 954 kHz', city: 'Tokyo', url: 'https://stream.zeno.fm/tbsradiotokyo' },
             { id: 'joqr-jp', name: 'Bunka Hoso (文化放送)', city: 'Tokyo', url: 'https://stream.zeno.fm/joqr1134' },
             { id: 'interfm-jp', name: 'InterFM 897', city: 'Tokyo', url: 'https://stream.zeno.fm/interfm897' },
+            { id: 'nhk-r1-jp', name: 'NHK Radio 1 (日本語)', city: 'Tokyo', url: 'https://stream.zeno.fm/nhkr1japan' },
+            { id: 'nhk-r2-jp', name: 'NHK Radio 2 (Education)', city: 'Tokyo', url: 'https://stream.zeno.fm/nhkr2japan' },
           ]},
         ],
       },
@@ -639,29 +757,41 @@ const STREAMING_PLATFORMS = [
             { id: 'samba-br', name: 'Rádio Samba BR (Laut.fm)', city: 'Rio de Janeiro', url: 'https://stream.laut.fm/sambabrasileiro' },
             { id: 'pagode-fm', name: 'Pagode FM', city: 'São Paulo', url: 'https://stream.zeno.fm/kfyjrzk2qbzuv' },
             { id: 'bate-ponto', name: 'Bate Ponto FM (Samba/Pagode)', city: 'Rio de Janeiro', url: 'https://stream.zeno.fm/d1p0kf2s9eruv' },
-            { id: 'radio-globo-sp', name: 'Rádio Globo SP (Samba)', city: 'São Paulo', url: 'https://stream.globoradio.globo.com/radio-globo-sp/mp3/256/radio-globo-sp.m3u8' },
+            { id: 'radio-globo-sp', name: 'Rádio Globo SP', city: 'São Paulo', url: 'https://stream.globoradio.globo.com/radio-globo-sp/mp3/256/radio-globo-sp.m3u8' },
             { id: 'sambas-enredo', name: 'Radio Sambas Enredo', city: 'Rio de Janeiro', url: 'https://stream.zeno.fm/4wd2hy7mfkzuv' },
+            { id: 'batuque-br', name: 'Rádio Batuque (Samba Clássico)', city: 'Rio de Janeiro', url: 'https://stream.zeno.fm/batuque-samba-br' },
           ]},
-          { id: 'axe', name: 'Axé / Forró', icon: '🎉', color: '#ef4444', stations: [
+          { id: 'axe', name: 'Axé / Forró / Baião', icon: '🎉', color: '#ef4444', stations: [
             { id: 'forro-br', name: 'Forró FM', city: 'Fortaleza', url: 'https://stream.zeno.fm/73htnbsknbzuv' },
             { id: 'axe-bahia', name: 'Rádio Bahia FM (Axé)', city: 'Salvador', url: 'https://stream.zeno.fm/4v0nyrv0zs8uv' },
             { id: 'forro-universitario', name: 'Forró Universitário', city: 'Recife', url: 'https://stream.zeno.fm/8f4fdtbxrxzuv' },
             { id: 'oxente-radio', name: 'Oxente Rádio (Forró/NE)', city: 'Nordeste', url: 'https://stream.zeno.fm/haqbnry3agzuv' },
             { id: 'carnaval-bahia', name: 'Carnaval Bahia Radio', city: 'Salvador', url: 'https://stream.zeno.fm/y3rquvf5m4zuv' },
+            { id: 'bahia-fm', name: 'Bahia FM (Axé/Reggae)', city: 'Salvador', url: 'https://stream.zeno.fm/bahiafm-sva' },
           ]},
           { id: 'mpb', name: 'MPB / Bossa Nova', icon: '🎶', color: '#06b6d4', stations: [
-            { id: 'bossa-nova', name: 'Bossa Nova Radio', city: 'Rio de Janeiro', url: 'https://stream.laut.fm/bossanova' },
+            { id: 'bossa-nova', name: 'Bossa Nova Radio (Laut.fm)', city: 'Rio de Janeiro', url: 'https://stream.laut.fm/bossanova' },
             { id: 'mpb-hits', name: 'MPB FM Rio', city: 'Rio de Janeiro', url: 'https://stream.antradio.com.br:8000/mpbfm' },
-            { id: 'jazz-bossa', name: 'Jazz & Bossa (SomaFM)', city: 'Online', url: 'https://ice1.somafm.com/jazz-128-mp3' },
             { id: 'eldorado-sp', name: 'Rádio Eldorado SP', city: 'São Paulo', url: 'https://stream.eldorado.com.br/eldorado' },
-            { id: 'cultura-fm', name: 'Rádio Cultura FM', city: 'São Paulo', url: 'https://stream.zeno.fm/3fkcgmfdrfzuv' },
+            { id: 'cultura-fm', name: 'Rádio Cultura FM SP', city: 'São Paulo', url: 'https://stream.zeno.fm/3fkcgmfdrfzuv' },
+            { id: 'jazz-bossa', name: 'Jazz & Bossa (SomaFM)', city: 'Online', url: 'https://ice1.somafm.com/jazz-128-mp3' },
+            { id: 'tropicalia', name: 'Tropicália Radio (MPB Clássica)', city: 'Rio de Janeiro', url: 'https://stream.zeno.fm/tropicalia-mpb' },
           ]},
-          { id: 'funk', name: 'Funk / Hip-Hop BR', icon: '🔊', color: '#8b5cf6', stations: [
+          { id: 'funk', name: 'Funk Carioca / Hip-Hop BR', icon: '🔊', color: '#8b5cf6', stations: [
             { id: 'funk-br', name: 'Funk Brasil Radio', city: 'Rio de Janeiro', url: 'https://stream.zeno.fm/r7fjrm1zeguv' },
             { id: 'hiphop-br', name: 'Hip-Hop Brasil', city: 'São Paulo', url: 'https://stream.zeno.fm/r0ehn9fxfhzuv' },
-            { id: 'trap-br', name: 'Trap Brasil', city: 'São Paulo', url: 'https://stream.zeno.fm/d1bswdxjt7zuv' },
-            { id: 'rap-nacional', name: 'Rap Nacional', city: 'São Paulo', url: 'https://stream.zeno.fm/4n1d5mvf6bzuv' },
             { id: 'funk-ostentacao', name: 'Funk Ostentação', city: 'São Paulo', url: 'https://stream.zeno.fm/mhsyb7t2mkzuv' },
+            { id: 'trap-br', name: 'Trap Brasil', city: 'São Paulo', url: 'https://stream.zeno.fm/d1bswdxjt7zuv' },
+            { id: 'rap-nacional', name: 'Rap Nacional Brasil', city: 'São Paulo', url: 'https://stream.zeno.fm/4n1d5mvf6bzuv' },
+            { id: 'baile-funk', name: 'Baile Funk Rio (Zeno)', city: 'Rio de Janeiro', url: 'https://stream.zeno.fm/baile-funk-rio' },
+          ]},
+          { id: 'sertanejo', name: 'Sertanejo / Country BR', icon: '🤠', color: '#a16207', stations: [
+            { id: 'sertanejo-laut', name: 'Sertanejo Radio (Laut.fm)', city: 'São Paulo', url: 'https://stream.laut.fm/sertanejo' },
+            { id: 'sertanejo-zeno', name: 'Sertanejo Universitário', city: 'Goiânia', url: 'https://stream.zeno.fm/sertanejo-univ' },
+            { id: 'top-fm-br', name: 'Top FM Sertanejo', city: 'Goiânia', url: 'https://stream.zeno.fm/topfm-sertanejo' },
+            { id: 'caipira-br', name: 'Caipira Radio (Viola Caipira)', city: 'Minas Gerais', url: 'https://stream.zeno.fm/caipira-radio-br' },
+            { id: 'country-br', name: 'Country Brasil (Linha Rural)', city: 'Goiânia', url: 'https://stream.zeno.fm/country-brasil-go' },
+            { id: 'fm-do-povo', name: 'FM do Povo (Sertanejo Clás)', city: 'São Paulo', url: 'https://stream.zeno.fm/fm-do-povo-br' },
           ]},
           { id: 'news', name: 'Notícias / Talk', icon: '📰', color: '#64748b', stations: [
             { id: 'jovem-pan', name: 'Rádio Jovem Pan', city: 'São Paulo', url: 'https://cdnjp.joovip.net.br/joovip_jovempan/JovemPan.mp3' },
@@ -669,6 +799,7 @@ const STREAMING_PLATFORMS = [
             { id: 'gaucha', name: 'Rádio Gaúcha (GZH)', city: 'Porto Alegre', url: 'https://stream.gaucha.com.br/gaucha' },
             { id: 'cbn-sp', name: 'CBN São Paulo', city: 'São Paulo', url: 'https://stream.zeno.fm/5b6yq08hfhzuv' },
             { id: 'radio-nacional-br', name: 'Rádio Nacional Brasília', city: 'Brasília', url: 'https://radios.ebc.com.br/radio-nacional/icecast.audio' },
+            { id: 'metropolis-br', name: 'Metrópolis FM (News Talk)', city: 'Rio de Janeiro', url: 'https://stream.zeno.fm/metropolisfm-rj' },
           ]},
         ],
       },
@@ -676,11 +807,12 @@ const STREAMING_PLATFORMS = [
         id: 'in', name: 'India', flag: '🇮🇳', color: '#f97316',
         genres: [
           { id: 'bollywood', name: 'Bollywood / Hindi Pop', icon: '🎵', color: '#f97316', stations: [
-            { id: 'radiomirchi', name: 'Radio Mirchi 98.3 FM', city: 'Mumbai', url: 'https://www.radiomirchi.com/Radio-Mirchi-128.m3u' },
-            { id: 'big-fm', name: 'Big FM 92.7', city: 'Delhi', url: 'https://air.pc.cdn.bitgravity.com/air/live/pbaudio013/chunklist.m3u8' },
-            { id: 'redone-fm', name: 'Red FM 93.5', city: 'Mumbai', url: 'https://stream.zeno.fm/6r9bfq4xfhzuv' },
-            { id: 'all-india-radio', name: 'All India Radio Hindi', city: 'Delhi', url: 'https://air.pc.cdn.bitgravity.com/air/live/pbaudio002/chunklist.m3u8' },
             { id: 'bollywood-laut', name: 'Bollywood Radio (Laut.fm)', city: 'Online', url: 'https://stream.laut.fm/bollywood' },
+            { id: 'big-fm', name: 'Big FM 92.7 Delhi', city: 'Delhi', url: 'https://air.pc.cdn.bitgravity.com/air/live/pbaudio013/chunklist.m3u8' },
+            { id: 'all-india-radio', name: 'All India Radio Hindi', city: 'Delhi', url: 'https://air.pc.cdn.bitgravity.com/air/live/pbaudio002/chunklist.m3u8' },
+            { id: 'air-fm-gold', name: 'AIR FM Gold 106.4', city: 'Delhi', url: 'https://air.pc.cdn.bitgravity.com/air/live/pbaudio003/chunklist.m3u8' },
+            { id: 'desi-bollywood', name: 'Desi Bollywood (Zeno)', city: 'Mumbai', url: 'https://stream.zeno.fm/desi-bollywood-in' },
+            { id: 'retro-hits-in', name: 'Old is Gold Bollywood', city: 'Online', url: 'https://stream.laut.fm/oldgold' },
           ]},
           { id: 'classical-in', name: 'Classical / Devotional', icon: '🪗', color: '#dc2626', stations: [
             { id: 'air-classical', name: 'AIR National Classical', city: 'Delhi', url: 'https://air.pc.cdn.bitgravity.com/air/live/pbaudio001/chunklist.m3u8' },
@@ -688,27 +820,39 @@ const STREAMING_PLATFORMS = [
             { id: 'carnatic-laut', name: 'Carnatic Radio (Laut.fm)', city: 'Chennai', url: 'https://stream.laut.fm/carnatic' },
             { id: 'air-carnatic', name: 'AIR Chennai (Carnatic)', city: 'Chennai', url: 'https://air.pc.cdn.bitgravity.com/air/live/pbaudio027/chunklist.m3u8' },
             { id: 'spiritual-zeno', name: 'Spiritual Radio India', city: 'Online', url: 'https://stream.zeno.fm/bqnkq97dqxzuv' },
+            { id: 'hindustani-radio', name: 'Hindustani Classical (Zeno)', city: 'Varanasi', url: 'https://stream.zeno.fm/hindustani-classical' },
           ]},
           { id: 'punjabi', name: 'Punjabi / Bhangra', icon: '🥁', color: '#f59e0b', stations: [
             { id: 'punjabi-laut', name: 'Punjabi Radio (Laut.fm)', city: 'Online', url: 'https://stream.laut.fm/punjabi' },
             { id: 'bhangra-laut', name: 'Bhangra Radio (Laut.fm)', city: 'Online', url: 'https://stream.laut.fm/bhangra' },
             { id: 'air-amritsar', name: 'AIR Amritsar', city: 'Amritsar', url: 'https://air.pc.cdn.bitgravity.com/air/live/pbaudio047/chunklist.m3u8' },
             { id: 'punjabi-beats', name: 'Punjabi Beats (Zeno)', city: 'Online', url: 'https://stream.zeno.fm/v0smtd3xt7zuv' },
-            { id: 'desi-radio', name: 'Desi Radio UK', city: 'London', url: 'https://stream.zeno.fm/fnfgq0rdnxzuv' },
+            { id: 'desi-radio', name: 'Desi Radio UK (Punjabi)', city: 'London', url: 'https://stream.zeno.fm/fnfgq0rdnxzuv' },
+            { id: 'punjabi-virsa', name: 'Punjabi Virsa Radio', city: 'Chandigarh', url: 'https://stream.zeno.fm/punjabi-virsa' },
           ]},
-          { id: 'rnb-in', name: 'Electronic / Indie IN', icon: '🎧', color: '#8b5cf6', stations: [
+          { id: 'tamil-telugu', name: 'Tamil / Telugu / South', icon: '🎶', color: '#0284c7', stations: [
+            { id: 'air-chennai', name: 'AIR Chennai FM', city: 'Chennai', url: 'https://air.pc.cdn.bitgravity.com/air/live/pbaudio027/chunklist.m3u8' },
+            { id: 'air-hyderabad', name: 'AIR Hyderabad FM', city: 'Hyderabad', url: 'https://air.pc.cdn.bitgravity.com/air/live/pbaudio023/chunklist.m3u8' },
+            { id: 'tamil-radio', name: 'Tamil Radio (Laut.fm)', city: 'Chennai', url: 'https://stream.laut.fm/tamilradio' },
+            { id: 'kollywood-zeno', name: 'Kollywood Hits (Tamil Film)', city: 'Chennai', url: 'https://stream.zeno.fm/kollywood-hits-in' },
+            { id: 'telugu-radio', name: 'Telugu Radio (Zeno)', city: 'Hyderabad', url: 'https://stream.zeno.fm/telugu-radio-hyd' },
+            { id: 'rayudu-fm', name: 'Rayudu FM (Telugu Folk)', city: 'Hyderabad', url: 'https://stream.zeno.fm/rayudu-fm-telugu' },
+          ]},
+          { id: 'electronic-in', name: 'Electronic / Indie IN', icon: '🎧', color: '#8b5cf6', stations: [
             { id: 'indie-in', name: 'Indie Radio India (Zeno)', city: 'Mumbai', url: 'https://stream.zeno.fm/3u6hhtfhfpzuv' },
             { id: 'chill-goa', name: 'Psy Trance / Goa Chill', city: 'Goa', url: 'https://stream.laut.fm/goatrance' },
             { id: 'lounge-in', name: 'India Lounge (Zeno)', city: 'Mumbai', url: 'https://stream.zeno.fm/indialounge128' },
             { id: 'electroindian', name: 'Electronic India (Zeno)', city: 'Online', url: 'https://stream.zeno.fm/azhbv0eafdzuv' },
             { id: 'fusion-in', name: 'Fusion Radio India', city: 'Bangalore', url: 'https://stream.zeno.fm/t9gvqp4kzuzuv' },
+            { id: 'goa-trance', name: 'Goa Trance Classics', city: 'Goa', url: 'https://stream.laut.fm/goatrance' },
           ]},
           { id: 'news-in', name: 'News / Talk IN', icon: '📰', color: '#64748b', stations: [
             { id: 'bbc-hindi', name: 'BBC Hindi Service', city: 'London', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_hindi_news' },
             { id: 'air-news', name: 'All India Radio News', city: 'Delhi', url: 'https://air.pc.cdn.bitgravity.com/air/live/pbaudio002/chunklist.m3u8' },
-            { id: 'air-fm-gold', name: 'AIR FM Gold 106.4', city: 'Delhi', url: 'https://air.pc.cdn.bitgravity.com/air/live/pbaudio003/chunklist.m3u8' },
             { id: 'voa-hindi', name: 'VOA Hindi', city: 'Washington', url: 'https://voa-instreams.akamaized.net/voa/mp3/urdu' },
             { id: 'dw-hindi', name: 'DW Hindi', city: 'Bonn', url: 'https://stream.laut.fm/dwhindi' },
+            { id: 'air-fm-rainbow', name: 'AIR FM Rainbow (English)', city: 'Mumbai', url: 'https://air.pc.cdn.bitgravity.com/air/live/pbaudio003/chunklist.m3u8' },
+            { id: 'radio-india-news', name: 'Radio India News (Zeno)', city: 'Delhi', url: 'https://stream.zeno.fm/news-india-radio' },
           ]},
         ],
       },
@@ -716,11 +860,12 @@ const STREAMING_PLATFORMS = [
         id: 'mx', name: 'Meksiko', flag: '🇲🇽', color: '#10b981',
         genres: [
           { id: 'pop-mx', name: 'Pop / Reggaeton', icon: '🎵', color: '#10b981', stations: [
-            { id: 'los40-mx', name: 'Los 40 México', city: 'México DF', url: 'https://stream.los40.com.mx/los40-128.mp3' },
             { id: 'exa-fm', name: 'Exa FM 104.9', city: 'México DF', url: 'https://stream.exafm.com/exa-128.mp3' },
             { id: 'ke-buena', name: 'Ke Buena 92.9', city: 'México DF', url: 'https://stream.radioformula.com.mx/kebuena-128.mp3' },
             { id: 'hit-mx', name: 'Hit FM México', city: 'México DF', url: 'https://stream.zeno.fm/5t2g7ywybazuv' },
             { id: 'beats-mx', name: 'Beats Radio MX (Urban)', city: 'México DF', url: 'https://stream.zeno.fm/yxhe8bmt3uzuv' },
+            { id: 'reaktor-pop', name: 'Pop & Reggaeton MX (Zeno)', city: 'Guadalajara', url: 'https://stream.zeno.fm/pop-reggaeton-mx' },
+            { id: 'estereo-cien', name: 'Estéreo Cien 99.7', city: 'México DF', url: 'https://stream.zeno.fm/estereo-cien-mx' },
           ]},
           { id: 'ranchera', name: 'Ranchera / Mariachi', icon: '🪗', color: '#f59e0b', stations: [
             { id: 'rancheras-laut', name: 'Rancheras (Laut.fm)', city: 'Online', url: 'https://stream.laut.fm/rancheras' },
@@ -728,13 +873,15 @@ const STREAMING_PLATFORMS = [
             { id: 'la-mejor', name: 'La Mejor 97.9 FM', city: 'México DF', url: 'https://stream.zeno.fm/thzqy5v12m8uv' },
             { id: 'el-rey-radio', name: 'El Rey Radio', city: 'México DF', url: 'https://stream.zeno.fm/tpjpqs1y3pzuv' },
             { id: 'w-radio-mx', name: 'W Radio México', city: 'México DF', url: 'https://stream.w-radio.com.mx/w-radio-128.mp3' },
+            { id: 'la-z-mx', name: 'La Z Ranchera (Laut.fm)', city: 'Jalisco', url: 'https://stream.laut.fm/lazranchera' },
           ]},
-          { id: 'norteno', name: 'Norteño / Banda', icon: '🎺', color: '#dc2626', stations: [
+          { id: 'norteno', name: 'Norteño / Banda / Grupero', icon: '🎺', color: '#dc2626', stations: [
             { id: 'norteno-laut', name: 'Norteño Radio (Laut.fm)', city: 'Online', url: 'https://stream.laut.fm/norteno' },
             { id: 'grupero-mx', name: 'Grupero Radio MX', city: 'Monterrey', url: 'https://stream.zeno.fm/n7fqebj49xzuv' },
             { id: 'banda-mx', name: 'Banda FM México', city: 'Guadalajara', url: 'https://stream.zeno.fm/fyb14mpfeszuv' },
             { id: 'que-buena', name: 'Que Buena 93.9', city: 'México DF', url: 'https://stream.zeno.fm/4ykm2zybhszuv' },
             { id: 'rcm-norteno', name: 'RCM Norteño', city: 'Monterrey', url: 'https://stream.zeno.fm/1xv5eycobyzuv' },
+            { id: 'corridos-mx', name: 'Corridos Radio México', city: 'Sinaloa', url: 'https://stream.zeno.fm/corridos-radio-mx' },
           ]},
           { id: 'electronic-mx', name: 'Electronic / Dance MX', icon: '🎧', color: '#8b5cf6', stations: [
             { id: 'reactor-mx', name: 'Reactor 105.7 FM', city: 'México DF', url: 'https://stream.zeno.fm/reactor1057mx' },
@@ -742,6 +889,15 @@ const STREAMING_PLATFORMS = [
             { id: 'wfm-mx', name: 'WFM 96.9 FM (Electronic)', city: 'México DF', url: 'https://stream.zeno.fm/wfm969mx' },
             { id: 'ritmo-mx', name: 'Ritmo 92.9 (Dance/House)', city: 'Guadalajara', url: 'https://stream.zeno.fm/ritmo929mx' },
             { id: 'hitz-mx', name: 'Hitz FM México (EDM)', city: 'Online', url: 'https://stream.zeno.fm/hitzfmmx' },
+            { id: 'rave-mx', name: 'Rave Radio México (Techno)', city: 'México DF', url: 'https://stream.zeno.fm/rave-radio-mx' },
+          ]},
+          { id: 'latin', name: 'Salsa / Latin Jazz / Cumbia', icon: '🎶', color: '#06b6d4', stations: [
+            { id: 'salsa-mx', name: 'Salsa Radio México (Laut.fm)', city: 'Online', url: 'https://stream.laut.fm/salsa' },
+            { id: 'cumbia-mx', name: 'Cumbia Radio MX', city: 'México DF', url: 'https://stream.zeno.fm/cumbia-mexico' },
+            { id: 'tropical-mx', name: 'Radio Tropical México', city: 'Veracruz', url: 'https://stream.zeno.fm/tropical-mx-ver' },
+            { id: 'latin-jazz-mx', name: 'Latin Jazz Radio (Laut.fm)', city: 'Online', url: 'https://stream.laut.fm/latinjazz' },
+            { id: 'merengue-mx', name: 'Merengue & Bachata MX', city: 'Online', url: 'https://stream.laut.fm/merengue' },
+            { id: 'salsa-clasica', name: 'Salsa Clásica Radio', city: 'Online', url: 'https://stream.zeno.fm/salsa-clasica-la' },
           ]},
           { id: 'news-mx', name: 'Noticias / Info MX', icon: '📰', color: '#64748b', stations: [
             { id: 'w-radio-news', name: 'W Radio Noticias', city: 'México DF', url: 'https://stream.w-radio.com.mx/w-radio-128.mp3' },
@@ -749,6 +905,7 @@ const STREAMING_PLATFORMS = [
             { id: 'noticias-mx', name: 'Noticias MVS Radio', city: 'México DF', url: 'https://stream.zeno.fm/oj8tpbwfbhzuv' },
             { id: 'radio-red-mx', name: 'Radio Red 88.1 FM', city: 'México DF', url: 'https://stream.zeno.fm/radiored881mx' },
             { id: 'imagen-radio-mx', name: 'Imagen Radio 90.5', city: 'México DF', url: 'https://stream.zeno.fm/imagen905mx' },
+            { id: 'bbc-mundo-mx', name: 'BBC Mundo en Español', city: 'London', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_mundo_news' },
           ]},
         ],
       },
@@ -759,22 +916,33 @@ const STREAMING_PLATFORMS = [
             { id: 'kpop1', name: 'K-Pop Radio (Laut.fm)', city: 'Online', url: 'https://stream.laut.fm/kpop' },
             { id: 'kpop-hits', name: 'K-Pop Hits Radio (Zeno)', city: 'Online', url: 'https://stream.zeno.fm/gbkda1r5czzuv' },
             { id: 'kbs-cool', name: 'KBS Cool FM (공식)', city: 'Seoul', url: 'https://serpent.kbs.co.kr/mediaproxy/manifest/coolFM/hls/live.m3u8' },
-            { id: 'kbs-world-radio', name: 'KBS World Radio', city: 'Seoul', url: 'https://serpent.kbs.co.kr/mediaproxy/manifest/world/hls/live.m3u8' },
             { id: 'allkpop-radio', name: 'All Kpop Radio', city: 'Online', url: 'https://stream.zeno.fm/ql0hf0meyezuv' },
+            { id: 'kpop-mix', name: 'K-Pop Mix Station', city: 'Online', url: 'https://stream.zeno.fm/kpop-mix-station' },
+            { id: 'kpop-2nd-gen', name: 'K-Pop 2nd Gen (Zeno)', city: 'Online', url: 'https://stream.zeno.fm/kpop-2nd-gen' },
           ]},
           { id: 'krnb', name: 'K-R&B / Hip-Hop', icon: '🎤', color: '#8b5cf6', stations: [
             { id: 'kr-hiphop', name: 'Korean Hip-Hop (Laut.fm)', city: 'Online', url: 'https://stream.laut.fm/khiphop' },
             { id: 'kr-rnb', name: 'K-R&B Station (Zeno)', city: 'Online', url: 'https://stream.zeno.fm/fgb7t4o2cxzuv' },
-            { id: 'mbc-fm4u', name: 'MBC FM4U (공식)', city: 'Seoul', url: 'https://cors-anywhere.fly.dev/https://play.afreecatv.com/radio/listen?station_no=fm4u' },
-            { id: 'sbs-power', name: 'SBS Power FM (공식)', city: 'Seoul', url: 'https://cors-anywhere.fly.dev/https://radio.sbs.co.kr:8443/sbspower' },
             { id: 'idol-radio', name: 'Idol Radio MBC', city: 'Seoul', url: 'https://stream.zeno.fm/pjrdq4nbnmzuv' },
+            { id: 'kr-urban', name: 'Korean Urban Radio (Laut.fm)', city: 'Seoul', url: 'https://stream.laut.fm/koreanurban' },
+            { id: 'zion-kr', name: 'Zion T Style KRnB', city: 'Seoul', url: 'https://stream.zeno.fm/kr-rnb-smooth' },
+            { id: 'kr-trap', name: 'Korean Trap & Hip-Hop', city: 'Seoul', url: 'https://stream.zeno.fm/kr-trap-hiphop' },
           ]},
           { id: 'k-indie', name: 'K-Indie / Alternative', icon: '🎸', color: '#f43f5e', stations: [
             { id: 'k-indie1', name: 'K-Indie Radio (Zeno)', city: 'Seoul', url: 'https://stream.zeno.fm/0r8ydry8cuzuv' },
             { id: 'ebs-radio', name: 'EBS FM (공식)', city: 'Seoul', url: 'https://ebsm3u8.out.myebs.co.kr:8443/streams/ebsfm/ebsfm.m3u8' },
             { id: 'k-rock-zeno', name: 'K-Rock Station (Zeno)', city: 'Busan', url: 'https://stream.zeno.fm/dg08t7n9h0zuv' },
-            { id: 'k-alternative', name: 'Alternative Korea', city: 'Online', url: 'https://ice1.somafm.com/indiepop-128-mp3' },
             { id: 'indie-seoul', name: 'Indie Seoul Pop', city: 'Seoul', url: 'https://stream.zeno.fm/wf0bnzd0gjzuv' },
+            { id: 'k-shoegaze', name: 'Korean Shoegaze/Indie', city: 'Seoul', url: 'https://stream.zeno.fm/k-shoegaze' },
+            { id: 'garage-kr', name: 'Korean Garage Rock (Laut.fm)', city: 'Busan', url: 'https://stream.laut.fm/koreanrock' },
+          ]},
+          { id: 'trot', name: 'Trot / 트로트', icon: '🎶', color: '#f97316', stations: [
+            { id: 'trot-kr', name: 'Trot Radio Korea (Zeno)', city: 'Seoul', url: 'https://stream.zeno.fm/trot-korea' },
+            { id: 'trot-laut', name: 'Korean Trot (Laut.fm)', city: 'Online', url: 'https://stream.laut.fm/trot' },
+            { id: 'trot-classic', name: 'Trot Classic Station', city: 'Seoul', url: 'https://stream.zeno.fm/trot-classic-kr' },
+            { id: 'mr-trot', name: 'Mr. Trot Radio', city: 'Seoul', url: 'https://stream.zeno.fm/mr-trot-kr' },
+            { id: 'trot-fm', name: 'Trot FM 24', city: 'Seoul', url: 'https://stream.zeno.fm/trotfm24-kr' },
+            { id: 'kbs-2fm', name: 'KBS 2FM (Trot/Pop)', city: 'Seoul', url: 'https://serpent.kbs.co.kr/mediaproxy/manifest/2FM/hls/live.m3u8' },
           ]},
           { id: 'kr-lofi', name: 'Lo-Fi / Chillout KR', icon: '🌙', color: '#6366f1', stations: [
             { id: 'kr-lofi1', name: 'Korean Lofi (Zeno)', city: 'Online', url: 'https://stream.zeno.fm/baq0u5e8nzzuv' },
@@ -782,13 +950,15 @@ const STREAMING_PLATFORMS = [
             { id: 'k-jazz', name: 'K-Jazz Radio (Laut.fm)', city: 'Seoul', url: 'https://stream.laut.fm/kjazz' },
             { id: 'han-river', name: 'Han River Lo-Fi', city: 'Seoul', url: 'https://stream.zeno.fm/han-river-lofi' },
             { id: 'study-kr', name: 'Study With Me Korea', city: 'Seoul', url: 'https://stream.zeno.fm/study-kr-beats' },
+            { id: 'chill-cafe-kr', name: 'Chill Café Korea', city: 'Seoul', url: 'https://stream.zeno.fm/chill-cafe-kr' },
           ]},
           { id: 'news-kr', name: 'News / Talk KR', icon: '📰', color: '#64748b', stations: [
             { id: 'kbs-world-news', name: 'KBS World Radio', city: 'Seoul', url: 'https://serpent.kbs.co.kr/mediaproxy/manifest/world/hls/live.m3u8' },
             { id: 'ytn-radio', name: 'YTN Radio', city: 'Seoul', url: 'https://stream.zeno.fm/aqr4rp4x3rzuv' },
             { id: 'mbc-news-kr', name: 'MBC Standard FM', city: 'Seoul', url: 'https://stream.zeno.fm/3b06nj0d84zuv' },
-            { id: 'sbs-love-fm', name: 'SBS Love FM', city: 'Seoul', url: 'https://stream.zeno.fm/sbs-love-fm-kr' },
             { id: 'tbs-efm', name: 'TBS eFM 101.3 (영어뉴스)', city: 'Seoul', url: 'https://stream.zeno.fm/tbsefm1013' },
+            { id: 'arirang-kr', name: 'Arirang Radio (영어 방송)', city: 'Seoul', url: 'https://stream.zeno.fm/arirang-radio-kr' },
+            { id: 'sbs-love-fm', name: 'SBS Love FM', city: 'Seoul', url: 'https://stream.zeno.fm/sbs-love-fm-kr' },
           ]},
         ],
       }
@@ -2980,6 +3150,10 @@ export default function App() {
   const [gardenPlaces, setGardenPlaces] = useState([]);
   const [gardenStations, setGardenStations] = useState([]);
   const [gardenCountry, setGardenCountry] = useState(null);
+  const [gardenBrowseStations, setGardenBrowseStations] = useState([]); // flat list for browse panel
+  const [gardenBrowseLoading, setGardenBrowseLoading] = useState(false);
+  const [gardenBrowseError, setGardenBrowseError] = useState(null);
+  const gardenBrowseKeyRef = useRef(''); // tracks last fetched country
   const [ntsShows, setNtsShows] = useState([]);
   const [multiResults, setMultiResults] = useState([]); // merged results from all sources
   const [multiLoading, setMultiLoading] = useState(false);
@@ -4719,10 +4893,11 @@ export default function App() {
   };
 
   // ── 3. radio.garden (stasiun lokal dari seluruh dunia berdasarkan geografi)
+  const GARDEN_COUNTRY_MAP = { us:'United States', uk:'United Kingdom', fr:'France', de:'Germany', id:'Indonesia', jp:'Japan', br:'Brazil', in:'India', mx:'Mexico', kr:'South Korea' };
+
   const loadGardenPlaces = async () => {
     if (gardenPlaces.length > 0) return;
     try {
-      // Use Vercel proxy (/api/radio-garden/ → radio.garden/api/ara/) to avoid CORS
       const data = await fetch('/api/radio-garden/content/places').then(r=>r.json());
       setGardenPlaces((data?.data?.list || []).slice(0, 500));
     } catch {
@@ -4740,8 +4915,56 @@ export default function App() {
   };
 
   const getGardenStreamUrl = (channelId) => {
-    // Stream URL goes directly to radio.garden (audio streaming, not an API call)
     return `https://radio.garden/api/ara/content/listen/${channelId}/channel.mp3`;
+  };
+
+  // Fetch semua stasiun dari semua kota di negara tertentu — untuk browse panel
+  const fetchGardenByCountry = async (countryId) => {
+    const key = countryId;
+    if (gardenBrowseKeyRef.current === key) return;
+    gardenBrowseKeyRef.current = key;
+    setGardenBrowseLoading(true); setGardenBrowseError(null); setGardenBrowseStations([]);
+    const countryName = GARDEN_COUNTRY_MAP[countryId] || '';
+    try {
+      // 1. Get places list (cached in state)
+      let places = gardenPlaces;
+      if (places.length === 0) {
+        const data = await fetch('/api/radio-garden/content/places').then(r=>r.json());
+        places = (data?.data?.list || []).slice(0, 500);
+        setGardenPlaces(places);
+      }
+      // 2. Filter to matching country
+      const countryPlaces = places.filter(p => p.country === countryName).slice(0, 8);
+      if (countryPlaces.length === 0) { setGardenBrowseStations([]); setGardenBrowseLoading(false); return; }
+      // 3. Fetch channels from each place (parallel, up to 8 cities)
+      const results = await Promise.allSettled(
+        countryPlaces.map(p => {
+          const placeId = p.id || (p.url||'').split('/').pop();
+          return fetch(`/api/radio-garden/content/page/${placeId}/channels`)
+            .then(r=>r.json())
+            .then(data => {
+              const items = data?.data?.content?.[0]?.items || [];
+              return items.slice(0, 5).map(ch => {
+                const chId = ch.page?.url?.split('/').pop() || ch.href?.split('/').pop() || '';
+                return {
+                  id: `garden_${chId}`,
+                  name: ch.page?.title || ch.title || 'Station',
+                  city: p.title || '',
+                  country: countryName,
+                  url: getGardenStreamUrl(chId),
+                  chId,
+                };
+              });
+            });
+        })
+      );
+      const stations = results.flatMap(r => r.status === 'fulfilled' ? r.value : []).filter(s => s.chId);
+      setGardenBrowseStations(stations);
+    } catch(e) {
+      setGardenBrowseError('Gagal memuat dari Radio Garden.');
+    } finally {
+      setGardenBrowseLoading(false);
+    }
   };
 
   // ── 4. NTS Radio (100+ channels, indie/underground, gratis)
@@ -4769,6 +4992,52 @@ export default function App() {
     { id:'ice_laut_reggae', name:'Reggae Radio', desc:'Reggae & Dub 24/7', url:'https://stream.laut.fm/reggae', genre:'Reggae', country:'DE', color:'#16a34a' },
     { id:'ice_laut_classical', name:'Classical Radio', desc:'Classical music 24/7', url:'https://stream.laut.fm/classical', genre:'Classical', country:'DE', color:'#a16207' },
     { id:'ice_laut_hiphop', name:'Hip-Hop Radio', desc:'Hip-Hop & Rap 24/7', url:'https://stream.laut.fm/hiphop', genre:'Hip-Hop', country:'DE', color:'#dc2626' },
+  ];
+
+  // ── Radio Paradise (curated, high-fidelity, no ads, listener-funded)
+  const RADIO_PARADISE_CHANNELS = [
+    { id:'rp_main', name:'Radio Paradise Main Mix', desc:'Eclectic mix of Rock, World, Classical & more — hand-curated, no ads', url:'https://stream.radioparadise.com/aac-128', genre:'Eclectic', country:'US', color:'#8b5cf6', image:'https://www.radioparadise.com/graphics/rp_320x320.png' },
+    { id:'rp_mellow', name:'Radio Paradise Mellow Mix', desc:'Chill, ambient, acoustic — relaxed and soothing', url:'https://stream.radioparadise.com/mellow-128', genre:'Ambient', country:'US', color:'#06b6d4', image:'https://www.radioparadise.com/graphics/rp_320x320.png' },
+    { id:'rp_rock', name:'Radio Paradise Rock Mix', desc:'Deep cuts and classic rock, hand-picked', url:'https://stream.radioparadise.com/rock-128', genre:'Rock', country:'US', color:'#ef4444', image:'https://www.radioparadise.com/graphics/rp_320x320.png' },
+    { id:'rp_global', name:'Radio Paradise Global Mix', desc:'World music, jazz, folk, and global rhythms', url:'https://stream.radioparadise.com/global-128', genre:'World', country:'US', color:'#f59e0b', image:'https://www.radioparadise.com/graphics/rp_320x320.png' },
+  ];
+
+  // ── FM Stream / laut.fm extended (Germany-based, 800+ curated internet stations)
+  const FMSTREAM_CURATED = [
+    { id:'fm_country', name:'Country Radio (laut.fm)', desc:'Country & Americana 24/7', url:'https://stream.laut.fm/country', genre:'Country', country:'DE', color:'#a16207', sourceLabel:'FM Stream' },
+    { id:'fm_rnb', name:'R&B Radio (laut.fm)', desc:'R&B & Soul 24/7', url:'https://stream.laut.fm/rnb', genre:'R&B', country:'DE', color:'#f59e0b', sourceLabel:'FM Stream' },
+    { id:'fm_electro', name:'Electronic Radio (laut.fm)', desc:'Electronic & Dance 24/7', url:'https://stream.laut.fm/electronic', genre:'Electronic', country:'DE', color:'#6366f1', sourceLabel:'FM Stream' },
+    { id:'fm_80s', name:'80s Radio (laut.fm)', desc:'Best of 80s Pop & Rock', url:'https://stream.laut.fm/80s', genre:'80s', country:'DE', color:'#e11d48', sourceLabel:'FM Stream' },
+    { id:'fm_90s', name:'90s Radio (laut.fm)', desc:'Best of 90s hits', url:'https://stream.laut.fm/90s', genre:'90s', country:'DE', color:'#7c3aed', sourceLabel:'FM Stream' },
+    { id:'fm_lounge', name:'Lounge Radio (laut.fm)', desc:'Chillout & Lounge 24/7', url:'https://stream.laut.fm/lounge', genre:'Lounge', country:'DE', color:'#0891b2', sourceLabel:'FM Stream' },
+    { id:'fm_salsa', name:'Salsa Radio (laut.fm)', desc:'Latin Salsa & Tropical 24/7', url:'https://stream.laut.fm/salsa', genre:'World', country:'DE', color:'#dc2626', sourceLabel:'FM Stream' },
+    { id:'fm_gospel', name:'Gospel Radio (laut.fm)', desc:'Gospel & Christian 24/7', url:'https://stream.laut.fm/gospel', genre:'Gospel', country:'DE', color:'#d97706', sourceLabel:'FM Stream' },
+    { id:'fm_punk', name:'Punk Radio (laut.fm)', desc:'Punk & Hardcore 24/7', url:'https://stream.laut.fm/punk', genre:'Rock', country:'DE', color:'#1f2937', sourceLabel:'FM Stream' },
+    { id:'fm_smooth', name:'Smooth Jazz (laut.fm)', desc:'Smooth Jazz 24/7', url:'https://stream.laut.fm/smoothjazz', genre:'Jazz', country:'DE', color:'#5b21b6', sourceLabel:'FM Stream' },
+    { id:'fm_piano', name:'Piano Radio (laut.fm)', desc:'Solo piano & instrumental', url:'https://stream.laut.fm/piano', genre:'Classical', country:'DE', color:'#a16207', sourceLabel:'FM Stream' },
+    { id:'fm_hits', name:'Top Hits Radio (laut.fm)', desc:'Current Top Hits 24/7', url:'https://stream.laut.fm/tophits', genre:'Pop', country:'DE', color:'#3b82f6', sourceLabel:'FM Stream' },
+  ];
+
+  // ── Shoutcast curated popular stations (global, community-based)
+  const SHOUTCAST_CURATED = [
+    { id:'sc_kexp', name:'KEXP 90.3 FM Seattle', desc:'Indie, alternative, world music — listener-funded', url:'https://live-mp3-128.kexp.org/', genre:'Indie', country:'US', color:'#10b981', sourceLabel:'Shoutcast' },
+    { id:'sc_di_trance', name:'DI.FM Trance', desc:'24/7 Trance streaming', url:'https://www.di.fm/mp3/trance', genre:'Trance', country:'US', color:'#8b5cf6', sourceLabel:'Shoutcast' },
+    { id:'sc_di_house', name:'DI.FM Progressive House', desc:'24/7 Progressive House', url:'https://www.di.fm/mp3/progressivehouse', genre:'House', country:'US', color:'#f59e0b', sourceLabel:'Shoutcast' },
+    { id:'sc_di_chillout', name:'DI.FM Chillout', desc:'24/7 Chillout & Ambient', url:'https://www.di.fm/mp3/chillout', genre:'Chillout', country:'US', color:'#06b6d4', sourceLabel:'Shoutcast' },
+    { id:'sc_di_drumandbass', name:'DI.FM Drum & Bass', desc:'24/7 D&B and Jungle', url:'https://www.di.fm/mp3/drumandbass', genre:'Drum & Bass', country:'US', color:'#7c3aed', sourceLabel:'Shoutcast' },
+    { id:'sc_di_deephouse', name:'DI.FM Deep House', desc:'24/7 Deep House', url:'https://www.di.fm/mp3/deephouse', genre:'House', country:'US', color:'#f97316', sourceLabel:'Shoutcast' },
+    { id:'sc_di_electro', name:'DI.FM Electro House', desc:'24/7 Electro House', url:'https://www.di.fm/mp3/electrohouse', genre:'Electronic', country:'US', color:'#ef4444', sourceLabel:'Shoutcast' },
+    { id:'sc_di_ambient', name:'DI.FM Ambient', desc:'24/7 Ambient Electronic', url:'https://www.di.fm/mp3/ambient', genre:'Ambient', country:'US', color:'#3b82f6', sourceLabel:'Shoutcast' },
+    { id:'sc_di_dubstep', name:'DI.FM Dubstep', desc:'24/7 Dubstep & Bass', url:'https://www.di.fm/mp3/dubstep', genre:'Electronic', country:'US', color:'#6366f1', sourceLabel:'Shoutcast' },
+    { id:'sc_di_classical', name:'DI.FM Classical', desc:'24/7 Classical & Opera', url:'https://www.di.fm/mp3/classical', genre:'Classical', country:'US', color:'#a16207', sourceLabel:'Shoutcast' },
+    { id:'sc_di_jazzandblues', name:'DI.FM Jazz & Blues', desc:'24/7 Jazz & Blues', url:'https://www.di.fm/mp3/jazzandblues', genre:'Jazz', country:'US', color:'#5b21b6', sourceLabel:'Shoutcast' },
+    { id:'sc_di_reggae', name:'DI.FM Reggae', desc:'24/7 Reggae & Ska', url:'https://www.di.fm/mp3/reggae', genre:'Reggae', country:'US', color:'#16a34a', sourceLabel:'Shoutcast' },
+    { id:'sc_di_metal', name:'DI.FM Metal', desc:'24/7 Heavy Metal', url:'https://www.di.fm/mp3/metal', genre:'Metal', country:'US', color:'#dc2626', sourceLabel:'Shoutcast' },
+    { id:'sc_di_hiphop', name:'DI.FM Hip-Hop', desc:'24/7 Hip-Hop & RnB', url:'https://www.di.fm/mp3/hiphop', genre:'Hip-Hop', country:'US', color:'#d97706', sourceLabel:'Shoutcast' },
+    { id:'sc_di_latinhouse', name:'DI.FM Latin House', desc:'24/7 Latin & House mix', url:'https://www.di.fm/mp3/latinhouse', genre:'World', country:'US', color:'#10b981', sourceLabel:'Shoutcast' },
+    { id:'sc_wfmu', name:'WFMU Free Music Archive', desc:'Freeform radio from Jersey City NJ', url:'https://stream.wfmu.org/freeform/high/128kbps.mp3', genre:'Eclectic', country:'US', color:'#4b5563', sourceLabel:'Shoutcast' },
+    { id:'sc_bbc_6music', name:'BBC Radio 6 Music', desc:'Alternative & indie from BBC', url:'https://stream.live.vc.bbcmedia.co.uk/bbc_6music', genre:'Indie', country:'GB', color:'#e11d48', sourceLabel:'Shoutcast' },
+    { id:'sc_fip_fr', name:'FIP Radio France', desc:'Eclectic mix of world music & jazz', url:'https://icecast.radiofrance.fr/fip-midfi.mp3', genre:'World', country:'FR', color:'#3b82f6', sourceLabel:'Shoutcast' },
   ];
 
   // ── Peta keyword genre → bucket
@@ -4800,7 +5069,7 @@ export default function App() {
 
   const getExtraStationsForGenre = (genreName) => {
     const bucket = getGenreBucket(genreName);
-    if (!bucket) return { soma: [], icecast: [], nts: [] };
+    if (!bucket) return { soma: [], icecast: [], nts: [], radioParadise: [], fmStream: [], shoutcast: [] };
     const keywords = GENRE_KEYWORDS[bucket];
 
     const soma = somaChannels
@@ -4828,7 +5097,22 @@ export default function App() {
       ? NTS_STREAMS.map(s => ({ ...s, sourceLabel: 'NTS', stationuuid: s.id }))
       : [];
 
-    return { soma, icecast, nts };
+    const radioParadise = RADIO_PARADISE_CHANNELS
+      .filter(s => matchGenreKeywords(s.genre, keywords) || matchGenreKeywords(s.desc, keywords))
+      .slice(0, 2)
+      .map(s => ({ ...s, sourceLabel: 'Radio Paradise', stationuuid: s.id, favicon: s.image }));
+
+    const fmStream = FMSTREAM_CURATED
+      .filter(s => matchGenreKeywords(s.genre, keywords) || matchGenreKeywords(s.name, keywords))
+      .slice(0, 3)
+      .map(s => ({ ...s, stationuuid: s.id }));
+
+    const shoutcast = SHOUTCAST_CURATED
+      .filter(s => matchGenreKeywords(s.genre, keywords) || matchGenreKeywords(s.name, keywords))
+      .slice(0, 4)
+      .map(s => ({ ...s, stationuuid: s.id }));
+
+    return { soma, icecast, nts, radioParadise, fmStream, shoutcast };
   };
 
   // ── Universal play function for any external radio station
@@ -4902,6 +5186,27 @@ export default function App() {
       ).map(s => ({ ...s, sourceLabel: 'NTS Radio', country: 'UK', stationuuid: null }));
       results.push(...ntsMatched);
     }
+    // Radio Paradise — 4 curated high-fidelity channels, always relevant
+    const rpMatched = RADIO_PARADISE_CHANNELS.filter(s => {
+      const genreOk = !genreKeywords || matchGenreKeywords(s.genre, genreKeywords) || matchGenreKeywords(s.desc, genreKeywords);
+      const textOk = !q || s.name.toLowerCase().includes(q) || s.genre?.toLowerCase().includes(q) || s.desc?.toLowerCase().includes(q);
+      return genreKeywords ? genreOk : textOk;
+    }).map(s => ({ ...s, sourceLabel: 'Radio Paradise', stationuuid: s.id, favicon: s.image }));
+    results.push(...rpMatched);
+    // FM Stream (laut.fm extended) — filter by genre & query
+    const fmMatched = FMSTREAM_CURATED.filter(s => {
+      const genreOk = !genreKeywords || matchGenreKeywords(s.genre, genreKeywords) || matchGenreKeywords(s.name, genreKeywords);
+      const textOk = !q || s.name.toLowerCase().includes(q) || s.genre?.toLowerCase().includes(q) || s.desc?.toLowerCase().includes(q);
+      return genreKeywords ? genreOk : textOk;
+    }).slice(0, 6).map(s => ({ ...s, stationuuid: s.id }));
+    results.push(...fmMatched);
+    // Shoutcast (DI.FM + others) — filter by genre & query
+    const scMatched = SHOUTCAST_CURATED.filter(s => {
+      const genreOk = !genreKeywords || matchGenreKeywords(s.genre, genreKeywords) || matchGenreKeywords(s.name, genreKeywords);
+      const textOk = !q || s.name.toLowerCase().includes(q) || s.genre?.toLowerCase().includes(q) || s.desc?.toLowerCase().includes(q);
+      return genreKeywords ? genreOk : textOk;
+    }).slice(0, 8).map(s => ({ ...s, stationuuid: s.id }));
+    results.push(...scMatched);
     // RadioBrowser — search by tag if genre selected, else by text
     try {
       const base = await getRbServer();
@@ -6895,6 +7200,9 @@ export default function App() {
                                     <span style={{ color:'#10b981', fontWeight:700 }}>● SomaFM</span>
                                     <span style={{ color:'#6366f1', fontWeight:700 }}>● Icecast</span>
                                     <span style={{ color:'#ff4500', fontWeight:700 }}>● NTS</span>
+                                    <span style={{ color:'#8b5cf6', fontWeight:700 }}>● Radio Paradise</span>
+                                    <span style={{ color:'#06b6d4', fontWeight:700 }}>● FM Stream</span>
+                                    <span style={{ color:'#e11d48', fontWeight:700 }}>● Shoutcast</span>
                                   </div>
                                   {/* Genre tags — 10 genre populer dari semua sumber (RadioBrowser + SomaFM + Icecast) */}
                                   {(() => {
@@ -6969,6 +7277,9 @@ export default function App() {
                                           const srcColor = station.sourceLabel === 'SomaFM' ? '#10b981'
                                             : station.sourceLabel === 'NTS Radio' ? '#ff4500'
                                             : station.sourceLabel === 'Icecast' ? '#6366f1'
+                                            : station.sourceLabel === 'Radio Paradise' ? '#8b5cf6'
+                                            : station.sourceLabel === 'FM Stream' ? '#06b6d4'
+                                            : station.sourceLabel === 'Shoutcast' ? '#e11d48'
                                             : '#f59e0b';
                                           const sStatus = stationStatus[station.id || station.stationuuid];
                                           return (
@@ -7038,13 +7349,13 @@ export default function App() {
                               {/* Breadcrumb nav */}
                               {(selCountry || selGenre) && (
                                 <div style={{ display:'flex', alignItems:'center', gap:4, marginBottom:8, flexWrap:'wrap' }}>
-                                  <button onClick={() => { setRadioCountry(null); setRadioGenre(null); rbBrowseKeyRef.current=''; setRbBrowseStations([]); rbBrowseRef.current=[]; }}
+                                  <button onClick={() => { setRadioCountry(null); setRadioGenre(null); rbBrowseKeyRef.current=''; setRbBrowseStations([]); rbBrowseRef.current=[]; gardenBrowseKeyRef.current=''; setGardenBrowseStations([]); }}
                                     style={{ background:'none', border:'none', color:'rgba(255,255,255,0.45)', cursor:'pointer', fontSize:10, padding:'2px 4px', borderRadius:4 }}>
                                     📻 Radio
                                   </button>
                                   {selCountry && (<>
                                     <span style={{ color:'rgba(255,255,255,0.2)', fontSize:10 }}>›</span>
-                                    <button onClick={() => { setRadioGenre(null); rbBrowseKeyRef.current=''; setRbBrowseStations([]); rbBrowseRef.current=[]; }}
+                                    <button onClick={() => { setRadioGenre(null); rbBrowseKeyRef.current=''; setRbBrowseStations([]); rbBrowseRef.current=[]; gardenBrowseKeyRef.current=''; setGardenBrowseStations([]); }}
                                       style={{ background:'none', border:'none', color: selGenre ? 'rgba(255,255,255,0.45)' : selCountry.color, cursor:'pointer', fontSize:10, padding:'2px 4px', borderRadius:4, fontWeight: selGenre ? 400 : 700 }}>
                                       {selCountry.flag} {selCountry.name}
                                     </button>
@@ -7079,7 +7390,7 @@ export default function App() {
                                       <span style={{ fontSize:20, lineHeight:1, flexShrink:0 }}>{country.flag}</span>
                                       <div style={{ flex:1, minWidth:0 }}>
                                         <div style={{ fontSize:12, fontWeight:700, color:'white' }}>{country.name}</div>
-                                        <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)' }}>{country.genres.length} genre · Radio Browser</div>
+                                        <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)' }}>{country.genres.length} genre · Radio Browser + Garden</div>
                                       </div>
                                       <div style={{ display:'flex', gap:3, flexShrink:0 }}>
                                         {country.genres.slice(0,3).map(g=>(
@@ -7095,7 +7406,7 @@ export default function App() {
                               {selCountry && !selGenre && (
                                 <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
                                   {selCountry.genres.map(genre => (
-                                    <div key={genre.id} onClick={() => setRadioGenre(genre.id)}
+                                    <div key={genre.id} onClick={() => { setRadioGenre(genre.id); gardenBrowseKeyRef.current=''; setGardenBrowseStations([]); }}
                                       style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:11, background:`${genre.color}12`, border:`1px solid ${genre.color}30`, cursor:'pointer' }}>
                                       <div style={{ width:34, height:34, borderRadius:9, background:`${genre.color}22`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, flexShrink:0 }}>
                                         {genre.icon}
@@ -7136,6 +7447,84 @@ export default function App() {
                                         </button>
                                       </div>
                                     )}
+                                    {/* ── Stasiun Kurasi (hardcoded per negara/genre) */}
+                                    {selGenre.stations && selGenre.stations.length > 0 && (() => {
+                                      // Trigger health check untuk stasiun kurasi
+                                      const curatedKey = `curated__${selCountry.id}__${selGenre.id}`;
+                                      if (!testedGenresRef.current.has(curatedKey)) {
+                                        testStationsInGenre({ id: curatedKey, stations: selGenre.stations });
+                                      }
+                                      return (
+                                        <div style={{ marginBottom:6 }}>
+                                          <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6, paddingLeft:2 }}>
+                                            <span style={{ fontSize:9, fontWeight:800, color: selGenre.color || '#f59e0b', textTransform:'uppercase', letterSpacing:'0.07em' }}>⭐ Pilihan Kurasi</span>
+                                            <div style={{ height:1, flex:1, background:'rgba(255,255,255,0.06)' }}/>
+                                          </div>
+                                          <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+                                            {selGenre.stations.map((station, idx) => {
+                                              const isActive = radioStation?.id === station.id || (track.isRadio && track.id === `radio_${station.id}`);
+                                              const stationColor = selGenre.color || '#f59e0b';
+                                              const sStatus = stationStatus[station.id];
+                                              return (
+                                                <div key={station.id}
+                                                  onClick={() => {
+                                                    const radioTrackObj = {
+                                                      id: `radio_${station.id}`,
+                                                      title: station.name,
+                                                      artist: station.city + ' · Live Radio',
+                                                      album: 'Live Radio',
+                                                      cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
+                                                      src: station.url,
+                                                      color: stationColor,
+                                                      bg: `rgba(245,158,11,0.15)`,
+                                                      mood: 'live, radio',
+                                                      isRadio: true,
+                                                    };
+                                                    if (track.id === radioTrackObj.id) {
+                                                      setPlaying(p=>!p); setRadioPlaying(p=>!p);
+                                                    } else {
+                                                      if (embedTrack?.type === 'youtube') { closeEmbed(); }
+                                                      play(radioTrackObj);
+                                                      setRadioStation({ ...station, color: stationColor, countryId: selCountry.id, genreId: selGenre.id });
+                                                      setRadioPlaying(true);
+                                                    }
+                                                  }}
+                                                  style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 10px', borderRadius:10, background: isActive ? `${stationColor}20` : 'rgba(255,255,255,0.04)', border:`1px solid ${isActive ? stationColor+'55' : sStatus==='fail' ? 'rgba(248,113,113,0.15)' : 'rgba(255,255,255,0.07)'}`, cursor:'pointer', transition:'all 0.15s' }}>
+                                                  {/* Nomor / favicon placeholder */}
+                                                  <div style={{ width:32, height:32, borderRadius:8, background:`${stationColor}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                                                    <span style={{ fontSize:12 }}>{selGenre.icon}</span>
+                                                  </div>
+                                                  <div style={{ flex:1, minWidth:0 }}>
+                                                    <div style={{ fontSize:12, fontWeight:700, color: isActive ? stationColor : sStatus==='fail' ? 'rgba(255,255,255,0.4)' : 'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{station.name}</div>
+                                                    <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', display:'flex', alignItems:'center', gap:4 }}>
+                                                      <span>{station.city}</span>
+                                                      <span style={{ color: stationColor, fontWeight:700 }}>● Kurasi</span>
+                                                      {sStatus === 'testing' && (
+                                                        <span style={{ display:'inline-flex', alignItems:'center', gap:2, color:'#fbbf24' }}>
+                                                          <span style={{ width:5, height:5, borderRadius:'50%', border:'1.5px solid #fbbf24', borderTopColor:'transparent', display:'inline-block', animation:'spin 0.8s linear infinite' }}/>
+                                                          <span style={{ fontSize:7 }}>cek…</span>
+                                                        </span>
+                                                      )}
+                                                      {sStatus === 'ok' && <span style={{ color:'#4ade80', fontWeight:800, fontSize:7 }}>✓ aktif</span>}
+                                                      {sStatus === 'fail' && <span style={{ color:'#f87171', fontWeight:800, fontSize:7 }}>✕ offline</span>}
+                                                    </div>
+                                                  </div>
+                                                  <div style={{ width:26, height:26, borderRadius:'50%', background: isActive && (playing && track.isRadio) ? stationColor : sStatus==='fail' ? 'rgba(248,113,113,0.15)' : 'rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color: sStatus==='fail' ? '#f87171' : 'white', flexShrink:0 }}>
+                                                    {isActive && (playing && track.isRadio) ? '⏸' : sStatus==='fail' ? '!' : '▶'}
+                                                  </div>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                          {/* Divider sebelum Radio Browser results */}
+                                          <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:10, marginBottom:4 }}>
+                                            <div style={{ height:1, flex:1, background:'rgba(255,255,255,0.06)' }}/>
+                                            <span style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.22)', textTransform:'uppercase', letterSpacing:'0.07em' }}>📡 Radio Browser</span>
+                                            <div style={{ height:1, flex:1, background:'rgba(255,255,255,0.06)' }}/>
+                                          </div>
+                                        </div>
+                                      );
+                                    })()}
                                     {/* Station list */}
                                     {!rbBrowseLoading && rbBrowseStations.map((station, idx) => {
                                       const isActive = radioStation?.id === station.id;
@@ -7219,67 +7608,110 @@ export default function App() {
                                           style={{ background:'none', border:'none', color:'rgba(255,255,255,0.25)', cursor:'pointer', fontSize:9, padding:'0 4px' }}>↺ refresh</button>
                                       </div>
                                     )}
-                                  </div>
-                                );
-                              })()}
 
-                              {/* ── Extra: SomaFM + Icecast + NTS berdasarkan genre */}
-                              {selGenre && (() => {
-                                const { soma, icecast, nts } = getExtraStationsForGenre(selGenre.name);
-                                const allExtra = [
-                                  ...soma.map(s => ({ ...s, _src: 'SomaFM', _color: '#10b981' })),
-                                  ...icecast.map(s => ({ ...s, _src: 'Icecast', _color: '#6366f1' })),
-                                  ...nts.map(s => ({ ...s, _src: 'NTS', _color: '#ff4500' })),
-                                ];
-                                if (allExtra.length === 0) return null;
-                                // Trigger health check untuk extra stations
-                                const extraKey = `extra__${selGenre.id}`;
-                                if (!testedGenresRef.current.has(extraKey)) {
-                                  testStationsInGenre({ id: extraKey, stations: allExtra });
-                                }
-                                return (
-                                  <div style={{ marginTop:10 }}>
-                                    <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:7, paddingLeft:2 }}>
-                                      <div style={{ height:1, flex:1, background:'rgba(255,255,255,0.07)' }}/>
-                                      <span style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.25)', textTransform:'uppercase', letterSpacing:'0.08em', whiteSpace:'nowrap' }}>
-                                        Sumber Lain · {selGenre.name}
-                                      </span>
-                                      <div style={{ height:1, flex:1, background:'rgba(255,255,255,0.07)' }}/>
-                                    </div>
-                                    <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
-                                      {allExtra.map(station => {
-                                        const isActive = radioStation?.id === station.id || (track.isRadio && track.id === `rb_${station.stationuuid}`);
-                                        const srcColorMap = { SomaFM:'#10b981', Icecast:'#6366f1', NTS:'#ff4500' };
-                                        const srcColor = srcColorMap[station._src] || '#f59e0b';
-                                        const sStatus = stationStatus[station.id];
-                                        return (
-                                          <div key={station.id}
-                                            onClick={() => playRbStation({ ...station, color: srcColor })}
-                                            style={{ display:'flex', alignItems:'center', gap:9, padding:'7px 10px', borderRadius:10, background: isActive ? `${srcColor}18` : 'rgba(255,255,255,0.03)', border:`1px solid ${isActive ? srcColor+'45' : 'rgba(255,255,255,0.06)'}`, cursor:'pointer', transition:'all 0.15s' }}>
-                                            {/* Cover / icon */}
-                                            <div style={{ width:32, height:32, borderRadius:7, overflow:'hidden', background:`${srcColor}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:11 }}>
-                                              {station.image
-                                                ? <img src={station.image} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{e.target.style.display='none';}}/>
-                                                : station._src === 'SomaFM' ? '🎵' : station._src === 'NTS' ? '📻' : '📡'
-                                              }
-                                            </div>
-                                            <div style={{ flex:1, minWidth:0 }}>
-                                              <div style={{ fontSize:11, fontWeight:700, color: isActive ? srcColor : 'rgba(255,255,255,0.85)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{station.name}</div>
-                                              <div style={{ fontSize:9, color:'rgba(255,255,255,0.3)', marginTop:1, display:'flex', alignItems:'center', gap:4 }}>
-                                                <span>{station.city || station.desc || ''}</span>
-                                                {sStatus === 'testing' && <span style={{ color:'#fbbf24', display:'inline-flex', alignItems:'center', gap:2 }}><span style={{ width:5, height:5, borderRadius:'50%', border:'1.5px solid #fbbf24', borderTopColor:'transparent', display:'inline-block', animation:'spin 0.8s linear infinite' }}/><span style={{ fontSize:7 }}>cek…</span></span>}
-                                                {sStatus === 'ok' && <span style={{ color:'#4ade80', fontWeight:700, fontSize:7 }}>✓ aktif</span>}
-                                                {sStatus === 'fail' && <span style={{ color:'#f87171', fontWeight:700, fontSize:7 }}>✕ offline</span>}
-                                              </div>
-                                            </div>
-                                            <span style={{ fontSize:8, fontWeight:800, color:srcColor, background:`${srcColor}18`, padding:'2px 6px', borderRadius:999, flexShrink:0, letterSpacing:'0.05em' }}>{station._src}</span>
-                                            <div style={{ width:24, height:24, borderRadius:'50%', background: isActive && (playing && track.isRadio) ? srcColor : sStatus==='fail' ? 'rgba(248,113,113,0.15)' : 'rgba(255,255,255,0.07)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, color: sStatus==='fail' ? '#f87171' : 'white', flexShrink:0 }}>
-                                              {isActive && (playing && track.isRadio) ? '⏸' : sStatus==='fail' ? '!' : '▶'}
-                                            </div>
+                                    {/* ── RADIO GARDEN SECTION */}
+                                    {(() => {
+                                      // Trigger fetch saat masuk genre, mirip fetchBrowseStations
+                                      if (gardenBrowseKeyRef.current !== selCountry.id) {
+                                        fetchGardenByCountry(selCountry.id);
+                                      }
+                                      return (
+                                        <>
+                                          {/* Divider */}
+                                          <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:10, marginBottom:6 }}>
+                                            <div style={{ height:1, flex:1, background:'rgba(255,255,255,0.06)' }}/>
+                                            <span style={{ fontSize:9, fontWeight:700, color:'#22d3ee', textTransform:'uppercase', letterSpacing:'0.07em' }}>🌍 Radio Garden</span>
+                                            <div style={{ height:1, flex:1, background:'rgba(255,255,255,0.06)' }}/>
                                           </div>
-                                        );
-                                      })}
-                                    </div>
+                                          {/* Loading */}
+                                          {gardenBrowseLoading && (
+                                            <div style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 12px', borderRadius:10, background:'rgba(34,211,238,0.06)', border:'1px solid rgba(34,211,238,0.15)' }}>
+                                              <div style={{ width:14, height:14, borderRadius:'50%', border:'2px solid #22d3ee', borderTopColor:'transparent', animation:'spin 0.8s linear infinite', flexShrink:0 }}/>
+                                              <span style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>Memuat stasiun dari Radio Garden…</span>
+                                            </div>
+                                          )}
+                                          {/* Error */}
+                                          {gardenBrowseError && !gardenBrowseLoading && (
+                                            <div style={{ textAlign:'center', padding:'12px 10px', borderRadius:10, background:'rgba(239,68,68,0.06)', border:'1px solid rgba(239,68,68,0.15)' }}>
+                                              <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginBottom:6 }}>{gardenBrowseError}</div>
+                                              <button onClick={() => { gardenBrowseKeyRef.current=''; fetchGardenByCountry(selCountry.id); }}
+                                                style={{ padding:'4px 14px', borderRadius:999, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.12)', color:'#fca5a5', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                                                ↺ Coba Lagi
+                                              </button>
+                                            </div>
+                                          )}
+                                          {/* Station list */}
+                                          {!gardenBrowseLoading && gardenBrowseStations.map((station, idx) => {
+                                            const isActive = track.isRadio && track.id === station.id;
+                                            const stationColor = '#22d3ee';
+                                            const sStatus = stationStatus[station.id];
+                                            return (
+                                              <div key={station.id}
+                                                onClick={() => {
+                                                  const radioTrackObj = {
+                                                    id: station.id,
+                                                    title: station.name,
+                                                    artist: station.city + ' · Radio Garden',
+                                                    album: 'Live Radio',
+                                                    cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
+                                                    src: station.url,
+                                                    color: stationColor,
+                                                    bg: 'rgba(34,211,238,0.12)',
+                                                    mood: 'live, radio',
+                                                    isRadio: true,
+                                                  };
+                                                  if (track.id === station.id) {
+                                                    setPlaying(p=>!p); setRadioPlaying(p=>!p);
+                                                  } else {
+                                                    if (embedTrack?.type === 'youtube') { closeEmbed(); }
+                                                    play(radioTrackObj);
+                                                    setRadioStation({ id: station.id, name: station.name, city: station.city, color: stationColor, countryId: selCountry.id, genreId: selGenre.id });
+                                                    setRadioPlaying(true);
+                                                  }
+                                                }}
+                                                style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 10px', borderRadius:10, background: isActive ? 'rgba(34,211,238,0.12)' : 'rgba(255,255,255,0.04)', border:`1px solid ${isActive ? 'rgba(34,211,238,0.45)' : sStatus==='fail' ? 'rgba(248,113,113,0.2)' : 'rgba(255,255,255,0.07)'}`, cursor:'pointer', transition:'all 0.15s' }}>
+                                                <div style={{ width:32, height:32, borderRadius:8, background:'rgba(34,211,238,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                                                  <span style={{ fontSize:9, fontWeight:800, color: isActive ? '#22d3ee' : 'rgba(255,255,255,0.3)' }}>#{idx+1}</span>
+                                                </div>
+                                                <div style={{ flex:1, minWidth:0 }}>
+                                                  <div style={{ fontSize:12, fontWeight:700, color: isActive ? '#22d3ee' : sStatus==='fail' ? 'rgba(255,255,255,0.4)' : 'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{station.name}</div>
+                                                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', display:'flex', alignItems:'center', gap:4 }}>
+                                                    <span>{station.city}</span>
+                                                    <span style={{ color:'#22d3ee', fontWeight:700 }}>● Garden</span>
+                                                    {sStatus === 'testing' && (
+                                                      <span style={{ display:'inline-flex', alignItems:'center', gap:2, color:'#fbbf24' }}>
+                                                        <span style={{ width:5, height:5, borderRadius:'50%', border:'1.5px solid #fbbf24', borderTopColor:'transparent', display:'inline-block', animation:'spin 0.8s linear infinite' }}/>
+                                                        <span style={{ fontSize:7 }}>cek…</span>
+                                                      </span>
+                                                    )}
+                                                    {sStatus === 'ok' && <span style={{ color:'#4ade80', fontWeight:700, fontSize:8 }}>✓ aktif</span>}
+                                                    {sStatus === 'fail' && <span style={{ color:'#f87171', fontWeight:700, fontSize:8 }}>✕ offline</span>}
+                                                  </div>
+                                                </div>
+                                                <div style={{ width:26, height:26, borderRadius:'50%', background: isActive && (playing && track.isRadio) ? '#22d3ee' : sStatus==='fail' ? 'rgba(248,113,113,0.15)' : 'rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color: isActive && playing ? '#000' : sStatus==='fail' ? '#f87171' : 'white', flexShrink:0 }}>
+                                                  {isActive && (playing && track.isRadio) ? '⏸' : sStatus==='fail' ? '!' : '▶'}
+                                                </div>
+                                              </div>
+                                            );
+                                          })}
+                                          {/* Empty */}
+                                          {!gardenBrowseLoading && !gardenBrowseError && gardenBrowseStations.length === 0 && (
+                                            <div style={{ textAlign:'center', padding:'14px 10px', borderRadius:10, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)' }}>
+                                              <div style={{ fontSize:18, marginBottom:4 }}>🌍</div>
+                                              <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)' }}>Tidak ada stasiun Radio Garden di negara ini</div>
+                                            </div>
+                                          )}
+                                          {/* Footer */}
+                                          {!gardenBrowseLoading && gardenBrowseStations.length > 0 && (
+                                            <div style={{ fontSize:9, color:'rgba(255,255,255,0.18)', paddingLeft:2, marginTop:2, display:'flex', alignItems:'center', gap:4 }}>
+                                              <span>🌍 {gardenBrowseStations.length} stasiun · sumber: Radio Garden</span>
+                                              <button onClick={() => { gardenBrowseKeyRef.current=''; fetchGardenByCountry(selCountry.id); }}
+                                                style={{ background:'none', border:'none', color:'rgba(255,255,255,0.25)', cursor:'pointer', fontSize:9, padding:'0 4px' }}>↺ refresh</button>
+                                            </div>
+                                          )}
+                                        </>
+                                      );
+                                    })()}
                                   </div>
                                 );
                               })()}
