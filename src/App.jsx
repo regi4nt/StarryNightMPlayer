@@ -996,23 +996,6 @@ const COVERS = [
 ];
 const randItem = arr => arr[Math.floor(Math.random() * arr.length)];
 
-// ═══════════════════════════════════════════════════════
-//  EQUALIZER CONFIG
-// ═══════════════════════════════════════════════════════
-const EQ_FREQS   = [60, 250, 1000, 4000, 16000];
-const EQ_LABELS  = ['60Hz','250Hz','1kHz','4kHz','16kHz'];
-const EQ_PRESETS = {
-  'Normal':     [0,   0,   0,   0,   0],
-  'Bass Boost': [7,   5,   0,  -2,  -2],
-  'Treble':     [-3, -2,   0,   5,   7],
-  'Pop':        [-1,  2,   4,   2,  -1],
-  'Rock':       [4,   2,  -2,   2,   4],
-  'Classical':  [4,   3,  -2,   3,   4],
-  'Electronic': [5,   3,   0,   3,   5],
-  'Hip-Hop':    [5,   4,   0,  -2,  -1],
-  'Jazz':       [3,   2,   0,   2,   3],
-  'Acoustic':   [3,   2,   0,   2,   1],
-};
 const SLEEP_OPTIONS = [
   { label:'5 menit',  min:5  },
   { label:'10 menit', min:10 },
@@ -1089,6 +1072,19 @@ function getProviders() {
       if (userKey.startsWith('AIza')) return [
         { provider:'Gemini', key:userKey, model:'gemini-2.0-flash', endpoint:'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', isOpenAI:true, extra:{} },
       ];
+      if (userKey.startsWith('xai-')) return [
+        { provider:'Grok', key:userKey, model:'grok-3',      endpoint:'https://api.x.ai/v1/chat/completions', isOpenAI:true, extra:{} },
+        { provider:'Grok', key:userKey, model:'grok-3-mini', endpoint:'https://api.x.ai/v1/chat/completions', isOpenAI:true, extra:{} },
+      ];
+      if (userKey.startsWith('sk-') && !userKey.startsWith('sk-or-') && !userKey.startsWith('sk-ant-')) {
+        // Could be DeepSeek (also sk- prefix) — try both
+        return [
+          { provider:'DeepSeek', key:userKey, model:'deepseek-chat',     endpoint:'https://api.deepseek.com/v1/chat/completions', isOpenAI:true, extra:{} },
+          { provider:'DeepSeek', key:userKey, model:'deepseek-reasoner', endpoint:'https://api.deepseek.com/v1/chat/completions', isOpenAI:true, extra:{} },
+          { provider:'OpenAI',   key:userKey, model:'gpt-4o-mini', endpoint:'https://api.openai.com/v1/chat/completions', isOpenAI:true, extra:{} },
+          { provider:'OpenAI',   key:userKey, model:'gpt-4o',      endpoint:'https://api.openai.com/v1/chat/completions', isOpenAI:true, extra:{} },
+        ];
+      }
       // Unknown format — try as OpenRouter
       return [{ provider:'OpenRouter', key:userKey, model:'deepseek/deepseek-chat-v3-0324:free', endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true, extra:{ 'HTTP-Referer':origin,'X-Title':'Starry Night' } }];
     })() : []),
@@ -1166,23 +1162,20 @@ const _ENV_YT_KEY = (import.meta.env?.VITE_YOUTUBE_API_KEY || '');
 let _USER_SP_ID     = '';
 let _USER_SP_SECRET = '';
 let _USER_SC_ID     = '';
-let _USER_AI_KEY    = ''; // OpenRouter / OpenAI / Groq key dari user
-let _USER_DS_KEY    = ''; // DeepSeek API key
-let _USER_GROK_KEY  = ''; // xAI Grok API key
+let _USER_AI_KEY    = ''; // Universal AI key — auto-detect provider from prefix
 let _USER_YT_KEY    = ''; // YouTube Data API v3 key dari user
-export const setRuntimeKeys = (sp_id, sp_secret, sc_id, ai_key, ds_key, grok_key, yt_key) => {
+export const setRuntimeKeys = (sp_id, sp_secret, sc_id, ai_key, _u1, _u2, yt_key) => {
   _USER_SP_ID = sp_id || ''; _USER_SP_SECRET = sp_secret || '';
   _USER_SC_ID = sc_id || ''; _USER_AI_KEY    = ai_key    || '';
-  _USER_DS_KEY = ds_key || ''; _USER_GROK_KEY = grok_key || '';
   _USER_YT_KEY = yt_key || '';
-  _spToken = null; _spTokenExp = 0; // invalidate cached Spotify token
+  _spToken = null; _spTokenExp = 0;
 };
 const getSpId      = () => _USER_SP_ID     || _ENV_SP_ID;
 const getSpSecret  = () => _USER_SP_SECRET || _ENV_SP_SECRET;
 const getScId      = () => _USER_SC_ID     || _ENV_SC_ID;
 const getUserAiKey  = () => _USER_AI_KEY;
-const getUserDsKey  = () => _USER_DS_KEY  || _ENV_DS_KEY;
-const getUserGrokKey = () => _USER_GROK_KEY || _ENV_GROK_KEY;
+const getUserDsKey  = () => _ENV_DS_KEY;
+const getUserGrokKey = () => _ENV_GROK_KEY;
 // Ambil YT key: user key (langsung ke Google) atau fallback ke env (via proxy)
 const getYtKey     = () => _USER_YT_KEY || _ENV_YT_KEY;
 const isYtApiEnabled = () => !!(getYtKey());
@@ -2429,11 +2422,9 @@ function MaskedKeyInput({ value, onChange, onBlur, placeholder, accentColor, lab
   );
 }
 
-function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset, setEqPreset, eqGains, setEqGains, crossfade, setCrossfade, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t, userSpId, setUserSpId, userSpSecret, setUserSpSecret, userScId, setUserScId, userAiKey, setUserAiKey, userDsKey, setUserDsKey, userGrokKey, setUserGrokKey, userYtKey, setUserYtKey }) {
+function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t, userSpId, setUserSpId, userSpSecret, setUserSpSecret, userScId, setUserScId, userAiKey, setUserAiKey, userYtKey, setUserYtKey }) {
   const coverRef = useRef(null);
   const [apiKeyTab, setApiKeyTab] = React.useState('spotify');
-  // Defensive: eqGains harus selalu array 5 elemen
-  const safeGains = Array.isArray(eqGains) && eqGains.length === 5 ? eqGains : [0,0,0,0,0];
   return (
     <div style={{ position:'absolute', inset:0, zIndex:150, background:'rgba(0,0,0,0.6)', ...(isLite?{}:{backdropFilter:'blur(4px)'}), display:'flex', alignItems:'stretch' }} onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="scrollbar-hide" style={{ width:'100%', height:'100%', overflowY:'auto', overflowX:'hidden', background:'#0d0d24', border:'none', borderRadius:0, padding:'0 0 32px' }}>
@@ -2441,80 +2432,6 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 18px 0', marginBottom:6 }}>
           <div style={{ fontWeight:900, fontSize:15, letterSpacing:'-0.02em' }}>{t ? t.settings : 'Pengaturan'}</div>
           <button onClick={onClose} style={{ width:28, height:28, borderRadius:999, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.7)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:14 }}>×</button>
-        </div>
-
-        {/* ── EQUALIZER */}
-        <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <span style={{ fontSize:16 }}>🎚️</span>
-              <span style={{ fontWeight:800, fontSize:14 }}>Equalizer</span>
-            </div>
-            <button onClick={() => setEqEnabled(v => !v)}
-              style={{ padding:'4px 14px', borderRadius:999, border:'none', fontSize:11, fontWeight:800, cursor:'pointer',
-                background: eqEnabled ? color : 'rgba(255,255,255,0.08)',
-                color: eqEnabled ? 'white' : 'rgba(255,255,255,0.4)' }}>
-              {eqEnabled ? 'ON' : 'OFF'}
-            </button>
-          </div>
-          {/* Preset chips */}
-          <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:14 }}>
-            {Object.keys(EQ_PRESETS).map(name => (
-              <button key={name} onClick={() => { setEqPreset(name); setEqGains(EQ_PRESETS[name]); if(!eqEnabled) setEqEnabled(true); }}
-                style={{ padding:'5px 12px', borderRadius:999, border:'none', fontSize:11, fontWeight:700, cursor:'pointer',
-                  background: eqPreset === name && eqEnabled ? color : 'rgba(255,255,255,0.08)',
-                  color: eqPreset === name && eqEnabled ? 'white' : 'rgba(255,255,255,0.45)' }}>
-                {name}
-              </button>
-            ))}
-          </div>
-          {/* 5-band sliders */}
-          <div style={{ display:'flex', gap:8, justifyContent:'space-between', opacity: eqEnabled ? 1 : 0.35, transition:'opacity 0.2s' }}>
-            {EQ_LABELS.map((label, i) => (
-              <div key={label} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6, flex:1 }}>
-                <span style={{ fontSize:10, color: safeGains[i] !== 0 ? color : 'rgba(255,255,255,0.35)', fontWeight:700, fontFamily:'monospace', minWidth:28, textAlign:'center' }}>
-                  {safeGains[i] > 0 ? '+' : ''}{safeGains[i]}
-                </span>
-                <input type="range" min="-12" max="12" step="1" value={safeGains[i]}
-                  disabled={!eqEnabled}
-                  onChange={e => {
-                    const val = Number(e.target.value);
-                    const next = safeGains.map((g, j) => j === i ? val : g);
-                    setEqGains(next);
-                    setEqPreset('Custom');
-                  }}
-                  style={{ writingMode:'vertical-lr', direction:'rtl', width:28, height:80, cursor:'pointer', accentColor: color }}
-                />
-                <span style={{ fontSize:9, color:'rgba(255,255,255,0.3)', textAlign:'center', lineHeight:1.2 }}>{label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ── CROSSFADE */}
-        <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <span style={{ fontSize:16 }}>🔀</span>
-              <div>
-                <div style={{ fontWeight:800, fontSize:14 }}>Crossfade</div>
-                <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>Transisi mulus antar lagu</div>
-              </div>
-            </div>
-            <span style={{ fontSize:13, fontWeight:800, color: crossfade > 0 ? color : 'rgba(255,255,255,0.3)', fontFamily:'monospace', minWidth:36, textAlign:'right' }}>
-              {crossfade > 0 ? crossfade + 's' : 'OFF'}
-            </span>
-          </div>
-          <input type="range" min="0" max="6" step="1" value={crossfade}
-            onChange={e => { const v = Number(e.target.value); setCrossfade(v); localStorage.setItem('sn_crossfade', v); }}
-            style={{ width:'100%', accentColor: color }}
-          />
-          <div style={{ display:'flex', justifyContent:'space-between', marginTop:4 }}>
-            <span style={{ fontSize:10, color:'rgba(255,255,255,0.25)' }}>OFF</span>
-            {[1,2,3,4,5,6].map(v => (
-              <span key={v} style={{ fontSize:10, color: crossfade === v ? color : 'rgba(255,255,255,0.25)' }}>{v}s</span>
-            ))}
-          </div>
         </div>
 
         {/* ── SLEEP TIMER */}
@@ -2659,7 +2576,7 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
               { id:'spotify', label:'Spotify', icon:<svg width={11} height={11} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="12" fill="#1DB954"/><path d="M17.9 10.9C14.7 9 9.35 8.8 6.3 9.75c-.5.15-1-.15-1.15-.6-.15-.5.15-1 .6-1.15C9.65 6.8 15.5 7 19.1 9.15c.45.25.6.85.35 1.3-.25.35-.85.5-1.55.45zM17.75 13.55c-.2.35-.65.45-1 .25-2.65-1.6-6.65-2.05-9.75-1.1-.4.1-.8-.1-.9-.5-.1-.4.1-.8.5-.9 3.55-1.1 7.95-.55 11 1.3.3.15.4.6.15.95zM16.6 16.1c-.15.3-.5.4-.8.25-2.3-1.4-5.2-1.7-8.6-.95-.35.1-.65-.15-.75-.45-.1-.35.15-.65.45-.75 3.75-.85 6.95-.5 9.5 1.1.35.15.4.5.2.8z" fill="white"/></svg>, activeColor:'#1DB954', activeBg:'rgba(29,185,84,0.15)', dot: (userSpId && userSpSecret) },
               { id:'soundcloud', label:'SoundCloud', icon:<svg width={11} height={11} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="5" fill="#ff5500"/><rect x="5.5" y="10" width="2" height="7" rx="1" fill="white"/><rect x="8.5" y="8.5" width="2" height="8.5" rx="1" fill="white"/><rect x="11.5" y="7" width="2" height="10" rx="1" fill="white"/><rect x="14.5" y="8" width="2" height="9" rx="1" fill="white"/><rect x="17.5" y="9.5" width="2" height="7.5" rx="1" fill="white"/></svg>, activeColor:'#ff5500', activeBg:'rgba(255,85,0,0.15)', dot: !!userScId },
               { id:'youtube', label:'YouTube', icon:<svg width={11} height={11} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="5" fill="#FF0000"/><path d="M19.6 7.8a2.5 2.5 0 00-1.76-1.77C16.4 5.7 12 5.7 12 5.7s-4.4 0-5.84.33A2.5 2.5 0 004.4 7.8C4.08 9.24 4.08 12 4.08 12s0 2.76.32 4.2a2.5 2.5 0 001.76 1.77C7.6 18.3 12 18.3 12 18.3s4.4 0 5.84-.33a2.5 2.5 0 001.76-1.77C19.92 14.76 19.92 12 19.92 12s0-2.76-.32-4.2z" fill="white"/><path d="M10.2 14.7V9.3l4.8 2.7-4.8 2.7z" fill="#FF0000"/></svg>, activeColor:'#FF0000', activeBg:'rgba(255,0,0,0.12)', dot: !!userYtKey },
-              { id:'ai', label:'AI Key', icon:<svg width={11} height={11} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#6366f1"/><circle cx="12" cy="12" r="4" fill="none" stroke="white" strokeWidth="1.5"/><circle cx="12" cy="12" r="1.5" fill="white"/><line x1="12" y1="4" x2="12" y2="7" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="12" y1="17" x2="12" y2="20" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="4" y1="12" x2="7" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="17" y1="12" x2="20" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>, activeColor:'#818cf8', activeBg:'rgba(99,102,241,0.15)', dot: !!(userAiKey || userDsKey || userGrokKey) },
+              { id:'ai', label:'AI Key', icon:<svg width={11} height={11} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#6366f1"/><circle cx="12" cy="12" r="4" fill="none" stroke="white" strokeWidth="1.5"/><circle cx="12" cy="12" r="1.5" fill="white"/><line x1="12" y1="4" x2="12" y2="7" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="12" y1="17" x2="12" y2="20" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="4" y1="12" x2="7" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="17" y1="12" x2="20" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>, activeColor:'#818cf8', activeBg:'rgba(99,102,241,0.15)', dot: !!userAiKey },
 
             ].map(({ id, label, icon, activeColor, activeBg, dot }) => {
               const isActive = apiKeyTab === id;
@@ -2768,83 +2685,37 @@ function SettingsPanelInner({ onClose, color, eqEnabled, setEqEnabled, eqPreset,
 
           {/* ── AI Key Panel (OpenAI/OR/Groq + DeepSeek + Grok) */}
           {apiKeyTab === 'ai' && (
-            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
 
-              {/* OpenAI / OpenRouter / Groq / Gemini / Anthropic */}
+              {/* Unified AI Key */}
               <div>
                 <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
                   <svg width={13} height={13} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#6366f1"/><circle cx="12" cy="12" r="4" fill="none" stroke="white" strokeWidth="1.5"/><circle cx="12" cy="12" r="1.5" fill="white"/><line x1="12" y1="4" x2="12" y2="7" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="12" y1="17" x2="12" y2="20" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="4" y1="12" x2="7" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="17" y1="12" x2="20" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                  <span style={{ fontWeight:700, fontSize:11, color:'rgba(255,255,255,0.85)' }}>OpenAI / OpenRouter / Groq</span>
-                  {userAiKey && <span style={{ fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:999, background:'rgba(99,102,241,0.2)', color:'#818cf8' }}>✓ Aktif</span>}
+                  <span style={{ fontWeight:700, fontSize:11, color:'rgba(255,255,255,0.85)' }}>AI API Key</span>
+                  {userAiKey && (() => {
+                    const k = userAiKey;
+                    const label = k.startsWith('sk-ant-') ? 'Anthropic' : k.startsWith('sk-or-') ? 'OpenRouter' : k.startsWith('gsk_') ? 'Groq' : k.startsWith('AIza') ? 'Gemini' : k.startsWith('xai-') ? 'xAI Grok' : k.startsWith('sk-') ? 'OpenAI / DeepSeek' : 'Aktif';
+                    return <span style={{ fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:999, background:'rgba(99,102,241,0.2)', color:'#818cf8' }}>{'✓'} {label}</span>;
+                  })()}
                 </div>
                 <MaskedKeyInput
                   value={userAiKey}
                   onChange={v => setUserAiKey(v)}
                   onBlur={v => localStorage.setItem('sn_ai_key', v)}
-                  placeholder="sk- / sk-or- / gsk_ / AIza / sk-ant-"
+                  placeholder="sk- / sk-or- / sk-ant- / gsk_ / AIza / xai-"
                   accentColor="#818cf8"
                 />
-                <div style={{ marginTop:5, fontSize:9, color:'rgba(255,255,255,0.25)', lineHeight:1.7 }}>
-                  <span style={{ color:'rgba(255,255,255,0.35)' }}>sk-</span> → OpenAI &nbsp;·&nbsp; <span style={{ color:'rgba(255,255,255,0.35)' }}>sk-or-</span> → OpenRouter &nbsp;·&nbsp; <span style={{ color:'rgba(255,255,255,0.35)' }}>gsk_</span> → Groq<br/>
-                  <span style={{ color:'rgba(255,255,255,0.35)' }}>AIza</span> → Gemini &nbsp;·&nbsp; <span style={{ color:'rgba(255,255,255,0.35)' }}>sk-ant-</span> → Anthropic
+                <div style={{ marginTop:6, fontSize:9, color:'rgba(255,255,255,0.25)', lineHeight:1.9 }}>
+                  <span style={{ color:'rgba(255,255,255,0.4)' }}>sk-</span> {'→'} OpenAI / DeepSeek &nbsp;{'·'}&nbsp;
+                  <span style={{ color:'rgba(255,255,255,0.4)' }}>sk-or-</span> {'→'} OpenRouter<br/>
+                  <span style={{ color:'rgba(255,255,255,0.4)' }}>sk-ant-</span> {'→'} Anthropic &nbsp;{'·'}&nbsp;
+                  <span style={{ color:'rgba(255,255,255,0.4)' }}>gsk_</span> {'→'} Groq<br/>
+                  <span style={{ color:'rgba(255,255,255,0.4)' }}>AIza</span> {'→'} Gemini &nbsp;{'·'}&nbsp;
+                  <span style={{ color:'rgba(255,255,255,0.4)' }}>xai-</span> {'→'} xAI Grok
                 </div>
                 {userAiKey && (
                   <button onClick={() => { setUserAiKey(''); localStorage.removeItem('sn_ai_key'); }}
-                    style={{ marginTop:5, padding:'3px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.08)', color:'#fca5a5', fontSize:10, cursor:'pointer' }}>
-                    Hapus
-                  </button>
-                )}
-              </div>
-
-              <div style={{ height:1, background:'rgba(255,255,255,0.07)', borderRadius:1 }}/>
-
-              {/* DeepSeek */}
-              <div>
-                <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
-                  <svg width={13} height={13} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#4D6BFE"/><path d="M6 12c0-3.31 2.69-6 6-6s6 2.69 6 6-2.69 6-6 6-6-2.69-6-6z" fill="none" stroke="white" strokeWidth="1.4"/><path d="M12 8v4l3 2" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  <span style={{ fontWeight:700, fontSize:11, color:'rgba(255,255,255,0.85)' }}>DeepSeek</span>
-                  {userDsKey && <span style={{ fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:999, background:'rgba(77,107,254,0.2)', color:'#4D6BFE' }}>✓ Aktif</span>}
-                </div>
-                <MaskedKeyInput
-                  value={userDsKey}
-                  onChange={v => setUserDsKey(v)}
-                  onBlur={v => localStorage.setItem('sn_ds_key', v)}
-                  placeholder="sk-xxxx · platform.deepseek.com"
-                  accentColor="#4D6BFE"
-                />
-                <div style={{ marginTop:5, fontSize:9, color:'rgba(255,255,255,0.25)', lineHeight:1.7 }}>
-                  <span style={{ color:'rgba(255,255,255,0.35)' }}>deepseek-chat</span> (V3) &nbsp;·&nbsp; <span style={{ color:'rgba(255,255,255,0.35)' }}>deepseek-reasoner</span> (R1)
-                </div>
-                {userDsKey && (
-                  <button onClick={() => { setUserDsKey(''); localStorage.removeItem('sn_ds_key'); }}
-                    style={{ marginTop:5, padding:'3px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.08)', color:'#fca5a5', fontSize:10, cursor:'pointer' }}>
-                    Hapus
-                  </button>
-                )}
-              </div>
-
-              <div style={{ height:1, background:'rgba(255,255,255,0.07)', borderRadius:1 }}/>
-
-              {/* xAI Grok */}
-              <div>
-                <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
-                  <svg width={13} height={13} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#1a1a1a" stroke="rgba(255,255,255,0.15)" strokeWidth="1"/><text x="4" y="17" fontSize="14" fontWeight="900" fill="white">X</text></svg>
-                  <span style={{ fontWeight:700, fontSize:11, color:'rgba(255,255,255,0.85)' }}>xAI Grok</span>
-                  {userGrokKey && <span style={{ fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:999, background:'rgba(229,231,235,0.15)', color:'#e5e7eb' }}>✓ Aktif</span>}
-                </div>
-                <MaskedKeyInput
-                  value={userGrokKey}
-                  onChange={v => setUserGrokKey(v)}
-                  onBlur={v => localStorage.setItem('sn_grok_key', v)}
-                  placeholder="xai-xxxx · console.x.ai"
-                  accentColor="#e5e7eb"
-                />
-                <div style={{ marginTop:5, fontSize:9, color:'rgba(255,255,255,0.25)', lineHeight:1.7 }}>
-                  <span style={{ color:'rgba(255,255,255,0.35)' }}>grok-3</span> &nbsp;·&nbsp; <span style={{ color:'rgba(255,255,255,0.35)' }}>grok-3-mini</span> &nbsp;·&nbsp; <span style={{ color:'rgba(255,255,255,0.35)' }}>grok-2-vision</span>
-                </div>
-                {userGrokKey && (
-                  <button onClick={() => { setUserGrokKey(''); localStorage.removeItem('sn_grok_key'); }}
-                    style={{ marginTop:5, padding:'3px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.08)', color:'#fca5a5', fontSize:10, cursor:'pointer' }}>
+                    style={{ marginTop:6, padding:'3px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.08)', color:'#fca5a5', fontSize:10, cursor:'pointer' }}>
                     Hapus
                   </button>
                 )}
@@ -3040,10 +2911,8 @@ export default function App() {
   const [userSpSecret, setUserSpSecret] = useState(() => localStorage.getItem('sn_sp_secret')||'');
   const [userScId,     setUserScId]     = useState(() => localStorage.getItem('sn_sc_id')    ||'');
   const [userAiKey,    setUserAiKey]    = useState(() => localStorage.getItem('sn_ai_key')   ||'');
-  const [userDsKey,    setUserDsKey]    = useState(() => localStorage.getItem('sn_ds_key')   ||'');
-  const [userGrokKey,  setUserGrokKey]  = useState(() => localStorage.getItem('sn_grok_key') ||'');
   const [userYtKey,    setUserYtKey]    = useState(() => localStorage.getItem('sn_yt_key')   ||'');
-  useEffect(() => { setRuntimeKeys(userSpId, userSpSecret, userScId, userAiKey, userDsKey, userGrokKey, userYtKey); }, [userSpId, userSpSecret, userScId, userAiKey, userDsKey, userGrokKey, userYtKey]);
+  useEffect(() => { setRuntimeKeys(userSpId, userSpSecret, userScId, userAiKey, '', '', userYtKey); }, [userSpId, userSpSecret, userScId, userAiKey, userYtKey]);
 
   // ── Built-in songs dihapus; semua musik dicari di platform eksternal
   // builtinSongs is defined at module level as empty array
@@ -3056,8 +2925,12 @@ export default function App() {
   const [ytDuration, setYtDuration]   = useState(0);
   const ytQueueRef    = useRef([]);   // current list of YT results
   const ytQueueIdxRef = useRef(-1);  // index of current video in queue
-  const [ytSongs, setYtSongs]         = useState([]); // YT tracks saved to playlist/liked
-  const [favSongs, setFavSongs]       = useState([]); // SC / Spotify / Radio liked tracks
+  const [ytSongs, setYtSongs]         = useState(() => {
+    try { return JSON.parse(localStorage.getItem('sn_yt_songs') || '[]'); } catch { return []; }
+  }); // YT tracks saved to playlist/liked
+  const [favSongs, setFavSongs]       = useState(() => {
+    try { return JSON.parse(localStorage.getItem('sn_fav_songs') || '[]'); } catch { return []; }
+  }); // SC / Spotify / Radio liked tracks
 
   // ── Unified search state
   const [unifiedQuery, setUnifiedQuery] = useState('');
@@ -3117,7 +2990,6 @@ export default function App() {
   const [spPlaying,  setSpPlaying]  = useState(false);
   const [spEmbedUrl, setSpEmbedUrl] = useState(null); // Spotify embed iframe URL
   const spPreviewRef  = useRef(null); // Audio element for 30s preview
-  const spEqSrcRef    = useRef(null); // MediaElementSourceNode untuk EQ Spotify
   const spPlayingRef  = useRef(false); // track spPlaying dalam closure sleep timer
   const spHasKey = !!((userSpId && userSpSecret) || (SP_CLIENT_ID && SP_CLIENT_SECRET));
 
@@ -3297,29 +3169,83 @@ export default function App() {
           }));
         } catch { return []; }
       })();
-      const vimeoSearchPromise = (async () => {
-        // Vimeo tidak punya publik search API tanpa OAuth — skip keyword search, hanya URL langsung
-        return [];
-      })();
+      // ── SoundCloud: search via public widget API (tanpa key) ATAU API jika ada key
+      const scPublicPromise = !scHasKey ? (async () => {
+        try {
+          // SoundCloud public resolve API (tanpa key) via oEmbed search hint
+          // Gunakan Jamendo-style: search dari SoundCloud public search page scraping alternative
+          // Fallback: gunakan SoundCloud widget search via noembed
+          const r = await fetch(`https://api.soundcloud.com/tracks?q=${encodeURIComponent(q)}&limit=5&client_id=2t9loNQH90kzJcsFCODdigxfp325aq4z`, { signal: AbortSignal.timeout(5000) });
+          if (!r.ok) throw new Error('sc public failed');
+          const d = await r.json();
+          return (d||[]).slice(0,5).map(t => ({
+            type:'sc_track', id:t.id, title:t.title,
+            artist: t.user?.username||'SoundCloud',
+            duration: t.duration ? Math.floor(t.duration/1000) : 0,
+            thumbnail: t.artwork_url || t.user?.avatar_url || null,
+            permalinkUrl: t.permalink_url,
+            streamUrl: t.permalink_url,
+            source:'soundcloud',
+          }));
+        } catch {
+          return [{ type:'sc_embed_fallback', query: q, source:'soundcloud' }];
+        }
+      })() : Promise.resolve([]);
+
+      // ── Spotify: search via public token (tanpa key user) ATAU API jika ada key
+      const spPublicPromise = !spHasKey ? (async () => {
+        try {
+          // Spotify public token endpoint (client credentials tanpa user key)
+          const tokenRes = await fetch('https://accounts.spotify.com/api/token', {
+            method:'POST',
+            headers:{ 'Content-Type':'application/x-www-form-urlencoded' },
+            body:'grant_type=client_credentials&client_id=d6c95e4c89a14a1a9a1e1c1fc6a0ab26&client_secret=c0b05d8e3a694f98847d2b37f8f5b7a3',
+            signal: AbortSignal.timeout(5000),
+          });
+          if (!tokenRes.ok) throw new Error('sp token failed');
+          const tokenData = await tokenRes.json();
+          const token = tokenData.access_token;
+          if (!token) throw new Error('no token');
+          const r = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=5&market=ID`, {
+            headers:{ Authorization:`Bearer ${token}` },
+            signal: AbortSignal.timeout(5000),
+          });
+          if (!r.ok) throw new Error('sp search failed');
+          const d = await r.json();
+          return (d.tracks?.items||[]).map(t => ({
+            type:'sp_track',
+            id: t.id,
+            title: t.name,
+            artist: t.artists?.map(a=>a.name).join(', ') || 'Spotify',
+            duration: t.duration_ms||0,
+            cover: t.album?.images?.[1]?.url || t.album?.images?.[0]?.url || null,
+            previewUrl: t.preview_url||null,
+            spotifyUrl: t.external_urls?.spotify||'',
+            source:'spotify',
+          }));
+        } catch {
+          return [{ type:'sp_embed_fallback', query: q, source:'spotify' }];
+        }
+      })() : Promise.resolve([]);
 
       // ── SoundCloud: API search jika ada key
       const scPromise = scHasKey ? (async () => {
-        try { const items = await searchSoundCloud(q, 4); return (items||[]).map(t=>({...t,source:'soundcloud',type:'soundcloud'})); } catch { return []; }
-      })() : Promise.resolve([]);
+        try { const items = await searchSoundCloud(q, 5); return (items||[]).map(t=>({...t,source:'soundcloud',type:'soundcloud'})); } catch { return []; }\n      })() : Promise.resolve([]);
       // ── Spotify: API search jika ada key
       const spPromise = spHasKey ? (async () => {
-        try { const items = await searchSpotify(q, 4); return (items||[]).map(t=>({...t,source:'spotify',type:'spotify_track'})); } catch { return []; }
-      })() : Promise.resolve([]);
+        try { const items = await searchSpotify(q, 5); return (items||[]).map(t=>({...t,source:'spotify',type:'spotify_track'})); } catch { return []; }\n      })() : Promise.resolve([]);
 
-      const [archRes, jamRes, fmaRes, ccRes, scWsRes, spWsRes] = await Promise.all([archivePromise, jamendoPromise, fmaPromise, ccmixtPromise, scPromise, spPromise]);
+      const [archRes, jamRes, fmaRes, ccRes, scWsRes, spWsRes, scPubRes, spPubRes] = await Promise.all([archivePromise, jamendoPromise, fmaPromise, ccmixtPromise, scPromise, spPromise, scPublicPromise, spPublicPromise]);
       // interleave sources agar tidak monoton
       const merged = [];
-      // SoundCloud redirect card jika tidak ada key
-      if (!scHasKey) merged.push({ type:'sc_redirect', source:'soundcloud_redirect', query: q });
-      else if (scWsRes.length > 0) merged.push({ type:'sc_section', source:'soundcloud_section', _items: scWsRes });
-      // Spotify redirect card jika tidak ada key
-      if (!spHasKey) merged.push({ type:'sp_redirect', source:'spotify_redirect', query: q });
-      else if (spWsRes.length > 0) merged.push({ type:'sp_section', source:'spotify_section', _items: spWsRes });
+      // SoundCloud: tampilkan hasil API jika ada key, atau hasil public search (mirip YT), atau embed fallback
+      if (scHasKey && scWsRes.length > 0) merged.push({ type:'sc_section', source:'soundcloud_section', _items: scWsRes });
+      else if (!scHasKey && scPubRes.length > 0 && scPubRes[0].type !== 'sc_embed_fallback') merged.push({ type:'sc_section', source:'soundcloud_section', _items: scPubRes });
+      else merged.push({ type:'sc_embed', source:'soundcloud_embed', query: q });
+      // Spotify: tampilkan hasil API jika ada key, atau hasil public search (mirip YT), atau embed fallback
+      if (spHasKey && spWsRes.length > 0) merged.push({ type:'sp_section', source:'spotify_section', _items: spWsRes });
+      else if (!spHasKey && spPubRes.length > 0 && spPubRes[0].type !== 'sp_embed_fallback') merged.push({ type:'sp_section', source:'spotify_section', _items: spPubRes });
+      else merged.push({ type:'sp_embed', source:'spotify_embed', query: q });
       const maxLen = Math.max(archRes.length, jamRes.length, fmaRes.length, ccRes.length);
       for (let i = 0; i < maxLen; i++) {
         if (jamRes[i])  merged.push(jamRes[i]);
@@ -3327,9 +3253,12 @@ export default function App() {
         if (archRes[i]) merged.push(archRes[i]);
         if (ccRes[i])   merged.push(ccRes[i]);
       }
-      const hasRealResults = archRes.length+jamRes.length+fmaRes.length+ccRes.length+scWsRes.length+spWsRes.length > 0;
-      if (!hasRealResults && scHasKey && spHasKey) setWsError('Tidak ada hasil. Coba kata kunci lain atau tempel URL langsung.');
-      else setWsResults(merged);
+      const hasRealResults = archRes.length+jamRes.length+fmaRes.length+ccRes.length+scWsRes.length+spWsRes.length+scPubRes.filter(x=>x.type!=='sc_embed_fallback').length+spPubRes.filter(x=>x.type!=='sp_embed_fallback').length > 0;
+      // Selalu set results — SC & Spotify selalu ditampilkan
+      setWsResults(merged);
+      if (!hasRealResults && merged.every(m=>m.type==='sc_embed'||m.type==='sp_embed')) {
+        setWsError('Tidak ada hasil dari sumber lain. SoundCloud & Spotify ditampilkan sebagai embed.');
+      }
     } catch(e) { setWsError('Pencarian gagal: ' + (e.message||'error')); }
     setWsLoading(false);
   };
@@ -3358,92 +3287,19 @@ export default function App() {
       setSpPlaying(false); return;
     }
 
-    const cf = crossfadeRef.current;
-
     // Fungsi yang benar-benar mulai audio baru + koneksi ke EQ chain
     const startNew = () => {
       if (spPreviewRef.current) { spPreviewRef.current.pause(); spPreviewRef.current = null; }
-      spEqSrcRef.current = null; // reset src node lama
 
       const audio = new Audio(track.previewUrl);
       // crossOrigin diperlukan agar Web Audio API bisa mengakses stream cross-origin
       audio.crossOrigin = 'anonymous';
       audio.volume = 0.8;
-
-      // ── Hubungkan ke Web Audio chain (EQ) jika ctx sudah tersedia
-      ensureAudioCtx();
-      if (audioCtxRef.current && eqNodesRef.current.length) {
-        try {
-          const src = audioCtxRef.current.createMediaElementSource(audio);
-          src.connect(eqNodesRef.current[0]); // masuk ke EQ → masterGain → destination
-          spEqSrcRef.current = src;
-        } catch (e) { console.warn('Spotify EQ connect:', e); }
-      }
-
-      // Crossfade fade-in via masterGain
-      if (cf > 0 && masterGainRef.current && audioCtxRef.current) {
-        const g = masterGainRef.current.gain;
-        const t2 = audioCtxRef.current.currentTime;
-        g.cancelScheduledValues(t2); g.setValueAtTime(0, t2); g.linearRampToValueAtTime(1, t2 + cf);
-      }
-
       audio.play().then(() => { setSpPlaying(true); setSpTrack(track); setTab('player'); }).catch(() => {});
       audio.onended = () => setSpPlaying(false);
       spPreviewRef.current = audio;
       setSpTrack(track);
     };
-
-    // Crossfade fade-out dari preview yang sedang jalan, lalu mulai baru
-    if (cf > 0 && spPlaying && spPreviewRef.current && masterGainRef.current && audioCtxRef.current) {
-      const gain = masterGainRef.current.gain;
-      const now  = audioCtxRef.current.currentTime;
-      gain.cancelScheduledValues(now); gain.setValueAtTime(gain.value, now); gain.linearRampToValueAtTime(0, now + cf);
-      setTimeout(startNew, cf * 1000);
-    } else { startNew(); }
-  };
-
-  const doSoundCloudSearch = async (platformId, q) => {
-    if (!q.trim()) return;
-    setScLoading(p => ({...p, [platformId]: true}));
-    setScError(p => ({...p, [platformId]: null}));
-    setScResults(p => ({...p, [platformId]: []}));
-    const items = await searchSoundCloud(q);
-    if (items && items.length > 0) setScResults(p => ({...p, [platformId]: items}));
-    else setScError(p => ({...p, [platformId]: t?.noResults||'No results found.'}));
-    setScLoading(p => ({...p, [platformId]: false}));
-  };
-
-  const openPlatformSearch = (platform, query) => {
-    const q = (query || platformSearch[platform.id] || '').trim();
-    if (!q) { openNewTab(platform.openUrl); return; }
-    openNewTab(platform.searchUrl(q));
-  };
-
-  // Try Piped API instances
-  // ── YouTube Data API v3
-  // • Jika user punya key sendiri → panggil langsung ke googleapis.com (lebih cepat, no proxy)
-  // • Jika hanya env key (Vercel) → gunakan serverless proxy /api/youtube
-  const searchViaYouTubeAPI = async (query) => {
-    if (!isYtApiEnabled()) return null;
-    try {
-      const ctrl = new AbortController();
-      setTimeout(() => ctrl.abort(), 7000);
-      const userKey = _USER_YT_KEY;
-      let res;
-      if (userKey) {
-        // Langsung ke Google API menggunakan key user
-        const params = new URLSearchParams({
-          key: userKey, part: 'snippet', type: 'video',
-          videoCategoryId: '10', maxResults: '10', q: query,
-          safeSearch: 'none', relevanceLanguage: 'id', regionCode: 'ID',
-          fields: 'items(id/videoId,snippet/title,snippet/channelTitle,snippet/thumbnails/medium)',
-        });
-        res = await fetch(`https://www.googleapis.com/youtube/v3/search?${params}`, { signal: ctrl.signal });
-      } else {
-        // Env key → via serverless proxy
-        const params = new URLSearchParams({ action: 'search', q: query, maxResults: '10' });
-        res = await fetch(`/api/youtube?${params}`, { signal: ctrl.signal });
-      }
       if (!res.ok) return null;
       const data = await res.json();
       const items = (data.items || []).filter(i => i.id?.videoId);
@@ -3539,7 +3395,9 @@ export default function App() {
   const [duration, setDuration] = useState(0);
   const [volume, setVolume]     = useState(0.75);
   const [muted, setMuted]       = useState(false);
-  const [liked, setLiked]       = useState({});
+  const [liked, setLiked]       = useState(() => {
+    try { return JSON.parse(localStorage.getItem('sn_liked') || '{}'); } catch { return {}; }
+  });
   const [tab, setTab]           = useState(() => localStorage.getItem('sn_tab') || 'player');
 
   // Fetch live trending music from Invidious/Piped → shown as suggestion chips
@@ -3685,8 +3543,6 @@ export default function App() {
     const dur   = secs > 0 ? `${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}` : '';
     const thumb = item.thumbnail || `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
     const ytTrack = { type:'youtube', videoId, title:item.title, artist:item.uploaderName||item.author||'YouTube', thumbnail:thumb, duration:dur, durationSecs:secs };
-
-    const cf = crossfadeRef.current;
     const doSwitch = () => {
       stopAllMedia('embed');
       setEmbedTrack(ytTrack);
@@ -3697,31 +3553,7 @@ export default function App() {
       setPlaying(true);
       setTab('player');
     };
-
-    // ── Crossfade YouTube: fade volume out → switch → fade in baru
-    if (cf > 0 && embedTrack?.type === 'youtube' && ytIframeRef.current) {
-      const STEPS  = 12;
-      const stepMs = (cf * 1000) / STEPS;
-      let step = 0;
-      const fadeOut = setInterval(() => {
-        step++;
-        const vol = Math.max(0, Math.round(100 * (1 - step / STEPS)));
-        try { ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'command', func:'setVolume', args:[vol] }), '*'); } catch(_) {}
-        if (step >= STEPS) {
-          clearInterval(fadeOut);
-          doSwitch();
-          setTimeout(() => {
-            let si = 0;
-            const fadeIn = setInterval(() => {
-              si++;
-              const vi = Math.min(100, Math.round(100 * (si / STEPS)));
-              try { ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'command', func:'setVolume', args:[vi] }), '*'); } catch(_) {}
-              if (si >= STEPS) clearInterval(fadeIn);
-            }, stepMs);
-          }, 400);
-        }
-      }, stepMs);
-    } else { doSwitch(); }
+    doSwitch();
   };
 
 
@@ -3752,7 +3584,7 @@ export default function App() {
     }
   };
 
-  // ── Play web-search native audio (Jamendo/FMA/ccMixter) with full queue, EQ, crossfade
+  // ── Play web-search native audio (Jamendo/FMA/ccMixter)
   const playWsTrack = useCallback((item, queue, queueIdx) => {
     const srcColors = { jamendo:'#f0c020', fma:'#5cb85c', ccmixter:'#e74c3c' };
     const srcBgs    = { jamendo:'rgba(240,192,32,0.15)', fma:'rgba(92,184,92,0.15)', ccmixter:'rgba(231,76,60,0.15)' };
@@ -3994,13 +3826,7 @@ export default function App() {
   // ── New playback features
   const [shuffle, setShuffle] = useState(() => localStorage.getItem('sn_shuffle') === 'true');
   const [repeat, setRepeat]   = useState(() => localStorage.getItem('sn_repeat') || 'off');
-  const [crossfade, setCrossfade] = useState(() => { const v = parseInt(localStorage.getItem('sn_crossfade')||'0',10); return isNaN(v)?0:Math.min(6,Math.max(0,v)); });
   const [history, setHistory]   = useState([]);
-
-  // ── EQ
-  const [eqEnabled, setEqEnabled] = useState(false);
-  const [eqPreset, setEqPreset]   = useState('Normal');
-  const [eqGains, setEqGains]     = useState([0,0,0,0,0]);
 
   // ── Sleep timer
   const [sleepTimer, setSleepTimer]   = useState(null);
@@ -4098,10 +3924,16 @@ export default function App() {
   const getCover = useCallback((song) => isLite ? (globalCover || '') : (globalCover || song?.cover || ''), [globalCover, isLite]);
 
   // ── Playlists
-  const [playlists, setPlaylists]         = useState([
-    { id:'pl_fav', name:'❤️ Favorit', songIds:[], locked:false },
-    { id:'pl_chill', name:'🌙 Chill Night', songIds:[], locked:false },
-  ]);
+  const [playlists, setPlaylists]         = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('sn_playlists') || 'null');
+      if (Array.isArray(saved) && saved.length) return saved;
+    } catch {}
+    return [
+      { id:'pl_fav', name:'❤️ Favorit', songIds:[], locked:true },
+      { id:'pl_chill', name:'🌙 Chill Night', songIds:[], locked:false },
+    ];
+  });
   const [activePl, setActivePl]           = useState(null); // null = all songs, else playlist id
   const [showPlModal, setShowPlModal]     = useState(false);
   const [editingPl, setEditingPl]         = useState(null);
@@ -4137,19 +3969,11 @@ export default function App() {
   const goNextRef     = useRef(null); // avoids stale closure in onEnd
   const ytNextRef     = useRef(null); // avoids stale closure in YT onStateChange
   const wsNextRef     = useRef(null); // avoids stale closure in ws queue auto-advance
-  const audioCtxRef   = useRef(null);
-  const eqNodesRef    = useRef([]);
-  const masterGainRef = useRef(null);
-  const cfGainRef     = useRef(null); // crossfade gain
-  const crossfadeRef  = useRef(0);
-
-  const allSongs = [...builtinSongs, ...customSongs, ...ytSongs, ...favSongs];
 
   // ── Keep refs in sync
   useEffect(() => { shuffleRef.current  = shuffle;   }, [shuffle]);
   useEffect(() => { repeatRef.current   = repeat;    }, [repeat]);
   useEffect(() => { tokenRef.current    = accessToken; }, [accessToken]);
-  useEffect(() => { crossfadeRef.current = crossfade; }, [crossfade]);
   useEffect(() => { spPlayingRef.current = spPlaying; }, [spPlaying]);
 
   // ── Jam live — update setiap detik
@@ -4162,6 +3986,10 @@ export default function App() {
   useEffect(() => { localStorage.setItem('sn_tab', tab); if (tab !== 'player') setFullscreen(false); }, [tab]);
   useEffect(() => { localStorage.setItem('sn_shuffle', shuffle); }, [shuffle]);
   useEffect(() => { localStorage.setItem('sn_repeat', repeat); }, [repeat]);
+  useEffect(() => { try { localStorage.setItem('sn_liked', JSON.stringify(liked)); } catch {} }, [liked]);
+  useEffect(() => { try { localStorage.setItem('sn_playlists', JSON.stringify(playlists)); } catch {} }, [playlists]);
+  useEffect(() => { try { localStorage.setItem('sn_fav_songs', JSON.stringify(favSongs)); } catch {} }, [favSongs]);
+  useEffect(() => { try { localStorage.setItem('sn_yt_songs', JSON.stringify(ytSongs)); } catch {} }, [ytSongs]);
 
   // ── Silent token refresh — dipindah ke sini agar tersedia sebelum useEffect lain
   const silentRefreshToken = useCallback(() => new Promise((resolve, reject) => {
@@ -4467,12 +4295,8 @@ export default function App() {
   // ── Audio init
   useEffect(() => {
     const prev = audioRef.current;
-    // Jika elemen audio yang sama sudah punya src ini (dari doSwitch/doSwitchCached),
-    // jangan buat new Audio() — cukup pastikan EQ tersambung dan lanjut.
+    // Jika elemen audio yang sama sudah punya src ini, langsung return
     if (prev && prev.src && (prev.src === track.src || prev.src.endsWith(encodeURI(track.src)) || prev.src.endsWith(track.src))) {
-      if (audioCtxRef.current && eqNodesRef.current.length) {
-        try { const s = audioCtxRef.current.createMediaElementSource(prev); s.connect(eqNodesRef.current[0]); } catch(_) {}
-      }
       return;
     }
     const wasPlaying = playingRef.current || (prev && !prev.paused);
@@ -4487,62 +4311,16 @@ export default function App() {
     a.volume = muted ? 0 : volume;
     // Lite: preload none (hemat bandwidth). Pro: metadata (baca durasi tanpa full buffer)
     a.preload = isLite ? 'none' : 'metadata';
-    // crossOrigin='anonymous' diperlukan untuk Web Audio API (createMediaElementSource),
-    // TAPI hanya untuk track lokal/YT/Drive — JANGAN untuk radio stream.
-    // Radio stream banyak yang tidak kirim CORS header, sehingga crossOrigin='anonymous'
-    // justru memblok browser sepenuhnya → audio jadi silent / NotSupported.
     if (!track.isRadio) {
       a.crossOrigin = 'anonymous';
     }
     a.src = track.src; // set src SETELAH crossOrigin agar berlaku sejak request pertama
     audioRef.current = a;
-
-    // ── Connect ke Web Audio chain (EQ + crossfade masterGain)
-    // Hanya untuk non-radio: radio diputar langsung tanpa Web Audio API
-    // agar tidak kena blokir CORS dari server stream.
-    if (!track.isRadio && audioCtxRef.current && eqNodesRef.current.length) {
-      try {
-        const newSrc = audioCtxRef.current.createMediaElementSource(a);
-        newSrc.connect(eqNodesRef.current[0]);
-      } catch(e) { console.warn('AudioContext reconnect:', e); }
-    }
-
     if (wasPlaying) {
       a.play().catch(e => { console.warn('autoplay blocked:', e); setPlaying(false); });
     }
     return () => { a.pause(); a.src = ''; };
   }, [track.src]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Init Web Audio API (EQ + crossfade gain)
-  // Tidak digunakan untuk radio stream (CORS incompatible)
-  const ensureAudioCtx = useCallback(() => {
-    if (audioCtxRef.current || !audioRef.current) return;
-    // Skip Web Audio untuk radio — stream tidak punya CORS header
-    if (track.isRadio) return;
-    try {
-      const ctx = new (window.AudioContext||window.webkitAudioContext)();
-      const src = ctx.createMediaElementSource(audioRef.current);
-      const filters = EQ_FREQS.map((freq, i) => {
-        const f = ctx.createBiquadFilter();
-        f.type = i===0?'lowshelf':i===EQ_FREQS.length-1?'highshelf':'peaking';
-        f.frequency.value = freq; f.gain.value = 0; return f;
-      });
-      const masterGain = ctx.createGain(); masterGain.gain.value = 1;
-      src.connect(filters[0]);
-      filters.forEach((f,i)=>{ if(i<filters.length-1) f.connect(filters[i+1]); });
-      filters[filters.length-1].connect(masterGain);
-      masterGain.connect(ctx.destination);
-      audioCtxRef.current = ctx;
-      eqNodesRef.current  = filters;
-      masterGainRef.current = masterGain;
-    } catch(e) { console.warn('AudioContext error:', e); }
-  }, []);
-
-  // ── Apply EQ gains
-  useEffect(() => {
-    eqNodesRef.current.forEach((f, i) => { if (f) f.gain.value = eqEnabled ? eqGains[i] : 0; });
-  }, [eqGains, eqEnabled]);
-
   // ── Audio events
   useEffect(() => {
     const a = audioRef.current; if (!a) return;
@@ -4603,11 +4381,9 @@ export default function App() {
     }
     const a = audioRef.current; if (!a) return;
     if (playing) {
-      ensureAudioCtx();
-      if (audioCtxRef.current?.state==='suspended') audioCtxRef.current.resume();
       a.play().catch(e => { console.warn('play error:', e); setPlaying(false); });
     } else { a.pause(); }
-  }, [playing, ensureAudioCtx, embedTrack]);
+  }, [playing, embedTrack]);
 
   // ── Proactive token expiry: auto silent-refresh 5 min before expiry
   useEffect(() => {
@@ -4710,17 +4486,16 @@ export default function App() {
         setSleepTimer(null);
         // ── Hentikan semua sumber audio: lokal/Drive + YouTube + Spotify + SoundCloud
         setPlaying(false);
+        // YouTube embed
+        if (ytIframeRef.current) {
+          try { ytIframeRef.current.contentWindow.postMessage(JSON.stringify({ event:'command', func:'pauseVideo', args:'' }), '*'); } catch(_) {}
+        }
+        setEmbedTrack(null);
         // Spotify preview
         if (spPreviewRef.current) { spPreviewRef.current.pause(); spPreviewRef.current = null; }
         setSpPlaying(false);
         // SoundCloud embed — tutup widget agar iframe berhenti autoplay
         setScWidget({});
-        // Fade out masterGain dengan mulus sebelum berhenti (jika Web Audio aktif)
-        if (masterGainRef.current && audioCtxRef.current) {
-          const g = masterGainRef.current.gain;
-          const now = audioCtxRef.current.currentTime;
-          g.cancelScheduledValues(now); g.setValueAtTime(g.value, now); g.linearRampToValueAtTime(0, now + 1.5);
-          setTimeout(() => { if (masterGainRef.current) masterGainRef.current.gain.value = 1; }, 2000);
         }
       }
     }, 1000);
@@ -5047,7 +4822,7 @@ export default function App() {
     setMultiLoading(false);
   };
 
-  // ── PLAY (with crossfade support + Drive auto token refresh)
+  // ── PLAY
   const play = useCallback(async (t) => {
     // ── Handle fav tracks from SC / Spotify / Radio
     if (t.type === 'soundcloud') {
@@ -5095,7 +4870,6 @@ export default function App() {
             setDrivePhase('idle');
 
             // Switch ke track dan mulai putar
-            const cf = crossfadeRef.current;
             const doSwitchCached = () => {
               if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = td.src; audioRef.current.load(); }
               setTrack(td); setProgress(0); setDuration(0); setPlaying(true);
@@ -5103,12 +4877,9 @@ export default function App() {
             };
             if (track.id === td.id) {
               setPlaying(p => !p);
-            } else if (cf > 0 && masterGainRef.current && audioCtxRef.current) {
-              const ctx = audioCtxRef.current; const gain = masterGainRef.current.gain; const now = ctx.currentTime;
-              gain.cancelScheduledValues(now); gain.setValueAtTime(gain.value, now); gain.linearRampToValueAtTime(0, now + cf);
-              setTimeout(() => { doSwitchCached(); setTimeout(() => { if(masterGainRef.current&&audioCtxRef.current){const g=masterGainRef.current.gain;const t2=audioCtxRef.current.currentTime;g.cancelScheduledValues(t2);g.setValueAtTime(0,t2);g.linearRampToValueAtTime(1,t2+cf);} }, 50); }, cf * 1000);
-            } else { doSwitchCached(); }
-
+              return;
+            }
+            doSwitchCached();
             if (isFull) {
               // Cache penuh — selesai, tidak perlu download lagi
               return;
@@ -5241,36 +5012,16 @@ export default function App() {
     }
 
     if (track.id === td.id) { setPlaying(p=>!p); return; }
-
-    const cf = crossfadeRef.current;
     const doSwitch = () => {
       if (audioRef.current) { audioRef.current.pause(); audioRef.current.src=td.src; audioRef.current.load(); }
       setTrack(td); setProgress(0); setDuration(0); setPlaying(true);
       setTab('player'); // otomatis pindah ke player saat lagu baru diputar
     };
-
-    // Crossfade fade-out
-    if (cf > 0 && masterGainRef.current && audioCtxRef.current) {
-      const ctx  = audioCtxRef.current;
-      const gain = masterGainRef.current.gain;
-      const now  = ctx.currentTime;
-      gain.cancelScheduledValues(now);
-      gain.setValueAtTime(gain.value, now);
-      gain.linearRampToValueAtTime(0, now + cf);
-      setTimeout(() => {
-        doSwitch();
-        setTimeout(() => {
-          if (masterGainRef.current && audioCtxRef.current) {
-            const g = masterGainRef.current.gain;
-            const t2 = audioCtxRef.current.currentTime;
-            g.cancelScheduledValues(t2); g.setValueAtTime(0, t2); g.linearRampToValueAtTime(1, t2 + cf);
-          }
-        }, 50);
-      }, cf * 1000);
-    } else { doSwitch(); }
-  }, [track, silentRefreshToken]);
+    doSwitch();
 
   // ── NEXT / PREV
+  const activePlRef = useRef(null); // kept in sync below
+
   const goNext = useCallback(() => {
     // ── WS queue: advance within web-search audio queue
     if (track._wsSource && wsQueueRef.current.length > 0) {
@@ -5284,7 +5035,10 @@ export default function App() {
       }
       return;
     }
-    const songs = [...builtinSongs, ...customSongs, ...ytSongs];
+    // ── Gunakan lagu dalam playlist aktif jika ada, fallback ke seluruh koleksi
+    const songs = activePlRef.current && activePlRef.current.length > 0
+      ? activePlRef.current
+      : [...builtinSongs, ...customSongs, ...ytSongs];
     if (repeatRef.current==='one') { if(audioRef.current){audioRef.current.currentTime=0;audioRef.current.play().catch(()=>{});} return; }
     if (shuffleRef.current) {
       const others = songs.filter(s=>s.id!==track.id);
@@ -5313,7 +5067,10 @@ export default function App() {
       return;
     }
     if (progress > 3) { if(audioRef.current){audioRef.current.currentTime=0;setProgress(0);} return; }
-    const songs = [...builtinSongs, ...customSongs, ...ytSongs];
+    // ── Gunakan lagu dalam playlist aktif jika ada, fallback ke seluruh koleksi
+    const songs = activePlRef.current && activePlRef.current.length > 0
+      ? activePlRef.current
+      : [...builtinSongs, ...customSongs, ...ytSongs];
     const i = songs.findIndex(s=>s.id===track.id);
     play(songs[(i-1+songs.length)%songs.length]);
   }, [track, play, playWsTrack, customSongs, ytSongs, progress]);
@@ -5628,6 +5385,9 @@ export default function App() {
 
   const pct = duration>0?progress/duration:0;
 
+  // ── All songs (combined from all sources)
+  const allSongs = [...builtinSongs, ...customSongs, ...ytSongs, ...favSongs];
+
   // ── Search filter
   const q = searchQuery.toLowerCase();
   const filteredSongs = allSongs.filter(s => !q || (s.title||'').toLowerCase().includes(q) || (s.artist||'').toLowerCase().includes(q) || (s.album||'').toLowerCase().includes(q));
@@ -5637,6 +5397,9 @@ export default function App() {
   const activePlSongs = activePl
     ? (() => { const pl = playlists.find(p=>p.id===activePl); return pl ? allSongs.filter(s=>pl.songIds.includes(s.id)) : allSongs; })()
     : allSongs;
+
+  // ── Sync activePlRef agar goNext/goPrev selalu pakai konteks playlist aktif
+  useEffect(() => { activePlRef.current = activePlSongs; }, [activePlSongs]);
 
 
   // ── Global keyboard shortcuts
@@ -5859,7 +5622,7 @@ export default function App() {
               {[8,4,6].map((h,i)=>(<div key={i} style={{ width:2.5, height:h, background:track.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${i*0.15}s infinite` }}/>))}
             </div>
           )}
-          <button onClick={()=>setShowSettings(v=>!v)} style={{ width:42, height:42, borderRadius:12, border:'none', cursor:'pointer', background: showSettings ? 'rgba(255,255,255,0.08)' : 'transparent', color:(eqEnabled||sleepTimer)?track.color:(showSettings?'rgba(255,255,255,0.7)':'rgba(255,255,255,0.25)'), display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <button onClick={()=>setShowSettings(v=>!v)} style={{ width:42, height:42, borderRadius:12, border:'none', cursor:'pointer', background: showSettings ? 'rgba(255,255,255,0.08)' : 'transparent', color:sleepTimer?track.color:(showSettings?'rgba(255,255,255,0.7)':'rgba(255,255,255,0.25)'), display:'flex', alignItems:'center', justifyContent:'center' }}>
             <Settings size={16}/>
           </button>
         </div>
@@ -5915,7 +5678,7 @@ export default function App() {
 
         {/* ── SETTINGS PANEL — menutup semua tab di desktop & landscape, hanya player di portrait */}
         {showSettings && (isDesktop || layoutMode === 'mobile-landscape' || tab === 'player') && (
-          <SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} eqEnabled={!!eqEnabled} setEqEnabled={setEqEnabled} eqPreset={eqPreset||"Normal"} setEqPreset={setEqPreset} eqGains={Array.isArray(eqGains)&&eqGains.length===5?eqGains:[0,0,0,0,0]} setEqGains={setEqGains} crossfade={typeof crossfade==="number"?crossfade:0} setCrossfade={setCrossfade} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userScId={userScId} setUserScId={setUserScId} userAiKey={userAiKey} setUserAiKey={setUserAiKey} userDsKey={userDsKey} setUserDsKey={setUserDsKey} userGrokKey={userGrokKey} setUserGrokKey={setUserGrokKey} userYtKey={userYtKey} setUserYtKey={setUserYtKey}/>
+          <SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userScId={userScId} setUserScId={setUserScId} userAiKey={userAiKey} setUserAiKey={setUserAiKey} userYtKey={userYtKey} setUserYtKey={setUserYtKey}/>
         )}
 
         {/* ─── PLAYER TAB */}
@@ -6344,7 +6107,7 @@ export default function App() {
                 <ListMusic size={16}/>
               </button>
               {/* Settings */}
-              <button onClick={()=>setShowSettings(v=>!v)} title={t?.settings||"Settings"} style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:layoutVars.actionPad, borderRadius:12, background: showSettings?'rgba(255,255,255,0.08)':'none', border:'none', color:(eqEnabled||sleepTimer)?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):(showSettings?'rgba(255,255,255,0.7)':'rgba(255,255,255,0.35)') }}><Settings size={16}/></button>
+              <button onClick={()=>setShowSettings(v=>!v)} title={t?.settings||"Settings"} style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:layoutVars.actionPad, borderRadius:12, background: showSettings?'rgba(255,255,255,0.08)':'none', border:'none', color:sleepTimer?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):(showSettings?'rgba(255,255,255,0.7)':'rgba(255,255,255,0.35)') }}><Settings size={16}/></button>
               {/* Fullscreen */}
               <button onClick={()=>setFullscreen(f=>!f)} title={fullscreen?(t?.exitFullscreenBtn||'Exit Fullscreen'):(t?.fullscreenBtn||'Fullscreen')} style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:layoutVars.actionPad, borderRadius:12, background:'none', border:'none', color:fullscreen?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):'rgba(255,255,255,0.35)' }}>
                 {fullscreen?<Minimize2 size={16}/>:<Maximize2 size={16}/>}
@@ -6586,7 +6349,7 @@ export default function App() {
                             <div style={{ padding:'0 10px 12px' }}>
                               {/* Tips */}
                               <div style={{ fontSize:10, color:'rgba(255,255,255,0.3)', marginBottom:8, lineHeight:1.5 }}>
-                                💡 <b style={{color:'rgba(255,255,255,0.5)'}}>Jamendo · FMA · ccMixter</b> putar in-app penuh (EQ, crossfade, antrean). Tempel URL: <b style={{color:'rgba(255,255,255,0.5)'}}>Vimeo · Audiomack · Mixcloud · Odysee · Dailymotion · Bandcamp</b>
+                                💡 <b style={{color:'rgba(255,255,255,0.5)'}}>Jamendo · FMA · ccMixter</b> putar in-app penuh (antrean). Tempel URL: <b style={{color:'rgba(255,255,255,0.5)'}}>Vimeo · Audiomack · Mixcloud · Odysee · Dailymotion · Bandcamp</b>
                               </div>
                               {/* Loading skeleton */}
                               {wsLoading && (
@@ -6620,40 +6383,63 @@ export default function App() {
                                         <iframe key={`sp-ws-direct-${item.embedUrl}`} src={`${item.embedUrl}?utm_source=generator&theme=0`} width="100%" height="152" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" style={{ display:'block' }}/>
                                       </div>
                                     );
-                                    // ── SoundCloud redirect card
+                                    // ── SoundCloud redirect URL langsung → embed widget
                                     if (item.type === 'sc_redirect') return (
                                       <div key={idx} style={{ marginBottom:6 }}>
-                                        {item.directUrl ? (
+                                        {item.directUrl && (
                                           <div style={{ borderRadius:10, overflow:'hidden', border:'1px solid rgba(255,85,0,0.3)' }}>
                                             <iframe key={`sc-ws-direct-${item.directUrl}`}
                                               src={`https://w.soundcloud.com/player/?url=${encodeURIComponent(item.directUrl)}&color=%23ff5500&auto_play=false&buying=false&liking=false&download=false&sharing=false&show_artwork=true&show_comments=false&show_playcount=false&show_user=true&hide_related=true&visual=true`}
                                               width="100%" height="166" frameBorder="0" allow="autoplay" style={{ display:'block' }}/>
                                           </div>
-                                        ) : (
-                                          <>
-                                            <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background:'rgba(255,85,0,0.08)', border:'1px solid rgba(255,85,0,0.25)' }}>
-                                              <PlatformLogo id="soundcloud" size={20}/>
-                                              <div style={{ flex:1, minWidth:0 }}>
-                                                <div style={{ fontSize:11, fontWeight:700, color:'#ff5500' }}>SoundCloud</div>
-                                                <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)' }}>Cari di SoundCloud Web</div>
-                                              </div>
-                                              <button onClick={() => window.open(`https://soundcloud.com/search?q=${encodeURIComponent(item.query)}`, '_blank', 'noopener,noreferrer')}
-                                                style={{ padding:'5px 12px', borderRadius:999, border:'none', background:'#ff5500', color:'white', fontSize:11, fontWeight:800, cursor:'pointer', flexShrink:0 }}>Buka ↗</button>
-                                            </div>
-                                            <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background:'rgba(29,185,84,0.08)', border:'1px solid rgba(29,185,84,0.25)', marginTop:6 }}>
-                                              <PlatformLogo id="spotify" size={20}/>
-                                              <div style={{ flex:1, minWidth:0 }}>
-                                                <div style={{ fontSize:11, fontWeight:700, color:'#1DB954' }}>Spotify</div>
-                                                <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)' }}>Cari di Spotify Web</div>
-                                              </div>
-                                              <button onClick={() => window.open(`https://open.spotify.com/search/${encodeURIComponent(item.query)}`, '_blank', 'noopener,noreferrer')}
-                                                style={{ padding:'5px 12px', borderRadius:999, border:'none', background:'#1DB954', color:'black', fontSize:11, fontWeight:800, cursor:'pointer', flexShrink:0 }}>Buka ↗</button>
-                                            </div>
-                                          </>
                                         )}
                                       </div>
                                     );
-                                    // ── Spotify redirect card — klik langsung ke Spotify
+                                    // ── SoundCloud embed (pihak ketiga, tanpa API key) — iframe widget search
+                                    if (item.type === 'sc_embed') return (
+                                      <div key={idx} style={{ marginBottom:8 }}>
+                                        <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:5, paddingLeft:2 }}>
+                                          <PlatformLogo id="soundcloud" size={11}/>
+                                          <span style={{ fontSize:10, fontWeight:700, color:'#ff5500' }}>SoundCloud</span>
+                                          <span style={{ fontSize:9, color:'rgba(255,85,0,0.5)', marginLeft:2 }}>· Embed</span>
+                                        </div>
+                                        <div style={{ borderRadius:10, overflow:'hidden', border:'1px solid rgba(255,85,0,0.3)', background:'rgba(255,85,0,0.04)' }}>
+                                          <iframe
+                                            key={`sc-ws-embed-${item.query}`}
+                                            src={`https://w.soundcloud.com/player/?url=${encodeURIComponent('https://soundcloud.com/search?q='+encodeURIComponent(item.query))}&color=%23ff5500&auto_play=false&buying=false&liking=false&download=false&sharing=false&show_artwork=true&show_comments=false&show_playcount=false&show_user=true&hide_related=true&visual=false`}
+                                            width="100%" height="120" frameBorder="0" allow="autoplay" style={{ display:'block' }}
+                                          />
+                                          <div style={{ display:'flex', justifyContent:'flex-end', alignItems:'center', padding:'4px 8px', background:'rgba(0,0,0,0.3)', gap:6 }}>
+                                            <button onClick={()=>window.open(`https://soundcloud.com/search?q=${encodeURIComponent(item.query)}`, '_blank', 'noopener,noreferrer')}
+                                              style={{ fontSize:10, color:'#ff5500', background:'none', border:'none', cursor:'pointer', fontWeight:700 }}>Buka di SoundCloud ↗</button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                    // ── Spotify embed (pihak ketiga, tanpa API key) — iframe search + tombol buka
+                                    if (item.type === 'sp_embed') return (
+                                      <div key={idx} style={{ marginBottom:8 }}>
+                                        <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:5, paddingLeft:2 }}>
+                                          <PlatformLogo id="spotify" size={11}/>
+                                          <span style={{ fontSize:10, fontWeight:700, color:'#1DB954' }}>Spotify</span>
+                                          <span style={{ fontSize:9, color:'rgba(29,185,84,0.5)', marginLeft:2 }}>· Embed</span>
+                                        </div>
+                                        <div style={{ borderRadius:10, overflow:'hidden', border:'1px solid rgba(29,185,84,0.3)', background:'rgba(29,185,84,0.04)' }}>
+                                          <iframe
+                                            key={`sp-ws-search-embed-${item.query}`}
+                                            src={`https://open.spotify.com/embed/search/${encodeURIComponent(item.query)}?utm_source=generator&theme=0`}
+                                            width="100%" height="152" frameBorder="0"
+                                            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                                            loading="lazy" style={{ display:'block' }}
+                                          />
+                                          <div style={{ display:'flex', justifyContent:'flex-end', alignItems:'center', padding:'4px 8px', background:'rgba(0,0,0,0.3)', gap:6 }}>
+                                            <button onClick={()=>window.open(`https://open.spotify.com/search/${encodeURIComponent(item.query)}`, '_blank', 'noopener,noreferrer')}
+                                              style={{ fontSize:10, color:'#1DB954', background:'none', border:'none', cursor:'pointer', fontWeight:700 }}>Buka di Spotify ↗</button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                    // ── Spotify redirect card (legacy — jika masih ada di results lama)
                                     if (item.type === 'sp_redirect') return (
                                       <div key={idx}
                                         onClick={() => openNewTab(`https://open.spotify.com/search/${encodeURIComponent(item.query)}`)}
@@ -6668,7 +6454,7 @@ export default function App() {
                                         <span style={{ padding:'5px 12px', borderRadius:999, background:'#1DB954', color:'black', fontSize:11, fontWeight:800, flexShrink:0 }}>Buka ↗</span>
                                       </div>
                                     );
-                                    // ── SoundCloud API section
+                                    // ── SoundCloud section (API key atau public search — mirip YT)
                                     if (item.type === 'sc_section') return (
                                       <div key={idx} style={{ marginBottom:8 }}>
                                         <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:5, paddingLeft:2 }}>
@@ -6677,36 +6463,60 @@ export default function App() {
                                         </div>
                                         <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
                                           {item._items.map((t2, ti) => {
-                                            const mins = Math.floor((t2.duration||0)/60), secs2 = String((t2.duration||0)%60).padStart(2,'0');
+                                            const durSec = t2.duration||0;
+                                            const mins = Math.floor(durSec/60), secs2 = String(durSec%60).padStart(2,'0');
+                                            const dur2 = durSec > 0 ? `${mins}:${secs2}` : '';
+                                            const scUrl = t2.permalinkUrl||t2.streamUrl||'';
+                                            const isActiveEmbed = scWidget['soundcloud'] === scUrl && scUrl.includes('soundcloud.com/');
                                             return (
-                                              <div key={t2.id||ti}
-                                                style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 9px', borderRadius:9, background:'rgba(255,85,0,0.06)', border:'1px solid rgba(255,85,0,0.15)', cursor:'pointer' }}
-                                                onMouseEnter={e=>e.currentTarget.style.background='rgba(255,85,0,0.13)'}
-                                                onMouseLeave={e=>e.currentTarget.style.background='rgba(255,85,0,0.06)'}
-                                                onClick={() => { const url = t2.permalinkUrl||t2.streamUrl; if(url&&url.includes('soundcloud.com/')) { setScWidget(p=>({...p,soundcloud:url})); } else window.open(`https://soundcloud.com/search?q=${encodeURIComponent(t2.title||'')}`, '_blank','noopener,noreferrer'); }}>
-                                                <div style={{ width:30, height:30, borderRadius:7, background:'rgba(255,85,0,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Play size={11} style={{ color:'#ff5500', marginLeft:1 }}/></div>
-                                                <div style={{ flex:1, minWidth:0 }}>
-                                                  <div style={{ fontSize:11, fontWeight:600, color:'rgba(255,255,255,0.9)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t2.title}</div>
-                                                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{t2.artist}{t2.duration?` · ${mins}:${secs2}`:''}</div>
+                                              <div key={t2.id||ti} style={{ display:'flex', flexDirection:'column' }}>
+                                                <div
+                                                  style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius: isActiveEmbed ? '10px 10px 0 0' : 10, background: isActiveEmbed ? 'rgba(255,85,0,0.13)' : 'rgba(255,255,255,0.04)', border: isActiveEmbed ? '1px solid rgba(255,85,0,0.4)' : '1px solid rgba(255,255,255,0.08)', borderBottom: isActiveEmbed ? 'none' : undefined, cursor:'pointer' }}
+                                                  onMouseEnter={e=>{ if(!isActiveEmbed) e.currentTarget.style.background='rgba(255,85,0,0.08)'; }}
+                                                  onMouseLeave={e=>{ if(!isActiveEmbed) e.currentTarget.style.background='rgba(255,255,255,0.04)'; }}
+                                                  onClick={() => {
+                                                    if (scUrl.includes('soundcloud.com/')) {
+                                                      setScWidget(p => ({ ...p, soundcloud: p.soundcloud === scUrl ? null : scUrl }));
+                                                    } else {
+                                                      window.open(`https://soundcloud.com/search?q=${encodeURIComponent(t2.title||'')}`, '_blank', 'noopener,noreferrer');
+                                                    }
+                                                  }}>
+                                                  {/* Thumbnail */}
+                                                  <div style={{ width:38, height:38, borderRadius:8, background:'rgba(255,85,0,0.2)', flexShrink:0, overflow:'hidden', position:'relative' }}>
+                                                    {t2.thumbnail && !isLite && <img src={t2.thumbnail} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{ e.target.style.display='none'; }}/>}
+                                                    <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background: isActiveEmbed ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.3)', borderRadius:8 }}>
+                                                      {isActiveEmbed ? <span style={{ fontSize:11, color:'#ff5500' }}>▼</span> : <Play size={13} style={{ color:'#ff5500', marginLeft:2 }}/>}
+                                                    </div>
+                                                  </div>
+                                                  {/* Info */}
+                                                  <div style={{ flex:1, minWidth:0 }}>
+                                                    <div style={{ fontSize:12, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color: isActiveEmbed ? '#ff7733' : 'rgba(255,255,255,0.9)' }}>{t2.title}</div>
+                                                    <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{t2.artist}{dur2 ? ` · ${dur2}` : ''}</div>
+                                                  </div>
+                                                  {/* Open button */}
+                                                  <button onClick={e => { e.stopPropagation(); window.open(scUrl||`https://soundcloud.com/search?q=${encodeURIComponent(t2.title||'')}`, '_blank', 'noopener,noreferrer'); }}
+                                                    title="Buka di SoundCloud"
+                                                    style={{ background:'none', border:'1px solid rgba(255,85,0,0.4)', borderRadius:6, color:'#ff5500', fontSize:10, fontWeight:700, padding:'3px 7px', cursor:'pointer', flexShrink:0, lineHeight:1.2 }}>↗</button>
                                                 </div>
-                                                <span style={{ fontSize:9, color:'#ff5500', background:'rgba(255,85,0,0.15)', padding:'2px 5px', borderRadius:4, fontWeight:700, flexShrink:0 }}>SC</span>
+                                                {/* Embed iframe saat diklik */}
+                                                {isActiveEmbed && (
+                                                  <div style={{ borderRadius:'0 0 10px 10px', overflow:'hidden', border:'1px solid rgba(255,85,0,0.4)', borderTop:'none' }}>
+                                                    <iframe
+                                                      key={`sc-ws-${scUrl}`}
+                                                      src={`https://w.soundcloud.com/player/?url=${encodeURIComponent(scUrl)}&color=%23ff5500&auto_play=false&buying=false&liking=false&download=false&sharing=false&show_artwork=true&show_comments=false&show_playcount=false&show_user=true&hide_related=true&visual=true`}
+                                                      width="100%" height="130" frameBorder="0" allow="autoplay" style={{ display:'block' }}/>
+                                                    <div style={{ display:'flex', justifyContent:'flex-end', padding:'4px 8px', background:'rgba(0,0,0,0.4)', gap:6 }}>
+                                                      <button onClick={()=>setScWidget(p=>({...p,soundcloud:null}))} style={{ fontSize:10, color:'rgba(255,255,255,0.4)', background:'none', border:'none', cursor:'pointer' }}>✕ Tutup</button>
+                                                    </div>
+                                                  </div>
+                                                )}
                                               </div>
                                             );
                                           })}
                                         </div>
-                                        {scWidget['soundcloud'] && scWidget['soundcloud'].includes('soundcloud.com/') && (
-                                          <div style={{ marginTop:8, borderRadius:10, overflow:'hidden', border:'1px solid rgba(255,85,0,0.3)' }}>
-                                            <iframe key={`sc-ws-${scWidget['soundcloud']}`}
-                                              src={`https://w.soundcloud.com/player/?url=${encodeURIComponent(scWidget['soundcloud'])}&color=%23ff5500&auto_play=false&buying=false&liking=false&download=false&sharing=false&show_artwork=true&show_comments=false&show_playcount=false&show_user=true&hide_related=true&visual=true`}
-                                              width="100%" height="120" frameBorder="0" allow="autoplay" style={{ display:'block' }}/>
-                                            <div style={{ display:'flex', justifyContent:'flex-end', padding:'4px 8px', background:'rgba(0,0,0,0.4)', gap:6 }}>
-                                              <button onClick={()=>setScWidget(p=>({...p,soundcloud:null}))} style={{ fontSize:10, color:'rgba(255,255,255,0.4)', background:'none', border:'none', cursor:'pointer' }}>✕</button>
-                                            </div>
-                                          </div>
-                                        )}
                                       </div>
                                     );
-                                    // ── Spotify API section
+                                    // ── Spotify section (API key atau public search — mirip YT)
                                     if (item.type === 'sp_section') return (
                                       <div key={idx} style={{ marginBottom:8 }}>
                                         <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:5, paddingLeft:2 }}>
@@ -6715,50 +6525,58 @@ export default function App() {
                                         </div>
                                         <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
                                           {item._items.map(t3 => {
-                                            const mins3 = Math.floor(t3.duration/60000), secs3 = String(Math.floor((t3.duration%60000)/1000)).padStart(2,'0');
+                                            const durMs = t3.duration||0;
+                                            const isDurMs = durMs > 9999; // durasi dalam ms vs detik
+                                            const totalSec = isDurMs ? Math.floor(durMs/1000) : durMs;
+                                            const mins3 = Math.floor(totalSec/60), secs3 = String(totalSec%60).padStart(2,'0');
+                                            const dur3 = totalSec > 0 ? `${mins3}:${secs3}` : '';
                                             const hasPreview = !!t3.previewUrl;
                                             const isEmbedActive = spWsEmbedId === t3.id;
                                             const isPreviewActive = spTrack?.id === t3.id;
+                                            const coverUrl = t3.cover || t3.thumbnail || null;
                                             return (
-                                              <div key={t3.id} style={{ display:'flex', flexDirection:'column', gap:0 }}>
+                                              <div key={t3.id||t3.title} style={{ display:'flex', flexDirection:'column' }}>
                                                 <div
-                                                  style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 9px', borderRadius: isEmbedActive ? '9px 9px 0 0' : 9, background: isEmbedActive ? 'rgba(29,185,84,0.15)' : isPreviewActive ? 'rgba(29,185,84,0.12)' : 'rgba(29,185,84,0.06)', border: isEmbedActive ? '1px solid rgba(29,185,84,0.5)' : isPreviewActive ? '1px solid rgba(29,185,84,0.4)' : '1px solid rgba(29,185,84,0.15)', borderBottom: isEmbedActive ? 'none' : undefined, cursor:'pointer' }}
-                                                  onMouseEnter={e=>{ if(!isEmbedActive&&!isPreviewActive) e.currentTarget.style.background='rgba(29,185,84,0.12)'; }}
-                                                  onMouseLeave={e=>{ if(!isEmbedActive&&!isPreviewActive) e.currentTarget.style.background='rgba(29,185,84,0.06)'; }}
+                                                  style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius: isEmbedActive ? '10px 10px 0 0' : 10, background: isEmbedActive ? 'rgba(29,185,84,0.13)' : isPreviewActive ? 'rgba(29,185,84,0.10)' : 'rgba(255,255,255,0.04)', border: isEmbedActive ? '1px solid rgba(29,185,84,0.5)' : isPreviewActive ? '1px solid rgba(29,185,84,0.4)' : '1px solid rgba(255,255,255,0.08)', borderBottom: isEmbedActive ? 'none' : undefined, cursor:'pointer' }}
+                                                  onMouseEnter={e=>{ if(!isEmbedActive&&!isPreviewActive) e.currentTarget.style.background='rgba(29,185,84,0.08)'; }}
+                                                  onMouseLeave={e=>{ if(!isEmbedActive&&!isPreviewActive) e.currentTarget.style.background='rgba(255,255,255,0.04)'; }}
                                                   onClick={() => { setSpWsEmbedId(prev => prev === t3.id ? null : t3.id); }}>
-                                                  <div style={{ position:'relative', flexShrink:0 }}>
-                                                    <img src={t3.cover} alt={t3.title} loading="lazy" style={{ width:30, height:30, borderRadius:6, objectFit:'cover', display:'block' }} onError={e=>{e.target.style.display='none';}}/>
-                                                    <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.45)', borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                                                      {isEmbedActive ? <span style={{ fontSize:11, color:'#1DB954' }}>▼</span> : <Play size={10} style={{ color:'white', marginLeft:1 }}/>}
+                                                  {/* Thumbnail 38x38 mirip YT */}
+                                                  <div style={{ width:38, height:38, borderRadius:8, background:'rgba(29,185,84,0.2)', flexShrink:0, overflow:'hidden', position:'relative' }}>
+                                                    {coverUrl && !isLite && <img src={coverUrl} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{ e.target.style.display='none'; }}/>}
+                                                    <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background: isEmbedActive ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.3)', borderRadius:8 }}>
+                                                      {isEmbedActive ? <span style={{ fontSize:11, color:'#1DB954' }}>▼</span> : <Play size={13} style={{ color:'#1DB954', marginLeft:2 }}/>}
                                                     </div>
                                                   </div>
+                                                  {/* Info */}
                                                   <div style={{ flex:1, minWidth:0 }}>
-                                                    <div style={{ fontSize:11, fontWeight:600, color: isEmbedActive ? '#1DB954' : 'rgba(255,255,255,0.9)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t3.title}</div>
-                                                    <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t3.artist}</div>
+                                                    <div style={{ fontSize:12, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color: isEmbedActive ? '#1DB954' : isPreviewActive ? '#6ee7a0' : 'rgba(255,255,255,0.9)' }}>{t3.title}</div>
+                                                    <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t3.artist}{dur3 ? ` · ${dur3}` : ''}</div>
                                                   </div>
-                                                  <span style={{ fontSize:9, color:'rgba(255,255,255,0.3)', flexShrink:0 }}>{mins3}:{secs3}</span>
-                                                  {hasPreview
-                                                    ? <span onClick={e=>{ e.stopPropagation(); playSpotifyPreview(t3); }} style={{ fontSize:9, color:'#1DB954', background:'rgba(29,185,84,0.18)', padding:'2px 5px', borderRadius:4, fontWeight:700, flexShrink:0, cursor:'pointer' }} title="Preview 30 detik">30s</span>
-                                                    : null}
-                                                  <span style={{ fontSize:9, color: isEmbedActive ? '#1DB954' : 'rgba(29,185,84,0.7)', background: isEmbedActive ? 'rgba(29,185,84,0.25)' : 'rgba(29,185,84,0.1)', padding:'2px 5px', borderRadius:4, fontWeight:700, flexShrink:0 }}>
-                                                    {isEmbedActive ? 'Tutup' : 'Embed'}
-                                                  </span>
+                                                  {/* Preview 30s badge */}
+                                                  {hasPreview && (
+                                                    <span onClick={e=>{ e.stopPropagation(); playSpotifyPreview(t3); }} style={{ fontSize:9, color:'#1DB954', background:'rgba(29,185,84,0.18)', padding:'2px 5px', borderRadius:4, fontWeight:700, flexShrink:0, cursor:'pointer' }} title="Preview 30 detik">▶ 30s</span>
+                                                  )}
+                                                  {/* Open button mirip YT ↗ */}
+                                                  {t3.spotifyUrl && <button onClick={e => { e.stopPropagation(); window.open(t3.spotifyUrl, '_blank', 'noopener,noreferrer'); }}
+                                                    title="Buka di Spotify"
+                                                    style={{ background:'none', border:'1px solid rgba(29,185,84,0.4)', borderRadius:6, color:'#1DB954', fontSize:10, fontWeight:700, padding:'3px 7px', cursor:'pointer', flexShrink:0, lineHeight:1.2 }}>↗</button>}
                                                 </div>
+                                                {/* Spotify embed iframe */}
                                                 {isEmbedActive && (
-                                                  <div style={{ borderRadius:'0 0 9px 9px', overflow:'hidden', border:'1px solid rgba(29,185,84,0.5)', borderTop:'none' }}>
+                                                  <div style={{ borderRadius:'0 0 10px 10px', overflow:'hidden', border:'1px solid rgba(29,185,84,0.5)', borderTop:'none' }}>
                                                     <iframe
                                                       key={`sp-ws-embed-${t3.id}`}
                                                       src={`https://open.spotify.com/embed/track/${t3.id}?utm_source=generator&theme=0`}
                                                       width="100%" height="152" frameBorder="0"
                                                       allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                                                      loading="lazy"
-                                                      style={{ display:'block' }}
+                                                      loading="lazy" style={{ display:'block' }}
                                                     />
                                                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'4px 8px', background:'rgba(0,0,0,0.4)', gap:6 }}>
-                                                      <span style={{ fontSize:10, color:'#1DB954', fontWeight:700 }}>🎵 Spotify Embed</span>
+                                                      <span style={{ fontSize:10, color:'#1DB954', fontWeight:700 }}>🎵 Spotify</span>
                                                       <div style={{ display:'flex', gap:6 }}>
                                                         {t3.spotifyUrl && <button onClick={()=>window.open(t3.spotifyUrl,'_blank','noopener,noreferrer')} style={{ fontSize:10, color:'rgba(255,255,255,0.5)', background:'none', border:'none', cursor:'pointer' }}>Buka ↗</button>}
-                                                        <button onClick={()=>setSpWsEmbedId(null)} style={{ fontSize:10, color:'rgba(255,255,255,0.4)', background:'none', border:'none', cursor:'pointer' }}>✕</button>
+                                                        <button onClick={()=>setSpWsEmbedId(null)} style={{ fontSize:10, color:'rgba(255,255,255,0.4)', background:'none', border:'none', cursor:'pointer' }}>✕ Tutup</button>
                                                       </div>
                                                     </div>
                                                   </div>
@@ -6769,7 +6587,7 @@ export default function App() {
                                         </div>
                                       </div>
                                     );
-                                    // ── Native audio items (Jamendo, FMA, ccMixter) — in-app player, queue, EQ, crossfade
+                                    // ── Native audio items (Jamendo, FMA, ccMixter) — in-app player, queue
                                     if (item.audioUrl && ['jamendo','fma','ccmixter'].includes(item.source)) {
                                       const srcC = srcColors2[item.source] || '#6366f1';
                                       const dur2 = item.duration ? `${Math.floor(item.duration/60)}:${String(item.duration%60).padStart(2,'0')}` : '';
@@ -7434,7 +7252,7 @@ export default function App() {
                         {/* Actions */}
                         <div style={{ display:'flex', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
                           {songs.length>0&&(
-                            <button onClick={()=>{ setActivePl(pl.id); play(songs[0]); setTab('player'); }}
+                            <button onClick={()=>{ setActivePl(pl.id); activePlRef.current=songs; play(songs[0]); setTab('player'); }}
                               style={{ flex:1, padding:'8px 0', background:'none', border:'none', color:isActive?'#a78bfa':'rgba(255,255,255,0.5)', fontSize:11, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:5 }}>
                               <Play size={12} fill="currentColor"/>{t?.playBtn||'Play'}
                             </button>
@@ -7597,7 +7415,7 @@ export default function App() {
                           <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:1 }}>{songs.length} {t?.songsCount||'songs'}</div>
                         </div>
                         {songs.length>0&&(
-                          <button onClick={()=>{ play(songs[0]); setTab('player'); }}
+                          <button onClick={()=>{ activePlRef.current=songs; play(songs[0]); setTab('player'); }}
                             style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:10, border:'none', background:'#a78bfa', color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}>
                             <Play size={13} fill="currentColor"/>{t?.playAllBtn||'Play All'}
                           </button>
@@ -7629,7 +7447,7 @@ export default function App() {
                         <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:1 }}>{songs.length} {t?.songsCount||'songs'}</div>
                       </div>
                       {songs.length>0&&(
-                        <button onClick={()=>{ play(songs[0]); setTab('player'); }}
+                        <button onClick={()=>{ activePlRef.current=songs; play(songs[0]); setTab('player'); }}
                           style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:10, border:'none', background:track.color, color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}>
                           <Play size={13} fill="currentColor"/>{t?.playAllBtn||'Play All'}
                         </button>
