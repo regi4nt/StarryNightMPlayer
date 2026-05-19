@@ -2249,15 +2249,15 @@ function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDri
       </div>
       <div style={{ display:'flex', gap:2 }}>
         {onRemove&&<button onClick={e=>{e.stopPropagation();onRemove(s.id)}} style={{ ...btn, color:'rgba(255,255,255,0.2)', padding:6 }}><Trash2 size={14}/></button>}
-        {/* ── Tombol unduh ke perangkat */}
-        <button onClick={handleDownload} title={dlState==='done'?'Berhasil diunduh!':dlState==='error'?'Gagal, coba lagi':'Unduh ke perangkat'}
+        {/* ── Tombol unduh ke perangkat (tidak tampil untuk radio) */}
+        {!s.isRadio&&<button onClick={handleDownload} title={dlState==='done'?'Berhasil diunduh!':dlState==='error'?'Gagal, coba lagi':'Unduh ke perangkat'}
           style={{ ...btn, color:dlColor, padding:6, transition:'color 0.2s' }}>
           {dlState==='loading'
             ? <Loader2 size={14} style={{ animation:'spin 0.8s linear infinite' }}/>
             : dlState==='done'
             ? <CheckCircle size={14}/>
             : <Download size={14}/>}
-        </button>
+        </button>}
         {playlists&&addToPlaylist&&(
           <div style={{ position:'relative' }} onClick={e=>e.stopPropagation()}>
             <button
@@ -2425,6 +2425,16 @@ function MaskedKeyInput({ value, onChange, onBlur, placeholder, accentColor, lab
 function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t, userSpId, setUserSpId, userSpSecret, setUserSpSecret, userScId, setUserScId, userAiKey, setUserAiKey, userYtKey, setUserYtKey }) {
   const coverRef = useRef(null);
   const [apiKeyTab, setApiKeyTab] = React.useState('spotify');
+  // Local state untuk DNS input agar tidak terganggu re-render parent
+  const [localDns, setLocalDns] = React.useState(customDns);
+  // Sync dari parent hanya saat customDns berubah via preset (bukan saat user ketik)
+  const prevDnsRef = React.useRef(customDns);
+  React.useEffect(() => {
+    if (customDns !== prevDnsRef.current) {
+      setLocalDns(customDns);
+      prevDnsRef.current = customDns;
+    }
+  }, [customDns]);
   return (
     <div style={{ position:'absolute', inset:0, zIndex:150, background:'rgba(0,0,0,0.6)', ...(isLite?{}:{backdropFilter:'blur(4px)'}), display:'flex', alignItems:'stretch' }} onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="scrollbar-hide" style={{ width:'100%', height:'100%', overflowY:'auto', overflowX:'hidden', background:'#0d0d24', border:'none', borderRadius:0, padding:'0 0 env(safe-area-inset-bottom, 24px)' }}>
@@ -2531,22 +2541,9 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
                 title={opt.desc}>{opt.label}</button>
             ))}
           </div>
-          {/* Custom DNS input */}
-          <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-            <input
-              type="text"
-              placeholder="Masukkan IP DNS kustom, mis. 1.1.1.1"
-              value={customDns}
-              onChange={e => setCustomDns(e.target.value)}
-              onBlur={e => localStorage.setItem('sn_custom_dns', e.target.value)}
-              style={{ flex:1, padding:'9px 12px', borderRadius:12, border:`1px solid rgba(255,255,255,0.12)`, background:'rgba(255,255,255,0.06)', color:'white', fontSize:12, outline:'none', fontFamily:'monospace' }}
-            />
-            {customDns && (
-              <button onClick={() => { setCustomDns(''); localStorage.removeItem('sn_custom_dns'); }}
-                style={{ padding:'9px 12px', borderRadius:12, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.1)', color:'#fca5a5', fontSize:11, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
-                Reset
-              </button>
-            )}
+          {/* DNS aktif — read-only, otomatis dari preset */}
+          <div style={{ padding:'9px 12px', borderRadius:12, border:`1px solid rgba(255,255,255,0.10)`, background:'rgba(255,255,255,0.04)', color: customDns ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.25)', fontSize:12, fontFamily:'monospace', userSelect:'text' }}>
+            {customDns || '— (Default ISP)'}
           </div>
           <div style={{ marginTop:8, padding:'10px 12px', borderRadius:10, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)' }}>
             <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', lineHeight:1.6 }}>
@@ -2971,6 +2968,12 @@ export default function App() {
   const [rbTopTags, setRbTopTags] = useState([]);
   const [rbSelectedTag, setRbSelectedTag] = useState(null);
   const rbServerRef = useRef(null);
+  // Browse (Koleksi) — Radio Browser fetched stations
+  const [rbBrowseStations, setRbBrowseStations] = useState([]);
+  const [rbBrowseLoading, setRbBrowseLoading] = useState(false);
+  const [rbBrowseError, setRbBrowseError] = useState(null);
+  const rbBrowseRef = useRef([]); // for next/prev navigation
+  const rbBrowseKeyRef = useRef(''); // tracks last fetched country+genre
   // Multi-source radio state
   const [rbSource, setRbSource] = useState('radiobrowser'); // 'radiobrowser'|'somafm'|'garden'|'nts'|'all'
   const [somaChannels, setSomaChannels] = useState([]);
@@ -4483,6 +4486,16 @@ export default function App() {
     }
   }, [track.id, customSongs]);
 
+  // ── Auto-fetch lirik saat lagu ganti dan tab lirik sedang terbuka
+  const getLyricsRef = useRef(null);
+  useEffect(() => { getLyricsRef.current = getLyrics; });
+  useEffect(() => {
+    if (aiSubView === 'lyrics' && !lyricsLoading) {
+      getLyricsRef.current?.();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [track.id, embedTrack?.videoId, aiSubView]);
+
   // ── Sleep timer cleanup
   useEffect(() => () => { if (sleepIntervalRef.current) clearInterval(sleepIntervalRef.current); }, []);
 
@@ -4601,11 +4614,65 @@ export default function App() {
         url = `${base}/json/stations/topvote/40?hidebroken=true`;
       }
       const data = await fetch(url).then(r=>r.json());
-      setRbResults(data.filter(s => s.url_resolved || s.url));
+      const filtered = data.filter(s => s.url_resolved || s.url);
+      setRbResults(filtered);
+      // Trigger health check untuk hasil pencarian
+      const rbSearchKey = `rbsearch__${query||''}__${tag||''}`;
+      testStationsInGenre({ id: rbSearchKey, stations: filtered.map(s => ({ id: s.stationuuid, url: s.url_resolved || s.url })) });
     } catch(e) {
       setRbError('Gagal menghubungi Radio Browser. Coba lagi.');
     } finally {
       setRbLoading(false);
+    }
+  };
+
+  // ── Radio Browser Koleksi: fetch stations by country + genre tag
+  const RB_COUNTRY_CODE = { us:'US', uk:'GB', fr:'FR', de:'DE', id:'ID', jp:'JP', br:'BR', in:'IN', mx:'MX', kr:'KR' };
+  const RB_GENRE_TAG = {
+    pop:'pop', rock:'rock', country:'country', jazz:'jazz', news:'news', dance:'dance',
+    classical:'classical', rnb:'rnb', schlager:'schlager', dangdut:'dangdut', religi:'islamic',
+    jpop:'j-pop', anime:'anime', lofi:'lofi', samba:'samba', axe:'forro', mpb:'mpb', funk:'funk',
+    bollywood:'bollywood', 'classical-in':'classical', punjabi:'punjabi', 'rnb-in':'electronic',
+    'pop-mx':'pop', ranchera:'ranchera', norteno:'norteno', 'electronic-mx':'electronic',
+    'news-mx':'news', kpop:'k-pop', krnb:'rnb', 'k-indie':'indie', 'kr-lofi':'lofi',
+    'news-kr':'news', 'news-in':'news',
+  };
+  const fetchBrowseStations = async (countryId, genreId) => {
+    const key = `${countryId}__${genreId}`;
+    if (rbBrowseKeyRef.current === key) return;
+    rbBrowseKeyRef.current = key;
+    const cc = RB_COUNTRY_CODE[countryId] || '';
+    const tag = RB_GENRE_TAG[genreId] || genreId;
+    setRbBrowseLoading(true); setRbBrowseError(null); setRbBrowseStations([]);
+    try {
+      const base = await getRbServer();
+      // Primary: search by country + tag
+      const url = `${base}/json/stations/search?countrycode=${cc}&tag=${encodeURIComponent(tag)}&limit=30&hidebroken=true&order=votes&reverse=true`;
+      let data = await fetch(url).then(r => r.json());
+      // Fallback: if <5 results, relax to tag-only search
+      if (data.length < 5) {
+        const url2 = `${base}/json/stations/search?countrycode=${cc}&tag=${encodeURIComponent(tag)}&limit=30&hidebroken=false&order=votes&reverse=true`;
+        data = await fetch(url2).then(r => r.json());
+      }
+      const stations = data.filter(s => s.url_resolved || s.url).slice(0, 20).map(s => ({
+        id: s.stationuuid,
+        stationuuid: s.stationuuid,
+        name: s.name,
+        city: [s.state, s.city].filter(Boolean).join(', ') || s.country || 'Online',
+        url: s.url_resolved || s.url,
+        favicon: s.favicon && s.favicon.startsWith('http') ? s.favicon : null,
+        tags: s.tags,
+        votes: s.votes,
+      }));
+      setRbBrowseStations(stations);
+      rbBrowseRef.current = stations;
+      // Trigger health-check otomatis setelah stasiun dimuat
+      testStationsInGenre({ id: key, stations });
+    } catch(e) {
+      setRbBrowseError('Gagal memuat dari Radio Browser. Periksa koneksi internet.');
+      rbBrowseRef.current = [];
+    } finally {
+      setRbBrowseLoading(false);
     }
   };
 
@@ -4851,6 +4918,9 @@ export default function App() {
     } catch {}
     setMultiResults(results);
     setMultiLoading(false);
+    // Trigger health check untuk semua hasil multi-search
+    const msKey = `multisearch__${q}__${genreTag||''}`;
+    testStationsInGenre({ id: msKey, stations: results.map(s => ({ id: s.id || s.stationuuid, url: s.url })) });
   };
 
   // ── PLAY
@@ -5121,13 +5191,17 @@ export default function App() {
   // ── RADIO NEXT / PREV (navigate within same genre)
   const goNextRadio = useCallback(() => {
     if (!radioStation) return;
-    const platform = STREAMING_PLATFORMS.find(p => p.embedType === 'radio');
-    if (!platform) return;
-    const country = platform.countries.find(c => c.id === radioStation.countryId);
-    if (!country) return;
-    const genre = country.genres.find(g => g.id === radioStation.genreId);
-    if (!genre) return;
-    const stations = genre.stations;
+    // Use Radio Browser fetched stations if available
+    const stations = rbBrowseRef.current && rbBrowseRef.current.length > 0
+      ? rbBrowseRef.current
+      : (() => {
+          const platform = STREAMING_PLATFORMS.find(p => p.embedType === 'radio');
+          if (!platform) return [];
+          const country = platform.countries.find(c => c.id === radioStation.countryId);
+          if (!country) return [];
+          const genre = country.genres.find(g => g.id === radioStation.genreId);
+          return genre ? genre.stations : [];
+        })();
     const idx = stations.findIndex(s => s.id === radioStation.id);
     const nextStation = stations[(idx + 1) % stations.length];
     if (!nextStation) return;
@@ -5138,25 +5212,29 @@ export default function App() {
       album: 'Live Radio',
       cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
       src: nextStation.url,
-      color: genre.color,
+      color: radioStation.color || '#f59e0b',
       bg: `rgba(245,158,11,0.15)`,
       mood: 'live, radio',
       isRadio: true,
     };
     play(radioTrackObj);
-    setRadioStation({ ...nextStation, color: genre.color, countryId: radioStation.countryId, genreId: radioStation.genreId });
+    setRadioStation({ ...nextStation, color: radioStation.color || '#f59e0b', countryId: radioStation.countryId, genreId: radioStation.genreId });
     setRadioPlaying(true);
   }, [radioStation, play]);
 
   const goPrevRadio = useCallback(() => {
     if (!radioStation) return;
-    const platform = STREAMING_PLATFORMS.find(p => p.embedType === 'radio');
-    if (!platform) return;
-    const country = platform.countries.find(c => c.id === radioStation.countryId);
-    if (!country) return;
-    const genre = country.genres.find(g => g.id === radioStation.genreId);
-    if (!genre) return;
-    const stations = genre.stations;
+    // Use Radio Browser fetched stations if available
+    const stations = rbBrowseRef.current && rbBrowseRef.current.length > 0
+      ? rbBrowseRef.current
+      : (() => {
+          const platform = STREAMING_PLATFORMS.find(p => p.embedType === 'radio');
+          if (!platform) return [];
+          const country = platform.countries.find(c => c.id === radioStation.countryId);
+          if (!country) return [];
+          const genre = country.genres.find(g => g.id === radioStation.genreId);
+          return genre ? genre.stations : [];
+        })();
     const idx = stations.findIndex(s => s.id === radioStation.id);
     const prevStation = stations[(idx - 1 + stations.length) % stations.length];
     if (!prevStation) return;
@@ -5167,13 +5245,13 @@ export default function App() {
       album: 'Live Radio',
       cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
       src: prevStation.url,
-      color: genre.color,
+      color: radioStation.color || '#f59e0b',
       bg: `rgba(245,158,11,0.15)`,
       mood: 'live, radio',
       isRadio: true,
     };
     play(radioTrackObj);
-    setRadioStation({ ...prevStation, color: genre.color, countryId: radioStation.countryId, genreId: radioStation.genreId });
+    setRadioStation({ ...prevStation, color: radioStation.color || '#f59e0b', countryId: radioStation.countryId, genreId: radioStation.genreId });
     setRadioPlaying(true);
   }, [radioStation, play]);
 
@@ -5732,12 +5810,7 @@ export default function App() {
                     <div style={{ fontWeight:800, fontSize:14 }}>{t?.queue||'Queue'}</div>
                     <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>
                       {track.isRadio && !embedTrack
-                        ? (() => {
-                            const rp = STREAMING_PLATFORMS.find(p => p.embedType === 'radio');
-                            const rc = rp?.countries?.find(c => c.id === radioStation?.countryId);
-                            const rg = rc?.genres?.find(g => g.id === radioStation?.genreId);
-                            return `${rg?.stations?.length || 0} stasiun`;
-                          })()
+                        ? `${rbBrowseRef.current.length || 0} stasiun`
                         : embedTrack?.type==='youtube' ? `${ytQueueRef.current.length} ${t?.songsCount||'songs'}` : track._wsSource && wsQueueRef.current.length > 0 ? `${wsQueueRef.current.length} ${t?.songsCount||'songs'}` : `${[...builtinSongs,...customSongs,...ytSongs].length} ${t?.songsCount||'songs'}`
                       }
                     </div>
@@ -5748,10 +5821,10 @@ export default function App() {
               {/* Queue list */}
               <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'8px 0' }}>
                 {track.isRadio && !embedTrack ? (()=>{
+                  const radioStations = rbBrowseRef.current || [];
                   const radioPlatform = STREAMING_PLATFORMS.find(p => p.embedType === 'radio');
                   const radioCountryData = radioPlatform?.countries?.find(c => c.id === radioStation?.countryId);
                   const radioGenreData = radioCountryData?.genres?.find(g => g.id === radioStation?.genreId);
-                  const radioStations = radioGenreData?.stations || [];
                   return radioStations.length === 0 ? (
                     <div style={{ padding:'48px 20px', textAlign:'center' }}>
                       <ListMusic size={40} style={{ color:'rgba(255,255,255,0.08)', margin:'0 auto 14px', display:'block' }}/>
@@ -5764,7 +5837,7 @@ export default function App() {
                       </div>
                       {radioStations.map((station, i) => {
                         const isCur = radioStation?.id === station.id;
-                        const stationColor = radioGenreData?.color || '#f59e0b';
+                        const stationColor = radioGenreData?.color || radioStation?.color || '#f59e0b';
                         return (
                           <div key={station.id} onClick={() => {
                             const radioTrackObj = {
@@ -5797,7 +5870,12 @@ export default function App() {
                             </div>
                             <div style={{ flex:1, minWidth:0 }}>
                               <div style={{ fontSize:12, fontWeight:isCur?700:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:isCur?stationColor:'rgba(255,255,255,0.88)' }}>{station.name}</div>
-                              <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:2 }}>{station.city} · ● LIVE</div>
+                              <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:2, display:'flex', alignItems:'center', gap:4 }}>
+                                <span>{station.city} · ● LIVE</span>
+                                {stationStatus[station.id] === 'testing' && <span style={{ color:'#fbbf24', display:'inline-flex', alignItems:'center', gap:2 }}><span style={{ width:5, height:5, borderRadius:'50%', border:'1.5px solid #fbbf24', borderTopColor:'transparent', display:'inline-block', animation:'spin 0.8s linear infinite' }}/><span style={{ fontSize:7 }}>cek…</span></span>}
+                                {stationStatus[station.id] === 'ok' && <span style={{ color:'#4ade80', fontWeight:700, fontSize:8 }}>✓</span>}
+                                {stationStatus[station.id] === 'fail' && <span style={{ color:'#f87171', fontWeight:700, fontSize:8 }}>✕ offline</span>}
+                              </div>
                             </div>
                             {/* Heart — like from queue sidebar */}
                             {(() => {
@@ -5930,6 +6008,10 @@ export default function App() {
                   ];
                   return (
                     <>
+                      {/* URL display — paling atas */}
+                      <div style={{ margin:'8px 18px 8px', padding:'9px 13px', borderRadius:12, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', fontSize:10, color:'rgba(255,255,255,0.28)', fontFamily:'monospace', wordBreak:'break-all', lineHeight:1.5 }}>
+                        {url}
+                      </div>
                       <div style={{ padding:'8px 18px 4px', fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.08em' }}>
                         🔗 Pilih platform
                       </div>
@@ -5945,10 +6027,6 @@ export default function App() {
                           <div style={{ width:6, height:6, borderRadius:'50%', background:`${item.color}60`, flexShrink:0 }}/>
                         </div>
                       ))}
-                      {/* URL display */}
-                      <div style={{ margin:'8px 18px 4px', padding:'9px 13px', borderRadius:12, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', fontSize:10, color:'rgba(255,255,255,0.28)', fontFamily:'monospace', wordBreak:'break-all', lineHeight:1.5 }}>
-                        {url}
-                      </div>
                     </>
                   );
                 })()}
@@ -6892,23 +6970,33 @@ export default function App() {
                                             : station.sourceLabel === 'NTS Radio' ? '#ff4500'
                                             : station.sourceLabel === 'Icecast' ? '#6366f1'
                                             : '#f59e0b';
+                                          const sStatus = stationStatus[station.id || station.stationuuid];
                                           return (
                                             <div key={`${station.id}_${idx}`} onClick={() => playRbStation(station)}
-                                              style={{ display:'flex', alignItems:'center', gap:9, padding:'7px 9px', borderRadius:10, background: isActive ? `${srcColor}15` : 'rgba(255,255,255,0.04)', border:`1px solid ${isActive ? srcColor+'55' : 'rgba(255,255,255,0.07)'}`, cursor:'pointer' }}>
+                                              style={{ display:'flex', alignItems:'center', gap:9, padding:'7px 9px', borderRadius:10, background: isActive ? `${srcColor}15` : 'rgba(255,255,255,0.04)', border:`1px solid ${isActive ? srcColor+'55' : sStatus==='fail' ? 'rgba(248,113,113,0.2)' : 'rgba(255,255,255,0.07)'}`, cursor:'pointer' }}>
                                               <div style={{ width:32, height:32, borderRadius:7, overflow:'hidden', flexShrink:0, background:'rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13 }}>
                                                 {(station.favicon||station.image) && (station.favicon||station.image).startsWith('http')
                                                   ? <img src={station.favicon||station.image} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{e.target.style.display='none';}} />
                                                   : '📻'}
                                               </div>
                                               <div style={{ flex:1, minWidth:0 }}>
-                                                <div style={{ fontSize:11, fontWeight:700, color: isActive ? srcColor : 'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{station.name || station.title}</div>
-                                                <div style={{ fontSize:9, color:'rgba(255,255,255,0.3)', display:'flex', gap:5, overflow:'hidden' }}>
+                                                <div style={{ fontSize:11, fontWeight:700, color: isActive ? srcColor : sStatus==='fail' ? 'rgba(255,255,255,0.4)' : 'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{station.name || station.title}</div>
+                                                <div style={{ fontSize:9, color:'rgba(255,255,255,0.3)', display:'flex', gap:5, overflow:'hidden', alignItems:'center' }}>
                                                   <span style={{ color:srcColor, fontWeight:700, flexShrink:0 }}>● {station.sourceLabel}</span>
                                                   {station.country && <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{station.country}{station.tags ? ' · '+String(station.tags).split(',')[0] : ''}</span>}
+                                                  {/* Status indicator */}
+                                                  {sStatus === 'testing' && (
+                                                    <span title="Memeriksa koneksi…" style={{ display:'inline-flex', alignItems:'center', gap:2, color:'#fbbf24', flexShrink:0 }}>
+                                                      <span style={{ width:5, height:5, borderRadius:'50%', border:'1.5px solid #fbbf24', borderTopColor:'transparent', display:'inline-block', animation:'spin 0.8s linear infinite' }}/>
+                                                      <span style={{ fontSize:7 }}>cek…</span>
+                                                    </span>
+                                                  )}
+                                                  {sStatus === 'ok' && <span title="Stasiun aktif" style={{ color:'#4ade80', fontWeight:800, fontSize:8, flexShrink:0 }}>✓ aktif</span>}
+                                                  {sStatus === 'fail' && <span title="Tidak dapat dijangkau" style={{ color:'#f87171', fontWeight:800, fontSize:8, flexShrink:0 }}>✕ offline</span>}
                                                 </div>
                                               </div>
-                                              <div style={{ width:26, height:26, borderRadius:'50%', background: isActive && playing ? srcColor : 'rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color:'white', flexShrink:0 }}>
-                                                {isActive && playing ? '⏸' : '▶'}
+                                              <div style={{ width:26, height:26, borderRadius:'50%', background: isActive && playing ? srcColor : sStatus==='fail' ? 'rgba(248,113,113,0.15)' : 'rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color: sStatus==='fail' ? '#f87171' : 'white', flexShrink:0 }}>
+                                                {isActive && playing ? '⏸' : sStatus==='fail' ? '!' : '▶'}
                                               </div>
                                             </div>
                                           );
@@ -6950,13 +7038,13 @@ export default function App() {
                               {/* Breadcrumb nav */}
                               {(selCountry || selGenre) && (
                                 <div style={{ display:'flex', alignItems:'center', gap:4, marginBottom:8, flexWrap:'wrap' }}>
-                                  <button onClick={() => { setRadioCountry(null); setRadioGenre(null); }}
+                                  <button onClick={() => { setRadioCountry(null); setRadioGenre(null); rbBrowseKeyRef.current=''; setRbBrowseStations([]); rbBrowseRef.current=[]; }}
                                     style={{ background:'none', border:'none', color:'rgba(255,255,255,0.45)', cursor:'pointer', fontSize:10, padding:'2px 4px', borderRadius:4 }}>
                                     📻 Radio
                                   </button>
                                   {selCountry && (<>
                                     <span style={{ color:'rgba(255,255,255,0.2)', fontSize:10 }}>›</span>
-                                    <button onClick={() => setRadioGenre(null)}
+                                    <button onClick={() => { setRadioGenre(null); rbBrowseKeyRef.current=''; setRbBrowseStations([]); rbBrowseRef.current=[]; }}
                                       style={{ background:'none', border:'none', color: selGenre ? 'rgba(255,255,255,0.45)' : selCountry.color, cursor:'pointer', fontSize:10, padding:'2px 4px', borderRadius:4, fontWeight: selGenre ? 400 : 700 }}>
                                       {selCountry.flag} {selCountry.name}
                                     </button>
@@ -6991,7 +7079,7 @@ export default function App() {
                                       <span style={{ fontSize:20, lineHeight:1, flexShrink:0 }}>{country.flag}</span>
                                       <div style={{ flex:1, minWidth:0 }}>
                                         <div style={{ fontSize:12, fontWeight:700, color:'white' }}>{country.name}</div>
-                                        <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)' }}>{country.genres.length} genre · {country.genres.reduce((s,g)=>s+g.stations.length,0)} stasiun</div>
+                                        <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)' }}>{country.genres.length} genre · Radio Browser</div>
                                       </div>
                                       <div style={{ display:'flex', gap:3, flexShrink:0 }}>
                                         {country.genres.slice(0,3).map(g=>(
@@ -7014,88 +7102,121 @@ export default function App() {
                                       </div>
                                       <div style={{ flex:1, minWidth:0 }}>
                                         <div style={{ fontSize:12, fontWeight:700, color:'white' }}>{genre.name}</div>
-                                        <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)' }}>{genre.stations.length} {t?.stationsPopular||'popular stations'}</div>
+                                        <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)' }}>📡 dari Radio Browser</div>
                                       </div>
                                       <span style={{ color:'rgba(255,255,255,0.2)', fontSize:14 }}>›</span>
                                     </div>
                                   ))}
                                 </div>
                               )}
-                              {/* LEVEL 3: Station list — hanya yang bisa diputar */}
+                              {/* LEVEL 3: Station list — dari Radio Browser */}
                               {selCountry && selGenre && (() => {
-                                // Trigger test saat genre pertama kali dibuka
-                                if (!testedGenresRef.current.has(selGenre.id)) {
-                                  testStationsInGenre(selGenre);
+                                // Trigger fetch dari Radio Browser jika belum / ganti genre
+                                const key = `${selCountry.id}__${selGenre.id}`;
+                                if (rbBrowseKeyRef.current !== key) {
+                                  fetchBrowseStations(selCountry.id, selGenre.id);
                                 }
-                                const allTesting = selGenre.stations.every(s => stationStatus[s.id] === 'testing');
-                                const okStations = selGenre.stations.filter(s => stationStatus[s.id] === 'ok' || stationStatus[s.id] === 'testing');
-                                const testingCount = selGenre.stations.filter(s => stationStatus[s.id] === 'testing').length;
-                                const failCount = selGenre.stations.filter(s => stationStatus[s.id] === 'fail').length;
-                                const doneCount = selGenre.stations.filter(s => stationStatus[s.id] === 'ok' || stationStatus[s.id] === 'fail').length;
-                                const totalCount = selGenre.stations.length;
                                 return (
                                   <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                                    {/* Progress bar saat testing */}
-                                    {testingCount > 0 && (
-                                      <div style={{ padding:'7px 10px', borderRadius:9, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.09)', display:'flex', alignItems:'center', gap:8 }}>
-                                        <div style={{ flex:1 }}>
-                                          <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
-                                            <span style={{ fontSize:10, color:'rgba(255,255,255,0.45)', fontWeight:600 }}>Memeriksa koneksi stasiun…</span>
-                                            <span style={{ fontSize:10, color:selGenre.color, fontWeight:700 }}>{doneCount}/{totalCount}</span>
-                                          </div>
-                                          <div style={{ height:3, borderRadius:999, background:'rgba(255,255,255,0.08)', overflow:'hidden' }}>
-                                            <div style={{ height:'100%', borderRadius:999, background:selGenre.color, width:`${(doneCount/totalCount)*100}%`, transition:'width 0.4s' }}/>
-                                          </div>
-                                        </div>
+                                    {/* Loading indicator */}
+                                    {rbBrowseLoading && (
+                                      <div style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 12px', borderRadius:10, background:'rgba(245,158,11,0.07)', border:'1px solid rgba(245,158,11,0.18)' }}>
+                                        <div style={{ width:14, height:14, borderRadius:'50%', border:'2px solid #f59e0b', borderTopColor:'transparent', animation:'spin 0.8s linear infinite', flexShrink:0 }}/>
+                                        <span style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>Memuat stasiun dari Radio Browser…</span>
                                       </div>
                                     )}
-                                    {/* Stasiun yang aktif / belum ditest */}
-                                    {okStations.map((station, idx) => {
-                                      const status = stationStatus[station.id];
-                                      const isTesting = status === 'testing';
+                                    {/* Error state */}
+                                    {rbBrowseError && !rbBrowseLoading && (
+                                      <div style={{ textAlign:'center', padding:'16px 10px', borderRadius:10, background:'rgba(239,68,68,0.06)', border:'1px solid rgba(239,68,68,0.15)' }}>
+                                        <div style={{ fontSize:18, marginBottom:5 }}>📡</div>
+                                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)', marginBottom:8 }}>{rbBrowseError}</div>
+                                        <button onClick={() => { rbBrowseKeyRef.current=''; fetchBrowseStations(selCountry.id, selGenre.id); }}
+                                          style={{ padding:'4px 14px', borderRadius:999, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.12)', color:'#fca5a5', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                                          ↺ Coba Lagi
+                                        </button>
+                                      </div>
+                                    )}
+                                    {/* Station list */}
+                                    {!rbBrowseLoading && rbBrowseStations.map((station, idx) => {
                                       const isActive = radioStation?.id === station.id;
-                                      const okIdx = selGenre.stations.filter(s => stationStatus[s.id] === 'ok').indexOf(station) + 1;
+                                      const stationColor = selGenre.color || '#f59e0b';
                                       return (
                                         <div key={station.id}
-                                          onClick={() => !isTesting && playStation(station, selGenre.color)}
-                                          style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 10px', borderRadius:10, background: isActive ? `${selGenre.color}20` : 'rgba(255,255,255,0.04)', border:`1px solid ${isActive ? selGenre.color+'55' : 'rgba(255,255,255,0.07)'}`, cursor: isTesting ? 'default' : 'pointer', opacity: isTesting ? 0.6 : 1, transition:'all 0.15s' }}>
-                                          <div style={{ width:26, height:26, borderRadius:6, background:`${selGenre.color}22`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800, color: isActive ? selGenre.color : 'rgba(255,255,255,0.3)', flexShrink:0 }}>
-                                            {isTesting
-                                              ? <div style={{ width:10, height:10, borderRadius:'50%', border:`2px solid ${selGenre.color}`, borderTopColor:'transparent', animation:'spin 0.8s linear infinite' }}/>
-                                              : isActive && (playing && track.isRadio) ? '🔊' : `#${okIdx}`
+                                          onClick={() => {
+                                            const radioTrackObj = {
+                                              id: `radio_${station.id}`,
+                                              title: station.name,
+                                              artist: station.city + ' · Live Radio',
+                                              album: 'Live Radio',
+                                              cover: station.favicon || 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
+                                              src: station.url,
+                                              color: stationColor,
+                                              bg: `rgba(245,158,11,0.15)`,
+                                              mood: 'live, radio',
+                                              isRadio: true,
+                                            };
+                                            if (track.id === radioTrackObj.id) {
+                                              setPlaying(p=>!p); setRadioPlaying(p=>!p);
+                                            } else {
+                                              if (embedTrack?.type === 'youtube') { closeEmbed(); }
+                                              play(radioTrackObj);
+                                              setRadioStation({ ...station, color: stationColor, countryId: selCountry.id, genreId: selGenre.id });
+                                              setRadioPlaying(true);
+                                            }
+                                            // click to count in Radio Browser
+                                            if (station.stationuuid) {
+                                              getRbServer().then(base=>fetch(`${base}/json/url/${station.stationuuid}`).catch(()=>{}));
+                                            }
+                                          }}
+                                          style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 10px', borderRadius:10, background: isActive ? `${stationColor}20` : 'rgba(255,255,255,0.04)', border:`1px solid ${isActive ? stationColor+'55' : 'rgba(255,255,255,0.07)'}`, cursor:'pointer', transition:'all 0.15s' }}>
+                                          {/* Favicon or number */}
+                                          <div style={{ width:32, height:32, borderRadius:8, background:`${stationColor}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, overflow:'hidden' }}>
+                                            {station.favicon
+                                              ? <img src={station.favicon} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{e.target.style.display='none';}}/>
+                                              : <span style={{ fontSize:9, fontWeight:800, color: isActive ? stationColor : 'rgba(255,255,255,0.3)' }}>#{idx+1}</span>
                                             }
                                           </div>
                                           <div style={{ flex:1, minWidth:0 }}>
-                                            <div style={{ fontSize:12, fontWeight:700, color: isActive ? selGenre.color : 'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{station.name}</div>
+                                            <div style={{ fontSize:12, fontWeight:700, color: isActive ? stationColor : 'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{station.name}</div>
                                             <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', display:'flex', alignItems:'center', gap:4 }}>
                                               <span>{station.city}</span>
-                                              {isTesting && <span style={{ color:'rgba(255,255,255,0.25)' }}>· mengecek…</span>}
-                                              {!isTesting && <span style={{ color:'#4ade80', fontWeight:700 }}>● tersedia</span>}
+                                              <span style={{ color:'#4ade80', fontWeight:700 }}>● RB</span>
+                                              {station.votes > 0 && <span>· {station.votes} votes</span>}
+                                              {/* Health check indicator */}
+                                              {stationStatus[station.id] === 'testing' && (
+                                                <span title="Memeriksa koneksi…" style={{ display:'inline-flex', alignItems:'center', gap:2, color:'#fbbf24' }}>
+                                                  <span style={{ width:6, height:6, borderRadius:'50%', border:'1.5px solid #fbbf24', borderTopColor:'transparent', display:'inline-block', animation:'spin 0.8s linear infinite' }}/>
+                                                  <span style={{ fontSize:8 }}>cek…</span>
+                                                </span>
+                                              )}
+                                              {stationStatus[station.id] === 'ok' && (
+                                                <span title="Stasiun aktif & dapat diputar" style={{ color:'#4ade80', fontWeight:700, fontSize:8 }}>✓ aktif</span>
+                                              )}
+                                              {stationStatus[station.id] === 'fail' && (
+                                                <span title="Stasiun tidak dapat dijangkau" style={{ color:'#f87171', fontWeight:700, fontSize:8 }}>✕ offline</span>
+                                              )}
                                             </div>
                                           </div>
-
-                                          <div style={{ width:26, height:26, borderRadius:'50%', background: isActive && (playing && track.isRadio) ? selGenre.color : 'rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color:'white', flexShrink:0 }}>
-                                            {isTesting ? '…' : isActive && (playing && track.isRadio) ? '⏸' : '▶'}
+                                          <div style={{ width:26, height:26, borderRadius:'50%', background: isActive && (playing && track.isRadio) ? stationColor : stationStatus[station.id]==='fail' ? 'rgba(248,113,113,0.15)' : 'rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color: stationStatus[station.id]==='fail' ? '#f87171' : 'white', flexShrink:0 }}>
+                                            {isActive && (playing && track.isRadio) ? '⏸' : stationStatus[station.id]==='fail' ? '!' : '▶'}
                                           </div>
                                         </div>
                                       );
                                     })}
-                                    {/* Tidak ada stasiun aktif setelah testing selesai */}
-                                    {testingCount === 0 && okStations.length === 0 && (
-                                      <div style={{ textAlign:'center', padding:'20px 10px', borderRadius:10, background:'rgba(239,68,68,0.06)', border:'1px solid rgba(239,68,68,0.15)' }}>
-                                        <div style={{ fontSize:20, marginBottom:6 }}>📡</div>
-                                        <div style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.45)' }}>Tidak ada stasiun tersedia</div>
-                                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.25)', marginTop:4 }}>Semua {totalCount} stasiun tidak dapat dijangkau saat ini</div>
-                                        <button onClick={() => { testedGenresRef.current.delete(selGenre.id); setStationStatus(prev => { const next={...prev}; selGenre.stations.forEach(s=>{delete next[s.id];}); return next; }); testStationsInGenre(selGenre); }}
-                                          style={{ marginTop:10, padding:'5px 14px', borderRadius:999, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.12)', color:'#fca5a5', fontSize:11, fontWeight:700, cursor:'pointer' }}>
-                                          ↺ Cek Ulang
-                                        </button>
+                                    {/* Empty after fetch */}
+                                    {!rbBrowseLoading && !rbBrowseError && rbBrowseStations.length === 0 && (
+                                      <div style={{ textAlign:'center', padding:'20px 10px', borderRadius:10, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)' }}>
+                                        <div style={{ fontSize:20, marginBottom:6 }}>📻</div>
+                                        <div style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.35)' }}>Tidak ada stasiun ditemukan</div>
+                                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.2)', marginTop:4 }}>Radio Browser tidak punya stasiun untuk genre ini di negara ini</div>
                                       </div>
                                     )}
-                                    {/* Info footer */}
-                                    {testingCount === 0 && okStations.length > 0 && failCount > 0 && (
-                                      <div style={{ fontSize:9, color:'rgba(255,255,255,0.18)', paddingLeft:2, marginTop:2 }}>
-                                        {okStations.length} stasiun aktif · {failCount} tidak tersedia disembunyikan
+                                    {/* Footer info */}
+                                    {!rbBrowseLoading && rbBrowseStations.length > 0 && (
+                                      <div style={{ fontSize:9, color:'rgba(255,255,255,0.18)', paddingLeft:2, marginTop:2, display:'flex', alignItems:'center', gap:4 }}>
+                                        <span>📡 {rbBrowseStations.length} stasiun · sumber: Radio Browser</span>
+                                        <button onClick={() => { rbBrowseKeyRef.current=''; fetchBrowseStations(selCountry.id, selGenre.id); }}
+                                          style={{ background:'none', border:'none', color:'rgba(255,255,255,0.25)', cursor:'pointer', fontSize:9, padding:'0 4px' }}>↺ refresh</button>
                                       </div>
                                     )}
                                   </div>
@@ -7111,6 +7232,11 @@ export default function App() {
                                   ...nts.map(s => ({ ...s, _src: 'NTS', _color: '#ff4500' })),
                                 ];
                                 if (allExtra.length === 0) return null;
+                                // Trigger health check untuk extra stations
+                                const extraKey = `extra__${selGenre.id}`;
+                                if (!testedGenresRef.current.has(extraKey)) {
+                                  testStationsInGenre({ id: extraKey, stations: allExtra });
+                                }
                                 return (
                                   <div style={{ marginTop:10 }}>
                                     <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:7, paddingLeft:2 }}>
@@ -7125,6 +7251,7 @@ export default function App() {
                                         const isActive = radioStation?.id === station.id || (track.isRadio && track.id === `rb_${station.stationuuid}`);
                                         const srcColorMap = { SomaFM:'#10b981', Icecast:'#6366f1', NTS:'#ff4500' };
                                         const srcColor = srcColorMap[station._src] || '#f59e0b';
+                                        const sStatus = stationStatus[station.id];
                                         return (
                                           <div key={station.id}
                                             onClick={() => playRbStation({ ...station, color: srcColor })}
@@ -7138,11 +7265,16 @@ export default function App() {
                                             </div>
                                             <div style={{ flex:1, minWidth:0 }}>
                                               <div style={{ fontSize:11, fontWeight:700, color: isActive ? srcColor : 'rgba(255,255,255,0.85)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{station.name}</div>
-                                              <div style={{ fontSize:9, color:'rgba(255,255,255,0.3)', marginTop:1 }}>{station.city || station.desc || ''}</div>
+                                              <div style={{ fontSize:9, color:'rgba(255,255,255,0.3)', marginTop:1, display:'flex', alignItems:'center', gap:4 }}>
+                                                <span>{station.city || station.desc || ''}</span>
+                                                {sStatus === 'testing' && <span style={{ color:'#fbbf24', display:'inline-flex', alignItems:'center', gap:2 }}><span style={{ width:5, height:5, borderRadius:'50%', border:'1.5px solid #fbbf24', borderTopColor:'transparent', display:'inline-block', animation:'spin 0.8s linear infinite' }}/><span style={{ fontSize:7 }}>cek…</span></span>}
+                                                {sStatus === 'ok' && <span style={{ color:'#4ade80', fontWeight:700, fontSize:7 }}>✓ aktif</span>}
+                                                {sStatus === 'fail' && <span style={{ color:'#f87171', fontWeight:700, fontSize:7 }}>✕ offline</span>}
+                                              </div>
                                             </div>
                                             <span style={{ fontSize:8, fontWeight:800, color:srcColor, background:`${srcColor}18`, padding:'2px 6px', borderRadius:999, flexShrink:0, letterSpacing:'0.05em' }}>{station._src}</span>
-                                            <div style={{ width:24, height:24, borderRadius:'50%', background: isActive && (playing && track.isRadio) ? srcColor : 'rgba(255,255,255,0.07)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, color:'white', flexShrink:0 }}>
-                                              {isActive && (playing && track.isRadio) ? '⏸' : '▶'}
+                                            <div style={{ width:24, height:24, borderRadius:'50%', background: isActive && (playing && track.isRadio) ? srcColor : sStatus==='fail' ? 'rgba(248,113,113,0.15)' : 'rgba(255,255,255,0.07)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, color: sStatus==='fail' ? '#f87171' : 'white', flexShrink:0 }}>
+                                              {isActive && (playing && track.isRadio) ? '⏸' : sStatus==='fail' ? '!' : '▶'}
                                             </div>
                                           </div>
                                         );
@@ -7518,8 +7650,8 @@ export default function App() {
                               {[12,6,10].map((h,j)=><div key={j} style={{ width:2.5, height:h, background:s.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${j*0.15}s infinite` }}/>)}
                             </div>
                           )}
-                          {/* ── Unduh ke perangkat (custom playlist) */}
-                          <button title="Unduh ke perangkat"
+                          {/* ── Unduh ke perangkat (custom playlist, tidak tampil untuk radio) */}
+                          {!s.isRadio&&<button title="Unduh ke perangkat"
                             onClick={async e=>{ e.stopPropagation();
                               const btn2=e.currentTarget; btn2.disabled=true;
                               const origColor=btn2.style.color; btn2.style.color='#a78bfa';
@@ -7535,7 +7667,7 @@ export default function App() {
                             }}
                             style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.2)', padding:'4px 6px', display:'flex', borderRadius:6, flexShrink:0, transition:'color 0.2s' }}>
                             <Download size={14}/>
-                          </button>
+                          </button>}
                           <button onClick={()=>removeFromPlaylist(pl.id, s.id)}
                             style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(239,68,68,0.5)', padding:'4px 6px', display:'flex', borderRadius:6, flexShrink:0 }}>
                             <X size={14}/>
@@ -7943,9 +8075,6 @@ Berikan response HANYA dalam JSON ini (tanpa markdown, tanpa teks lain):
                           </div>
                         );
                       })}
-                      <div style={{ marginTop:24, padding:'10px 14px', borderRadius:10, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)' }}>
-                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.25)' }}>{isLite ? (t?.lyricsSourceLite||'🎵 Lyrics from public database (lyrics.ovh).') : (t?.lyricsSourcePro||'✨ Lyrics from public database. If unavailable, Starry AI will generate based on title and mood.')}</div>
-                      </div>
                     </div>
                   )
                 )}
