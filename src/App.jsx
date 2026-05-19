@@ -3302,6 +3302,34 @@ export default function App() {
       spPreviewRef.current = audio;
       setSpTrack(track);
     };
+
+    // Check permissions
+    if (typeof AudioContext !== 'undefined' || typeof webkitAudioContext !== 'undefined') {
+      startNew();
+    } else {
+      startNew();
+    }
+  };
+
+  const searchViaYouTubeAPI = async (query) => {
+    if (!isYtApiEnabled()) return null;
+    try {
+      const ctrl = new AbortController();
+      const tid  = setTimeout(() => ctrl.abort(), 7000);
+      const userKey = _USER_YT_KEY;
+      let res;
+      if (userKey) {
+        const params = new URLSearchParams({
+          key: userKey, part: 'snippet', q: query, type: 'video',
+          videoCategoryId: '10', maxResults: '10',
+          fields: 'items(id/videoId,snippet/title,snippet/channelTitle,snippet/thumbnails/medium)',
+        });
+        res = await fetch(`https://www.googleapis.com/youtube/v3/search?${params}`, { signal: ctrl.signal });
+      } else {
+        const params = new URLSearchParams({ action: 'search', q: query, maxResults: '10' });
+        res = await fetch(`/api/youtube?${params}`, { signal: ctrl.signal });
+      }
+      clearTimeout(tid);
       if (!res.ok) return null;
       const data = await res.json();
       const items = (data.items || []).filter(i => i.id?.videoId);
