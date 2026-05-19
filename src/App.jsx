@@ -5047,6 +5047,8 @@ export default function App() {
       setTab('player'); // otomatis pindah ke player saat lagu baru diputar
     };
     doSwitch();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [track]);
 
   // ── NEXT / PREV
   const activePlRef = useRef(null); // kept in sync below
