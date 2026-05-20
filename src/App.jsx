@@ -8456,7 +8456,7 @@ export default function App() {
             {/* Chat + Vibe result area OR Lyrics OR For You */}
             {aiSubView==='foryou' ? (
               /* ── FOR YOU / PERSONALISASI VIEW */
-              <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'16px 20px 24px' }}>
+              <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'16px clamp(10px,4vw,20px) 24px' }}>
                 {isLite ? (
                   /* ── LITE MODE GATE */
                   <div style={{ textAlign:'center', paddingTop:40 }}>
@@ -8599,7 +8599,7 @@ TAKSONOMI AUDIO (panduan mapping kategori yang dipilih user):
 - siaran_live = Ruang Obrolan Langsung (diskusi interaktif penyiar & pendengar live)
 - siaran_olahraga = Siaran Olahraga Live (komentar pertandingan sepakbola, F1, basket live)
 
-INSTRUKSI: Isi HANYA array/field yang relevan dengan kategori yang dipilih user. Kosongkan array jika kategorinya tidak dipilih. Berikan response HANYA dalam JSON ini (tanpa markdown, tanpa teks lain):
+INSTRUKSI: Isi array untuk setiap kategori yang dipilih user dengan MINIMAL 3 item nyata dan spesifik. Kosongkan array ([]) HANYA jika kategori tersebut TIDAK dipilih sama sekali. Jangan beri placeholder "..." — isi dengan nama konten/artis/judul nyata yang sesuai. Berikan response HANYA dalam JSON ini (tanpa markdown, tanpa teks lain):
 {
   "greeting": "sapa user dengan hangat dan personal berdasarkan preferensinya (max 2 kalimat)",
   "music": [
@@ -8625,13 +8625,21 @@ INSTRUKSI: Isi HANYA array/field yang relevan dengan kategori yang dipilih user.
   ],
   "tip": "satu tips pendek spesifik sesuai preferensi user untuk pengalaman mendengarkan yang lebih baik"
 }`;
+                          const _activeSections1 = [
+                            personaPrefs.categories.some(c=>c.startsWith('music_')),
+                            personaPrefs.categories.some(c=>c.startsWith('edu_')),
+                            personaPrefs.categories.some(c=>c.startsWith('fiksi_')),
+                            personaPrefs.categories.some(c=>c.startsWith('wellness_')),
+                            personaPrefs.categories.some(c=>c.startsWith('siaran_')),
+                          ].filter(Boolean).length;
+                          const _maxTok1 = Math.min(4000, 800 + _activeSections1 * 500);
                           const providers = getProviders();
                           let result = null;
                           for (const prov of providers) {
                             try {
                               const body = prov.isOpenAI
-                                ? { model:prov.model, max_tokens:1500, messages:[{role:'user',content:prompt}], ...prov.extra }
-                                : { model:prov.model, max_tokens:1500, messages:[{role:'user',content:[{type:'text',text:prompt}]}] };
+                                ? { model:prov.model, max_tokens:_maxTok1, messages:[{role:'user',content:prompt}], ...prov.extra }
+                                : { model:prov.model, max_tokens:_maxTok1, messages:[{role:'user',content:[{type:'text',text:prompt}]}] };
                               const resp = await fetch(prov.endpoint, { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${prov.key}`, ...(prov.extra||{}) }, body:JSON.stringify(body) });
                               const data = await resp.json();
                               const text = prov.isOpenAI ? data?.choices?.[0]?.message?.content : data?.content?.[0]?.text;
@@ -8665,6 +8673,13 @@ INSTRUKSI: Isi HANYA array/field yang relevan dengan kategori yang dipilih user.
                   <div>
                     {personaRecs && (
                       <>
+                        {/* Greeting */}
+                        {personaRecs.greeting && (
+                          <div style={{ padding:'10px 14px', borderRadius:14, background:'rgba(99,102,241,0.1)', border:'1px solid rgba(99,102,241,0.25)', marginBottom:14, display:'flex', alignItems:'flex-start', gap:9 }}>
+                            <div style={{ width:22, height:22, borderRadius:7, flexShrink:0, background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center', marginTop:1 }}>🎯</div>
+                            <div style={{ fontSize:12, color:'rgba(255,255,255,0.75)', lineHeight:1.6 }}>{personaRecs.greeting}</div>
+                          </div>
+                        )}
                         {/* Tombol aksi atas For You */}
                         <div style={{ display:'flex', gap:8, marginBottom:16 }}>
                           <button
@@ -8673,14 +8688,23 @@ INSTRUKSI: Isi HANYA array/field yang relevan dengan kategori yang dipilih user.
                               setPL(true);
                               try {
                                 const savedPrefs = (() => { try { return JSON.parse(localStorage.getItem('sn_persona_prefs')||'{}'); } catch { return personaPrefs; } })();
-                                const prompt = `Kamu adalah kurator audio personal berbasis taksonomi audio lengkap. Berdasarkan preferensi user berikut, berikan rekomendasi audio yang sangat dipersonalisasi dalam format JSON.\n\nPreferensi user:\n- Kategori dipilih: ${savedPrefs.categories?.join(', ') || personaPrefs.categories.join(', ') || 'tidak disebutkan'}\n- Suasana yang dicari: ${savedPrefs.moods?.join(', ') || personaPrefs.moods.join(', ') || 'tidak disebutkan'}\n- Waktu mendengarkan: ${savedPrefs.timeOfDay || personaPrefs.timeOfDay || 'kapan saja'}\n- Bahasa konten: ${savedPrefs.lang || personaPrefs.lang || 'mix'}\n\nTAKSONOMI: music_mainstream=Pop/Rock/HipHop, music_indie=Indie/Demotape, music_instrumental=Klasik/Orkestra, music_remix=Remix/DJ, music_cover=Cover/Akapela, music_lofi=Lo-Fi, music_indopop=Indo Pop/Dangdut, music_edm=EDM; edu_podcast=Podcast/Siniar, edu_audiobook=Audiobook, edu_booksummary=Ringkasan Buku, edu_news=Berita Audio, edu_kuliah=Kuliah/Kursus; fiksi_drama=Sandiwara Suara, fiksi_komedi=Komedi Audio, fiksi_puisi=Puisi/Deklamasi; wellness_ambient=Suara Alam, wellness_noise=White/Pink/Brown Noise, wellness_meditation=Meditasi Panduan, wellness_binaural=Binaural Beats, wellness_asmr=ASMR; siaran_radio=Radio Digital, siaran_live=Obrolan Langsung, siaran_olahraga=Olahraga Live.\n\nBerikan response HANYA dalam JSON ini (tanpa markdown, tanpa teks lain):\n{\"greeting\":\"sapa user hangat (max 2 kalimat)\",\"music\":[{\"title\":\"Nama Lagu\",\"artist\":\"Artis\",\"subcategory\":\"sub-kategori\",\"reason\":\"alasan (max 10 kata)\"},{\"title\":\"...\",\"artist\":\"...\",\"subcategory\":\"...\",\"reason\":\"...\"},{\"title\":\"...\",\"artist\":\"...\",\"subcategory\":\"...\",\"reason\":\"...\"}],\"edukasi\":[{\"name\":\"Nama Konten\",\"platform\":\"platform/sumber\",\"subcategory\":\"podcast/audiobook/news/dll\",\"reason\":\"alasan singkat\"},{\"name\":\"...\",\"platform\":\"...\",\"subcategory\":\"...\",\"reason\":\"...\"}],\"fiksi\":[{\"name\":\"Judul\",\"genre\":\"genre\",\"subcategory\":\"drama/komedi/puisi\",\"reason\":\"alasan singkat\"},{\"name\":\"...\",\"genre\":\"...\",\"subcategory\":\"...\",\"reason\":\"...\"}],\"wellness\":[{\"name\":\"Nama Konten\",\"type\":\"ASMR/binaural/meditasi/ambient/noise\",\"reason\":\"alasan singkat\"},{\"name\":\"...\",\"type\":\"...\",\"reason\":\"...\"}],\"siaran\":[{\"name\":\"Nama Stasiun\",\"genre\":\"genre\",\"subcategory\":\"radio/live/olahraga\",\"reason\":\"alasan singkat\"},{\"name\":\"...\",\"genre\":\"...\",\"subcategory\":\"...\",\"reason\":\"...\"}],\"tip\":\"tips spesifik sesuai preferensi user\"}`;
+                                const prompt = `Kamu adalah kurator audio personal berbasis taksonomi audio lengkap. Berdasarkan preferensi user berikut, berikan rekomendasi audio yang sangat dipersonalisasi dalam format JSON.\n\nPreferensi user:\n- Kategori dipilih: ${savedPrefs.categories?.join(', ') || personaPrefs.categories.join(', ') || 'tidak disebutkan'}\n- Suasana yang dicari: ${savedPrefs.moods?.join(', ') || personaPrefs.moods.join(', ') || 'tidak disebutkan'}\n- Waktu mendengarkan: ${savedPrefs.timeOfDay || personaPrefs.timeOfDay || 'kapan saja'}\n- Bahasa konten: ${savedPrefs.lang || personaPrefs.lang || 'mix'}\n\nTAKSONOMI: music_mainstream=Pop/Rock/HipHop, music_indie=Indie/Demotape, music_instrumental=Klasik/Orkestra, music_remix=Remix/DJ, music_cover=Cover/Akapela, music_lofi=Lo-Fi, music_indopop=Indo Pop/Dangdut, music_edm=EDM; edu_podcast=Podcast/Siniar, edu_audiobook=Audiobook, edu_booksummary=Ringkasan Buku, edu_news=Berita Audio, edu_kuliah=Kuliah/Kursus; fiksi_drama=Sandiwara Suara, fiksi_komedi=Komedi Audio, fiksi_puisi=Puisi/Deklamasi; wellness_ambient=Suara Alam, wellness_noise=White/Pink/Brown Noise, wellness_meditation=Meditasi Panduan, wellness_binaural=Binaural Beats, wellness_asmr=ASMR; siaran_radio=Radio Digital, siaran_live=Obrolan Langsung, siaran_olahraga=Olahraga Live.\n\nINSTRUKSI: Isi MINIMAL 3 item nyata per kategori yang dipilih. Kosongkan array hanya jika tidak dipilih. Response HANYA JSON (tanpa markdown):\\n{\\"greeting\\":\\"sapa user hangat\\",\\"music\\":[{\\"title\\":\\"Judul Nyata\\",\\"artist\\":\\"Artis Nyata\\",\\"subcategory\\":\\"sub\\",\\"reason\\":\\"alasan singkat\\"},{\\"title\\":\\"Judul 2\\",\\"artist\\":\\"Artis 2\\",\\"subcategory\\":\\"sub\\",\\"reason\\":\\"alasan\\"},{\\"title\\":\\"Judul 3\\",\\"artist\\":\\"Artis 3\\",\\"subcategory\\":\\"sub\\",\\"reason\\":\\"alasan\\"}],\\"edukasi\\":[{\\"name\\":\\"Nama Nyata\\",\\"platform\\":\\"platform\\",\\"subcategory\\":\\"podcast/audiobook/news\\",\\"reason\\":\\"alasan\\"},{\\"name\\":\\"Nama 2\\",\\"platform\\":\\"platform\\",\\"subcategory\\":\\"sub\\",\\"reason\\":\\"alasan\\"},{\\"name\\":\\"Nama 3\\",\\"platform\\":\\"platform\\",\\"subcategory\\":\\"sub\\",\\"reason\\":\\"alasan\\"}],\\"fiksi\\":[{\\"name\\":\\"Judul Nyata\\",\\"genre\\":\\"genre\\",\\"subcategory\\":\\"drama/komedi/puisi\\",\\"reason\\":\\"alasan\\"},{\\"name\\":\\"Judul 2\\",\\"genre\\":\\"genre\\",\\"subcategory\\":\\"sub\\",\\"reason\\":\\"alasan\\"},{\\"name\\":\\"Judul 3\\",\\"genre\\":\\"genre\\",\\"subcategory\\":\\"sub\\",\\"reason\\":\\"alasan\\"}],\\"wellness\\":[{\\"name\\":\\"Nama Nyata\\",\\"type\\":\\"ASMR/binaural/meditasi/ambient/noise\\",\\"reason\\":\\"alasan\\"},{\\"name\\":\\"Nama 2\\",\\"type\\":\\"type\\",\\"reason\\":\\"alasan\\"},{\\"name\\":\\"Nama 3\\",\\"type\\":\\"type\\",\\"reason\\":\\"alasan\\"}],\\"siaran\\":[{\\"name\\":\\"Nama Nyata\\",\\"genre\\":\\"genre\\",\\"subcategory\\":\\"radio/live/olahraga\\",\\"reason\\":\\"alasan\\"},{\\"name\\":\\"Nama 2\\",\\"genre\\":\\"genre\\",\\"subcategory\\":\\"sub\\",\\"reason\\":\\"alasan\\"},{\\"name\\":\\"Nama 3\\",\\"genre\\":\\"genre\\",\\"subcategory\\":\\"sub\\",\\"reason\\":\\"alasan\\"}],\\"tip\\":\\"tips spesifik sesuai preferensi user\\"}}`;
+                                const _cats2 = savedPrefs.categories || personaPrefs.categories || [];
+                                const _activeSections2 = [
+                                  _cats2.some(c=>c.startsWith('music_')),
+                                  _cats2.some(c=>c.startsWith('edu_')),
+                                  _cats2.some(c=>c.startsWith('fiksi_')),
+                                  _cats2.some(c=>c.startsWith('wellness_')),
+                                  _cats2.some(c=>c.startsWith('siaran_')),
+                                ].filter(Boolean).length;
+                                const _maxTok2 = Math.min(4000, 800 + _activeSections2 * 500);
                                 const providers = getProviders();
                                 let result = null;
                                 for (const prov of providers) {
                                   try {
                                     const body = prov.isOpenAI
-                                      ? { model:prov.model, max_tokens:1500, messages:[{role:'user',content:prompt}], ...prov.extra }
-                                      : { model:prov.model, max_tokens:1500, messages:[{role:'user',content:[{type:'text',text:prompt}]}] };
+                                      ? { model:prov.model, max_tokens:_maxTok2, messages:[{role:'user',content:prompt}], ...prov.extra }
+                                      : { model:prov.model, max_tokens:_maxTok2, messages:[{role:'user',content:[{type:'text',text:prompt}]}] };
                                     const resp = await fetch(prov.endpoint, { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${prov.key}`, ...(prov.extra||{}) }, body:JSON.stringify(body) });
                                     const data = await resp.json();
                                     const text = prov.isOpenAI ? data?.choices?.[0]?.message?.content : data?.content?.[0]?.text;
@@ -8719,8 +8743,15 @@ INSTRUKSI: Isi HANYA array/field yang relevan dengan kategori yang dipilih user.
                             label:'🎵 Musik', accent: track.color,
                             items: personaRecs.music.map(m=>({
                               icon:'🎵', title: m.title, sub: m.artist,
-                              tag: m.subcategory,
-                              onPlay: ()=>{ const q=`${m.title} ${m.artist}`; setYtQuery(p=>({...p,ytmusic:q})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic',q); ytMusicSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },120); },
+                              tag: m.subcategory, reason: m.reason,
+                              onPlay: ()=>{
+                                const q=`${m.title} ${m.artist}`;
+                                setUnifiedPlatform('ytmusic');
+                                setUnifiedQuery(q);
+                                setYtQuery(p=>({...p,ytmusic:q}));
+                                setTab('stream');
+                                setTimeout(()=>{ searchYouTube('ytmusic',q); ytMusicSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },300);
+                              },
                               btnLabel:'▶',
                             }))
                           },
@@ -8728,8 +8759,15 @@ INSTRUKSI: Isi HANYA array/field yang relevan dengan kategori yang dipilih user.
                             label:'📚 Edukasi', accent:'#22c55e',
                             items: personaRecs.edukasi.map(e=>({
                               icon: e.subcategory?.includes('news')?'📰':e.subcategory?.includes('audio')||e.subcategory?.includes('book')?'📖':'🎙️',
-                              title: e.name, sub: e.platform, tag: e.subcategory,
-                              onPlay: ()=>{ const q=e.name; setYtQuery(p=>({...p,ytmusic:q})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic',q); ytMusicSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },120); },
+                              title: e.name, sub: e.platform, tag: e.subcategory, reason: e.reason,
+                              onPlay: ()=>{
+                                const q=`${e.name} ${e.subcategory?.includes('podcast')?'podcast':e.subcategory?.includes('book')?'audiobook':e.subcategory?.includes('news')?'berita audio':''}`.trim();
+                                setUnifiedPlatform('ytmusic');
+                                setUnifiedQuery(q);
+                                setYtQuery(p=>({...p,ytmusic:q}));
+                                setTab('stream');
+                                setTimeout(()=>{ searchYouTube('ytmusic',q); ytMusicSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },300);
+                              },
                               btnLabel:'Cari',
                             }))
                           },
@@ -8737,8 +8775,15 @@ INSTRUKSI: Isi HANYA array/field yang relevan dengan kategori yang dipilih user.
                             label:'🎭 Fiksi', accent:'#f97316',
                             items: personaRecs.fiksi.map(f=>({
                               icon: f.subcategory==='komedi'?'😂':f.subcategory==='puisi'?'📜':'🎭',
-                              title: f.name, sub: f.genre, tag: f.subcategory,
-                              onPlay: ()=>{ const q=f.name+' audio'; setYtQuery(p=>({...p,ytmusic:q})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic',q); ytMusicSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },120); },
+                              title: f.name, sub: f.genre, tag: f.subcategory, reason: f.reason,
+                              onPlay: ()=>{
+                                const q=`${f.name} audio ${f.subcategory||''}`.trim();
+                                setUnifiedPlatform('ytmusic');
+                                setUnifiedQuery(q);
+                                setYtQuery(p=>({...p,ytmusic:q}));
+                                setTab('stream');
+                                setTimeout(()=>{ searchYouTube('ytmusic',q); ytMusicSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },300);
+                              },
                               btnLabel:'Cari',
                             }))
                           },
@@ -8746,8 +8791,15 @@ INSTRUKSI: Isi HANYA array/field yang relevan dengan kategori yang dipilih user.
                             label:'🧘 Wellness', accent:'#14b8a6',
                             items: personaRecs.wellness.map(w=>({
                               icon: w.type?.toLowerCase().includes('asmr')?'🤫':w.type?.toLowerCase().includes('binaural')?'🧠':w.type?.toLowerCase().includes('noise')?'🌊':w.type?.toLowerCase().includes('ambient')||w.type?.toLowerCase().includes('alam')?'🌿':'🧘',
-                              title: w.name, sub: w.type,
-                              onPlay: ()=>{ const q=w.name; setYtQuery(p=>({...p,ytmusic:q})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic',q); ytMusicSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },120); },
+                              title: w.name, sub: w.type, reason: w.reason,
+                              onPlay: ()=>{
+                                const q=`${w.name} ${w.type||''}`.trim();
+                                setUnifiedPlatform('ytmusic');
+                                setUnifiedQuery(q);
+                                setYtQuery(p=>({...p,ytmusic:q}));
+                                setTab('stream');
+                                setTimeout(()=>{ searchYouTube('ytmusic',q); ytMusicSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },300);
+                              },
                               btnLabel:'Cari',
                             }))
                           },
@@ -8755,8 +8807,15 @@ INSTRUKSI: Isi HANYA array/field yang relevan dengan kategori yang dipilih user.
                             label:'📻 Siaran Live', accent:'#f59e0b',
                             items: personaRecs.siaran.map(s=>({
                               icon: s.subcategory==='olahraga'?'⚽':s.subcategory==='live'?'🎙️':'📻',
-                              title: s.name, sub: s.genre, tag: s.subcategory,
-                              onPlay: ()=>{ setTab('stream'); },
+                              title: s.name, sub: s.genre, tag: s.subcategory, reason: s.reason,
+                              onPlay: ()=>{
+                                const q=`${s.name} ${s.subcategory==='olahraga'?'live stream':s.subcategory==='live'?'live radio':'radio live'}`.trim();
+                                setUnifiedPlatform('ytmusic');
+                                setUnifiedQuery(q);
+                                setYtQuery(p=>({...p,ytmusic:q}));
+                                setTab('stream');
+                                setTimeout(()=>{ searchYouTube('ytmusic',q); ytMusicSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },300);
+                              },
                               btnLabel: s.subcategory==='olahraga'?'Live':'Radio',
                             }))
                           },
@@ -8769,25 +8828,31 @@ INSTRUKSI: Isi HANYA array/field yang relevan dengan kategori yang dipilih user.
                             {/* Horizontal scroll row */}
                             <div className="scrollbar-hide" style={{ display:'flex', gap:10, overflowX:'auto', paddingBottom:4 }}>
                               {section.items.map((item, ii)=>(
-                                <div key={ii} onClick={item.onPlay} style={{ flexShrink:0, width:140, background:'rgba(255,255,255,0.04)', border:`1px solid ${section.accent}25`, borderRadius:16, padding:'12px 12px 10px', cursor:'pointer', transition:'background 0.15s', display:'flex', flexDirection:'column', gap:0 }}
+                                <div key={ii} onClick={item.onPlay} style={{ flexShrink:0, width:'clamp(130px, 38vw, 160px)', background:'rgba(255,255,255,0.04)', border:`1px solid ${section.accent}25`, borderRadius:16, padding:'12px 12px 10px', cursor:'pointer', transition:'background 0.15s', display:'flex', flexDirection:'column', gap:0 }}
                                   onMouseEnter={e=>e.currentTarget.style.background=`${section.accent}12`}
                                   onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.04)'}
                                 >
                                   {/* Icon square */}
-                                  <div style={{ width:40, height:40, borderRadius:12, background:`${section.accent}18`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, marginBottom:10 }}>
+                                  <div style={{ width:36, height:36, borderRadius:10, background:`${section.accent}18`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, marginBottom:8, flexShrink:0 }}>
                                     {item.icon}
                                   </div>
                                   {/* Title */}
-                                  <div style={{ fontSize:12, fontWeight:700, color:'white', lineHeight:1.35, marginBottom:4, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>
+                                  <div style={{ fontSize:11.5, fontWeight:700, color:'white', lineHeight:1.3, marginBottom:3, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>
                                     {item.title}
                                   </div>
                                   {/* Sub label */}
-                                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginBottom:'auto' }}>
+                                  <div style={{ fontSize:9.5, color:'rgba(255,255,255,0.35)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                                     {item.sub}
                                   </div>
+                                  {/* Reason */}
+                                  {item.reason && (
+                                    <div style={{ fontSize:9, color:'rgba(255,255,255,0.22)', lineHeight:1.4, marginTop:4, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', flexGrow:1 }}>
+                                      {item.reason}
+                                    </div>
+                                  )}
                                   {/* Play / Cari button */}
-                                  <div style={{ marginTop:10, display:'flex', justifyContent:'flex-end' }}>
-                                    <span style={{ fontSize:10, fontWeight:700, color:section.accent, background:`${section.accent}18`, padding:'3px 10px', borderRadius:999, border:`1px solid ${section.accent}40` }}>
+                                  <div style={{ marginTop:8, display:'flex', justifyContent:'flex-end' }}>
+                                    <span style={{ fontSize:10, fontWeight:700, color:section.accent, background:`${section.accent}18`, padding:'3px 8px', borderRadius:999, border:`1px solid ${section.accent}40` }}>
                                       {item.btnLabel}
                                     </span>
                                   </div>
