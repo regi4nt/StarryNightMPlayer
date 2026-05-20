@@ -8138,7 +8138,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                               })()}
 
                               <div style={{ marginTop:8, fontSize:9, color:'rgba(255,255,255,0.18)', paddingLeft:2 }}>
-                                {!selCountry ? 'Select a country to view genres & stations' : !selGenre ? 'Select a genre to view stations' : 'Select a station to play'at stasiun' : 'Hanya stasiun yang dapat dijangkau yang ditampilkan'}
+                                {!selCountry ? 'Select a country to view genres & stations' : !selGenre ? 'Select a genre to view stations' : 'Select a station to play'}
                               </div>
                             </div>
                             )}
