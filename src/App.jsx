@@ -8470,124 +8470,61 @@ export default function App() {
                 ) : personaStep==='onboard' ? (
                   /* ── ONBOARDING FORM */
                   <div>
-                    <div style={{ textAlign:'center', marginBottom:20 }}>
-                      <div style={{ fontSize:32, marginBottom:8 }}>🎧</div>
-                      <div style={{ fontSize:12, color:'rgba(255,255,255,0.35)', lineHeight:1.6 }}>Beritahu Starry AI tentang preferensimu — kami kurasi dari 5 rumpun audio: Musik, Edukasi, Fiksi, Wellness, dan Siaran Langsung.</div>
+                    {/* Header — ramah & singkat */}
+                    <div style={{ marginBottom:24 }}>
+                      <div style={{ fontSize:22, marginBottom:6 }}>👋</div>
+                      <div style={{ fontSize:15, fontWeight:800, color:'white', marginBottom:6 }}>Halo! Kamu suka dengerin apa?</div>
+                      <div style={{ fontSize:12, color:'rgba(255,255,255,0.35)', lineHeight:1.6 }}>Pilih beberapa yang cocok, Starry AI akan kurasi untukmu.</div>
                     </div>
 
-                    {/* Kategori audio — Rumpun Utama */}
-                    <div style={{ marginBottom:6 }}>
-                      <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:6 }}>🎼 Rumpun Musik & Seni Suara</div>
-                      <div style={{ display:'flex', flexWrap:'wrap', gap:7, marginBottom:14 }}>
-                        {[
-                          { id:'music_mainstream', icon:'🎤', label:'Pop / Rock / Hip-Hop' },
-                          { id:'music_indie', icon:'🎸', label:'Indie & Demotape' },
-                          { id:'music_instrumental', icon:'🎻', label:'Instrumental & Orkestra' },
-                          { id:'music_remix', icon:'🎛️', label:'Remix / Mashup / DJ Set' },
-                          { id:'music_cover', icon:'🎙️', label:'Cover & Akapela' },
-                          { id:'music_lofi', icon:'☕', label:'Lo-Fi / Chill' },
-                          { id:'music_indopop', icon:'🇮🇩', label:'Indo Pop / Dangdut' },
-                          { id:'music_edm', icon:'⚡', label:'EDM / Electronic' },
-                        ].map(c => {
-                          const selected = personaPrefs.categories.includes(c.id);
-                          return (
-                            <button key={c.id} onClick={()=>setPersonaPrefs(p=>({ ...p, categories: selected ? p.categories.filter(x=>x!==c.id) : [...p.categories, c.id] }))}
-                              style={{ padding:'7px 12px', borderRadius:999, border:`1px solid ${selected?track.color+'80':'rgba(255,255,255,0.12)'}`, background:selected?`${track.color}25`:'transparent', color:selected?'white':'rgba(255,255,255,0.55)', fontSize:11, fontWeight:selected?700:500, cursor:'pointer', display:'flex', alignItems:'center', gap:5, transition:'all 0.15s' }}>
-                              {c.icon} {c.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:6 }}>🗣️ Rumpun Edukasi, Informasi & Narasi</div>
-                      <div style={{ display:'flex', flexWrap:'wrap', gap:7, marginBottom:14 }}>
-                        {[
-                          { id:'edu_podcast', icon:'🎙️', label:'Podcast / Siniar' },
-                          { id:'edu_audiobook', icon:'📖', label:'Buku Audio (Audiobook)' },
-                          { id:'edu_booksummary', icon:'📝', label:'Ringkasan Buku Audio' },
-                          { id:'edu_news', icon:'📰', label:'Berita & Buletin Audio' },
-                          { id:'edu_kuliah', icon:'🎓', label:'Materi Belajar & Kuliah' },
-                        ].map(c => {
-                          const selected = personaPrefs.categories.includes(c.id);
-                          return (
-                            <button key={c.id} onClick={()=>setPersonaPrefs(p=>({ ...p, categories: selected ? p.categories.filter(x=>x!==c.id) : [...p.categories, c.id] }))}
-                              style={{ padding:'7px 12px', borderRadius:999, border:`1px solid ${selected?'#22c55e80':'rgba(255,255,255,0.12)'}`, background:selected?'rgba(34,197,94,0.18)':'transparent', color:selected?'#86efac':'rgba(255,255,255,0.55)', fontSize:11, fontWeight:selected?700:500, cursor:'pointer', display:'flex', alignItems:'center', gap:5, transition:'all 0.15s' }}>
-                              {c.icon} {c.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:6 }}>🎭 Rumpun Fiksi & Hiburan Kreatif</div>
-                      <div style={{ display:'flex', flexWrap:'wrap', gap:7, marginBottom:14 }}>
-                        {[
-                          { id:'fiksi_drama', icon:'🎭', label:'Sandiwara Suara / Audio Drama' },
-                          { id:'fiksi_komedi', icon:'😂', label:'Komedi Suara / Stand-Up' },
-                          { id:'fiksi_puisi', icon:'📜', label:'Puisi & Deklamasi' },
-                        ].map(c => {
-                          const selected = personaPrefs.categories.includes(c.id);
-                          return (
-                            <button key={c.id} onClick={()=>setPersonaPrefs(p=>({ ...p, categories: selected ? p.categories.filter(x=>x!==c.id) : [...p.categories, c.id] }))}
-                              style={{ padding:'7px 12px', borderRadius:999, border:`1px solid ${selected?'#f9731680':'rgba(255,255,255,0.12)'}`, background:selected?'rgba(249,115,22,0.18)':'transparent', color:selected?'#fdba74':'rgba(255,255,255,0.55)', fontSize:11, fontWeight:selected?700:500, cursor:'pointer', display:'flex', alignItems:'center', gap:5, transition:'all 0.15s' }}>
-                              {c.icon} {c.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:6 }}>🧘 Rumpun Wellness, Fokus & Terapi</div>
-                      <div style={{ display:'flex', flexWrap:'wrap', gap:7, marginBottom:14 }}>
-                        {[
-                          { id:'wellness_ambient', icon:'🌿', label:'Suara Alam & Lingkungan' },
-                          { id:'wellness_noise', icon:'🌊', label:'White/Pink/Brown Noise' },
-                          { id:'wellness_meditation', icon:'🧘', label:'Meditasi Panduan' },
-                          { id:'wellness_binaural', icon:'🧠', label:'Binaural Beats' },
-                          { id:'wellness_asmr', icon:'🤫', label:'ASMR' },
-                        ].map(c => {
-                          const selected = personaPrefs.categories.includes(c.id);
-                          return (
-                            <button key={c.id} onClick={()=>setPersonaPrefs(p=>({ ...p, categories: selected ? p.categories.filter(x=>x!==c.id) : [...p.categories, c.id] }))}
-                              style={{ padding:'7px 12px', borderRadius:999, border:`1px solid ${selected?'#14b8a680':'rgba(255,255,255,0.12)'}`, background:selected?'rgba(20,184,166,0.18)':'transparent', color:selected?'#5eead4':'rgba(255,255,255,0.55)', fontSize:11, fontWeight:selected?700:500, cursor:'pointer', display:'flex', alignItems:'center', gap:5, transition:'all 0.15s' }}>
-                              {c.icon} {c.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:6 }}>📻 Rumpun Siaran Langsung & Interaktif</div>
-                      <div style={{ display:'flex', flexWrap:'wrap', gap:7, marginBottom:18 }}>
-                        {[
-                          { id:'siaran_radio', icon:'📻', label:'Radio Internet / Digital' },
-                          { id:'siaran_live', icon:'🎙️', label:'Ruang Obrolan Langsung' },
-                          { id:'siaran_olahraga', icon:'⚽', label:'Siaran Olahraga Live' },
-                        ].map(c => {
-                          const selected = personaPrefs.categories.includes(c.id);
-                          return (
-                            <button key={c.id} onClick={()=>setPersonaPrefs(p=>({ ...p, categories: selected ? p.categories.filter(x=>x!==c.id) : [...p.categories, c.id] }))}
-                              style={{ padding:'7px 12px', borderRadius:999, border:`1px solid ${selected?'#f59e0b80':'rgba(255,255,255,0.12)'}`, background:selected?'rgba(245,158,11,0.18)':'transparent', color:selected?'#fde68a':'rgba(255,255,255,0.55)', fontSize:11, fontWeight:selected?700:500, cursor:'pointer', display:'flex', alignItems:'center', gap:5, transition:'all 0.15s' }}>
-                              {c.icon} {c.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Mood / Suasana */}
-                    <div style={{ marginBottom:18 }}>
-                      <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>Suasana yang sering kamu cari</div>
+                    {/* Q1 — Konten favorit (pilih bebas, multi) */}
+                    <div style={{ marginBottom:22 }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.75)', marginBottom:12 }}>Konten apa yang paling sering kamu dengarkan?</div>
                       <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
                         {[
-                          { id:'relax', icon:'😌', label:'Santai' },
-                          { id:'focus', icon:'🎯', label:'Fokus Kerja' },
-                          { id:'energetic', icon:'🔥', label:'Semangat' },
-                          { id:'sad', icon:'🌧️', label:'Sendu / Galau' },
-                          { id:'sleep', icon:'😴', label:'Tidur / Meditasi' },
-                          { id:'party', icon:'🎉', label:'Party / Happy' },
+                          { id:'music_mainstream', icon:'🎵', label:'Musik (Pop / Rock / dll)' },
+                          { id:'music_lofi',        icon:'☕', label:'Lo-Fi & Chill' },
+                          { id:'music_indopop',     icon:'🇮🇩', label:'Indo Pop / Dangdut' },
+                          { id:'music_instrumental',icon:'🎻', label:'Instrumental & Klasik' },
+                          { id:'music_edm',         icon:'⚡', label:'EDM / Electronic' },
+                          { id:'edu_podcast',       icon:'🎙️', label:'Podcast & Siniar' },
+                          { id:'edu_audiobook',     icon:'📖', label:'Audiobook & Narasi' },
+                          { id:'edu_news',          icon:'📰', label:'Berita Audio' },
+                          { id:'fiksi_drama',       icon:'🎭', label:'Drama Audio & Cerita' },
+                          { id:'fiksi_komedi',      icon:'😂', label:'Komedi & Stand-Up' },
+                          { id:'wellness_ambient',  icon:'🌿', label:'Suara Alam & Relaksasi' },
+                          { id:'wellness_asmr',     icon:'🤫', label:'ASMR' },
+                          { id:'wellness_binaural', icon:'🧠', label:'Binaural & Fokus' },
+                          { id:'siaran_radio',      icon:'📻', label:'Radio Live' },
+                          { id:'siaran_olahraga',   icon:'⚽', label:'Olahraga Live' },
+                        ].map(c => {
+                          const selected = personaPrefs.categories.includes(c.id);
+                          return (
+                            <button key={c.id} onClick={()=>setPersonaPrefs(p=>({ ...p, categories: selected ? p.categories.filter(x=>x!==c.id) : [...p.categories, c.id] }))}
+                              style={{ padding:'8px 14px', borderRadius:999, border:`1px solid ${selected?track.color+'90':'rgba(255,255,255,0.1)'}`, background:selected?`${track.color}22`:'rgba(255,255,255,0.04)', color:selected?'white':'rgba(255,255,255,0.5)', fontSize:12, fontWeight:selected?700:400, cursor:'pointer', display:'flex', alignItems:'center', gap:6, transition:'all 0.15s' }}>
+                              {c.icon} {c.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Q2 — Suasana (mood) */}
+                    <div style={{ marginBottom:22 }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.75)', marginBottom:12 }}>Biasanya kamu dengerin untuk apa?</div>
+                      <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+                        {[
+                          { id:'relax',     icon:'😌', label:'Santai & istirahat' },
+                          { id:'focus',     icon:'🎯', label:'Fokus kerja / belajar' },
+                          { id:'energetic', icon:'🔥', label:'Semangat & olahraga' },
+                          { id:'sleep',     icon:'😴', label:'Tidur & meditasi' },
+                          { id:'sad',       icon:'🌧️', label:'Me time / galau' },
+                          { id:'party',     icon:'🎉', label:'Hepi & nongkrong' },
                         ].map(m => {
                           const selected = personaPrefs.moods.includes(m.id);
                           return (
                             <button key={m.id} onClick={()=>setPersonaPrefs(p=>({ ...p, moods: selected ? p.moods.filter(x=>x!==m.id) : [...p.moods, m.id] }))}
-                              style={{ padding:'8px 14px', borderRadius:999, border:`1px solid ${selected?track.color+'80':'rgba(255,255,255,0.15)'}`, background:selected?`${track.color}25`:'transparent', color:selected?'white':'rgba(255,255,255,0.6)', fontSize:12, fontWeight:selected?700:500, cursor:'pointer', display:'flex', alignItems:'center', gap:6, transition:'all 0.15s' }}>
+                              style={{ padding:'8px 14px', borderRadius:999, border:`1px solid ${selected?track.color+'90':'rgba(255,255,255,0.1)'}`, background:selected?`${track.color}22`:'rgba(255,255,255,0.04)', color:selected?'white':'rgba(255,255,255,0.5)', fontSize:12, fontWeight:selected?700:400, cursor:'pointer', display:'flex', alignItems:'center', gap:6, transition:'all 0.15s' }}>
                               {m.icon} {m.label}
                             </button>
                           );
@@ -8595,37 +8532,19 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Waktu mendengarkan */}
-                    <div style={{ marginBottom:18 }}>
-                      <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>Kapan kamu paling sering mendengarkan?</div>
-                      <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+                    {/* Q3 — Bahasa (simpel, 1 pilih) */}
+                    <div style={{ marginBottom:28 }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.75)', marginBottom:12 }}>Konten dalam bahasa apa?</div>
+                      <div style={{ display:'flex', gap:8 }}>
                         {[
-                          { id:'morning', icon:'🌅', label:'Pagi' },
-                          { id:'afternoon', icon:'☀️', label:'Siang' },
-                          { id:'evening', icon:'🌆', label:'Sore' },
-                          { id:'night', icon:'🌙', label:'Malam' },
-                          { id:'anytime', icon:'🔁', label:'Kapan saja' },
-                        ].map(tod => (
-                          <button key={tod.id} onClick={()=>setPersonaPrefs(p=>({ ...p, timeOfDay: tod.id }))}
-                            style={{ padding:'8px 14px', borderRadius:999, border:`1px solid ${personaPrefs.timeOfDay===tod.id?track.color+'80':'rgba(255,255,255,0.15)'}`, background:personaPrefs.timeOfDay===tod.id?`${track.color}25`:'transparent', color:personaPrefs.timeOfDay===tod.id?'white':'rgba(255,255,255,0.6)', fontSize:12, fontWeight:personaPrefs.timeOfDay===tod.id?700:500, cursor:'pointer', display:'flex', alignItems:'center', gap:6, transition:'all 0.15s' }}>
-                            {tod.icon} {tod.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Bahasa konten */}
-                    <div style={{ marginBottom:24 }}>
-                      <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>Preferensi bahasa konten</div>
-                      <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
-                        {[
-                          { id:'id', icon:'🇮🇩', label:'Indonesia' },
-                          { id:'en', icon:'🌍', label:'Internasional' },
-                          { id:'mix', icon:'🎲', label:'Campur' },
+                          { id:'id',  icon:'🇮🇩', label:'Indonesia' },
+                          { id:'en',  icon:'🌍', label:'Internasional' },
+                          { id:'mix', icon:'🎲', label:'Campur-campur' },
                         ].map(l => (
                           <button key={l.id} onClick={()=>setPersonaPrefs(p=>({ ...p, lang: l.id }))}
-                            style={{ padding:'8px 14px', borderRadius:999, border:`1px solid ${personaPrefs.lang===l.id?track.color+'80':'rgba(255,255,255,0.15)'}`, background:personaPrefs.lang===l.id?`${track.color}25`:'transparent', color:personaPrefs.lang===l.id?'white':'rgba(255,255,255,0.6)', fontSize:12, fontWeight:personaPrefs.lang===l.id?700:500, cursor:'pointer', display:'flex', alignItems:'center', gap:6, transition:'all 0.15s' }}>
-                            {l.icon} {l.label}
+                            style={{ flex:1, padding:'10px 8px', borderRadius:14, border:`1px solid ${personaPrefs.lang===l.id?track.color+'90':'rgba(255,255,255,0.1)'}`, background:personaPrefs.lang===l.id?`${track.color}22`:'rgba(255,255,255,0.04)', color:personaPrefs.lang===l.id?'white':'rgba(255,255,255,0.5)', fontSize:12, fontWeight:personaPrefs.lang===l.id?700:400, cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:4, transition:'all 0.15s' }}>
+                            <span style={{ fontSize:18 }}>{l.icon}</span>
+                            <span>{l.label}</span>
                           </button>
                         ))}
                       </div>
@@ -8794,130 +8713,89 @@ INSTRUKSI: Isi HANYA array/field yang relevan dengan kategori yang dipilih user.
                           </button>
                         </div>
 
-                        {/* Musik */}
-                        {personaRecs.music?.length > 0 && (
-                          <div style={{ marginBottom:18 }}>
-                            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10, display:'flex', alignItems:'center', gap:6 }}>
-                              🎵 Musik & Seni Suara
+                        {/* ── Helper: horizontal scroll row ── */}
+                        {[
+                          personaRecs.music?.length > 0 && {
+                            label:'🎵 Musik', accent: track.color,
+                            items: personaRecs.music.map(m=>({
+                              icon:'🎵', title: m.title, sub: m.artist,
+                              tag: m.subcategory,
+                              onPlay: ()=>{ const q=`${m.title} ${m.artist}`; setYtQuery(p=>({...p,ytmusic:q})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic',q); ytMusicSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },120); },
+                              btnLabel:'▶',
+                            }))
+                          },
+                          personaRecs.edukasi?.length > 0 && {
+                            label:'📚 Edukasi', accent:'#22c55e',
+                            items: personaRecs.edukasi.map(e=>({
+                              icon: e.subcategory?.includes('news')?'📰':e.subcategory?.includes('audio')||e.subcategory?.includes('book')?'📖':'🎙️',
+                              title: e.name, sub: e.platform, tag: e.subcategory,
+                              onPlay: ()=>{ const q=e.name; setYtQuery(p=>({...p,ytmusic:q})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic',q); ytMusicSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },120); },
+                              btnLabel:'Cari',
+                            }))
+                          },
+                          personaRecs.fiksi?.length > 0 && {
+                            label:'🎭 Fiksi', accent:'#f97316',
+                            items: personaRecs.fiksi.map(f=>({
+                              icon: f.subcategory==='komedi'?'😂':f.subcategory==='puisi'?'📜':'🎭',
+                              title: f.name, sub: f.genre, tag: f.subcategory,
+                              onPlay: ()=>{ const q=f.name+' audio'; setYtQuery(p=>({...p,ytmusic:q})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic',q); ytMusicSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },120); },
+                              btnLabel:'Cari',
+                            }))
+                          },
+                          personaRecs.wellness?.length > 0 && {
+                            label:'🧘 Wellness', accent:'#14b8a6',
+                            items: personaRecs.wellness.map(w=>({
+                              icon: w.type?.toLowerCase().includes('asmr')?'🤫':w.type?.toLowerCase().includes('binaural')?'🧠':w.type?.toLowerCase().includes('noise')?'🌊':w.type?.toLowerCase().includes('ambient')||w.type?.toLowerCase().includes('alam')?'🌿':'🧘',
+                              title: w.name, sub: w.type,
+                              onPlay: ()=>{ const q=w.name; setYtQuery(p=>({...p,ytmusic:q})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic',q); ytMusicSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },120); },
+                              btnLabel:'Cari',
+                            }))
+                          },
+                          personaRecs.siaran?.length > 0 && {
+                            label:'📻 Siaran Live', accent:'#f59e0b',
+                            items: personaRecs.siaran.map(s=>({
+                              icon: s.subcategory==='olahraga'?'⚽':s.subcategory==='live'?'🎙️':'📻',
+                              title: s.name, sub: s.genre, tag: s.subcategory,
+                              onPlay: ()=>{ setTab('stream'); },
+                              btnLabel: s.subcategory==='olahraga'?'Live':'Radio',
+                            }))
+                          },
+                        ].filter(Boolean).map((section, si) => (
+                          <div key={si} style={{ marginBottom:22 }}>
+                            {/* Section label */}
+                            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.45)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10, paddingLeft:2 }}>
+                              {section.label}
                             </div>
-                            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                              {personaRecs.music.map((m,i)=>(
-                                <div key={i} style={{ padding:'10px 14px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', display:'flex', alignItems:'center', gap:12 }}>
-                                  <div style={{ width:36, height:36, borderRadius:10, background:`${track.color}20`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>🎵</div>
-                                  <div style={{ flex:1, minWidth:0 }}>
-                                    <div style={{ fontWeight:700, fontSize:13, color:'white', marginBottom:2 }}>{m.title}</div>
-                                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)' }}>{m.artist}{m.subcategory ? <span style={{ marginLeft:6, padding:'1px 7px', borderRadius:999, background:`${track.color}20`, color:track.color, fontSize:9, fontWeight:700 }}>{m.subcategory}</span> : null}</div>
-                                    <div style={{ fontSize:10, color:track.color, marginTop:3 }}>{m.reason}</div>
+                            {/* Horizontal scroll row */}
+                            <div className="scrollbar-hide" style={{ display:'flex', gap:10, overflowX:'auto', paddingBottom:4 }}>
+                              {section.items.map((item, ii)=>(
+                                <div key={ii} onClick={item.onPlay} style={{ flexShrink:0, width:140, background:'rgba(255,255,255,0.04)', border:`1px solid ${section.accent}25`, borderRadius:16, padding:'12px 12px 10px', cursor:'pointer', transition:'background 0.15s', display:'flex', flexDirection:'column', gap:0 }}
+                                  onMouseEnter={e=>e.currentTarget.style.background=`${section.accent}12`}
+                                  onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.04)'}
+                                >
+                                  {/* Icon square */}
+                                  <div style={{ width:40, height:40, borderRadius:12, background:`${section.accent}18`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, marginBottom:10 }}>
+                                    {item.icon}
                                   </div>
-                                  <button onClick={()=>{ const query=`${m.title} ${m.artist}`; setYtQuery(p=>({...p,ytmusic:query})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic',query); ytMusicSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },120); }}
-                                    style={{ padding:'6px 12px', borderRadius:999, border:`1px solid ${track.color}50`, background:`${track.color}18`, color:track.color, fontSize:10, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
-                                    ▶ Play
-                                  </button>
+                                  {/* Title */}
+                                  <div style={{ fontSize:12, fontWeight:700, color:'white', lineHeight:1.35, marginBottom:4, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>
+                                    {item.title}
+                                  </div>
+                                  {/* Sub label */}
+                                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginBottom:'auto' }}>
+                                    {item.sub}
+                                  </div>
+                                  {/* Play / Cari button */}
+                                  <div style={{ marginTop:10, display:'flex', justifyContent:'flex-end' }}>
+                                    <span style={{ fontSize:10, fontWeight:700, color:section.accent, background:`${section.accent}18`, padding:'3px 10px', borderRadius:999, border:`1px solid ${section.accent}40` }}>
+                                      {item.btnLabel}
+                                    </span>
+                                  </div>
                                 </div>
                               ))}
                             </div>
                           </div>
-                        )}
-
-                        {/* Edukasi & Narasi */}
-                        {personaRecs.edukasi?.length > 0 && (
-                          <div style={{ marginBottom:18 }}>
-                            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>
-                              📚 Edukasi, Informasi & Narasi
-                            </div>
-                            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                              {personaRecs.edukasi.map((e,i)=>(
-                                <div key={i} style={{ padding:'10px 14px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', display:'flex', alignItems:'center', gap:12 }}>
-                                  <div style={{ width:36, height:36, borderRadius:10, background:'rgba(34,197,94,0.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>📚</div>
-                                  <div style={{ flex:1, minWidth:0 }}>
-                                    <div style={{ fontWeight:700, fontSize:13, color:'white', marginBottom:2 }}>{e.name}</div>
-                                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)' }}>{e.platform}{e.subcategory ? <span style={{ marginLeft:6, padding:'1px 7px', borderRadius:999, background:'rgba(34,197,94,0.15)', color:'#86efac', fontSize:9, fontWeight:700 }}>{e.subcategory}</span> : null}</div>
-                                    <div style={{ fontSize:10, color:'#22c55e', marginTop:3 }}>{e.reason}</div>
-                                  </div>
-                                  <button onClick={()=>{ const query=e.name; setYtQuery(p=>({...p,ytmusic:query})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic',query); ytMusicSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },120); }}
-                                    style={{ padding:'6px 12px', borderRadius:999, border:'1px solid rgba(34,197,94,0.4)', background:'rgba(34,197,94,0.12)', color:'#22c55e', fontSize:10, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
-                                    Cari
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Fiksi & Hiburan Kreatif */}
-                        {personaRecs.fiksi?.length > 0 && (
-                          <div style={{ marginBottom:18 }}>
-                            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>
-                              🎭 Fiksi & Hiburan Kreatif
-                            </div>
-                            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                              {personaRecs.fiksi.map((f,i)=>(
-                                <div key={i} style={{ padding:'10px 14px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', display:'flex', alignItems:'center', gap:12 }}>
-                                  <div style={{ width:36, height:36, borderRadius:10, background:'rgba(249,115,22,0.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>{f.subcategory==='komedi'?'😂':f.subcategory==='puisi'?'📜':'🎭'}</div>
-                                  <div style={{ flex:1, minWidth:0 }}>
-                                    <div style={{ fontWeight:700, fontSize:13, color:'white', marginBottom:2 }}>{f.name}</div>
-                                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)' }}>{f.genre}{f.subcategory ? <span style={{ marginLeft:6, padding:'1px 7px', borderRadius:999, background:'rgba(249,115,22,0.15)', color:'#fdba74', fontSize:9, fontWeight:700 }}>{f.subcategory}</span> : null}</div>
-                                    <div style={{ fontSize:10, color:'#f97316', marginTop:3 }}>{f.reason}</div>
-                                  </div>
-                                  <button onClick={()=>{ const query=f.name+' audio'; setYtQuery(p=>({...p,ytmusic:query})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic',query); ytMusicSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },120); }}
-                                    style={{ padding:'6px 12px', borderRadius:999, border:'1px solid rgba(249,115,22,0.4)', background:'rgba(249,115,22,0.12)', color:'#f97316', fontSize:10, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
-                                    Cari
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Wellness & Terapi */}
-                        {personaRecs.wellness?.length > 0 && (
-                          <div style={{ marginBottom:18 }}>
-                            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>
-                              🧘 Kesehatan, Fokus & Terapi
-                            </div>
-                            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                              {personaRecs.wellness.map((w,i)=>(
-                                <div key={i} style={{ padding:'10px 14px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', display:'flex', alignItems:'center', gap:12 }}>
-                                  <div style={{ width:36, height:36, borderRadius:10, background:'rgba(20,184,166,0.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>{w.type?.toLowerCase().includes('asmr')?'🤫':w.type?.toLowerCase().includes('binaural')?'🧠':w.type?.toLowerCase().includes('noise')?'🌊':w.type?.toLowerCase().includes('ambient')||w.type?.toLowerCase().includes('alam')?'🌿':'🧘'}</div>
-                                  <div style={{ flex:1, minWidth:0 }}>
-                                    <div style={{ fontWeight:700, fontSize:13, color:'white', marginBottom:2 }}>{w.name}</div>
-                                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)' }}>{w.type}</div>
-                                    <div style={{ fontSize:10, color:'#14b8a6', marginTop:3 }}>{w.reason}</div>
-                                  </div>
-                                  <button onClick={()=>{ const query=w.name; setYtQuery(p=>({...p,ytmusic:query})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic',query); ytMusicSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },120); }}
-                                    style={{ padding:'6px 12px', borderRadius:999, border:'1px solid rgba(20,184,166,0.4)', background:'rgba(20,184,166,0.12)', color:'#14b8a6', fontSize:10, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
-                                    Cari
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Siaran Langsung & Radio */}
-                        {personaRecs.siaran?.length > 0 && (
-                          <div style={{ marginBottom:18 }}>
-                            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>
-                              📡 Siaran Langsung & Radio Live
-                            </div>
-                            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                              {personaRecs.siaran.map((s,i)=>(
-                                <div key={i} style={{ padding:'10px 14px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', display:'flex', alignItems:'center', gap:12 }}>
-                                  <div style={{ width:36, height:36, borderRadius:10, background:'rgba(245,158,11,0.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>{s.subcategory==='olahraga'?'⚽':s.subcategory==='live'?'🎙️':'📻'}</div>
-                                  <div style={{ flex:1, minWidth:0 }}>
-                                    <div style={{ fontWeight:700, fontSize:13, color:'white', marginBottom:2 }}>{s.name}</div>
-                                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)' }}>{s.genre}{s.subcategory ? <span style={{ marginLeft:6, padding:'1px 7px', borderRadius:999, background:'rgba(245,158,11,0.15)', color:'#fde68a', fontSize:9, fontWeight:700 }}>{s.subcategory}</span> : null}</div>
-                                    <div style={{ fontSize:10, color:'#f59e0b', marginTop:3 }}>{s.reason}</div>
-                                  </div>
-                                  <button onClick={()=>{ setTab('stream'); }}
-                                    style={{ padding:'6px 12px', borderRadius:999, border:'1px solid rgba(245,158,11,0.4)', background:'rgba(245,158,11,0.12)', color:'#f59e0b', fontSize:10, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
-                                    {s.subcategory==='olahraga'?'Live':'Radio'}
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                        ))}
 
                         {/* Tip */}
                         {personaRecs.tip && (
