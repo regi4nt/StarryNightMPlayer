@@ -2951,6 +2951,137 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
           </div>
         </div>
 
+        {/* ── HAPUS CACHE */}
+        {(() => {
+          const [cacheInfo, setCacheInfo] = React.useState(null); // { driveCount, ytCount, totalMB }
+          const [clearing, setClearing] = React.useState(false);
+          const [cleared, setCleared] = React.useState(false);
+
+          React.useEffect(() => {
+            async function loadCacheInfo() {
+              try {
+                let driveCount = 0, ytCount = 0, totalBytes = 0;
+                if ('caches' in window) {
+                  try {
+                    const driveCache = await caches.open('sn-drive-v1');
+                    const driveKeys = await driveCache.keys();
+                    driveCount = driveKeys.length;
+                    for (const req of driveKeys) {
+                      const res = await driveCache.match(req);
+                      if (res) {
+                        const blob = await res.blob();
+                        totalBytes += blob.size;
+                      }
+                    }
+                  } catch(e) {}
+                  try {
+                    const ytCache = await caches.open('sn-yt-v1');
+                    const ytKeys = await ytCache.keys();
+                    ytCount = ytKeys.length;
+                    for (const req of ytKeys) {
+                      const res = await ytCache.match(req);
+                      if (res) {
+                        const blob = await res.blob();
+                        totalBytes += blob.size;
+                      }
+                    }
+                  } catch(e) {}
+                }
+                setCacheInfo({ driveCount, ytCount, totalMB: (totalBytes / 1024 / 1024).toFixed(1) });
+              } catch(e) {
+                setCacheInfo({ driveCount: 0, ytCount: 0, totalMB: '0.0' });
+              }
+            }
+            loadCacheInfo();
+          }, [cleared]);
+
+          const handleClearCache = async () => {
+            setClearing(true);
+            try {
+              if ('caches' in window) {
+                try { await caches.delete('sn-drive-v1'); } catch(e) {}
+                try { await caches.delete('sn-yt-v1'); } catch(e) {}
+              }
+              // clear in-memory blob cache
+              try {
+                if (window._snBlobCacheRef) {
+                  for (const v of window._snBlobCacheRef.values()) URL.revokeObjectURL(v);
+                  window._snBlobCacheRef.clear();
+                }
+              } catch(e) {}
+              setCleared(c => !c);
+            } catch(e) {}
+            setClearing(false);
+          };
+
+          const hasCache = cacheInfo && (cacheInfo.driveCount > 0 || cacheInfo.ytCount > 0);
+
+          return (
+            <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+                <span style={{ fontSize:16 }}>🗑️</span>
+                <div>
+                  <div style={{ fontWeight:800, fontSize:14 }}>{lang==='id' ? 'Hapus Cache' : 'Clear Cache'}</div>
+                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>
+                    {lang==='id' ? 'Bebaskan storage dari audio yang tersimpan' : 'Free up storage from saved audio'}
+                  </div>
+                </div>
+              </div>
+              {cacheInfo === null ? (
+                <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', padding:'8px 0' }}>
+                  {lang==='id' ? 'Menghitung cache...' : 'Calculating cache...'}
+                </div>
+              ) : (
+                <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                  <div style={{ padding:'10px 14px', borderRadius:12, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                      {cacheInfo.driveCount > 0 && (
+                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>
+                          🎵 Drive: <span style={{ color:'rgba(255,255,255,0.75)', fontWeight:600 }}>{cacheInfo.driveCount} {lang==='id' ? 'lagu' : 'songs'}</span>
+                        </div>
+                      )}
+                      {cacheInfo.ytCount > 0 && (
+                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>
+                          ▶️ YouTube: <span style={{ color:'rgba(255,255,255,0.75)', fontWeight:600 }}>{cacheInfo.ytCount} {lang==='id' ? 'lagu' : 'songs'}</span>
+                        </div>
+                      )}
+                      {!hasCache && (
+                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)' }}>
+                          {lang==='id' ? 'Tidak ada cache tersimpan' : 'No cache stored'}
+                        </div>
+                      )}
+                    </div>
+                    {hasCache && (
+                      <div style={{ fontSize:13, fontWeight:700, color:'#a5b4fc' }}>
+                        {cacheInfo.totalMB} MB
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleClearCache}
+                    disabled={clearing || !hasCache}
+                    style={{
+                      width:'100%', padding:'11px 0', borderRadius:12, border:'none',
+                      background: hasCache
+                        ? (clearing ? 'rgba(239,68,68,0.4)' : 'linear-gradient(135deg,#ef4444,#dc2626)')
+                        : 'rgba(255,255,255,0.06)',
+                      color: hasCache ? 'white' : 'rgba(255,255,255,0.25)',
+                      fontSize:13, fontWeight:800, cursor: hasCache ? 'pointer' : 'default',
+                      display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+                      transition:'opacity 0.2s'
+                    }}
+                  >
+                    <span style={{ fontSize:14 }}>{clearing ? '⏳' : '🗑️'}</span>
+                    {clearing
+                      ? (lang==='id' ? 'Menghapus...' : 'Clearing...')
+                      : (lang==='id' ? 'Hapus Semua Cache' : 'Clear All Cache')}
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
         {/* ── INSTALL APP (PWA) */}
         <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
@@ -8108,7 +8239,13 @@ export default function App() {
                           )}
                         </div>
                       )}
-                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={play} isDrive isCached={cachedDriveIds.has(s.driveId)} onRemove={id=>setCustomSongs(p=>p.filter(x=>x.id!==id))} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite} t={t}
+                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={play} isDrive isCached={cachedDriveIds.has(s.driveId)} onRemove={id=>{
+                          setCustomSongs(p=>p.filter(x=>x.id!==id));
+                          setPlaylists(p=>p.map(pl=>({ ...pl, songIds: pl.songIds.filter(sid=>sid!==id) })));
+                          setLiked(l=>{ const n={...l}; delete n[id]; return n; });
+                          setFavSongs(p=>p.filter(s=>s.id!==id));
+                          if(activePlRef.current) activePlRef.current=activePlRef.current.filter(s=>s.id!==id);
+                        }} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite} t={t}
                         onDownload={async(s)=>{ if(s.driveId&&tokenRef.current){ await downloadToDevice(`https://www.googleapis.com/drive/v3/files/${s.driveId}?alt=media&acknowledgeAbuse=true`,`${s.title} - ${s.artist}.mp3`,{Authorization:`Bearer ${tokenRef.current}`}); } else if(s.src){ const raw=s.src.split('?')[0]; const ext=raw.includes('.')?raw.split('.').pop():'mp3'; await downloadToDevice(s.src,`${s.title} - ${s.artist}.${ext}`); } }}
                       />)}
                     </div>
@@ -8335,27 +8472,99 @@ export default function App() {
                   <div>
                     <div style={{ textAlign:'center', marginBottom:20 }}>
                       <div style={{ fontSize:32, marginBottom:8 }}>🎧</div>
-                      <div style={{ fontSize:12, color:'rgba(255,255,255,0.35)', lineHeight:1.6 }}>Beritahu Starry AI tentang preferensimu — kami pilihkan musik, radio, dan podcast yang tepat untukmu.</div>
+                      <div style={{ fontSize:12, color:'rgba(255,255,255,0.35)', lineHeight:1.6 }}>Beritahu Starry AI tentang preferensimu — kami kurasi dari 5 rumpun audio: Musik, Edukasi, Fiksi, Wellness, dan Siaran Langsung.</div>
                     </div>
 
-                    {/* Kategori audio */}
-                    <div style={{ marginBottom:18 }}>
-                      <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>Apa yang sering kamu dengarkan?</div>
-                      <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+                    {/* Kategori audio — Rumpun Utama */}
+                    <div style={{ marginBottom:6 }}>
+                      <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:6 }}>🎼 Rumpun Musik & Seni Suara</div>
+                      <div style={{ display:'flex', flexWrap:'wrap', gap:7, marginBottom:14 }}>
                         {[
-                          { id:'music', icon:'🎵', label:'Musik' },
-                          { id:'podcast', icon:'🎙️', label:'Podcast' },
-                          { id:'radio', icon:'📻', label:'Radio Live' },
-                          { id:'ambient', icon:'🌿', label:'Ambient/Nature' },
-                          { id:'lofi', icon:'☕', label:'Lo-Fi / Chill' },
-                          { id:'classical', icon:'🎻', label:'Klasik' },
-                          { id:'edm', icon:'⚡', label:'EDM / Electronic' },
-                          { id:'indopop', icon:'🇮🇩', label:'Indo Pop' },
+                          { id:'music_mainstream', icon:'🎤', label:'Pop / Rock / Hip-Hop' },
+                          { id:'music_indie', icon:'🎸', label:'Indie & Demotape' },
+                          { id:'music_instrumental', icon:'🎻', label:'Instrumental & Orkestra' },
+                          { id:'music_remix', icon:'🎛️', label:'Remix / Mashup / DJ Set' },
+                          { id:'music_cover', icon:'🎙️', label:'Cover & Akapela' },
+                          { id:'music_lofi', icon:'☕', label:'Lo-Fi / Chill' },
+                          { id:'music_indopop', icon:'🇮🇩', label:'Indo Pop / Dangdut' },
+                          { id:'music_edm', icon:'⚡', label:'EDM / Electronic' },
                         ].map(c => {
                           const selected = personaPrefs.categories.includes(c.id);
                           return (
                             <button key={c.id} onClick={()=>setPersonaPrefs(p=>({ ...p, categories: selected ? p.categories.filter(x=>x!==c.id) : [...p.categories, c.id] }))}
-                              style={{ padding:'8px 14px', borderRadius:999, border:`1px solid ${selected?track.color+'80':'rgba(255,255,255,0.15)'}`, background:selected?`${track.color}25`:'transparent', color:selected?'white':'rgba(255,255,255,0.6)', fontSize:12, fontWeight:selected?700:500, cursor:'pointer', display:'flex', alignItems:'center', gap:6, transition:'all 0.15s' }}>
+                              style={{ padding:'7px 12px', borderRadius:999, border:`1px solid ${selected?track.color+'80':'rgba(255,255,255,0.12)'}`, background:selected?`${track.color}25`:'transparent', color:selected?'white':'rgba(255,255,255,0.55)', fontSize:11, fontWeight:selected?700:500, cursor:'pointer', display:'flex', alignItems:'center', gap:5, transition:'all 0.15s' }}>
+                              {c.icon} {c.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:6 }}>🗣️ Rumpun Edukasi, Informasi & Narasi</div>
+                      <div style={{ display:'flex', flexWrap:'wrap', gap:7, marginBottom:14 }}>
+                        {[
+                          { id:'edu_podcast', icon:'🎙️', label:'Podcast / Siniar' },
+                          { id:'edu_audiobook', icon:'📖', label:'Buku Audio (Audiobook)' },
+                          { id:'edu_booksummary', icon:'📝', label:'Ringkasan Buku Audio' },
+                          { id:'edu_news', icon:'📰', label:'Berita & Buletin Audio' },
+                          { id:'edu_kuliah', icon:'🎓', label:'Materi Belajar & Kuliah' },
+                        ].map(c => {
+                          const selected = personaPrefs.categories.includes(c.id);
+                          return (
+                            <button key={c.id} onClick={()=>setPersonaPrefs(p=>({ ...p, categories: selected ? p.categories.filter(x=>x!==c.id) : [...p.categories, c.id] }))}
+                              style={{ padding:'7px 12px', borderRadius:999, border:`1px solid ${selected?'#22c55e80':'rgba(255,255,255,0.12)'}`, background:selected?'rgba(34,197,94,0.18)':'transparent', color:selected?'#86efac':'rgba(255,255,255,0.55)', fontSize:11, fontWeight:selected?700:500, cursor:'pointer', display:'flex', alignItems:'center', gap:5, transition:'all 0.15s' }}>
+                              {c.icon} {c.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:6 }}>🎭 Rumpun Fiksi & Hiburan Kreatif</div>
+                      <div style={{ display:'flex', flexWrap:'wrap', gap:7, marginBottom:14 }}>
+                        {[
+                          { id:'fiksi_drama', icon:'🎭', label:'Sandiwara Suara / Audio Drama' },
+                          { id:'fiksi_komedi', icon:'😂', label:'Komedi Suara / Stand-Up' },
+                          { id:'fiksi_puisi', icon:'📜', label:'Puisi & Deklamasi' },
+                        ].map(c => {
+                          const selected = personaPrefs.categories.includes(c.id);
+                          return (
+                            <button key={c.id} onClick={()=>setPersonaPrefs(p=>({ ...p, categories: selected ? p.categories.filter(x=>x!==c.id) : [...p.categories, c.id] }))}
+                              style={{ padding:'7px 12px', borderRadius:999, border:`1px solid ${selected?'#f9731680':'rgba(255,255,255,0.12)'}`, background:selected?'rgba(249,115,22,0.18)':'transparent', color:selected?'#fdba74':'rgba(255,255,255,0.55)', fontSize:11, fontWeight:selected?700:500, cursor:'pointer', display:'flex', alignItems:'center', gap:5, transition:'all 0.15s' }}>
+                              {c.icon} {c.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:6 }}>🧘 Rumpun Wellness, Fokus & Terapi</div>
+                      <div style={{ display:'flex', flexWrap:'wrap', gap:7, marginBottom:14 }}>
+                        {[
+                          { id:'wellness_ambient', icon:'🌿', label:'Suara Alam & Lingkungan' },
+                          { id:'wellness_noise', icon:'🌊', label:'White/Pink/Brown Noise' },
+                          { id:'wellness_meditation', icon:'🧘', label:'Meditasi Panduan' },
+                          { id:'wellness_binaural', icon:'🧠', label:'Binaural Beats' },
+                          { id:'wellness_asmr', icon:'🤫', label:'ASMR' },
+                        ].map(c => {
+                          const selected = personaPrefs.categories.includes(c.id);
+                          return (
+                            <button key={c.id} onClick={()=>setPersonaPrefs(p=>({ ...p, categories: selected ? p.categories.filter(x=>x!==c.id) : [...p.categories, c.id] }))}
+                              style={{ padding:'7px 12px', borderRadius:999, border:`1px solid ${selected?'#14b8a680':'rgba(255,255,255,0.12)'}`, background:selected?'rgba(20,184,166,0.18)':'transparent', color:selected?'#5eead4':'rgba(255,255,255,0.55)', fontSize:11, fontWeight:selected?700:500, cursor:'pointer', display:'flex', alignItems:'center', gap:5, transition:'all 0.15s' }}>
+                              {c.icon} {c.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:6 }}>📻 Rumpun Siaran Langsung & Interaktif</div>
+                      <div style={{ display:'flex', flexWrap:'wrap', gap:7, marginBottom:18 }}>
+                        {[
+                          { id:'siaran_radio', icon:'📻', label:'Radio Internet / Digital' },
+                          { id:'siaran_live', icon:'🎙️', label:'Ruang Obrolan Langsung' },
+                          { id:'siaran_olahraga', icon:'⚽', label:'Siaran Olahraga Live' },
+                        ].map(c => {
+                          const selected = personaPrefs.categories.includes(c.id);
+                          return (
+                            <button key={c.id} onClick={()=>setPersonaPrefs(p=>({ ...p, categories: selected ? p.categories.filter(x=>x!==c.id) : [...p.categories, c.id] }))}
+                              style={{ padding:'7px 12px', borderRadius:999, border:`1px solid ${selected?'#f59e0b80':'rgba(255,255,255,0.12)'}`, background:selected?'rgba(245,158,11,0.18)':'transparent', color:selected?'#fde68a':'rgba(255,255,255,0.55)', fontSize:11, fontWeight:selected?700:500, cursor:'pointer', display:'flex', alignItems:'center', gap:5, transition:'all 0.15s' }}>
                               {c.icon} {c.label}
                             </button>
                           );
@@ -8428,39 +8637,82 @@ export default function App() {
                         if (!hasKey()) { alert(t?.aiOffline||'Tambahkan API key di Settings untuk menggunakan fitur ini.'); return; }
                         setPL(true);
                         try {
-                          const prompt = `Kamu adalah kurator audio personal. Berdasarkan preferensi user berikut, berikan rekomendasi audio yang dipersonalisasi dalam format JSON.
+                          const prompt = `Kamu adalah kurator audio personal berbasis taksonomi audio lengkap. Berdasarkan preferensi user berikut, berikan rekomendasi audio yang sangat dipersonalisasi dalam format JSON.
 
 Preferensi user:
-- Kategori favorit: ${personaPrefs.categories.join(', ') || 'tidak disebutkan'}
+- Kategori dipilih: ${personaPrefs.categories.join(', ') || 'tidak disebutkan'}
 - Suasana yang dicari: ${personaPrefs.moods.join(', ') || 'tidak disebutkan'}
 - Waktu mendengarkan: ${personaPrefs.timeOfDay || 'kapan saja'}
 - Bahasa konten: ${personaPrefs.lang || 'mix'}
 
-Berikan response HANYA dalam JSON ini (tanpa markdown, tanpa teks lain):
+TAKSONOMI AUDIO (panduan mapping kategori yang dipilih user):
+🎼 MUSIK & SENI SUARA:
+- music_mainstream = Musik Arus Utama (Pop, Rock, Hip-Hop, EDM, Jazz dari label besar)
+- music_indie = Musik Independen & Amatir (eksperimental, demotape, rekaman mandiri)
+- music_instrumental = Musik Instrumental & Orkestra (klasik, simfoni, piano solo, gitar)
+- music_remix = Remix, Mashup, & DJ Set (gubahan ulang, mashup dua lagu, long DJ mix)
+- music_cover = Lagu Cover & Akapela (nyanyian ulang, akapela murni vokal manusia)
+- music_lofi = Lo-Fi & Chill (beats santai untuk belajar/relax)
+- music_indopop = Indo Pop / Dangdut (musik Indonesia mainstream & tradisional)
+- music_edm = EDM / Electronic (house, techno, trance, future bass)
+
+🗣️ EDUKASI, INFORMASI & NARASI:
+- edu_podcast = Podcast/Siniar (obrolan, wawancara, opini topik spesifik)
+- edu_audiobook = Buku Audio/Audiobook (pembacaan utuh buku fiksi & non-fiksi oleh narator)
+- edu_booksummary = Ringkasan Buku Audio (intisari buku non-fiksi 10–20 menit)
+- edu_news = Berita & Buletin Audio (siaran berita kilat harian, laporan jurnalistik audio)
+- edu_kuliah = Materi Belajar & Kuliah Audio (perkuliahan, kursus bahasa, tutorial, esai ilmiah)
+
+🎭 FIKSI & HIBURAN KREATIF:
+- fiksi_drama = Sandiwara Suara/Audio Drama (teatrikal multi-pengisi suara, efek suara lengkap)
+- fiksi_komedi = Komedi Suara (stand-up comedy, sketsa komedi audio, cerita jenaka)
+- fiksi_puisi = Puisi & Deklamasi (karya sastra, puisi, prosa dengan estetika suara)
+
+🧘 WELLNESS, FOKUS & TERAPI:
+- wellness_ambient = Suara Alam & Lingkungan (hujan, ombak, angin hutan, gemercik air)
+- wellness_noise = Derau Warna (White Noise, Pink Noise, Brown Noise untuk tidur/fokus)
+- wellness_meditation = Meditasi Panduan (instruktur membimbing napas, relaksasi otot, mindfulness)
+- wellness_binaural = Binaural Beats (frekuensi khusus untuk fokus, kreativitas, tidur)
+- wellness_asmr = ASMR (bisikan, ketukan lembut, gesekan benda jarak dekat untuk rileks)
+
+📻 SIARAN LANGSUNG & INTERAKTIF:
+- siaran_radio = Radio Internet/Digital (streaming 24 jam real-time AM/FM/digital)
+- siaran_live = Ruang Obrolan Langsung (diskusi interaktif penyiar & pendengar live)
+- siaran_olahraga = Siaran Olahraga Live (komentar pertandingan sepakbola, F1, basket live)
+
+INSTRUKSI: Isi HANYA array/field yang relevan dengan kategori yang dipilih user. Kosongkan array jika kategorinya tidak dipilih. Berikan response HANYA dalam JSON ini (tanpa markdown, tanpa teks lain):
 {
   "greeting": "sapa user dengan hangat dan personal berdasarkan preferensinya (max 2 kalimat)",
   "music": [
-    {"title":"Nama Lagu","artist":"Artis","reason":"alasan singkat kenapa cocok (max 10 kata)"},
-    {"title":"...","artist":"...","reason":"..."},
-    {"title":"...","artist":"...","reason":"..."}
+    {"title":"Nama Lagu","artist":"Artis","subcategory":"sub-kategori musik","reason":"alasan singkat kenapa cocok (max 10 kata)"},
+    {"title":"...","artist":"...","subcategory":"...","reason":"..."},
+    {"title":"...","artist":"...","subcategory":"...","reason":"..."}
   ],
-  "radio": [
-    {"name":"Nama Stasiun","genre":"genre/kategori","reason":"alasan singkat"},
-    {"name":"...","genre":"...","reason":"..."}
+  "edukasi": [
+    {"name":"Nama Konten","platform":"platform/sumber","subcategory":"jenis edukasi (podcast/audiobook/news/dll)","reason":"alasan singkat"},
+    {"name":"...","platform":"...","subcategory":"...","reason":"..."}
   ],
-  "podcast": [
-    {"name":"Nama Podcast","category":"kategori","reason":"alasan singkat"},
-    {"name":"...","category":"...","reason":"..."}
+  "fiksi": [
+    {"name":"Judul Konten","genre":"genre","subcategory":"drama/komedi/puisi","reason":"alasan singkat"},
+    {"name":"...","genre":"...","subcategory":"...","reason":"..."}
   ],
-  "tip": "satu tips pendek untuk pengalaman mendengarkan yang lebih baik"
+  "wellness": [
+    {"name":"Nama Konten","type":"jenis (ASMR/binaural/meditasi/ambient/noise)","reason":"alasan singkat"},
+    {"name":"...","type":"...","reason":"..."}
+  ],
+  "siaran": [
+    {"name":"Nama Stasiun/Channel","genre":"genre/kategori","subcategory":"radio/live/olahraga","reason":"alasan singkat"},
+    {"name":"...","genre":"...","subcategory":"...","reason":"..."}
+  ],
+  "tip": "satu tips pendek spesifik sesuai preferensi user untuk pengalaman mendengarkan yang lebih baik"
 }`;
                           const providers = getProviders();
                           let result = null;
                           for (const prov of providers) {
                             try {
                               const body = prov.isOpenAI
-                                ? { model:prov.model, max_tokens:800, messages:[{role:'user',content:prompt}], ...prov.extra }
-                                : { model:prov.model, max_tokens:800, messages:[{role:'user',content:[{type:'text',text:prompt}]}] };
+                                ? { model:prov.model, max_tokens:1500, messages:[{role:'user',content:prompt}], ...prov.extra }
+                                : { model:prov.model, max_tokens:1500, messages:[{role:'user',content:[{type:'text',text:prompt}]}] };
                               const resp = await fetch(prov.endpoint, { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${prov.key}`, ...(prov.extra||{}) }, body:JSON.stringify(body) });
                               const data = await resp.json();
                               const text = prov.isOpenAI ? data?.choices?.[0]?.message?.content : data?.content?.[0]?.text;
@@ -8502,14 +8754,14 @@ Berikan response HANYA dalam JSON ini (tanpa markdown, tanpa teks lain):
                               setPL(true);
                               try {
                                 const savedPrefs = (() => { try { return JSON.parse(localStorage.getItem('sn_persona_prefs')||'{}'); } catch { return personaPrefs; } })();
-                                const prompt = `Kamu adalah kurator audio personal. Berdasarkan preferensi user berikut, berikan rekomendasi audio yang dipersonalisasi dalam format JSON.\n\nPreferensi user:\n- Kategori favorit: ${savedPrefs.categories?.join(', ') || personaPrefs.categories.join(', ') || 'tidak disebutkan'}\n- Suasana yang dicari: ${savedPrefs.moods?.join(', ') || personaPrefs.moods.join(', ') || 'tidak disebutkan'}\n- Waktu mendengarkan: ${savedPrefs.timeOfDay || personaPrefs.timeOfDay || 'kapan saja'}\n- Bahasa konten: ${savedPrefs.lang || personaPrefs.lang || 'mix'}\n\nBerikan response HANYA dalam JSON ini (tanpa markdown, tanpa teks lain):\n{"greeting":"sapa user dengan hangat dan personal berdasarkan preferensinya (max 2 kalimat)","music":[{"title":"Nama Lagu","artist":"Artis","reason":"alasan singkat kenapa cocok (max 10 kata)"},{"title":"...","artist":"...","reason":"..."},{"title":"...","artist":"...","reason":"..."}],"radio":[{"name":"Nama Stasiun","genre":"genre/kategori","reason":"alasan singkat"},{"name":"...","genre":"...","reason":"..."}],"podcast":[{"name":"Nama Podcast","category":"kategori","reason":"alasan singkat"},{"name":"...","category":"...","reason":"..."}],"tip":"satu tips pendek untuk pengalaman mendengarkan yang lebih baik"}`;
+                                const prompt = `Kamu adalah kurator audio personal berbasis taksonomi audio lengkap. Berdasarkan preferensi user berikut, berikan rekomendasi audio yang sangat dipersonalisasi dalam format JSON.\n\nPreferensi user:\n- Kategori dipilih: ${savedPrefs.categories?.join(', ') || personaPrefs.categories.join(', ') || 'tidak disebutkan'}\n- Suasana yang dicari: ${savedPrefs.moods?.join(', ') || personaPrefs.moods.join(', ') || 'tidak disebutkan'}\n- Waktu mendengarkan: ${savedPrefs.timeOfDay || personaPrefs.timeOfDay || 'kapan saja'}\n- Bahasa konten: ${savedPrefs.lang || personaPrefs.lang || 'mix'}\n\nTAKSONOMI: music_mainstream=Pop/Rock/HipHop, music_indie=Indie/Demotape, music_instrumental=Klasik/Orkestra, music_remix=Remix/DJ, music_cover=Cover/Akapela, music_lofi=Lo-Fi, music_indopop=Indo Pop/Dangdut, music_edm=EDM; edu_podcast=Podcast/Siniar, edu_audiobook=Audiobook, edu_booksummary=Ringkasan Buku, edu_news=Berita Audio, edu_kuliah=Kuliah/Kursus; fiksi_drama=Sandiwara Suara, fiksi_komedi=Komedi Audio, fiksi_puisi=Puisi/Deklamasi; wellness_ambient=Suara Alam, wellness_noise=White/Pink/Brown Noise, wellness_meditation=Meditasi Panduan, wellness_binaural=Binaural Beats, wellness_asmr=ASMR; siaran_radio=Radio Digital, siaran_live=Obrolan Langsung, siaran_olahraga=Olahraga Live.\n\nBerikan response HANYA dalam JSON ini (tanpa markdown, tanpa teks lain):\n{\"greeting\":\"sapa user hangat (max 2 kalimat)\",\"music\":[{\"title\":\"Nama Lagu\",\"artist\":\"Artis\",\"subcategory\":\"sub-kategori\",\"reason\":\"alasan (max 10 kata)\"},{\"title\":\"...\",\"artist\":\"...\",\"subcategory\":\"...\",\"reason\":\"...\"},{\"title\":\"...\",\"artist\":\"...\",\"subcategory\":\"...\",\"reason\":\"...\"}],\"edukasi\":[{\"name\":\"Nama Konten\",\"platform\":\"platform/sumber\",\"subcategory\":\"podcast/audiobook/news/dll\",\"reason\":\"alasan singkat\"},{\"name\":\"...\",\"platform\":\"...\",\"subcategory\":\"...\",\"reason\":\"...\"}],\"fiksi\":[{\"name\":\"Judul\",\"genre\":\"genre\",\"subcategory\":\"drama/komedi/puisi\",\"reason\":\"alasan singkat\"},{\"name\":\"...\",\"genre\":\"...\",\"subcategory\":\"...\",\"reason\":\"...\"}],\"wellness\":[{\"name\":\"Nama Konten\",\"type\":\"ASMR/binaural/meditasi/ambient/noise\",\"reason\":\"alasan singkat\"},{\"name\":\"...\",\"type\":\"...\",\"reason\":\"...\"}],\"siaran\":[{\"name\":\"Nama Stasiun\",\"genre\":\"genre\",\"subcategory\":\"radio/live/olahraga\",\"reason\":\"alasan singkat\"},{\"name\":\"...\",\"genre\":\"...\",\"subcategory\":\"...\",\"reason\":\"...\"}],\"tip\":\"tips spesifik sesuai preferensi user\"}`;
                                 const providers = getProviders();
                                 let result = null;
                                 for (const prov of providers) {
                                   try {
                                     const body = prov.isOpenAI
-                                      ? { model:prov.model, max_tokens:800, messages:[{role:'user',content:prompt}], ...prov.extra }
-                                      : { model:prov.model, max_tokens:800, messages:[{role:'user',content:[{type:'text',text:prompt}]}] };
+                                      ? { model:prov.model, max_tokens:1500, messages:[{role:'user',content:prompt}], ...prov.extra }
+                                      : { model:prov.model, max_tokens:1500, messages:[{role:'user',content:[{type:'text',text:prompt}]}] };
                                     const resp = await fetch(prov.endpoint, { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${prov.key}`, ...(prov.extra||{}) }, body:JSON.stringify(body) });
                                     const data = await resp.json();
                                     const text = prov.isOpenAI ? data?.choices?.[0]?.message?.content : data?.content?.[0]?.text;
@@ -8546,7 +8798,7 @@ Berikan response HANYA dalam JSON ini (tanpa markdown, tanpa teks lain):
                         {personaRecs.music?.length > 0 && (
                           <div style={{ marginBottom:18 }}>
                             <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10, display:'flex', alignItems:'center', gap:6 }}>
-                              🎵 Rekomendasi Musik
+                              🎵 Musik & Seni Suara
                             </div>
                             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                               {personaRecs.music.map((m,i)=>(
@@ -8554,7 +8806,7 @@ Berikan response HANYA dalam JSON ini (tanpa markdown, tanpa teks lain):
                                   <div style={{ width:36, height:36, borderRadius:10, background:`${track.color}20`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>🎵</div>
                                   <div style={{ flex:1, minWidth:0 }}>
                                     <div style={{ fontWeight:700, fontSize:13, color:'white', marginBottom:2 }}>{m.title}</div>
-                                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)' }}>{m.artist}</div>
+                                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)' }}>{m.artist}{m.subcategory ? <span style={{ marginLeft:6, padding:'1px 7px', borderRadius:999, background:`${track.color}20`, color:track.color, fontSize:9, fontWeight:700 }}>{m.subcategory}</span> : null}</div>
                                     <div style={{ fontSize:10, color:track.color, marginTop:3 }}>{m.reason}</div>
                                   </div>
                                   <button onClick={()=>{ const query=`${m.title} ${m.artist}`; setYtQuery(p=>({...p,ytmusic:query})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic',query); ytMusicSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },120); }}
@@ -8567,23 +8819,23 @@ Berikan response HANYA dalam JSON ini (tanpa markdown, tanpa teks lain):
                           </div>
                         )}
 
-                        {/* Radio */}
-                        {personaRecs.radio?.length > 0 && (
+                        {/* Edukasi & Narasi */}
+                        {personaRecs.edukasi?.length > 0 && (
                           <div style={{ marginBottom:18 }}>
                             <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>
-                              📻 Rekomendasi Radio
+                              📚 Edukasi, Informasi & Narasi
                             </div>
                             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                              {personaRecs.radio.map((r,i)=>(
+                              {personaRecs.edukasi.map((e,i)=>(
                                 <div key={i} style={{ padding:'10px 14px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', display:'flex', alignItems:'center', gap:12 }}>
-                                  <div style={{ width:36, height:36, borderRadius:10, background:'rgba(245,158,11,0.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>📻</div>
+                                  <div style={{ width:36, height:36, borderRadius:10, background:'rgba(34,197,94,0.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>📚</div>
                                   <div style={{ flex:1, minWidth:0 }}>
-                                    <div style={{ fontWeight:700, fontSize:13, color:'white', marginBottom:2 }}>{r.name}</div>
-                                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)' }}>{r.genre}</div>
-                                    <div style={{ fontSize:10, color:'#f59e0b', marginTop:3 }}>{r.reason}</div>
+                                    <div style={{ fontWeight:700, fontSize:13, color:'white', marginBottom:2 }}>{e.name}</div>
+                                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)' }}>{e.platform}{e.subcategory ? <span style={{ marginLeft:6, padding:'1px 7px', borderRadius:999, background:'rgba(34,197,94,0.15)', color:'#86efac', fontSize:9, fontWeight:700 }}>{e.subcategory}</span> : null}</div>
+                                    <div style={{ fontSize:10, color:'#22c55e', marginTop:3 }}>{e.reason}</div>
                                   </div>
-                                  <button onClick={()=>{ setTab('stream'); }}
-                                    style={{ padding:'6px 12px', borderRadius:999, border:'1px solid rgba(245,158,11,0.4)', background:'rgba(245,158,11,0.12)', color:'#f59e0b', fontSize:10, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
+                                  <button onClick={()=>{ const query=e.name; setYtQuery(p=>({...p,ytmusic:query})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic',query); ytMusicSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },120); }}
+                                    style={{ padding:'6px 12px', borderRadius:999, border:'1px solid rgba(34,197,94,0.4)', background:'rgba(34,197,94,0.12)', color:'#22c55e', fontSize:10, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
                                     Cari
                                   </button>
                                 </div>
@@ -8592,24 +8844,74 @@ Berikan response HANYA dalam JSON ini (tanpa markdown, tanpa teks lain):
                           </div>
                         )}
 
-                        {/* Podcast */}
-                        {personaRecs.podcast?.length > 0 && (
+                        {/* Fiksi & Hiburan Kreatif */}
+                        {personaRecs.fiksi?.length > 0 && (
                           <div style={{ marginBottom:18 }}>
                             <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>
-                              🎙️ Rekomendasi Podcast
+                              🎭 Fiksi & Hiburan Kreatif
                             </div>
                             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                              {personaRecs.podcast.map((p,i)=>(
+                              {personaRecs.fiksi.map((f,i)=>(
                                 <div key={i} style={{ padding:'10px 14px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', display:'flex', alignItems:'center', gap:12 }}>
-                                  <div style={{ width:36, height:36, borderRadius:10, background:'rgba(168,85,247,0.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>🎙️</div>
+                                  <div style={{ width:36, height:36, borderRadius:10, background:'rgba(249,115,22,0.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>{f.subcategory==='komedi'?'😂':f.subcategory==='puisi'?'📜':'🎭'}</div>
                                   <div style={{ flex:1, minWidth:0 }}>
-                                    <div style={{ fontWeight:700, fontSize:13, color:'white', marginBottom:2 }}>{p.name}</div>
-                                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)' }}>{p.category}</div>
-                                    <div style={{ fontSize:10, color:'#a855f7', marginTop:3 }}>{p.reason}</div>
+                                    <div style={{ fontWeight:700, fontSize:13, color:'white', marginBottom:2 }}>{f.name}</div>
+                                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)' }}>{f.genre}{f.subcategory ? <span style={{ marginLeft:6, padding:'1px 7px', borderRadius:999, background:'rgba(249,115,22,0.15)', color:'#fdba74', fontSize:9, fontWeight:700 }}>{f.subcategory}</span> : null}</div>
+                                    <div style={{ fontSize:10, color:'#f97316', marginTop:3 }}>{f.reason}</div>
                                   </div>
-                                  <button onClick={()=>{ const query=p.name+' podcast'; setYtQuery(prev=>({...prev,ytmusic:query})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic',query); ytMusicSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },120); }}
-                                    style={{ padding:'6px 12px', borderRadius:999, border:'1px solid rgba(168,85,247,0.4)', background:'rgba(168,85,247,0.12)', color:'#a855f7', fontSize:10, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
+                                  <button onClick={()=>{ const query=f.name+' audio'; setYtQuery(p=>({...p,ytmusic:query})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic',query); ytMusicSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },120); }}
+                                    style={{ padding:'6px 12px', borderRadius:999, border:'1px solid rgba(249,115,22,0.4)', background:'rgba(249,115,22,0.12)', color:'#f97316', fontSize:10, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
                                     Cari
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Wellness & Terapi */}
+                        {personaRecs.wellness?.length > 0 && (
+                          <div style={{ marginBottom:18 }}>
+                            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>
+                              🧘 Kesehatan, Fokus & Terapi
+                            </div>
+                            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                              {personaRecs.wellness.map((w,i)=>(
+                                <div key={i} style={{ padding:'10px 14px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', display:'flex', alignItems:'center', gap:12 }}>
+                                  <div style={{ width:36, height:36, borderRadius:10, background:'rgba(20,184,166,0.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>{w.type?.toLowerCase().includes('asmr')?'🤫':w.type?.toLowerCase().includes('binaural')?'🧠':w.type?.toLowerCase().includes('noise')?'🌊':w.type?.toLowerCase().includes('ambient')||w.type?.toLowerCase().includes('alam')?'🌿':'🧘'}</div>
+                                  <div style={{ flex:1, minWidth:0 }}>
+                                    <div style={{ fontWeight:700, fontSize:13, color:'white', marginBottom:2 }}>{w.name}</div>
+                                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)' }}>{w.type}</div>
+                                    <div style={{ fontSize:10, color:'#14b8a6', marginTop:3 }}>{w.reason}</div>
+                                  </div>
+                                  <button onClick={()=>{ const query=w.name; setYtQuery(p=>({...p,ytmusic:query})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic',query); ytMusicSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },120); }}
+                                    style={{ padding:'6px 12px', borderRadius:999, border:'1px solid rgba(20,184,166,0.4)', background:'rgba(20,184,166,0.12)', color:'#14b8a6', fontSize:10, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
+                                    Cari
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Siaran Langsung & Radio */}
+                        {personaRecs.siaran?.length > 0 && (
+                          <div style={{ marginBottom:18 }}>
+                            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>
+                              📡 Siaran Langsung & Radio Live
+                            </div>
+                            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                              {personaRecs.siaran.map((s,i)=>(
+                                <div key={i} style={{ padding:'10px 14px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', display:'flex', alignItems:'center', gap:12 }}>
+                                  <div style={{ width:36, height:36, borderRadius:10, background:'rgba(245,158,11,0.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>{s.subcategory==='olahraga'?'⚽':s.subcategory==='live'?'🎙️':'📻'}</div>
+                                  <div style={{ flex:1, minWidth:0 }}>
+                                    <div style={{ fontWeight:700, fontSize:13, color:'white', marginBottom:2 }}>{s.name}</div>
+                                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)' }}>{s.genre}{s.subcategory ? <span style={{ marginLeft:6, padding:'1px 7px', borderRadius:999, background:'rgba(245,158,11,0.15)', color:'#fde68a', fontSize:9, fontWeight:700 }}>{s.subcategory}</span> : null}</div>
+                                    <div style={{ fontSize:10, color:'#f59e0b', marginTop:3 }}>{s.reason}</div>
+                                  </div>
+                                  <button onClick={()=>{ setTab('stream'); }}
+                                    style={{ padding:'6px 12px', borderRadius:999, border:'1px solid rgba(245,158,11,0.4)', background:'rgba(245,158,11,0.12)', color:'#f59e0b', fontSize:10, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
+                                    {s.subcategory==='olahraga'?'Live':'Radio'}
                                   </button>
                                 </div>
                               ))}
