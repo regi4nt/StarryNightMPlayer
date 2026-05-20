@@ -34,8 +34,8 @@ const T = {
     customDnsNote: 'Pengaturan DNS di browser terbatas. Untuk DNS penuh, ubah juga di:',
     customDnsActive: 'Aktif',
     modeLite: 'Mode',
-    modeLiteDesc: 'Hemat data · tanpa animasi · load cepat',
-    modeProDesc: 'Animasi penuh · cover art · fitur AI',
+    modeLiteDesc: 'Hemat data · ringan · tanpa AI · cocok sinyal lemah',
+    modeProDesc: 'Fitur lengkap · AI aktif · animasi · cover art',
     installApp: 'Install Sebagai App',
     installAppDesc: 'Desktop & Mobile — tanpa toko aplikasi',
     installNow: 'Install Sekarang',
@@ -48,25 +48,25 @@ const T = {
     player: 'Player',
     pengaturan: 'Settings',
     liteFeatures: [
-      ['⚡ Cover art dinonaktifkan', 'Gambar album tidak dimuat — halaman lebih ringan'],
-      ['⚡ Audio preload: none', 'Audio hanya dimuat saat diputar, menghemat bandwidth'],
-      ['⚡ Drive: streaming adaptif', 'Hanya buffer ~30 detik ke depan, tidak simpan ke cache — hemat data & storage'],
-      ['⚡ Prefetch Drive dinonaktifkan', 'Lagu tidak di-unduh di background'],
-      ['⚡ AI & Insight dinonaktifkan', 'Starry AI, Vibe Search, dan Wawasan Kosmik dimatikan'],
-      ['⚡ Lirik: database publik saja', 'Mencari dari lyrics.ovh — tanpa AI generate jika tidak ditemukan'],
-      ['⚡ Animasi dinonaktifkan', 'Semua efek visual dan blur dimatikan untuk performa maksimal'],
+      ['⚡ Tanpa cover art', 'Gambar album tidak dimuat — halaman lebih ringan & cepat'],
+      ['⚡ Audio dimuat saat diputar', 'Tidak ada preload — audio baru diambil saat kamu tekan play'],
+      ['⚡ Drive: streaming adaptif', 'Buffer ~30 detik saja, tidak disimpan ke cache — hemat kuota & storage'],
+      ['⚡ Tidak ada prefetch lagu', 'Lagu berikutnya tidak diunduh di background secara otomatis'],
+      ['⚡ Semua fitur AI dinonaktifkan', 'Chat, For You, Vibe Search, Wawasan Kosmik, dan lirik AI dimatikan'],
+      ['⚡ Lirik dari database publik saja', 'Ambil dari lrclib & lyrics.ovh — tidak ada fallback AI jika tidak ketemu'],
+      ['⚡ Animasi & efek visual dimatikan', 'Bintang, blur, gradient, dan transisi dinonaktifkan sepenuhnya'],
     ],
     proFeatures: [
-      ['✨ Cover art aktif', 'Gambar album dimuat dari internet'],
-      ['✨ Audio preload: auto', 'Buffer audio disiapkan lebih awal untuk playback instan'],
-      ['✨ Drive: unduh & cache penuh', 'File diunduh seluruhnya & disimpan untuk playback offline'],
-      ['✨ Prefetch Drive aktif', 'Lagu berikutnya di-cache di background'],
-      ['✨ AI & Insight aktif', 'Starry AI, Vibe Search, dan Wawasan Kosmik tersedia'],
-      ['✨ Lirik: database + AI', 'Cari dari lyrics.ovh, fallback ke Starry AI generate lirik'],
-      ['✨ Animasi penuh', 'Bintang-bintang, blur, dan efek visual lengkap'],
+      ['✨ Cover art dari internet', 'Gambar album/thumbnail dimuat otomatis untuk setiap lagu'],
+      ['✨ Audio preload otomatis', 'Buffer disiapkan sebelum diputar — playback instan tanpa jeda'],
+      ['✨ Drive: unduh & cache penuh', 'File Google Drive diunduh lengkap & disimpan untuk playback offline'],
+      ['✨ Prefetch lagu berikutnya', 'Lagu antrian di-cache di background agar transisi lagu mulus'],
+      ['✨ Semua fitur AI aktif', 'Chat, For You, Vibe Search, Wawasan Kosmik, dan lirik AI tersedia penuh'],
+      ['✨ Lirik: database + AI fallback', 'Cari dari lrclib & lyrics.ovh, lalu Starry AI generate jika tidak ditemukan'],
+      ['✨ Animasi & efek visual penuh', 'Bintang bergerak, blur dinamis, gradient, dan transisi halus aktif'],
     ],
-    liteTitle: 'Mode Lite aktif (hemat data) — ketuk untuk Pro',
-    proTitle: 'Mode Pro — ketuk untuk Lite (hemat data)',
+    liteTitle: 'Mode Lite aktif — ketuk untuk beralih ke Pro',
+    proTitle: 'Mode Pro aktif — ketuk untuk beralih ke Lite',
     // UI strings
     queue: 'Antrean',
     queueEmpty: 'Antrean kosong',
@@ -196,8 +196,8 @@ const T = {
     customDnsNote: 'Browser DNS settings are limited. For full DNS, also change it in:',
     customDnsActive: 'Active',
     modeLite: 'Mode',
-    modeLiteDesc: 'Save data · no animations · fast load',
-    modeProDesc: 'Full animations · cover art · AI features',
+    modeLiteDesc: 'Save data · lightweight · no AI · ideal for slow connections',
+    modeProDesc: 'Full features · AI enabled · animations · cover art',
     installApp: 'Install as App',
     installAppDesc: 'Desktop & Mobile — no app store needed',
     installNow: 'Install Now',
@@ -210,25 +210,25 @@ const T = {
     player: 'Player',
     pengaturan: 'Settings',
     liteFeatures: [
-      ['⚡ Cover art disabled', 'Album images not loaded — lighter page'],
-      ['⚡ Audio preload: none', 'Audio loaded only when played, saving bandwidth'],
+      ['⚡ No cover art', 'Album images not loaded — lighter and faster page'],
+      ['⚡ Audio loaded on play only', 'No preload — audio is fetched only when you press play'],
       ['⚡ Drive: adaptive streaming', 'Buffers ~30s ahead only, no cache — saves data & storage'],
-      ['⚡ Drive prefetch disabled', 'Songs not downloaded in background'],
-      ['⚡ AI & Insights disabled', 'Starry AI, Vibe Search, and Cosmic Insights are off'],
-      ['⚡ Lyrics: public database only', 'Searches from lyrics.ovh — no AI generation if not found'],
-      ['⚡ Animations disabled', 'All visual effects and blur disabled for max performance'],
+      ['⚡ No song prefetch', 'Next tracks are not downloaded in the background automatically'],
+      ['⚡ All AI features disabled', 'Chat, For You, Vibe Search, Cosmic Insights, and AI lyrics are off'],
+      ['⚡ Lyrics from public database only', 'Fetches from lrclib & lyrics.ovh — no AI fallback if not found'],
+      ['⚡ Animations & visual effects off', 'Stars, blur, gradients, and transitions fully disabled'],
     ],
     proFeatures: [
-      ['✨ Cover art active', 'Album images loaded from the internet'],
-      ['✨ Audio preload: auto', 'Audio buffer prepared early for instant playback'],
-      ['✨ Drive: full download & cache', 'Files fully downloaded & saved for offline playback'],
-      ['✨ Drive prefetch active', 'Next song cached in background'],
-      ['✨ AI & Insights active', 'Starry AI, Vibe Search, and Cosmic Insights available'],
-      ['✨ Lyrics: database + AI', 'Search from lyrics.ovh, fallback to Starry AI lyrics'],
-      ['✨ Full animations', 'Stars, blur, and full visual effects'],
+      ['✨ Cover art from the internet', 'Album art and thumbnails loaded automatically for every track'],
+      ['✨ Auto audio preload', 'Buffer prepared before playback — instant play with no delay'],
+      ['✨ Drive: full download & cache', 'Google Drive files downloaded fully and saved for offline playback'],
+      ['✨ Next song prefetch', 'Queue tracks cached in background for seamless transitions'],
+      ['✨ All AI features active', 'Chat, For You, Vibe Search, Cosmic Insights, and AI lyrics fully available'],
+      ['✨ Lyrics: database + AI fallback', 'Searches lrclib & lyrics.ovh, then Starry AI generates if not found'],
+      ['✨ Full animations & visual effects', 'Moving stars, dynamic blur, gradients, and smooth transitions active'],
     ],
-    liteTitle: 'Lite Mode active (save data) — tap for Pro',
-    proTitle: 'Pro Mode — tap for Lite (save data)',
+    liteTitle: 'Lite Mode active — tap to switch to Pro',
+    proTitle: 'Pro Mode active — tap to switch to Lite',
     // UI strings
     queue: 'Queue',
     queueEmpty: 'Queue is empty',
@@ -1343,7 +1343,7 @@ export const setRuntimeKeys = (sp_id, sp_secret, sc_id, ai_key, _u1, _u2, yt_key
 const getSpId      = () => _USER_SP_ID     || _ENV_SP_ID;
 const getSpSecret  = () => _USER_SP_SECRET || _ENV_SP_SECRET;
 const getScId      = () => _USER_SC_ID     || _ENV_SC_ID;
-const getUserAiKey  = () => _USER_AI_KEY;
+const getUserAiKey  = () => _USER_AI_KEY || (typeof localStorage !== 'undefined' ? localStorage.getItem('sn_ai_key') || '' : '');
 const getUserDsKey  = () => _ENV_DS_KEY;
 const getUserGrokKey = () => _ENV_GROK_KEY;
 // Ambil YT key: user key (langsung ke Google) atau fallback ke env (via proxy)
@@ -1434,7 +1434,7 @@ async function searchSoundCloud(query, limit = 10) {
 
 const askAI = async (user, system='', tries=0) => {
   const PROVIDERS = getProviders();
-  if (!PROVIDERS.length) return '⚠️ Belum ada API key. Isi di Vercel Environment Variables.';
+  if (!PROVIDERS.length) return '⚠️ No API key found. Add one in Settings or Vercel Environment Variables.';
   if (tries >= PROVIDERS.length) { slotIdx = 0; return 'Semua provider sibuk, coba lagi nanti.'; }
   const slot = PROVIDERS[slotIdx % PROVIDERS.length];
   try {
@@ -1507,6 +1507,7 @@ const _driveCache = { token: null, songs: null, ts: 0 };
 const DRIVE_CACHE_TTL = 5 * 60 * 1000; // 5 menit
 // Cache in-memory (sesi ini) + Cache API (persisten antar refresh)
 const _blobCache = new Map();
+window._snBlobCacheRef = _blobCache; // expose agar handleClearCache bisa clear in-memory cache
 const DRIVE_CACHE_NAME = 'sn-drive-v1';
 const DRIVE_SIZE_KEY   = 'sn_drive_sizes'; // localStorage key untuk menyimpan ukuran file penuh
 const YT_CACHE_NAME    = 'sn-yt-v1';      // cache audio YouTube yang di-love
@@ -2128,7 +2129,7 @@ function PlaylistModal({ onClose, onSave, allSongs, existing, isLite, t }) {
 
         {/* Name */}
         <div style={{ marginBottom:16 }}>
-          <label style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.4)', textTransform:'uppercase', letterSpacing:'0.1em' }}>Nama Playlist</label>
+          <label style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.4)', textTransform:'uppercase', letterSpacing:'0.1em' }}>{t?.selectSongs ? 'Playlist Name' : 'Playlist Name'}</label>
           <input value={name} onChange={e=>setName(e.target.value)} placeholder={t?.playlistNamePlaceholder||"Playlist name..."}
             style={{ width:'100%', marginTop:6, background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:10, padding:'10px 12px', fontSize:13, color:'white', outline:'none' }}/>
         </div>
@@ -2262,7 +2263,7 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
           ? <div style={{ width:'100%', height:'100%', background:`linear-gradient(135deg,${color}30,${color}18)`, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:6, position:'relative' }}>
               <Radio size={artR*0.45} color={color}/>
               <div style={{ fontSize:artR*0.14, fontWeight:800, color:color, textTransform:'uppercase', letterSpacing:'0.12em' }}>LIVE</div>
-              {isPlaying && !isLite && <div style={{ position:'absolute', width:'100%', height:'100%', borderRadius:'50%', boxShadow:`inset 0 0 ${artR*0.3}px ${color}40`, animation:'pulse 2s infinite' }}/>}
+              {isPlaying && !isLite && <div style={{ position:'absolute', width:'100%', height:'100%', borderRadius:'50%', boxShadow:`inset 0 0 ${artR*0.3}px ${color}40` }}/>}
             </div>
           : isLite
             ? <div style={{ width:'100%', height:'100%', background:color+'33', display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={artR*0.6} color={color}/></div>
@@ -2270,12 +2271,10 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
         {/* ── Fase CHECK — scanning overlay, audio sudah diputar via stream */}
         {drivePhase === 'check' && (
           <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:artR*0.1, background:'rgba(7,7,26,0.75)', ...(isLite?{}:{backdropFilter:'blur(3px)'}) }}>
-            {/* Pulse rings — animasi hanya di Pro, Lite pakai ikon statis */}
+            {/* Pulse rings — hanya Lite yang pakai ikon statis; Pro tanpa pulse-ring */}
             <div style={{ position:'relative', width:artR*0.7, height:artR*0.7, display:'flex', alignItems:'center', justifyContent:'center' }}>
-              {!isLite && <div style={{ position:'absolute', width:'100%', height:'100%', borderRadius:'50%', border:`2px solid ${color}`, opacity:0.6, animation:'pulse-ring 1.4s ease-out infinite' }}/>}
-              {!isLite && <div style={{ position:'absolute', width:'70%', height:'70%', borderRadius:'50%', border:`2px solid ${color}`, opacity:0.4, animation:'pulse-ring 1.4s ease-out 0.4s infinite' }}/>}
               <div style={{ width:artR*0.22, height:artR*0.22, borderRadius:'50%', background:`${color}33`, border:`2px solid ${color}88`, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <div style={{ width:artR*0.1, height:artR*0.1, borderRadius:'50%', background:color, boxShadow:isLite?'none':`0 0 8px ${color}`, ...(isLite?{}:{animation:'pulse 1s ease-in-out infinite'}) }}/>
+                <div style={{ width:artR*0.1, height:artR*0.1, borderRadius:'50%', background:color, boxShadow:isLite?'none':`0 0 8px ${color}` }}/>
               </div>
             </div>
             <div style={{ fontSize:artR*0.13, fontWeight:700, color:'rgba(255,255,255,0.8)', letterSpacing:'0.05em', textAlign:'center' }}>{isLite ? '✓ Cache' : 'Checking…'}</div>
@@ -2283,7 +2282,7 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
         )}
         {/* ── Fase DOWNLOAD — circular progress bar */}
         {drivePhase === 'download' && (
-          <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:artR*0.1, background:'rgba(7,7,26,0.62)', backdropFilter:'blur(3px)' }}>
+          <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:artR*0.1, background:'rgba(7,7,26,0.62)', ...(isLite ? {} : { backdropFilter:'blur(3px)' }) }}>
             <svg width={artR*0.85} height={artR*0.85} style={{ flexShrink:0 }}>
               {(() => {
                 const r = artR*0.34, c = artR*0.425, circ2 = 2*Math.PI*r;
@@ -2302,7 +2301,7 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
               })()}
             </svg>
             <div style={{ fontSize:artR*0.13, fontWeight:700, color:'rgba(255,255,255,0.75)', letterSpacing:'0.04em', textAlign:'center', padding:'0 6px' }}>
-              Mengunduh…
+              Downloading…
             </div>
           </div>
         )}
@@ -2403,7 +2402,7 @@ function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDri
   return (
     <div style={{ display:'flex', alignItems:'center', gap:12, padding:'9px 12px', borderRadius:14, cursor:'pointer', background:isActive?s.bg:'rgba(255,255,255,0.04)', border:`1px solid ${isActive?s.color+'50':'transparent'}` }} onClick={()=>play(s)}>
       <div style={{ width:28, height:28, borderRadius:8, flexShrink:0, background:isActive?s.color:'rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:800, color:isActive?'white':'rgba(255,255,255,0.4)' }}>
-        {isActive&&playing ? (isLite ? <Music size={12} color="white"/> : <div style={{ display:'flex', gap:1.5, alignItems:'flex-end' }}>{[12,6,10].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:'white', borderRadius:1, animation:`bounce 0.8s ease-in-out ${j*0.15}s infinite` }}/>))}</div>) : isDrive?<Cloud size={12}/>:i+1}
+        {isActive&&playing ? (isLite ? <Music size={12} color="white"/> : <div style={{ display:'flex', gap:1.5, alignItems:'flex-end' }}>{[12,6,10].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:'white', borderRadius:1, animation:`bounce 1.4s ease-in-out ${j*0.25}s infinite` }}/>))}</div>) : isDrive?<Cloud size={12}/>:i+1}
       </div>
       {isLite
         ? <div style={{ width:42, height:42, borderRadius:10, background:s.bg||'rgba(255,255,255,0.07)', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={16} color={s.color}/></div>
@@ -2467,13 +2466,13 @@ class SettingsErrorBoundary extends React.Component {
             <div style={{ width:36, height:4, borderRadius:999, background:'rgba(255,255,255,0.15)', margin:'0 auto 20px' }}/>
             <div style={{ textAlign:'center', padding:'12px 0' }}>
               <div style={{ fontSize:28, marginBottom:12 }}>⚠️</div>
-              <div style={{ fontWeight:800, fontSize:15, color:'#fca5a5', marginBottom:6 }}>Pengaturan gagal dimuat</div>
+              <div style={{ fontWeight:800, fontSize:15, color:'#fca5a5', marginBottom:6 }}>Settings failed to load</div>
               <div style={{ fontSize:12, color:'rgba(255,255,255,0.45)', marginBottom:20 }}>
                 {String(this.state.error?.message || 'Unknown error')}
               </div>
               <button onClick={()=>{ this.setState({hasError:false,error:null}); this.props.onClose(); }}
                 style={{ padding:'10px 24px', borderRadius:12, border:'none', background:'rgba(239,68,68,0.25)', color:'#fca5a5', fontSize:13, fontWeight:700, cursor:'pointer' }}>
-                Tutup
+                Close
               </button>
             </div>
           </div>
@@ -2496,7 +2495,7 @@ class PlaylistErrorBoundary extends React.Component {
       return (
         <div style={{ height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'32px 20px', textAlign:'center' }}>
           <div style={{ fontSize:32, marginBottom:14 }}>⚠️</div>
-          <div style={{ fontWeight:800, fontSize:15, color:'#fca5a5', marginBottom:8 }}>Gagal memuat playlist</div>
+          <div style={{ fontWeight:800, fontSize:15, color:'#fca5a5', marginBottom:8 }}>Failed to load playlist</div>
           <div style={{ fontSize:12, color:'rgba(255,255,255,0.4)', marginBottom:20 }}>
             {String(this.state.error?.message || 'Unknown error')}
           </div>
@@ -2956,6 +2955,7 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
           const [cacheInfo, setCacheInfo] = React.useState(null); // { driveCount, ytCount, totalMB }
           const [clearing, setClearing] = React.useState(false);
           const [cleared, setCleared] = React.useState(false);
+          const [clearDone, setClearDone] = React.useState(false);
 
           React.useEffect(() => {
             async function loadCacheInfo() {
@@ -3010,6 +3010,8 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
                 }
               } catch(e) {}
               setCleared(c => !c);
+              setClearDone(true);
+              setTimeout(() => setClearDone(false), 2500);
             } catch(e) {}
             setClearing(false);
           };
@@ -3062,19 +3064,23 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
                     disabled={clearing || !hasCache}
                     style={{
                       width:'100%', padding:'11px 0', borderRadius:12, border:'none',
-                      background: hasCache
-                        ? (clearing ? 'rgba(239,68,68,0.4)' : 'linear-gradient(135deg,#ef4444,#dc2626)')
-                        : 'rgba(255,255,255,0.06)',
+                      background: clearDone
+                        ? 'linear-gradient(135deg,#22c55e,#16a34a)'
+                        : hasCache
+                          ? (clearing ? 'rgba(239,68,68,0.4)' : 'linear-gradient(135deg,#ef4444,#dc2626)')
+                          : 'rgba(255,255,255,0.06)',
                       color: hasCache ? 'white' : 'rgba(255,255,255,0.25)',
                       fontSize:13, fontWeight:800, cursor: hasCache ? 'pointer' : 'default',
                       display:'flex', alignItems:'center', justifyContent:'center', gap:8,
-                      transition:'opacity 0.2s'
+                      transition:'all 0.3s'
                     }}
                   >
-                    <span style={{ fontSize:14 }}>{clearing ? '⏳' : '🗑️'}</span>
+                    <span style={{ fontSize:14 }}>{clearing ? '⏳' : clearDone ? '✅' : '🗑️'}</span>
                     {clearing
                       ? (lang==='id' ? 'Menghapus...' : 'Clearing...')
-                      : (lang==='id' ? 'Hapus Semua Cache' : 'Clear All Cache')}
+                      : clearDone
+                        ? (lang==='id' ? 'Cache Dihapus!' : 'Cache Cleared!')
+                        : (lang==='id' ? 'Hapus Semua Cache' : 'Clear All Cache')}
                   </button>
                 </div>
               )}
@@ -3151,7 +3157,7 @@ function UploadModal({ onClose, onUpload, uploading, uploadProgress, color, isLi
           {file ? (<><CheckCircle size={28} style={{ color, margin:'0 auto 8px', display:'block' }}/><div style={{ fontWeight:700, fontSize:13 }}>{file.name}</div><div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:2 }}>{(file.size/1024/1024).toFixed(1)} MB</div></>) : (<><Music size={28} style={{ color:'rgba(255,255,255,0.2)', margin:'0 auto 8px', display:'block' }}/><div style={{ fontWeight:700, fontSize:13 }}>{dragging?(t?.dropHere||'Drop it here!'):(t?.dropOrTap||'Tap or drag & drop')}</div><div style={{ fontSize:11, color:'rgba(255,255,255,0.35)' }}>MP3, M4A, WAV, FLAC, OGG</div></>)}
         </div>
         <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:18 }}>
-          {[['Judul Lagu *',title,setTitle,'Nama lagu...'],['Artis',artist,setArtist,'Nama artis...'],['Album',album,setAlbum,'Nama album...']].map(([label,val,set,ph])=>(
+          {[['Song Title *',title,setTitle,'Song title...'],['Artist',artist,setArtist,'Artist name...'],['Album',album,setAlbum,'Album name...']].map(([label,val,set,ph])=>(
             <div key={label}><label style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.4)', textTransform:'uppercase', letterSpacing:'0.1em' }}>{label}</label><input value={val} onChange={e=>set(e.target.value)} placeholder={ph} disabled={uploading} style={inp}/></div>
           ))}
         </div>
@@ -3563,7 +3569,7 @@ export default function App() {
       // Selalu set results — SC & Spotify selalu ditampilkan
       setWsResults(merged);
       if (!hasRealResults && merged.every(m=>m.type==='sc_embed'||m.type==='sp_embed')) {
-        setWsError('Tidak ada hasil dari sumber lain. SoundCloud & Spotify ditampilkan sebagai embed.');
+        setWsError('No results from other sources. SoundCloud & Spotify shown as embeds.');
       }
     } catch(e) { setWsError('Pencarian gagal: ' + (e.message||'error')); }
     setWsLoading(false);
@@ -3703,7 +3709,7 @@ export default function App() {
     try {
       const r = await askAI(
         `Berikan 5 video YouTube untuk musik "${query}". Format JSON array: [{"videoId":"xxx","title":"...","uploaderName":"...","duration":240}]. Hanya JSON, tanpa penjelasan.`,
-        'Kamu asisten musik. Berikan videoId YouTube yang valid untuk lagu populer. Pastikan format JSON valid.'
+        'You are a music assistant. Provide valid YouTube videoIds for popular songs. Ensure valid JSON format.'
       );
       const clean = r.replace(/```json|```/g, '').trim();
       const items = JSON.parse(clean);
@@ -4207,7 +4213,19 @@ export default function App() {
   const [insight, setInsight]   = useState('');
   const [insightLoading, setIL] = useState(false);
   const [messages, setMessages] = useState(() => {
-    const greetings = [
+    const _lang = (() => { try { return localStorage.getItem('sn_lang') || 'id'; } catch { return 'id'; } })();
+    const greetings = _lang === 'en' ? [
+      'Hey! 👋 What are you up to? Want to chat or find the perfect song for the vibe?',
+      'Hi~ I\'m Starry ✨ Tell me anything — music, your day, or just hang out 😊',
+      'Welcome! 🌙 Happy, sad, or just need some company? I\'m here',
+      'Heyy! Request a song, vent, or ask anything — I\'m all ears 🎶',
+      'Hey! How can I help? Music chat, song recommendations, or just a convo — all good 🌟',
+      'Hi! I\'m Starry — your music buddy and chat companion 💫 Where do we start?',
+      'Heyy, what\'s the mood today? I can find the perfect song or we can just talk 😄',
+      'Good evening~ ✨ (or morning, or afternoon!) What\'s on your mind?',
+      'Hey! Bored? Happy? Sad? Whatever it is, I\'m here for it 🎵',
+      'Hi! Don\'t be shy — ask about music, request recommendations, or just chat 🌠',
+    ] : [
       'Halo! 👋 Lagi ngapain nih? Mau ngobrol santai atau cari lagu yang pas buat suasana sekarang?',
       'Hai~ aku Starry ✨ Bisa cerita apa aja ke aku — soal musik, hari ini, atau sekadar pengen ngobrol 😊',
       'Selamat datang! 🌙 Lagi seneng, galau, atau cuma pengen teman menemani? Aku di sini kok',
@@ -4314,10 +4332,17 @@ export default function App() {
   useEffect(() => { tokenRef.current    = accessToken; }, [accessToken]);
   useEffect(() => { spPlayingRef.current = spPlaying; }, [spPlaying]);
 
-  // ── Jam live — update setiap detik
+  // ── Jam live — sinkron ke batas detik agar tidak drift
   useEffect(() => {
-    const tick = setInterval(() => setNowTime(new Date()), 1000);
-    return () => clearInterval(tick);
+    let id;
+    const schedule = () => {
+      setNowTime(new Date());
+      const msUntilNext = 1000 - (new Date().getMilliseconds());
+      id = setTimeout(schedule, msUntilNext);
+    };
+    const msUntilFirst = 1000 - (new Date().getMilliseconds());
+    id = setTimeout(schedule, msUntilFirst);
+    return () => clearTimeout(id);
   }, []);
 
   // ── Persist preferences to localStorage
@@ -4435,7 +4460,7 @@ export default function App() {
       if (songs.length === 0) {
         setDriveError(
           'No audio files found in Google Drive. ' +
-          'Pastikan file .mp3 .m4a .wav .flac .ogg sudah ada, lalu ketuk ikon ↻ untuk refresh.',
+          'Make sure .mp3 .m4a .wav .flac .ogg files exist, then tap ↻ to refresh.',
         );
       } else {
         setDriveError('');
@@ -4451,11 +4476,11 @@ export default function App() {
             ? (t?.noAudioFound||'No audio files found in Drive. Make sure you have .mp3 .m4a .wav .flac .ogg files.')
             : '');
         } catch {
-          setDriveError('Sesi Google berakhir. Ketuk Login untuk lanjut.');
+          setDriveError('Google session expired. Tap Login to continue.');
         }
       } else {
         // Network / other error — tampilkan pesan singkat
-        setDriveError('Gagal memuat Drive: ' + e.message);
+        setDriveError('Failed to load Drive: ' + e.message);
         console.warn('Drive list error:', e.message);
       }
     } finally {
@@ -4478,7 +4503,7 @@ export default function App() {
         .then(tok => loadDriveSongs(tok, true))
         .catch(() => {
           // Silent refresh gagal (misal: session Google habis) → tampilkan pesan login
-          setDriveError('Sesi Google berakhir. Ketuk tombol Login untuk melanjutkan.');
+          setDriveError('Google session expired. Tap Login to continue.');
         });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -4497,7 +4522,7 @@ export default function App() {
       if (saved && saved.expiry - Date.now() < 2 * 60 * 1000) {
         silentRefreshToken()
           .then(newTok => loadDriveSongs(newTok, true))
-          .catch(() => setDriveError('Sesi Google berakhir. Ketuk Login untuk lanjut.'));
+          .catch(() => setDriveError('Google session expired. Tap Login to continue.'));
       } else {
         // Selalu reload ulang saat halaman aktif kembali (tangkap perubahan file di Drive)
         loadDriveSongs(tok, true);
@@ -4805,7 +4830,7 @@ export default function App() {
     setPL(true);
     try {
       const savedPrefs = (() => { try { return JSON.parse(localStorage.getItem('sn_persona_prefs')||'{}'); } catch { return personaPrefs; } })();
-      const prompt = `Kamu adalah kurator audio personal berbasis taksonomi audio lengkap. Berdasarkan preferensi user berikut, berikan rekomendasi audio yang sangat dipersonalisasi dalam format JSON.\n\nPreferensi user:\n- Kategori dipilih: ${savedPrefs.categories?.join(', ') || personaPrefs.categories.join(', ') || 'tidak disebutkan'}\n- Suasana yang dicari: ${savedPrefs.moods?.join(', ') || personaPrefs.moods.join(', ') || 'tidak disebutkan'}\n- Waktu mendengarkan: ${savedPrefs.timeOfDay || personaPrefs.timeOfDay || 'kapan saja'}\n- Bahasa konten: ${savedPrefs.lang || personaPrefs.lang || 'mix'}\n\nTAKSONOMI: music_mainstream=Pop/Rock/HipHop, music_indie=Indie/Demotape, music_instrumental=Klasik/Orkestra, music_remix=Remix/DJ, music_cover=Cover/Akapela, music_lofi=Lo-Fi, music_indopop=Indo Pop/Dangdut, music_edm=EDM; edu_podcast=Podcast/Siniar, edu_audiobook=Audiobook, edu_booksummary=Ringkasan Buku, edu_news=Berita Audio, edu_kuliah=Kuliah/Kursus; fiksi_drama=Sandiwara Suara, fiksi_komedi=Komedi Audio, fiksi_puisi=Puisi/Deklamasi; wellness_ambient=Suara Alam, wellness_noise=White/Pink/Brown Noise, wellness_meditation=Meditasi Panduan, wellness_binaural=Binaural Beats, wellness_asmr=ASMR; siaran_radio=Radio Digital, siaran_live=Obrolan Langsung, siaran_olahraga=Olahraga Live.\n\nINSTRUKSI: Isi MINIMAL 3 item nyata per kategori yang dipilih. Kosongkan array hanya jika tidak dipilih. Response HANYA JSON (tanpa markdown):\n{"greeting":"sapa user hangat","music":[{"title":"Judul Nyata","artist":"Artis Nyata","subcategory":"sub","reason":"alasan singkat"},{"title":"Judul 2","artist":"Artis 2","subcategory":"sub","reason":"alasan"},{"title":"Judul 3","artist":"Artis 3","subcategory":"sub","reason":"alasan"}],"edukasi":[{"name":"Nama Nyata","platform":"platform","subcategory":"podcast/audiobook/news","reason":"alasan"},{"name":"Nama 2","platform":"platform","subcategory":"sub","reason":"alasan"},{"name":"Nama 3","platform":"platform","subcategory":"sub","reason":"alasan"}],"fiksi":[{"name":"Judul Nyata","genre":"genre","subcategory":"drama/komedi/puisi","reason":"alasan"},{"name":"Judul 2","genre":"genre","subcategory":"sub","reason":"alasan"},{"name":"Judul 3","genre":"genre","subcategory":"sub","reason":"alasan"}],"wellness":[{"name":"Nama Nyata","type":"ASMR/binaural/meditasi/ambient/noise","reason":"alasan"},{"name":"Nama 2","type":"type","reason":"alasan"},{"name":"Nama 3","type":"type","reason":"alasan"}],"siaran":[{"name":"Nama Nyata","genre":"genre","subcategory":"radio/live/olahraga","reason":"alasan"},{"name":"Nama 2","genre":"genre","subcategory":"sub","reason":"alasan"},{"name":"Nama 3","genre":"genre","subcategory":"sub","reason":"alasan"}],"tip":"tips spesifik sesuai preferensi user"}`;
+      const prompt = `Kamu adalah kurator audio personal berbasis taksonomi audio lengkap. Berdasarkan preferensi user berikut, berikan rekomendasi audio yang sangat dipersonalisasi dalam format JSON.\n\nPreferensi user:\n- Kategori dipilih: ${savedPrefs.categories?.join(', ') || personaPrefs.categories.join(', ') || 'tidak disebutkan'}\n- Suasana yang dicari: ${savedPrefs.moods?.join(', ') || personaPrefs.moods.join(', ') || 'tidak disebutkan'}\n- Waktu mendengarkan: ${savedPrefs.timeOfDay || personaPrefs.timeOfDay || 'kapan saja'}\n- Bahasa konten: ${savedPrefs.lang || personaPrefs.lang || 'mix'}\n\nTAKSONOMI: music_mainstream=Pop/Rock/HipHop, music_indie=Indie/Demotape, music_instrumental=Klasik/Orkestra, music_remix=Remix/DJ, music_cover=Cover/Akapela, music_lofi=Lo-Fi, music_indopop=Indo Pop/Dangdut, music_edm=EDM; edu_podcast=Podcast/Siniar, edu_audiobook=Audiobook, edu_booksummary=Ringkasan Buku, edu_news=Berita Audio, edu_kuliah=Kuliah/Kursus; fiksi_drama=Sandiwara Suara, fiksi_komedi=Komedi Audio, fiksi_puisi=Puisi/Deklamasi; wellness_ambient=Suara Alam, wellness_noise=White/Pink/Brown Noise, wellness_meditation=Meditasi Panduan, wellness_binaural=Binaural Beats, wellness_asmr=ASMR; siaran_radio=Radio Digital, siaran_live=Obrolan Langsung, siaran_olahraga=Olahraga Live.\n\nINSTRUKSI: Isi MINIMAL 5 item nyata per kategori yang dipilih. Kosongkan array hanya jika tidak dipilih. Response HANYA JSON (tanpa markdown):\\n{"greeting":"sapa user hangat","music":[{"title":"Judul 1","artist":"Artis 1","subcategory":"sub","reason":"alasan singkat"},{"title":"Judul 2","artist":"Artis 2","subcategory":"sub","reason":"alasan"},{"title":"Judul 3","artist":"Artis 3","subcategory":"sub","reason":"alasan"},{"title":"Judul 4","artist":"Artis 4","subcategory":"sub","reason":"alasan"},{"title":"Judul 5","artist":"Artis 5","subcategory":"sub","reason":"alasan"}],"edukasi":[{"name":"Nama 1","platform":"platform","subcategory":"podcast/audiobook/news","reason":"alasan"},{"name":"Nama 2","platform":"platform","subcategory":"sub","reason":"alasan"},{"name":"Nama 3","platform":"platform","subcategory":"sub","reason":"alasan"},{"name":"Nama 4","platform":"platform","subcategory":"sub","reason":"alasan"},{"name":"Nama 5","platform":"platform","subcategory":"sub","reason":"alasan"}],"fiksi":[{"name":"Judul 1","genre":"genre","subcategory":"drama/komedi/puisi","reason":"alasan"},{"name":"Judul 2","genre":"genre","subcategory":"sub","reason":"alasan"},{"name":"Judul 3","genre":"genre","subcategory":"sub","reason":"alasan"},{"name":"Judul 4","genre":"genre","subcategory":"sub","reason":"alasan"},{"name":"Judul 5","genre":"genre","subcategory":"sub","reason":"alasan"}],"wellness":[{"name":"Nama 1","type":"ASMR/binaural/meditasi/ambient/noise","reason":"alasan"},{"name":"Nama 2","type":"type","reason":"alasan"},{"name":"Nama 3","type":"type","reason":"alasan"},{"name":"Nama 4","type":"type","reason":"alasan"},{"name":"Nama 5","type":"type","reason":"alasan"}],"siaran":[{"name":"Nama 1","genre":"genre","subcategory":"radio/live/olahraga","reason":"alasan"},{"name":"Nama 2","genre":"genre","subcategory":"sub","reason":"alasan"},{"name":"Nama 3","genre":"genre","subcategory":"sub","reason":"alasan"},{"name":"Nama 4","genre":"genre","subcategory":"sub","reason":"alasan"},{"name":"Nama 5","genre":"genre","subcategory":"sub","reason":"alasan"}],"tip":"tips spesifik sesuai preferensi user"}`;
       const _cats = savedPrefs.categories || personaPrefs.categories || [];
       const _activeSections = [
         _cats.some(c=>c.startsWith('music_')),
@@ -4814,7 +4839,7 @@ export default function App() {
         _cats.some(c=>c.startsWith('wellness_')),
         _cats.some(c=>c.startsWith('siaran_')),
       ].filter(Boolean).length;
-      const _maxTok = Math.min(4000, 800 + _activeSections * 500);
+      const _maxTok = Math.min(6000, 800 + _activeSections * 800);
       const providers = getProviders();
       let result = null;
       for (const prov of providers) {
@@ -4861,13 +4886,13 @@ export default function App() {
       const prompt = `Kamu adalah kurator musik & audio global. Berikan daftar konten POPULER & TRENDING saat ini (bukan personalisasi) dalam format JSON. Isi dengan judul/artis/stasiun nyata yang benar-benar populer secara global maupun di Indonesia saat ini.
 
 Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
-{"trending_music":[{"title":"Judul Lagu","artist":"Artis","reason":"alasan singkat max 8 kata"},{"title":"...","artist":"...","reason":"..."},{"title":"...","artist":"...","reason":"..."},{"title":"...","artist":"...","reason":"..."},{"title":"...","artist":"...","reason":"..."}],"trending_radio":[{"name":"Nama Stasiun Radio","genre":"genre","reason":"alasan singkat max 8 kata"},{"name":"...","genre":"...","reason":"..."},{"name":"...","genre":"...","reason":"..."}],"trending_indo":[{"title":"Judul Lagu Indonesia","artist":"Artis Indonesia","reason":"alasan singkat max 8 kata"},{"title":"...","artist":"...","reason":"..."},{"title":"...","artist":"...","reason":"..."}]}`;
+{"trending_music":[{"title":"Judul Lagu 1","artist":"Artis 1","reason":"alasan singkat max 8 kata"},{"title":"Judul Lagu 2","artist":"Artis 2","reason":"alasan singkat max 8 kata"},{"title":"Judul Lagu 3","artist":"Artis 3","reason":"alasan singkat max 8 kata"},{"title":"Judul Lagu 4","artist":"Artis 4","reason":"alasan singkat max 8 kata"},{"title":"Judul Lagu 5","artist":"Artis 5","reason":"alasan singkat max 8 kata"}],"trending_radio":[{"name":"Nama Stasiun 1","genre":"genre","reason":"alasan singkat max 8 kata"},{"name":"Nama Stasiun 2","genre":"genre","reason":"alasan singkat max 8 kata"},{"name":"Nama Stasiun 3","genre":"genre","reason":"alasan singkat max 8 kata"},{"name":"Nama Stasiun 4","genre":"genre","reason":"alasan singkat max 8 kata"},{"name":"Nama Stasiun 5","genre":"genre","reason":"alasan singkat max 8 kata"}],"trending_indo":[{"title":"Lagu Indo 1","artist":"Artis Indonesia 1","reason":"alasan singkat max 8 kata"},{"title":"Lagu Indo 2","artist":"Artis Indonesia 2","reason":"alasan singkat max 8 kata"},{"title":"Lagu Indo 3","artist":"Artis Indonesia 3","reason":"alasan singkat max 8 kata"},{"title":"Lagu Indo 4","artist":"Artis Indonesia 4","reason":"alasan singkat max 8 kata"},{"title":"Lagu Indo 5","artist":"Artis Indonesia 5","reason":"alasan singkat max 8 kata"}]}`;
       const providers = getProviders();
       let result = null;
       for (const prov of providers) {
         try {
           const body = prov.isOpenAI
-            ? { model: prov.model, max_tokens: 1200, messages: [{ role: 'user', content: prompt }], ...prov.extra }
+            ? { model: prov.model, max_tokens: 2000, messages: [{ role: 'user', content: prompt }], ...prov.extra }
             : { model: prov.model, max_tokens: 1200, messages: [{ role: 'user', content: [{ type: 'text', text: prompt }] }] };
           const resp = await fetch(prov.endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${prov.key}`, ...(prov.extra || {}) }, body: JSON.stringify(body) });
           const data = await resp.json();
@@ -5100,7 +5125,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       // Trigger health-check otomatis setelah stasiun dimuat
       testStationsInGenre({ id: key, stations });
     } catch(e) {
-      setRbBrowseError('Gagal memuat dari Radio Browser. Periksa koneksi internet.');
+      setRbBrowseError('Failed to load from Radio Browser. Check your internet connection.');
       rbBrowseRef.current = [];
     } finally {
       setRbBrowseLoading(false);
@@ -5233,7 +5258,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       }
       setGardenBrowseStations(stations);
     } catch(e) {
-      setGardenBrowseError('Gagal memuat dari Radio Garden.');
+      setGardenBrowseError('Failed to load from Radio Garden.');
     } finally {
       setGardenBrowseLoading(false);
     }
@@ -5767,7 +5792,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
               tok = await silentRefreshToken();
               url = await tryLoad(tok);
             } catch {
-              setDriveError('Sesi Google berakhir. Ketuk tombol Login untuk lanjut.');
+              setDriveError('Google session expired. Tap Login to continue.');
               setLoadingTrack(false); setDriveDownProg(0); setDrivePhase('idle'); return;
             }
           } else { throw e; }
@@ -6041,8 +6066,8 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     const activeTitle  = embedTrack ? (embedTrack.title  || track.title)  : track.title;
     const activeArtist = embedTrack ? (embedTrack.artist || track.artist) : track.artist;
     const r = await askAI(
-      `Lagu: "${activeTitle}" oleh ${activeArtist}. Vibe/mood: ${track.mood || 'unknown'}.\n\nBuat 1 kalimat puitis singkat yang menangkap esensi lagu ini. Gunakan metafora tentang bintang, alam semesta, atau alam. Maksimal 20 kata. Bahasa Indonesia.`,
-      'Kamu penyair. Balas HANYA kalimat puitis saja, tanpa tanda petik, tanpa penjelasan.'
+      `Song: "${activeTitle}" by ${activeArtist}. Vibe/mood: ${track.mood || 'unknown'}.\n\n${lang === 'en' ? 'Write 1 short poetic sentence capturing the essence of this song. Use metaphors about stars, the universe, or nature. Max 20 words. English only.' : 'Buat 1 kalimat puitis singkat yang menangkap esensi lagu ini. Gunakan metafora tentang bintang, alam semesta, atau alam. Maksimal 20 kata. Bahasa Indonesia.'}`,
+      `${lang === 'en' ? 'You are a poet. Reply with ONLY the poetic sentence, no quotes, no explanation.' : 'Kamu penyair. Balas HANYA kalimat puitis saja, tanpa tanda petik, tanpa penjelasan.'}`
     );
     setInsight(r);
     setIL(false);
@@ -6071,8 +6096,8 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     if (customSongs.length > 0) {
       const customList = customSongs.slice(0,15).map((s,i)=>`${i+1}. "${s.title}" - ${s.artist} (mood: ${s.mood||'unknown'})`).join('\n');
       const r = await askAI(
-        `Pengguna ingin musik dengan vibe/suasana: "${vibeInput}"\n\nDaftar lagu tersedia:\n${customList}\n\nPilih nomor lagu yang PALING cocok dengan vibe tersebut. Balas HANYA satu angka saja.`,
-        'Kamu kurator musik AI. Pilih lagu paling cocok. Balas hanya angka.'
+        `User wants music with vibe/mood: "${vibeInput}"\n\nAvailable songs:\n${customList}\n\nChoose the song number that PALING cocok dengan vibe tersebut. Balas HANYA satu angka saja.`,
+        'You are an AI music curator. Pick the most fitting song. Reply with the number only.'
       );
       const idx = parseInt(r.trim()) - 1;
       const found = customSongs[idx];
@@ -6086,8 +6111,8 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
 
     // Recommend a song → auto-search YouTube
     const r = await askAI(
-      `Pengguna ingin musik dengan vibe/suasana hati: "${vibeInput}"\n\nBerikan HANYA 1 rekomendasi lagu dalam format:\nJUDUL - ARTIS\n\nTidak ada teks lain, tidak ada penjelasan.`,
-      'Kamu kurator musik AI. Balas HANYA dengan format: JUDUL - ARTIS. Satu baris saja.'
+      `User wants music with this vibe/mood: "${vibeInput}"\n\nGive ONLY 1 song recommendation in format:\nTITLE - ARTIS\n\nTidak ada teks lain, tidak ada penjelasan.`,
+      'You are an AI music curator. Reply ONLY in format: TITLE - ARTIST. One line only.'
     );
     const line = r.trim().replace(/^["'✨*]+|["'*]+$/g, '');
     setVibeInput(`✨ ${line}`);
@@ -6293,14 +6318,14 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
   ];
 
   return (
-    <div className={`${isLite ? 'lite-mode' : ''} layout-${layoutMode}`} style={{ position:'fixed', inset:0, overflow:'hidden', background:'#07071a', color:'#f1f5f9', fontFamily:"'Segoe UI',system-ui,sans-serif", display:'flex', flexDirection:'column', userSelect:'none', WebkitTapHighlightColor:'transparent' }}>
+    <div className={`${isLite ? 'lite-mode' : 'pro-mode'} layout-${layoutMode}`} style={{ position:'fixed', inset:0, overflow:'hidden', background:'#07071a', color:'#f1f5f9', fontFamily:"'Segoe UI',system-ui,sans-serif", display:'flex', flexDirection:'column', userSelect:'none', WebkitTapHighlightColor:'transparent' }}>
 
       {/* BG — Pro only */}
       {!isLite && <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, background:`radial-gradient(ellipse at 60% 10%,${track.color}20 0%,transparent 60%)` }}/>}
       {!isLite && <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, overflow:'hidden' }}><div className="stars"/><div className="starsB"/><div className="starsC"/></div>}
 
       {/* ══ HEADER */}
-      {!fullscreen && <header style={{ position: 'sticky', top: 0, zIndex:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'space-between', padding: layoutMode === 'mobile-landscape' ? '5px 14px' : '9px 14px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: 'rgba(7,7,26,0.85)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
+      {!fullscreen && <header style={{ position: 'sticky', top: 0, zIndex:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'space-between', padding: layoutMode === 'mobile-landscape' ? '5px 14px' : '9px 14px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: isLite ? 'rgba(7,7,26,0.98)' : 'rgba(7,7,26,0.85)', ...(isLite ? {} : { backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }) }}>
         <div style={{ display:'flex', alignItems:'center', gap:9 }}>
           <AppLogo size={layoutMode === 'mobile-landscape' ? 24 : 30}/>
           <div>
@@ -6310,7 +6335,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
           {/* Clock in header for mobile-landscape */}
           {layoutMode === 'mobile-landscape' && (
             <div style={{ marginLeft:8, userSelect:'none' }}>
-              <div style={{ fontSize:13, fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+              <div style={{ display:'inline-block', fontSize:13, fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', backgroundClip:'text', WebkitTextFillColor:'transparent', color:'transparent' }}>
                 {nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', hour12:false })}
               </div>
               <div style={{ fontSize:8, color:'rgba(255,255,255,0.3)', fontWeight:600, letterSpacing:'0.04em', textTransform:'uppercase' }}>
@@ -6407,7 +6432,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
           <div style={{ flex:1 }}/>
           {playing && (
             <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:14, marginBottom:4 }}>
-              {[8,4,6].map((h,i)=>(<div key={i} style={{ width:2.5, height:h, background:track.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${i*0.15}s infinite` }}/>))}
+              {[8,4,6].map((h,i)=>(<div key={i} style={{ width:2.5, height:h, background:track.color, borderRadius:1, animation:`bounce 1.4s ease-in-out ${i*0.25}s infinite` }}/>))}
             </div>
           )}
           <button onClick={()=>setShowSettings(v=>!v)} style={{ width:42, height:42, borderRadius:12, border:'none', cursor:'pointer', background: showSettings ? 'rgba(255,255,255,0.08)' : 'transparent', color:sleepTimer?track.color:(showSettings?'rgba(255,255,255,0.7)':'rgba(255,255,255,0.25)'), display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -6442,7 +6467,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                 <div style={{ fontSize:11, fontWeight:700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'rgba(255,255,255,0.9)' }}>{embedTrack ? embedTrack.title : track.title}</div>
                 <div style={{ fontSize:9, color:'rgba(255,255,255,0.38)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{embedTrack ? (embedTrack.type==='youtube'?'▶ YouTube':embedTrack.type==='soundcloud'?'🔊 SoundCloud':'🎵 '+embedTrack.artist) : track.isRadio ? '● LIVE' : track.artist}</div>
               </div>
-              {playing && <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:11, flexShrink:0 }}>{[9,5,7].map((h,i)=>(<div key={i} style={{ width:2.5, height:h, background:embedTrack?.type==='youtube'?'#ff4444':embedTrack?.type==='soundcloud'?'#ff5500':track.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${i*0.15}s infinite` }}/>))}</div>}
+              {playing && <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:11, flexShrink:0 }}>{[9,5,7].map((h,i)=>(<div key={i} style={{ width:2.5, height:h, background:embedTrack?.type==='youtube'?'#ff4444':embedTrack?.type==='soundcloud'?'#ff5500':track.color, borderRadius:1, animation:`bounce 1.4s ease-in-out ${i*0.25}s infinite` }}/>))}</div>}
             </div>
           )}
           {tabs.map(t=>{
@@ -6487,7 +6512,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                     <div style={{ fontWeight:800, fontSize:14 }}>{t?.queue||'Queue'}</div>
                     <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>
                       {track.isRadio && !embedTrack
-                        ? `${rbBrowseRef.current.length || 0} stasiun`
+                        ? `${rbBrowseRef.current.length || 0} station${rbBrowseRef.current.length === 1 ? '' : 's'}`
                         : embedTrack?.type==='youtube' ? `${ytQueueRef.current.length} ${t?.songsCount||'songs'}` : track._wsSource && wsQueueRef.current.length > 0 ? `${wsQueueRef.current.length} ${t?.songsCount||'songs'}` : `${[...builtinSongs,...customSongs,...ytSongs].length} ${t?.songsCount||'songs'}`
                       }
                     </div>
@@ -6538,7 +6563,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                           }} style={{ display:'flex', alignItems:'center', gap:11, padding:'9px 18px', background:isCur?`${stationColor}12`:'transparent', cursor:'pointer' }}>
                             <div style={{ width:20, textAlign:'center', flexShrink:0 }}>
                               {isCur
-                                ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12, justifyContent:'center' }}>{[9,5,7].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:stationColor, borderRadius:1, animation:`bounce 0.8s ease-in-out ${j*0.15}s infinite` }}/>))}</div>
+                                ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12, justifyContent:'center' }}>{[9,5,7].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:stationColor, borderRadius:1, animation:`bounce 1.4s ease-in-out ${j*0.25}s infinite` }}/>))}</div>
                                 : <span style={{ fontSize:10, color:'rgba(255,255,255,0.25)', fontWeight:600 }}>{i+1}</span>
                               }
                             </div>
@@ -6576,7 +6601,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                     return (
                       <div key={i} onClick={()=>{ playWsTrack(item, wsQueueRef.current, i); setShowQueue(false); }}
                         style={{ display:'flex', alignItems:'center', gap:11, padding:'9px 18px', background:isCur?`${sc3}12`:'transparent', cursor:'pointer' }}>
-                        <div style={{ width:20, textAlign:'center', fontSize:10, color:'rgba(255,255,255,0.25)', fontWeight:600, flexShrink:0 }}>{isCur ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12, justifyContent:'center' }}>{[9,5,7].map((h2,j)=>(<div key={j} style={{ width:2.5, height:h2, background:sc3, borderRadius:1, animation:`bounce 0.8s ease-in-out ${j*0.15}s infinite` }}/>))}</div> : i+1}</div>
+                        <div style={{ width:20, textAlign:'center', fontSize:10, color:'rgba(255,255,255,0.25)', fontWeight:600, flexShrink:0 }}>{isCur ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12, justifyContent:'center' }}>{[9,5,7].map((h2,j)=>(<div key={j} style={{ width:2.5, height:h2, background:sc3, borderRadius:1, animation:`bounce 1.4s ease-in-out ${j*0.25}s infinite` }}/>))}</div> : i+1}</div>
                         {item.thumbnail
                           ? <img src={item.thumbnail} style={{ width:38, height:38, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
                           : <div style={{ width:38, height:38, borderRadius:8, background:`${sc3}22`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><span style={{ color:sc3, fontSize:14 }}>♪</span></div>}
@@ -6594,7 +6619,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                       return (
                         <div key={i} onClick={()=>{playYouTube(item, ytQueueRef.current, i); setShowQueue(false);}}
                           style={{ display:'flex', alignItems:'center', gap:11, padding:'9px 18px', background:isCur?'rgba(255,68,68,0.1)':'transparent', cursor:'pointer' }}>
-                          <div style={{ width:20, textAlign:'center', fontSize:10, color:'rgba(255,255,255,0.25)', fontWeight:600, flexShrink:0 }}>{isCur ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12, justifyContent:'center' }}>{[9,5,7].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:'#ff4444', borderRadius:1, animation:`bounce 0.8s ease-in-out ${j*0.15}s infinite` }}/>))}</div> : i+1}</div>
+                          <div style={{ width:20, textAlign:'center', fontSize:10, color:'rgba(255,255,255,0.25)', fontWeight:600, flexShrink:0 }}>{isCur ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12, justifyContent:'center' }}>{[9,5,7].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:'#ff4444', borderRadius:1, animation:`bounce 1.4s ease-in-out ${j*0.25}s infinite` }}/>))}</div> : i+1}</div>
                           {item.thumbnail
                             ? <img src={item.thumbnail} style={{ width:38, height:38, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
                             : <div style={{ width:38, height:38, borderRadius:8, background:'rgba(255,68,68,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:14 }}>▶</div>}
@@ -6625,7 +6650,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                       return (
                         <div key={s.id} onClick={()=>{ setTrack(s); setProgress(0); setDuration(0); setPlaying(true); setShowQueue(false); }}
                           style={{ display:'flex', alignItems:'center', gap:11, padding:'9px 18px', background:isCur?`${track.color}12`:'transparent', cursor:'pointer' }}>
-                          <div style={{ width:20, textAlign:'center', fontSize:10, color:'rgba(255,255,255,0.25)', fontWeight:600, flexShrink:0 }}>{isCur ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12, justifyContent:'center' }}>{[9,5,7].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:track.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${j*0.15}s infinite` }}/>))}</div> : curIdx+i+1}</div>
+                          <div style={{ width:20, textAlign:'center', fontSize:10, color:'rgba(255,255,255,0.25)', fontWeight:600, flexShrink:0 }}>{isCur ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12, justifyContent:'center' }}>{[9,5,7].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:track.color, borderRadius:1, animation:`bounce 1.4s ease-in-out ${j*0.25}s infinite` }}/>))}</div> : curIdx+i+1}</div>
                           {isLite
                             ? <div style={{ width:38, height:38, borderRadius:8, background:s.bg||'rgba(255,255,255,0.08)', flexShrink:0 }}/>
                             : <img src={getCover(s)} loading="lazy" decoding="async" style={{ width:38, height:38, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>}
@@ -6677,7 +6702,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                     { icon:'💬', label:'WhatsApp', color:'#25D366', action: () => window.open(`https://wa.me/?text=${encodeURIComponent((embedTrack?.title||track.title)+' — '+url)}`, '_blank', 'noopener') },
                     { icon:'✈️', label:'Telegram', color:'#2AABEE', action: () => window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(embedTrack?.title||track.title)}`, '_blank', 'noopener') },
                     { icon:'𝕏', label:'Twitter / X', color:'#e7e9ea', action: () => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent('Dengerin ini bareng: '+(embedTrack?.title||track.title))}&url=${encodeURIComponent(url)}`, '_blank', 'noopener') },
-                    { icon:'📧', label:'Email', color:'#f59e0b', action: () => window.open(`mailto:?subject=${encodeURIComponent('Lagu/Stream: '+(embedTrack?.title||track.title))}&body=${encodeURIComponent(url)}`, '_blank', 'noopener') },
+                    { icon:'📧', label:'Email', color:'#f59e0b', action: () => window.open(`mailto:?subject=${encodeURIComponent('Song/Stream: '+(embedTrack?.title||track.title))}&body=${encodeURIComponent(url)}`, '_blank', 'noopener') },
                     { icon:'📱', label:'Share via App', color:'#a78bfa', action: async () => {
                       if (navigator.share) { try { await navigator.share({ title: embedTrack?.title||track.title, url }); } catch {} }
                       else { try { await navigator.clipboard.writeText(url); setShareCopied(true); setTimeout(()=>setShareCopied(false), 2500); } catch {} }
@@ -6734,7 +6759,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
             {/* ── JAM — pojok kiri atas area player (desktop only) */}
             {(layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait') && (
               <div style={{ position:'absolute', top:'clamp(10px,2.5vh,20px)', left:16, userSelect:'none', pointerEvents:'none' }}>
-                <div style={{ fontSize:24, fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+                <div style={{ display:'inline-block', fontSize:24, fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', backgroundClip:'text', WebkitTextFillColor:'transparent', color:'transparent' }}>
                   {nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false })}
                 </div>
                 <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', fontWeight:600, marginTop:4, letterSpacing:'0.04em', textTransform:'uppercase' }}>
@@ -6752,7 +6777,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                 {/* Jam mobile — pojok kiri, tidak overlap ring — hide on landscape (clock is in header) */}
                 {layoutMode === 'mobile-portrait' && (
                 <div style={{ position:'absolute', left:0, top:6, userSelect:'none' }}>
-                  <div style={{ fontSize:17, fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+                  <div style={{ display:'inline-block', fontSize:17, fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', backgroundClip:'text', WebkitTextFillColor:'transparent', color:'transparent' }}>
                     {nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false })}
                   </div>
                   <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', fontWeight:600, marginTop:3, letterSpacing:'0.04em', textTransform:'uppercase', whiteSpace:'nowrap' }}>
@@ -7056,7 +7081,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                         {!isLite && <img src={thumb} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{ e.target.style.display='none'; }}/>}
                                         <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background: isCurrentYt ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.3)', borderRadius:8 }}>
                                           {isCurrentYt && playing
-                                            ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12 }}>{[8,5,7].map((h,i)=>(<div key={i} style={{ width:2.5, height:h, background:'#ff4444', borderRadius:1, animation:`bounce 0.8s ease-in-out ${i*0.15}s infinite` }}/>))}</div>
+                                            ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12 }}>{[8,5,7].map((h,i)=>(<div key={i} style={{ width:2.5, height:h, background:'#ff4444', borderRadius:1, animation:`bounce 1.4s ease-in-out ${i*0.25}s infinite` }}/>))}</div>
                                             : <Play size={13} style={{ color: isCurrentYt ? '#ff6b6b' : platform.color, marginLeft:2 }}/>}
                                         </div>
                                       </div>
@@ -7140,7 +7165,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                             <div style={{ padding:'0 10px 12px' }}>
                               {/* Tips */}
                               <div style={{ fontSize:10, color:'rgba(255,255,255,0.3)', marginBottom:8, lineHeight:1.5 }}>
-                                💡 <b style={{color:'rgba(255,255,255,0.5)'}}>Jamendo · Audius · ccMixter</b> putar in-app penuh (antrean). <b style={{color:'rgba(255,255,255,0.5)'}}>Deezer</b> preview 30s. Tempel URL: <b style={{color:'rgba(255,255,255,0.5)'}}>Vimeo · Audiomack · Mixcloud · Odysee · Dailymotion · Bandcamp</b>
+                                💡 <b style={{color:'rgba(255,255,255,0.5)'}}>Jamendo · Audius · ccMixter</b> play in-app (queue). <b style={{color:'rgba(255,255,255,0.5)'}}>Deezer</b> 30s preview. Paste URL: <b style={{color:'rgba(255,255,255,0.5)'}}>Vimeo · Audiomack · Mixcloud · Odysee · Dailymotion · Bandcamp</b>
                               </div>
                               {/* Loading skeleton */}
                               {wsLoading && (
@@ -7156,7 +7181,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                   ))}
                                   <div style={{ textAlign:'center', paddingTop:4, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
                                     <Loader2 size={12} style={{ color:'rgba(99,102,241,0.6)', animation:'spin 0.8s linear infinite' }}/>
-                                    <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)' }}>Mencari…</span>
+                                    <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)' }}>Searching…</span>
                                   </div>
                                 </div>
                               )}
@@ -7285,7 +7310,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                                     {t2.thumbnail && !isLite && <img src={t2.thumbnail} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{ e.target.style.display='none'; }}/>}
                                                     <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background: isActive ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.3)', borderRadius:8 }}>
                                                       {isCurrentTrack && playing
-                                                        ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12 }}>{[8,5,7].map((h2,i2)=>(<div key={i2} style={{ width:2.5, height:h2, background:accentColor, borderRadius:1, animation:`bounce 0.8s ease-in-out ${i2*0.15}s infinite` }}/>))}</div>
+                                                        ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12 }}>{[8,5,7].map((h2,i2)=>(<div key={i2} style={{ width:2.5, height:h2, background:accentColor, borderRadius:1, animation:`bounce 1.4s ease-in-out ${i2*0.25}s infinite` }}/>))}</div>
                                                         : isActiveEmbed ? <span style={{ fontSize:11, color:accentColor }}>▼</span>
                                                         : <Play size={13} style={{ color:accentColor, marginLeft:2 }}/>}
                                                     </div>
@@ -7308,7 +7333,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                                       src={`https://w.soundcloud.com/player/?url=${encodeURIComponent(scUrl)}&color=%23ff5500&auto_play=false&buying=false&liking=false&download=false&sharing=false&show_artwork=true&show_comments=false&show_playcount=false&show_user=true&hide_related=true&visual=true`}
                                                       width="100%" height="130" frameBorder="0" allow="autoplay" style={{ display:'block' }}/>
                                                     <div style={{ display:'flex', justifyContent:'flex-end', padding:'4px 8px', background:'rgba(0,0,0,0.4)', gap:6 }}>
-                                                      <button onClick={()=>setScWidget(p=>({...p,soundcloud:null}))} style={{ fontSize:10, color:'rgba(255,255,255,0.4)', background:'none', border:'none', cursor:'pointer' }}>✕ Tutup</button>
+                                                      <button onClick={()=>setScWidget(p=>({...p,soundcloud:null}))} style={{ fontSize:10, color:'rgba(255,255,255,0.4)', background:'none', border:'none', cursor:'pointer' }}>✕ Close</button>
                                                     </div>
                                                   </div>
                                                 )}
@@ -7360,7 +7385,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                                     {coverUrl && !isLite && <img src={coverUrl} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{ e.target.style.display='none'; }}/>}
                                                     <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background: isEmbedActive||isPreviewActive ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.3)', borderRadius:8 }}>
                                                       {isPreviewActive && playing
-                                                        ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12 }}>{[8,5,7].map((h2,i2)=>(<div key={i2} style={{ width:2.5, height:h2, background:spColor, borderRadius:1, animation:`bounce 0.8s ease-in-out ${i2*0.15}s infinite` }}/>))}</div>
+                                                        ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12 }}>{[8,5,7].map((h2,i2)=>(<div key={i2} style={{ width:2.5, height:h2, background:spColor, borderRadius:1, animation:`bounce 1.4s ease-in-out ${i2*0.25}s infinite` }}/>))}</div>
                                                         : isEmbedActive ? <span style={{ fontSize:11, color:spColor }}>▼</span>
                                                         : <Play size={13} style={{ color:spColor, marginLeft:2 }}/>}
                                                     </div>
@@ -7393,7 +7418,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                                       <span style={{ fontSize:10, color:'#1DB954', fontWeight:700 }}>🎵 Spotify</span>
                                                       <div style={{ display:'flex', gap:6 }}>
                                                         {t3.spotifyUrl && <button onClick={()=>window.open(t3.spotifyUrl,'_blank','noopener,noreferrer')} style={{ fontSize:10, color:'rgba(255,255,255,0.5)', background:'none', border:'none', cursor:'pointer' }}>Buka ↗</button>}
-                                                        <button onClick={()=>setSpWsEmbedId(null)} style={{ fontSize:10, color:'rgba(255,255,255,0.4)', background:'none', border:'none', cursor:'pointer' }}>✕ Tutup</button>
+                                                        <button onClick={()=>setSpWsEmbedId(null)} style={{ fontSize:10, color:'rgba(255,255,255,0.4)', background:'none', border:'none', cursor:'pointer' }}>✕ Close</button>
                                                       </div>
                                                     </div>
                                                   </div>
@@ -7421,7 +7446,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                           <div onClick={() => { if(isCurrentTrack) { setPlaying(p=>!p); } else { playWsTrack(item, wsAudioItems, wsAudioItems.indexOf(item)); } }}
                                             style={{ width:32, height:32, borderRadius:8, background:`${srcC}25`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, cursor:'pointer' }}>
                                             {isPlaying2
-                                              ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12 }}>{[8,5,7].map((h2,i2)=>(<div key={i2} style={{ width:2.5, height:h2, background:srcC, borderRadius:1, animation:`bounce 0.8s ease-in-out ${i2*0.15}s infinite` }}/>))}</div>
+                                              ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12 }}>{[8,5,7].map((h2,i2)=>(<div key={i2} style={{ width:2.5, height:h2, background:srcC, borderRadius:1, animation:`bounce 1.4s ease-in-out ${i2*0.25}s infinite` }}/>))}</div>
                                               : <Play size={13} style={{ color:srcC, marginLeft:2 }}/>}
                                           </div>
                                           {/* Info */}
@@ -7433,7 +7458,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                           <span style={{ fontSize:9, fontWeight:800, color:srcC, background:`${srcC}18`, padding:'2px 5px', borderRadius:4, flexShrink:0 }}>{srcLabels[item.source]}</span>
                                           {/* Add to queue */}
                                           <button onClick={e => { e.stopPropagation(); setCustomSongs(prev => { const nid = `ws_${item.source}_${item.id||item.audioUrl}`; const ex = prev.find(s=>s.id===nid); if(ex) return prev; const srcColors3={jamendo:'#f0c020',fma:'#5cb85c',ccmixter:'#e74c3c',audius:'#cc0000'}; return [{ id:nid, title:item.title, artist:item.artist||item.source, album:srcLabels[item.source], cover:item.thumbnail||'', src:item.audioUrl, color:srcColors3[item.source]||'#6366f1', bg:`rgba(99,102,241,0.15)`, mood:'', _wsSource:item.source }, ...prev]; }); }}
-                                            title="Tambah ke antrean"
+                                            title="Add to queue"
                                             style={{ background:'none', border:`1px solid ${srcC}40`, borderRadius:6, color:srcC, fontSize:10, fontWeight:700, padding:'3px 7px', cursor:'pointer', flexShrink:0, lineHeight:1.2 }}>+</button>
                                         </div>
                                       );
@@ -7504,7 +7529,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                               {/* Empty state */}
                               {!wsLoading && !wsError && wsResults.length === 0 && !wsEmbedUrl && (
                                 <div style={{ marginTop:6, fontSize:10, color:'rgba(255,255,255,0.2)', lineHeight:1.6 }}>
-                                  Belum ada hasil — cari nama lagu/artis, atau tempel URL Vimeo, Audiomack, Mixcloud, Odysee, Rumble, PeerTube, Dailymotion, Bandcamp… ↑
+                                  No results yet — search a song/artist name, or paste a URL from Vimeo, Audiomack, Mixcloud, Odysee, Rumble, PeerTube, Dailymotion, Bandcamp… ↑
                                 </div>
                               )}
                             </div>
@@ -7583,7 +7608,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                       value={rbQuery}
                                       onChange={e => setRbQuery(e.target.value)}
                                       onKeyDown={e => { if(e.key==='Enter'){ multiSearch(rbQuery, null); setRbSelectedTag(null); rbSearch(rbQuery, null); }}}
-                                      placeholder="Cari stasiun, genre, kota, negara…"
+                                      placeholder="Search station, genre, city, country…"
                                       style={{ flex:1, padding:'8px 12px', borderRadius:10, border:'1px solid rgba(245,158,11,0.35)', background:'rgba(0,0,0,0.3)', color:'white', fontSize:11, outline:'none' }}
                                     />
                                     <button onClick={() => { multiSearch(rbQuery, null); rbSearch(rbQuery, null); }}
@@ -7640,7 +7665,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                   {(rbLoading || multiLoading) && (
                                     <div style={{ textAlign:'center', padding:'20px 0', color:'rgba(255,255,255,0.35)', fontSize:11 }}>
                                       <div style={{ fontSize:20, marginBottom:6 }}>📡</div>
-                                      Mencari dari semua sumber…
+                                      Searching all sources…
                                     </div>
                                   )}
                                   {/* Error */}
@@ -7662,7 +7687,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                     return (
                                       <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
                                         <div style={{ fontSize:9, color:'rgba(255,255,255,0.22)', marginBottom:3 }}>
-                                          {allResults.length} stasiun ditemukan
+                                          {allResults.length} station(s) found
                                         </div>
                                         {allResults.map((station, idx) => {
                                           const stId = `rb_${station.stationuuid || station.id}`;
@@ -7691,12 +7716,12 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                                   {station.country && <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{station.country}{station.tags ? ' · '+String(station.tags).split(',')[0] : ''}</span>}
                                                   {/* Status indicator */}
                                                   {sStatus === 'testing' && (
-                                                    <span title="Memeriksa koneksi…" style={{ display:'inline-flex', alignItems:'center', gap:2, color:'#fbbf24', flexShrink:0 }}>
+                                                    <span title="Checking connection…" style={{ display:'inline-flex', alignItems:'center', gap:2, color:'#fbbf24', flexShrink:0 }}>
                                                       <span style={{ width:5, height:5, borderRadius:'50%', border:'1.5px solid #fbbf24', borderTopColor:'transparent', display:'inline-block', animation:'spin 0.8s linear infinite' }}/>
                                                       <span style={{ fontSize:7 }}>cek…</span>
                                                     </span>
                                                   )}
-                                                  {sStatus === 'ok' && <span title="Stasiun aktif" style={{ color:'#4ade80', fontWeight:800, fontSize:8, flexShrink:0 }}>✓ aktif</span>}
+                                                  {sStatus === 'ok' && <span title="Station active" style={{ color:'#4ade80', fontWeight:800, fontSize:8, flexShrink:0 }}>✓ aktif</span>}
                                                   {sStatus === 'fail' && <span title="Tidak dapat dijangkau" style={{ color:'#f87171', fontWeight:800, fontSize:8, flexShrink:0 }}>✕ offline</span>}
                                                 </div>
                                               </div>
@@ -7712,7 +7737,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                   {!rbLoading && !multiLoading && rbResults.length === 0 && multiResults.length === 0 && !rbError && (
                                     <div style={{ textAlign:'center', padding:'24px 10px', color:'rgba(255,255,255,0.22)', fontSize:11 }}>
                                       <div style={{ fontSize:24, marginBottom:8 }}>🔍</div>
-                                      Ketik nama stasiun, genre, atau kota<br/>lalu tekan Enter — atau pilih genre pill di atas
+                                      Type a station name, genre, or city<br/>then press Enter — or pick a genre pill above
                                     </div>
                                   )}
                                 </div>
@@ -7827,7 +7852,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                     {rbBrowseLoading && (
                                       <div style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 12px', borderRadius:10, background:'rgba(245,158,11,0.07)', border:'1px solid rgba(245,158,11,0.18)' }}>
                                         <div style={{ width:14, height:14, borderRadius:'50%', border:'2px solid #f59e0b', borderTopColor:'transparent', animation:'spin 0.8s linear infinite', flexShrink:0 }}/>
-                                        <span style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>Memuat stasiun dari Radio Browser…</span>
+                                        <span style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>Loading stations from Radio Browser…</span>
                                       </div>
                                     )}
                                     {/* Error state */}
@@ -7851,7 +7876,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                       return (
                                         <div style={{ marginBottom:6 }}>
                                           <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6, paddingLeft:2 }}>
-                                            <span style={{ fontSize:9, fontWeight:800, color: selGenre.color || '#f59e0b', textTransform:'uppercase', letterSpacing:'0.07em' }}>⭐ Pilihan Kurasi</span>
+                                            <span style={{ fontSize:9, fontWeight:800, color: selGenre.color || '#f59e0b', textTransform:'uppercase', letterSpacing:'0.07em' }}>⭐ Curated Picks</span>
                                             <div style={{ height:1, flex:1, background:'rgba(255,255,255,0.06)' }}/>
                                           </div>
                                           <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
@@ -7967,16 +7992,16 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                               {station.votes > 0 && <span>· {station.votes} votes</span>}
                                               {/* Health check indicator */}
                                               {stationStatus[station.id] === 'testing' && (
-                                                <span title="Memeriksa koneksi…" style={{ display:'inline-flex', alignItems:'center', gap:2, color:'#fbbf24' }}>
+                                                <span title="Checking connection…" style={{ display:'inline-flex', alignItems:'center', gap:2, color:'#fbbf24' }}>
                                                   <span style={{ width:6, height:6, borderRadius:'50%', border:'1.5px solid #fbbf24', borderTopColor:'transparent', display:'inline-block', animation:'spin 0.8s linear infinite' }}/>
                                                   <span style={{ fontSize:8 }}>cek…</span>
                                                 </span>
                                               )}
                                               {stationStatus[station.id] === 'ok' && (
-                                                <span title="Stasiun aktif & dapat diputar" style={{ color:'#4ade80', fontWeight:700, fontSize:8 }}>✓ aktif</span>
+                                                <span title="Station active & playable" style={{ color:'#4ade80', fontWeight:700, fontSize:8 }}>✓ aktif</span>
                                               )}
                                               {stationStatus[station.id] === 'fail' && (
-                                                <span title="Stasiun tidak dapat dijangkau" style={{ color:'#f87171', fontWeight:700, fontSize:8 }}>✕ offline</span>
+                                                <span title="Station unreachable" style={{ color:'#f87171', fontWeight:700, fontSize:8 }}>✕ offline</span>
                                               )}
                                             </div>
                                           </div>
@@ -7990,14 +8015,14 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                     {!rbBrowseLoading && !rbBrowseError && rbBrowseStations.length === 0 && (
                                       <div style={{ textAlign:'center', padding:'20px 10px', borderRadius:10, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)' }}>
                                         <div style={{ fontSize:20, marginBottom:6 }}>📻</div>
-                                        <div style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.35)' }}>Tidak ada stasiun ditemukan</div>
-                                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.2)', marginTop:4 }}>Radio Browser tidak punya stasiun untuk genre ini di negara ini</div>
+                                        <div style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.35)' }}>No stations found</div>
+                                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.2)', marginTop:4 }}>Radio Browser unavailable. tidak punya stasiun untuk genre ini di negara ini</div>
                                       </div>
                                     )}
                                     {/* Footer info */}
                                     {!rbBrowseLoading && rbBrowseStations.length > 0 && (
                                       <div style={{ fontSize:9, color:'rgba(255,255,255,0.18)', paddingLeft:2, marginTop:2, display:'flex', alignItems:'center', gap:4 }}>
-                                        <span>📡 {rbBrowseStations.length} stasiun · sumber: Radio Browser</span>
+                                        <span>📡 {rbBrowseStations.length} station(s) · source: Radio Browser</span>
                                         <button onClick={() => { rbBrowseKeyRef.current=''; fetchBrowseStations(selCountry.id, selGenre.id); }}
                                           style={{ background:'none', border:'none', color:'rgba(255,255,255,0.25)', cursor:'pointer', fontSize:9, padding:'0 4px' }}>↺ refresh</button>
                                       </div>
@@ -8022,7 +8047,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                           {gardenBrowseLoading && (
                                             <div style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 12px', borderRadius:10, background:'rgba(34,211,238,0.06)', border:'1px solid rgba(34,211,238,0.15)' }}>
                                               <div style={{ width:14, height:14, borderRadius:'50%', border:'2px solid #22d3ee', borderTopColor:'transparent', animation:'spin 0.8s linear infinite', flexShrink:0 }}/>
-                                              <span style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>Memuat stasiun dari Radio Garden…</span>
+                                              <span style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>Loading stations from Radio Garden…</span>
                                             </div>
                                           )}
                                           {/* Error */}
@@ -8094,13 +8119,13 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                           {!gardenBrowseLoading && !gardenBrowseError && gardenBrowseStations.length === 0 && (
                                             <div style={{ textAlign:'center', padding:'14px 10px', borderRadius:10, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)' }}>
                                               <div style={{ fontSize:18, marginBottom:4 }}>🌍</div>
-                                              <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)' }}>Tidak ada stasiun Radio Garden untuk genre ini di negara ini</div>
+                                              <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)' }}>No Radio Garden untuk genre ini di negara ini</div>
                                             </div>
                                           )}
                                           {/* Footer */}
                                           {!gardenBrowseLoading && gardenBrowseStations.length > 0 && (
                                             <div style={{ fontSize:9, color:'rgba(255,255,255,0.18)', paddingLeft:2, marginTop:2, display:'flex', alignItems:'center', gap:4 }}>
-                                              <span>🌍 {gardenBrowseStations.length} stasiun · sumber: Radio Garden</span>
+                                              <span>🌍 {gardenBrowseStations.length} station(s) · source: Radio Garden</span>
                                               <button onClick={() => { gardenBrowseKeyRef.current=''; fetchGardenByCountry(selCountry.id, selGenre?.id); }}
                                                 style={{ background:'none', border:'none', color:'rgba(255,255,255,0.25)', cursor:'pointer', fontSize:9, padding:'0 4px' }}>↺ refresh</button>
                                             </div>
@@ -8113,7 +8138,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                               })()}
 
                               <div style={{ marginTop:8, fontSize:9, color:'rgba(255,255,255,0.18)', paddingLeft:2 }}>
-                                {!selCountry ? 'Pilih negara untuk melihat genre & stasiun' : !selGenre ? 'Pilih genre untuk melihat stasiun' : 'Hanya stasiun yang dapat dijangkau yang ditampilkan'}
+                                {!selCountry ? 'Select a country to view genres & stations' : !selGenre ? 'Select a genre to view stations' : 'Select a station to play'at stasiun' : 'Hanya stasiun yang dapat dijangkau yang ditampilkan'}
                               </div>
                             </div>
                             )}
@@ -8288,7 +8313,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                 const songs = filteredCustom;
                 return (
                   <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
-                    <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0, position:'sticky', top:0, zIndex:5, background:'rgba(7,7,26,0.97)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }}>
+                    <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0, position:'sticky', top:0, zIndex:5, background:'rgba(7,7,26,0.97)', ...(isLite ? {} : { backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }) }}>
                       <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                         <button onClick={()=>{ setActivePl(null); setPlView('list'); }} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.5)', padding:4, display:'flex' }}>
                           <ChevronLeft size={20}/>
@@ -8320,7 +8345,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                           <Cloud size={44} style={{color:'rgba(255,255,255,0.1)',display:'block',margin:'0 auto 14px'}}/>
                           {googleUser ? (
                             <>
-                              <div style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.5)', marginBottom:8 }}>Tidak ada file audio ditemukan</div>
+                              <div style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.5)', marginBottom:8 }}>No songsa file audio ditemukan</div>
                               <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', lineHeight:1.7, marginBottom:16 }}>
                                 Drive kamu tidak memiliki file audio yang terdeteksi.<br/>
                                 Pastikan file berekstensi <span style={{color:'#38bdf8'}}>.mp3 .m4a .flac .wav .ogg</span><br/>
@@ -8358,7 +8383,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                 const songs = history.slice(1);
                 return (
                   <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
-                    <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0, position:'sticky', top:0, zIndex:5, background:'rgba(7,7,26,0.97)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }}>
+                    <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0, position:'sticky', top:0, zIndex:5, background:'rgba(7,7,26,0.97)', ...(isLite ? {} : { backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }) }}>
                       <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                         <button onClick={()=>{ setActivePl(null); setPlView('list'); }} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.5)', padding:4, display:'flex' }}>
                           <ChevronLeft size={20}/>
@@ -8404,7 +8429,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                 const songs = filteredSongs;
                 return (
                   <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
-                    <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0, position:'sticky', top:0, zIndex:5, background:'rgba(7,7,26,0.97)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }}>
+                    <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0, position:'sticky', top:0, zIndex:5, background:'rgba(7,7,26,0.97)', ...(isLite ? {} : { backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }) }}>
                       <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                         <button onClick={()=>{ setActivePl(null); setPlView('list'); }} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.5)', padding:4, display:'flex' }}>
                           <ChevronLeft size={20}/>
@@ -8439,7 +8464,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
               return (
                 <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
                   {/* Header */}
-                  <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0, position:'sticky', top:0, zIndex:5, background:'rgba(7,7,26,0.97)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }}>
+                  <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0, position:'sticky', top:0, zIndex:5, background:'rgba(7,7,26,0.97)', ...(isLite ? {} : { backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }) }}>
                     <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                       <button onClick={()=>setPlView('list')} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.5)', padding:4, display:'flex' }}>
                         <ChevronLeft size={20}/>
@@ -8481,7 +8506,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                           </div>
                           {isActive&&playing&&(
                             <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:14, marginRight:4 }}>
-                              {[12,6,10].map((h,j)=><div key={j} style={{ width:2.5, height:h, background:s.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${j*0.15}s infinite` }}/>)}
+                              {[12,6,10].map((h,j)=><div key={j} style={{ width:2.5, height:h, background:s.color, borderRadius:1, animation:`bounce 1.4s ease-in-out ${j*0.25}s infinite` }}/>)}
                             </div>
                           )}
                           {/* ── Unduh ke perangkat (custom playlist, tidak tampil untuk radio) */}
@@ -8561,10 +8586,10 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                   /* ── LITE MODE GATE */
                   <div style={{ textAlign:'center', paddingTop:48, padding:'48px 20px 24px' }}>
                     {/* Gradient backdrop */}
-                    <div style={{ position:'relative', display:'inline-flex', width:72, height:72, borderRadius:24, background:'linear-gradient(135deg, rgba(99,102,241,0.3), rgba(168,85,247,0.3))', border:'1px solid rgba(99,102,241,0.3)', alignItems:'center', justifyContent:'center', fontSize:32, marginBottom:20, boxShadow:'0 8px 32px rgba(99,102,241,0.2)' }}>🎯</div>
+                    <div style={{ position:'relative', display:'inline-flex', width:72, height:72, borderRadius:24, background:'linear-gradient(135deg, rgba(99,102,241,0.3), rgba(168,85,247,0.3))', border:'1px solid rgba(99,102,241,0.3)', alignItems:'center', justifyContent:'center', fontSize:32, marginBottom:20, boxShadow:isLite?'none':'0 8px 32px rgba(99,102,241,0.2)' }}>🎯</div>
                     <div style={{ fontSize:17, fontWeight:800, color:'white', marginBottom:8, letterSpacing:'-0.02em' }}>For You tidak tersedia</div>
                     <div style={{ fontSize:12.5, color:'rgba(255,255,255,0.4)', lineHeight:1.8, marginBottom:28, whiteSpace:'pre-line' }}>{'Mode Lite aktif — fitur For You\ndinonaktifkan untuk hemat data.\n\nAktifkan Mode Pro untuk\npersonalisasi rekomendasimu.'}</div>
-                    <button onClick={toggleMode} style={{ padding:'11px 24px', borderRadius:999, border:'none', background:'linear-gradient(135deg,#6366f1,#a855f7)', color:'white', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 20px rgba(99,102,241,0.4)' }}>
+                    <button onClick={toggleMode} style={{ padding:'11px 24px', borderRadius:999, border:'none', background:'linear-gradient(135deg,#6366f1,#a855f7)', color:'white', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:isLite?'none':'0 4px 20px rgba(99,102,241,0.4)' }}>
                       ✨ Switch ke Pro Mode
                     </button>
                   </div>
@@ -8575,7 +8600,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                     <div style={{ margin:'0 -16px 24px', padding:'28px 20px 24px', background:`linear-gradient(160deg, ${track.color}28 0%, rgba(168,85,247,0.12) 60%, transparent 100%)`, borderBottom:'1px solid rgba(255,255,255,0.06)', position:'relative', overflow:'hidden' }}>
                       <div style={{ position:'absolute', top:-20, right:-20, width:120, height:120, borderRadius:'50%', background:`${track.color}10`, filter:'blur(30px)' }}/>
                       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:10 }}>
-                        <div style={{ width:40, height:40, borderRadius:14, background:`linear-gradient(135deg,${track.color},#a855f7)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0, boxShadow:`0 4px 16px ${track.color}50` }}>👋</div>
+                        <div style={{ width:40, height:40, borderRadius:14, background:`linear-gradient(135deg,${track.color},#a855f7)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0, boxShadow:isLite?'none':`0 4px 16px ${track.color}50` }}>👋</div>
                         <div>
                           <div style={{ fontSize:16, fontWeight:800, color:'white', letterSpacing:'-0.02em' }}>Setup Feed Kamu</div>
                           <div style={{ fontSize:11.5, color:'rgba(255,255,255,0.45)', marginTop:2 }}>Starry AI kurasi konten yang pas buatmu</div>
@@ -8584,7 +8609,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                       {/* Progress dots */}
                       <div style={{ display:'flex', gap:5, marginTop:4 }}>
                         {['Konten','Mood','Bahasa'].map((s,i)=>(
-                          <div key={i} style={{ height:3, borderRadius:99, background: i===0?'white':'rgba(255,255,255,0.2)', flex: i===0?2:1, transition:'all 0.3s' }}/>
+                          <div key={i} style={{ height:3, borderRadius:99, background: i===0?'white':'rgba(255,255,255,0.2)', flex: i===0?2:1, transition:isLite?'none':'all 0.3s' }}/>
                         ))}
                       </div>
                     </div>
@@ -8618,7 +8643,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                           const selected = personaPrefs.categories.includes(c.id);
                           return (
                             <button key={c.id} onClick={()=>setPersonaPrefs(p=>({ ...p, categories: selected ? p.categories.filter(x=>x!==c.id) : [...p.categories, c.id] }))}
-                              style={{ padding:'10px 12px', borderRadius:14, border:`1.5px solid ${selected?c.color+'70':'rgba(255,255,255,0.08)'}`, background:selected?`${c.color}18`:'rgba(255,255,255,0.03)', color:selected?'white':'rgba(255,255,255,0.5)', fontSize:12, fontWeight:selected?700:500, cursor:'pointer', display:'flex', alignItems:'center', gap:8, transition:'all 0.15s', textAlign:'left', position:'relative', overflow:'hidden' }}>
+                              style={{ padding:'10px 12px', borderRadius:14, border:`1.5px solid ${selected?c.color+'70':'rgba(255,255,255,0.08)'}`, background:selected?`${c.color}18`:'rgba(255,255,255,0.03)', color:selected?'white':'rgba(255,255,255,0.5)', fontSize:12, fontWeight:selected?700:500, cursor:'pointer', display:'flex', alignItems:'center', gap:8, transition:isLite?'none':'all 0.15s', textAlign:'left', position:'relative', overflow:'hidden' }}>
                               {selected && <div style={{ position:'absolute', top:0, right:0, width:0, height:0, borderStyle:'solid', borderWidth:'0 18px 18px 0', borderColor:`transparent ${c.color} transparent transparent` }}/>}
                               <span style={{ fontSize:15, flexShrink:0 }}>{c.icon}</span>
                               <span style={{ lineHeight:1.3, fontSize:11.5 }}>{c.label}</span>
@@ -8646,7 +8671,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                           const selected = personaPrefs.moods.includes(m.id);
                           return (
                             <button key={m.id} onClick={()=>setPersonaPrefs(p=>({ ...p, moods: selected ? p.moods.filter(x=>x!==m.id) : [...p.moods, m.id] }))}
-                              style={{ padding:'12px 8px', borderRadius:14, border:`1.5px solid ${selected?m.color+'70':'rgba(255,255,255,0.08)'}`, background:selected?`${m.color}18`:'rgba(255,255,255,0.03)', color:selected?'white':'rgba(255,255,255,0.45)', fontSize:12, fontWeight:selected?800:500, cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:5, transition:'all 0.15s' }}>
+                              style={{ padding:'12px 8px', borderRadius:14, border:`1.5px solid ${selected?m.color+'70':'rgba(255,255,255,0.08)'}`, background:selected?`${m.color}18`:'rgba(255,255,255,0.03)', color:selected?'white':'rgba(255,255,255,0.45)', fontSize:12, fontWeight:selected?800:500, cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:5, transition:isLite?'none':'all 0.15s' }}>
                               <span style={{ fontSize:20 }}>{m.icon}</span>
                               <span style={{ fontSize:11 }}>{m.label}</span>
                             </button>
@@ -8668,7 +8693,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                           { id:'mix', icon:'🎲', label:'Campur', sub:'Keduanya' },
                         ].map(l => (
                           <button key={l.id} onClick={()=>setPersonaPrefs(p=>({ ...p, lang: l.id }))}
-                            style={{ padding:'12px 6px', borderRadius:14, border:`1.5px solid ${personaPrefs.lang===l.id?track.color+'70':'rgba(255,255,255,0.08)'}`, background:personaPrefs.lang===l.id?`${track.color}18`:'rgba(255,255,255,0.03)', color:personaPrefs.lang===l.id?'white':'rgba(255,255,255,0.45)', fontSize:11, fontWeight:personaPrefs.lang===l.id?800:500, cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:4, transition:'all 0.15s' }}>
+                            style={{ padding:'12px 6px', borderRadius:14, border:`1.5px solid ${personaPrefs.lang===l.id?track.color+'70':'rgba(255,255,255,0.08)'}`, background:personaPrefs.lang===l.id?`${track.color}18`:'rgba(255,255,255,0.03)', color:personaPrefs.lang===l.id?'white':'rgba(255,255,255,0.45)', fontSize:11, fontWeight:personaPrefs.lang===l.id?800:500, cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:4, transition:isLite?'none':'all 0.15s' }}>
                             <span style={{ fontSize:22 }}>{l.icon}</span>
                             <span style={{ fontWeight:700, fontSize:11.5 }}>{l.label}</span>
                             <span style={{ fontSize:9.5, opacity:0.55 }}>{l.sub}</span>
@@ -8732,7 +8757,7 @@ TAKSONOMI AUDIO (panduan mapping kategori yang dipilih user):
 - siaran_live = Ruang Obrolan Langsung (diskusi interaktif penyiar & pendengar live)
 - siaran_olahraga = Siaran Olahraga Live (komentar pertandingan sepakbola, F1, basket live)
 
-INSTRUKSI: Isi array untuk setiap kategori yang dipilih user dengan MINIMAL 3 item nyata dan spesifik. Kosongkan array ([]) HANYA jika kategori tersebut TIDAK dipilih sama sekali. Jangan beri placeholder "..." — isi dengan nama konten/artis/judul nyata yang sesuai. Berikan response HANYA dalam JSON ini (tanpa markdown, tanpa teks lain):
+INSTRUKSI: Isi array untuk setiap kategori yang dipilih user dengan MINIMAL 5 item nyata dan spesifik. Kosongkan array ([]) HANYA jika kategori tersebut TIDAK dipilih sama sekali. Jangan beri placeholder "..." — isi dengan nama konten/artis/judul nyata yang sesuai. Berikan response HANYA dalam JSON ini (tanpa markdown, tanpa teks lain):
 {
   "greeting": "sapa user dengan hangat dan personal berdasarkan preferensinya (max 2 kalimat)",
   "music": [
@@ -8765,7 +8790,7 @@ INSTRUKSI: Isi array untuk setiap kategori yang dipilih user dengan MINIMAL 3 it
                             personaPrefs.categories.some(c=>c.startsWith('wellness_')),
                             personaPrefs.categories.some(c=>c.startsWith('siaran_')),
                           ].filter(Boolean).length;
-                          const _maxTok1 = Math.min(4000, 800 + _activeSections1 * 500);
+                          const _maxTok1 = Math.min(6000, 800 + _activeSections1 * 800);
                           const providers = getProviders();
                           let result = null;
                           for (const prov of providers) {
@@ -8791,13 +8816,13 @@ INSTRUKSI: Isi array untuk setiap kategori yang dipilih user dengan MINIMAL 3 it
                             localStorage.setItem('sn_persona_done', '1');
                             setPersonaStep('result');
                           } else {
-                            alert('Gagal memuat rekomendasi. Coba lagi.');
+                            alert('Failed to load recommendations. Please try again.');
                           }
                         } catch (e) {
                           alert('Error: ' + e.message);
                         } finally { setPL(false); }
                       }}
-                      style={{ width:'100%', padding:'16px', borderRadius:18, border:'none', background: personaPrefs.categories.length>0||personaPrefs.moods.length>0 ? `linear-gradient(135deg,${track.color},#a855f7)` : 'rgba(255,255,255,0.08)', color:'white', fontSize:14, fontWeight:800, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, opacity:personaLoading?0.7:1, letterSpacing:'-0.01em', boxShadow: personaPrefs.categories.length>0||personaPrefs.moods.length>0?`0 6px 28px ${track.color}40`:'none', transition:'all 0.2s' }}>
+                      style={{ width:'100%', padding:'16px', borderRadius:18, border:'none', background: personaPrefs.categories.length>0||personaPrefs.moods.length>0 ? `linear-gradient(135deg,${track.color},#a855f7)` : 'rgba(255,255,255,0.08)', color:'white', fontSize:14, fontWeight:800, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, opacity:personaLoading?0.7:1, letterSpacing:'-0.01em', boxShadow: (!isLite && (personaPrefs.categories.length>0||personaPrefs.moods.length>0))?`0 6px 28px ${track.color}40`:'none', transition:isLite?'none':'all 0.2s' }}>
                       {personaLoading ? <><Loader2 size={16} style={{ animation:'spin 1s linear infinite' }}/> Menganalisis preferensimu…</> : <><Wand2 size={16}/> Buat Feed Personalku ✨</>}
                     </button>
                   </div>
@@ -8811,7 +8836,7 @@ INSTRUKSI: Isi array untuk setiap kategori yang dipilih user dengan MINIMAL 3 it
                           {/* Greeting pill */}
                           {personaRecs.greeting && (
                             <div style={{ display:'flex', alignItems:'flex-start', gap:10, marginBottom:12 }}>
-                              <div style={{ width:34, height:34, borderRadius:12, flexShrink:0, background:`linear-gradient(135deg,${track.color},#a855f7)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, boxShadow:`0 4px 14px ${track.color}50` }}>🌟</div>
+                              <div style={{ width:34, height:34, borderRadius:12, flexShrink:0, background:`linear-gradient(135deg,${track.color},#a855f7)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, boxShadow:isLite?'none':`0 4px 14px ${track.color}50` }}>🌟</div>
                               <div style={{ flex:1 }}>
                                 <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:3 }}>Starry AI</div>
                                 <div style={{ fontSize:12.5, color:'rgba(255,255,255,0.8)', lineHeight:1.6, fontWeight:500 }}>{personaRecs.greeting}</div>
@@ -8924,9 +8949,9 @@ INSTRUKSI: Isi array untuk setiap kategori yang dipilih user dengan MINIMAL 3 it
                               {section.items.map((item, ii)=>(
                                 <div key={ii}
                                   onClick={item.onPlay}
-                                  style={{ flexShrink:0, width:'clamp(140px,40vw,168px)', background:'rgba(255,255,255,0.04)', border:`1px solid ${section.accent}20`, borderRadius:20, overflow:'hidden', cursor:'pointer', transition:'transform 0.15s, background 0.15s' }}
-                                  onMouseEnter={e=>{ e.currentTarget.style.transform='scale(1.02)'; e.currentTarget.style.background=`${section.accent}10`; }}
-                                  onMouseLeave={e=>{ e.currentTarget.style.transform='scale(1)'; e.currentTarget.style.background='rgba(255,255,255,0.04)'; }}
+                                  style={{ flexShrink:0, width:'clamp(140px,40vw,168px)', background:'rgba(255,255,255,0.04)', border:`1px solid ${section.accent}20`, borderRadius:20, overflow:'hidden', cursor:'pointer', transition:isLite?'none':'transform 0.15s, background 0.15s' }}
+                                  onMouseEnter={e=>{ e.currentTarget.style.background=`${section.accent}10`; if(!isLite) e.currentTarget.style.transform='scale(1.02)'; }}
+                                  onMouseLeave={e=>{ e.currentTarget.style.background='rgba(255,255,255,0.04)'; if(!isLite) e.currentTarget.style.transform='scale(1)'; }}
                                 >
                                   {/* Card top — gradient banner */}
                                   <div style={{ height:52, background:section.gradient, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 12px', position:'relative' }}>
@@ -8982,7 +9007,7 @@ INSTRUKSI: Isi array untuk setiap kategori yang dipilih user dengan MINIMAL 3 it
                               </div>
                             </div>
                             <div style={{ display:'flex', alignItems:'center', gap:5, fontSize:10, fontWeight:600, color:'rgba(255,255,255,0.4)' }}>
-                              <div style={{ width:6, height:6, borderRadius:'50%', background:'#ef4444', animation:'pulse 1.5s ease-in-out infinite' }}/>
+                              <div style={{ width:6, height:6, borderRadius:'50%', background:'#ef4444', animation:isLite?'none':'pulse 1.5s ease-in-out infinite' }}/>
                               LIVE
                             </div>
                           </div>
@@ -9011,7 +9036,7 @@ INSTRUKSI: Isi array untuk setiap kategori yang dipilih user dengan MINIMAL 3 it
                           )}
                           {ytTrendingLoading && (
                             <div style={{ display:'flex', alignItems:'center', gap:8, padding:'0 16px 16px', color:'rgba(255,255,255,0.3)', fontSize:12 }}>
-                              <Loader2 size={13} style={{ animation:'spin 1s linear infinite' }}/> Memuat trending…
+                              <Loader2 size={13} style={{ animation:'spin 1s linear infinite' }}/> Loading trending…
                             </div>
                           )}
 
@@ -9038,9 +9063,9 @@ INSTRUKSI: Isi array untuk setiap kategori yang dipilih user dengan MINIMAL 3 it
                                           setYtQuery(p => ({ ...p, ytmusic: q })); setTab('stream');
                                           setTimeout(() => { searchYouTube('ytmusic', q); ytMusicSectionRef.current?.scrollIntoView({ behavior:'smooth', block:'start' }); }, 300);
                                         }}
-                                        style={{ flexShrink:0, width:'clamp(140px,40vw,165px)', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(239,68,68,0.18)', borderRadius:20, overflow:'hidden', cursor:'pointer', transition:'transform 0.15s, background 0.15s' }}
-                                        onMouseEnter={e=>{ e.currentTarget.style.transform='scale(1.02)'; e.currentTarget.style.background='rgba(239,68,68,0.1)'; }}
-                                        onMouseLeave={e=>{ e.currentTarget.style.transform='scale(1)'; e.currentTarget.style.background='rgba(255,255,255,0.04)'; }}>
+                                        style={{ flexShrink:0, width:'clamp(140px,40vw,165px)', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(239,68,68,0.18)', borderRadius:20, overflow:'hidden', cursor:'pointer', transition:isLite?'none':'transform 0.15s, background 0.15s' }}
+                                        onMouseEnter={e=>{ e.currentTarget.style.background='rgba(239,68,68,0.1)'; if(!isLite) e.currentTarget.style.transform='scale(1.02)'; }}
+                                        onMouseLeave={e=>{ e.currentTarget.style.background='rgba(255,255,255,0.04)'; if(!isLite) e.currentTarget.style.transform='scale(1)'; }}>
                                         <div style={{ height:48, background:'linear-gradient(135deg,rgba(239,68,68,0.25),rgba(239,68,68,0.06))', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 12px' }}>
                                           <span style={{ fontSize:22 }}>🎵</span>
                                           <span style={{ fontSize:9, fontWeight:700, color:'#f87171', background:'rgba(239,68,68,0.2)', padding:'2px 7px', borderRadius:99 }}>#{i+1}</span>
@@ -9070,9 +9095,9 @@ INSTRUKSI: Isi array untuk setiap kategori yang dipilih user dengan MINIMAL 3 it
                                           setUnifiedPlatform('radio'); setTab('stream');
                                           setTimeout(() => { setRbMode('search'); setRbQuery(r.name); rbSearch(r.name, null); }, 300);
                                         }}
-                                        style={{ flexShrink:0, width:'clamp(140px,40vw,165px)', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(245,158,11,0.18)', borderRadius:20, overflow:'hidden', cursor:'pointer', transition:'transform 0.15s, background 0.15s' }}
-                                        onMouseEnter={e=>{ e.currentTarget.style.transform='scale(1.02)'; e.currentTarget.style.background='rgba(245,158,11,0.1)'; }}
-                                        onMouseLeave={e=>{ e.currentTarget.style.transform='scale(1)'; e.currentTarget.style.background='rgba(255,255,255,0.04)'; }}>
+                                        style={{ flexShrink:0, width:'clamp(140px,40vw,165px)', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(245,158,11,0.18)', borderRadius:20, overflow:'hidden', cursor:'pointer', transition:isLite?'none':'transform 0.15s, background 0.15s' }}
+                                        onMouseEnter={e=>{ e.currentTarget.style.background='rgba(245,158,11,0.1)'; if(!isLite) e.currentTarget.style.transform='scale(1.02)'; }}
+                                        onMouseLeave={e=>{ e.currentTarget.style.background='rgba(255,255,255,0.04)'; if(!isLite) e.currentTarget.style.transform='scale(1)'; }}>
                                         <div style={{ height:48, background:'linear-gradient(135deg,rgba(245,158,11,0.25),rgba(245,158,11,0.06))', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 12px' }}>
                                           <span style={{ fontSize:22 }}>📻</span>
                                           <div style={{ display:'flex', alignItems:'center', gap:4, fontSize:9, fontWeight:700, color:'#fbbf24' }}>
@@ -9106,9 +9131,9 @@ INSTRUKSI: Isi array untuk setiap kategori yang dipilih user dengan MINIMAL 3 it
                                           setYtQuery(p => ({ ...p, ytmusic: q })); setTab('stream');
                                           setTimeout(() => { searchYouTube('ytmusic', q); ytMusicSectionRef.current?.scrollIntoView({ behavior:'smooth', block:'start' }); }, 300);
                                         }}
-                                        style={{ flexShrink:0, width:'clamp(140px,40vw,165px)', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(220,38,38,0.18)', borderRadius:20, overflow:'hidden', cursor:'pointer', transition:'transform 0.15s, background 0.15s' }}
-                                        onMouseEnter={e=>{ e.currentTarget.style.transform='scale(1.02)'; e.currentTarget.style.background='rgba(220,38,38,0.1)'; }}
-                                        onMouseLeave={e=>{ e.currentTarget.style.transform='scale(1)'; e.currentTarget.style.background='rgba(255,255,255,0.04)'; }}>
+                                        style={{ flexShrink:0, width:'clamp(140px,40vw,165px)', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(220,38,38,0.18)', borderRadius:20, overflow:'hidden', cursor:'pointer', transition:isLite?'none':'transform 0.15s, background 0.15s' }}
+                                        onMouseEnter={e=>{ e.currentTarget.style.background='rgba(220,38,38,0.1)'; if(!isLite) e.currentTarget.style.transform='scale(1.02)'; }}
+                                        onMouseLeave={e=>{ e.currentTarget.style.background='rgba(255,255,255,0.04)'; if(!isLite) e.currentTarget.style.transform='scale(1)'; }}>
                                         <div style={{ height:48, background:'linear-gradient(135deg,rgba(220,38,38,0.25),rgba(220,38,38,0.06))', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 12px' }}>
                                           <span style={{ fontSize:22 }}>🇮🇩</span>
                                           <span style={{ fontSize:9, fontWeight:700, color:'#fca5a5', background:'rgba(220,38,38,0.2)', padding:'2px 7px', borderRadius:99 }}>#{i+1}</span>
@@ -9244,7 +9269,7 @@ INSTRUKSI: Isi array untuk setiap kategori yang dipilih user dengan MINIMAL 3 it
                   </div>
                   );
                 })}
-                {chatLoading&&<div style={{ display:'flex', alignItems:'center', gap:6 }}><div style={{ width:22, height:22, borderRadius:7, background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center' }}><Bot size={11} style={{ color:'white' }}/></div><div style={{ padding:'9px 13px', borderRadius:'4px 16px 16px 16px', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.1)', display:'flex', gap:5 }}>{[0,0.15,0.3].map((d,i)=>(<div key={i} style={{ width:6, height:6, borderRadius:'50%', background:'#818cf8', animation:`bounce 0.8s ease-in-out ${d}s infinite` }}/>))}</div></div>}
+                {chatLoading&&<div style={{ display:'flex', alignItems:'center', gap:6 }}><div style={{ width:22, height:22, borderRadius:7, background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center' }}><Bot size={11} style={{ color:'white' }}/></div><div style={{ padding:'9px 13px', borderRadius:'4px 16px 16px 16px', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.1)', display:'flex', gap:5 }}>{[0,0.15,0.3].map((d,i)=>(<div key={i} style={{ width:6, height:6, borderRadius:'50%', background:'#818cf8', animation:`bounce 1.4s ease-in-out ${d}s infinite` }}/>))}</div></div>}
                 <div ref={chatEndRef}/>
               </div>
             )}
@@ -9312,7 +9337,7 @@ INSTRUKSI: Isi array untuk setiap kategori yang dipilih user dengan MINIMAL 3 it
               {/* Playback indicator */}
               <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
                 {playing
-                  ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:14 }}>{[10,5,8].map((h,i)=>(<div key={i} style={{ width:3, height:h, background:embedTrack?.type==='youtube'?'#ff4444':embedTrack?.type==='soundcloud'?'#ff5500':track.color, borderRadius:1, animation:`bounce 0.8s ease-in-out ${i*0.15}s infinite` }}/>))}</div>
+                  ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:14 }}>{[10,5,8].map((h,i)=>(<div key={i} style={{ width:3, height:h, background:embedTrack?.type==='youtube'?'#ff4444':embedTrack?.type==='soundcloud'?'#ff5500':track.color, borderRadius:1, animation:`bounce 1.4s ease-in-out ${i*0.25}s infinite` }}/>))}</div>
                   : <div style={{ width:6, height:6, borderRadius:'50%', background:'rgba(255,255,255,0.2)' }}/>
                 }
               </div>
@@ -9424,13 +9449,43 @@ INSTRUKSI: Isi array untuk setiap kategori yang dipilih user dengan MINIMAL 3 it
           box-shadow: 0 1px 0 rgba(99,102,241,0.06);
         }
 
-        ${isLite ? `
-          .lite-mode *{animation:none!important;transition:none!important}
+        /* ══ LITE MODE: matikan semua animasi, transisi, dan efek boros GPU ══ */
+          .lite-mode *{
+            animation:none!important;
+            transition:none!important;
+            backdrop-filter:none!important;
+            -webkit-backdrop-filter:none!important;
+            will-change:auto!important;
+            text-shadow:none!important;
+          }
           .lite-mode .progress-arc{transition:stroke-dashoffset 0.35s linear!important}
           .lite-mode input[type=range]::-webkit-slider-thumb{box-shadow:none!important}
           .lite-mode input[type=range]::-moz-range-thumb{box-shadow:none!important}
           .lite-mode input[type=range]::-ms-thumb{box-shadow:none!important}
-        ` : ''}
+          /* Matikan backdrop-filter dari layout-mode header rules */
+          .lite-mode header{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:rgba(7,7,26,0.98)!important}
+          /* Matikan box-shadow glow dekoratif di tombol */
+          .lite-mode button{box-shadow:none!important}
+          /* Matikan filter drop-shadow di SVG orbital ring */
+          .lite-mode svg *{filter:none!important}
+
+          /* ══ PRO MODE: kurangi animasi dekoratif yang tidak perlu ══ */
+          /* Bintang twinkle — boros GPU */
+          .pro-mode .stars{animation:none}
+          .pro-mode .starsB{animation:none}
+          .pro-mode .starsC{animation:none}
+          /* pulse di dot & indikator — ganti ke versi pelan */
+          @keyframes pulse-subtle{0%,100%{opacity:1}50%{opacity:0.7}}
+          .pro-mode [style*="pulse 1s"]{animation:pulse-subtle 2.5s ease-in-out infinite!important}
+          .pro-mode [style*="pulse 1.2s"]{animation:pulse-subtle 2.5s ease-in-out infinite!important}
+          .pro-mode [style*="pulse 1.4s"]{animation:pulse-subtle 3s ease-in-out infinite!important}
+          .pro-mode [style*="pulse 2s"]{animation:pulse-subtle 3.5s ease-in-out infinite!important}
+          /* bounce bar equalizer — versi pelan */
+          @keyframes bounce-subtle{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+          .pro-mode [style*="bounce 0.8s"]{animation:bounce-subtle 1.6s ease-in-out var(--d,0s) infinite!important}
+          /* transition — cap di 0.15s */
+          .pro-mode [style*="transition:all 0.3s"]{transition:all 0.15s!important}
+          .pro-mode [style*="transition: all 0.3s"]{transition:all 0.15s!important}
       `}</style>
     </div>
   );
