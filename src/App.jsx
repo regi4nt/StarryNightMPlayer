@@ -3309,7 +3309,7 @@ export default function App() {
       })();
       const jamendoPromise = (async () => {
         try {
-          const r = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=b6747d04&format=json&limit=5&search=${encodeURIComponent(q)}&include=musicinfo&imagesize=200`, { signal: AbortSignal.timeout(5000) });
+          const r = await fetch(`/api/jamendo?search=${encodeURIComponent(q)}&limit=5`, { signal: AbortSignal.timeout(6000) });
           if (!r.ok) return [];
           const d = await r.json();
           return (d.results || []).map(t => ({
@@ -3319,22 +3319,12 @@ export default function App() {
         } catch { return []; }
       })();
       const fmaPromise = (async () => {
-        try {
-          // FMA public API — tanpa API key via CORS proxy atau langsung
-          const r = await fetch(`https://freemusicarchive.org/api/get/tracks.json?limit=5&title=${encodeURIComponent(q)}`, { signal: AbortSignal.timeout(5000) });
-          if (!r.ok) return [];
-          const d = await r.json();
-          return (d.dataset || []).slice(0, 4).map(t => ({
-            type:'fma', audioUrl:t.track_file, title:t.track_title||t.track_name,
-            artist:t.artist_name, thumbnail:t.track_image_file||null,
-            source:'fma', duration:t.track_duration||(t.track_duration_sec||0),
-            id:t.track_id, externalUrl:t.track_url,
-          }));
-        } catch { return []; }
+        // FMA API sudah mati (404) — skip, return kosong
+        return [];
       })();
       const ccmixtPromise = (async () => {
         try {
-          const r = await fetch(`https://ccmixter.org/api/query?title=${encodeURIComponent(q)}&limit=5&f=json&lic_gentag=attribution`, { signal: AbortSignal.timeout(5000) });
+          const r = await fetch(`/api/ccmixter?title=${encodeURIComponent(q)}&limit=5`, { signal: AbortSignal.timeout(6000) });
           if (!r.ok) return [];
           const d = await r.json();
           return (d || []).slice(0, 4).map(t => ({
@@ -3385,11 +3375,11 @@ export default function App() {
 
       // ── Spotify: user key → Deezer (pihak ketiga, publik, preview 30s) → iframe embed
       const spPublicPromise = !spHasKey ? (async () => {
-        // Tier 1: Deezer — API publik tanpa key, CORS terbuka, preview 30 detik mp3
+        // Tier 1: Deezer via proxy — preview 30 detik mp3
         try {
           const r = await fetch(
-            `https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=5&output=json`,
-            { signal: AbortSignal.timeout(5000) }
+            `/api/deezer?q=${encodeURIComponent(q)}&limit=5`,
+            { signal: AbortSignal.timeout(6000) }
           );
           if (!r.ok) throw new Error('deezer failed');
           const d = await r.json();
@@ -6913,13 +6903,13 @@ export default function App() {
                         })()}
                         {isWebSearch && (() => {
                           // Audio-only sources that can play natively in player
-                          const wsAudioItems = wsResults.filter(it => it.audioUrl && ['jamendo','fma','ccmixter','audius'].includes(it.source));
+                          const wsAudioItems = wsResults.filter(it => it.audioUrl && ['jamendo','ccmixter','audius'].includes(it.source));
                           const srcColors2 = { jamendo:'#f0c020', fma:'#5cb85c', ccmixter:'#e74c3c', audius:'#cc0000', deezer:'#a238ff' };
                           return (
                             <div style={{ padding:'0 10px 12px' }}>
                               {/* Tips */}
                               <div style={{ fontSize:10, color:'rgba(255,255,255,0.3)', marginBottom:8, lineHeight:1.5 }}>
-                                💡 <b style={{color:'rgba(255,255,255,0.5)'}}>Jamendo · Audius · FMA · ccMixter</b> putar in-app penuh (antrean). <b style={{color:'rgba(255,255,255,0.5)'}}>Deezer</b> preview 30s. Tempel URL: <b style={{color:'rgba(255,255,255,0.5)'}}>Vimeo · Audiomack · Mixcloud · Odysee · Dailymotion · Bandcamp</b>
+                                💡 <b style={{color:'rgba(255,255,255,0.5)'}}>Jamendo · Audius · ccMixter</b> putar in-app penuh (antrean). <b style={{color:'rgba(255,255,255,0.5)'}}>Deezer</b> preview 30s. Tempel URL: <b style={{color:'rgba(255,255,255,0.5)'}}>Vimeo · Audiomack · Mixcloud · Odysee · Dailymotion · Bandcamp</b>
                               </div>
                               {/* Loading skeleton */}
                               {wsLoading && (
@@ -7184,7 +7174,7 @@ export default function App() {
                                       </div>
                                     );
                                     // ── Native audio items (Jamendo, FMA, ccMixter) — in-app player, queue
-                                    if (item.audioUrl && ['jamendo','fma','ccmixter','audius'].includes(item.source)) {
+                                    if (item.audioUrl && ['jamendo','ccmixter','audius'].includes(item.source)) {
                                       const srcC = srcColors2[item.source] || '#6366f1';
                                       const dur2 = item.duration ? `${Math.floor(item.duration/60)}:${String(item.duration%60).padStart(2,'0')}` : '';
                                       const srcLabels = { jamendo:'Jamendo', fma:'FMA', ccmixter:'ccMixter', audius:'Audius' };
