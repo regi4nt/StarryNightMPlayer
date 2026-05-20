@@ -8968,7 +8968,6 @@ INSTRUKSI: Isi array untuk setiap kategori yang dipilih user dengan MINIMAL 3 it
                         )}
                       </>
                     )}
-                  </div>
 
                   {/* Popular section shown always (below persona result) */}
                         {/* ── DISCOVER: POPULER SEKARANG ── */}
@@ -9129,6 +9128,7 @@ INSTRUKSI: Isi array untuk setiap kategori yang dipilih user dengan MINIMAL 3 it
                           )}
                         </div>
 
+                  </div>
                 )}
               </div>
             ) : aiSubView==='lyrics' ? (
