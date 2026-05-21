@@ -9530,6 +9530,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                       </button>
                     </div>
                   ) : (
+                    <>
                     {lyricsGenerated && (
                       <div style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 10px', borderRadius:999, background:`${track.color}20`, border:`1px solid ${track.color}40`, marginBottom:14 }}>
                         <Sparkles size={10} style={{ color:track.color }}/>
@@ -9594,6 +9595,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                         </div>
                       </div>
                     )}
+                    </>
                   )
                 )}
               </div>
