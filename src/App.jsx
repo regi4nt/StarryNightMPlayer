@@ -1225,8 +1225,8 @@ function getProviders() {
     // ── User-supplied AI key (highest priority) — auto-detect provider
     ...(userKey && userKey.length > 10 ? (() => {
       if (userKey.startsWith('sk-or-')) return [
-        { provider:'OpenRouter', key:userKey, model:'deepseek/deepseek-chat-v3-0324:free', endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true, extra:{ 'HTTP-Referer':origin,'X-Title':'Starry Night' } },
-        { provider:'OpenRouter', key:userKey, model:'meta-llama/llama-4-maverick:free',    endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true, extra:{ 'HTTP-Referer':origin,'X-Title':'Starry Night' } },
+        { provider:'OpenRouter', key:userKey, model:'deepseek/deepseek-chat:free', endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true, extra:{ 'HTTP-Referer':origin,'X-Title':'Starry Night' } },
+        { provider:'OpenRouter', key:userKey, model:'meta-llama/llama-3.3-70b-instruct:free',    endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true, extra:{ 'HTTP-Referer':origin,'X-Title':'Starry Night' } },
       ];
       if (userKey.startsWith('sk-ant-')) return [
         { provider:'Claude', key:userKey, model:'claude-haiku-4-5-20251001', endpoint:'https://api.anthropic.com/v1/messages', isOpenAI:false, extra:{ 'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' } },
@@ -1253,7 +1253,7 @@ function getProviders() {
         ];
       }
       // Unknown format — try as OpenRouter
-      return [{ provider:'OpenRouter', key:userKey, model:'deepseek/deepseek-chat-v3-0324:free', endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true, extra:{ 'HTTP-Referer':origin,'X-Title':'Starry Night' } }];
+      return [{ provider:'OpenRouter', key:userKey, model:'deepseek/deepseek-chat:free', endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true, extra:{ 'HTTP-Referer':origin,'X-Title':'Starry Night' } }];
     })() : []),
     // OpenAI — via /api/openai server-side proxy (OPENAI_API_KEY in Vercel env vars, never in browser)
     { provider:'OpenAI', key:'__proxy__', model:'gpt-4o-mini',   endpoint:'/api/openai', isOpenAI:true, extra:{} },
@@ -1270,10 +1270,10 @@ function getProviders() {
     ...([
       (import.meta.env?.VITE_OPENROUTER_KEY_1 || ''),
     ].filter(k => k && k.length > 10).flatMap(k => [
-      { provider:'OpenRouter', key:k, model:'deepseek/deepseek-chat-v3-0324:free',    endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true, extra:{ 'HTTP-Referer':origin,'X-Title':'Starry Night' } },
-      { provider:'OpenRouter', key:k, model:'meta-llama/llama-4-maverick:free',        endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true, extra:{ 'HTTP-Referer':origin,'X-Title':'Starry Night' } },
-      { provider:'OpenRouter', key:k, model:'qwen/qwen3-235b-a22b:free',              endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true, extra:{ 'HTTP-Referer':origin,'X-Title':'Starry Night' } },
-      { provider:'OpenRouter', key:k, model:'google/gemma-3-12b-it:free',             endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true, extra:{ 'HTTP-Referer':origin,'X-Title':'Starry Night' } },
+      { provider:'OpenRouter', key:k, model:'deepseek/deepseek-chat:free',    endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true, extra:{ 'HTTP-Referer':origin,'X-Title':'Starry Night' } },
+      { provider:'OpenRouter', key:k, model:'meta-llama/llama-3.3-70b-instruct:free',        endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true, extra:{ 'HTTP-Referer':origin,'X-Title':'Starry Night' } },
+      { provider:'OpenRouter', key:k, model:'qwen/qwen3-8b:free',              endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true, extra:{ 'HTTP-Referer':origin,'X-Title':'Starry Night' } },
+      { provider:'OpenRouter', key:k, model:'google/gemma-3-27b-it:free',             endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true, extra:{ 'HTTP-Referer':origin,'X-Title':'Starry Night' } },
       { provider:'OpenRouter', key:k, model:'meta-llama/llama-3.3-70b-instruct:free', endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true, extra:{ 'HTTP-Referer':origin,'X-Title':'Starry Night' } },
     ])),
     // Gemini
@@ -5105,24 +5105,28 @@ export default function App() {
 
     const ctx = `Kamu adalah kurator audio personal. Preferensi user:\n- Kategori: ${prefs.categories.join(', ') || 'mix'}\n- Mood: ${prefs.moods.join(', ') || 'semua'}\n- Waktu: ${prefs.timeOfDay || 'kapan saja'}\n- Bahasa: ${prefs.lang || 'mix'}`;
 
-    // Assign sections round-robin to unique providers
-    const tasks = sectionDefs.map((sec, i) => ({
-      sec,
-      prov: uniqProviders[i % uniqProviders.length]
-    }));
+    // Try each section against providers with fallback: first pick = round-robin,
+    // but if it fails, retry remaining providers in order until one succeeds.
+    const trySection = async (sec, startIdx) => {
+      for (let attempt = 0; attempt < uniqProviders.length; attempt++) {
+        const prov = uniqProviders[(startIdx + attempt) % uniqProviders.length];
+        console.log(`[ForYou/split] ${sec.key} → trying ${prov.provider}/${prov.model}${attempt > 0 ? ` (retry ${attempt})` : ''}`);
+        const result = await callProviderJSON(prov, sec.prompt(ctx), sec.maxTok);
+        if (result) return result;
+      }
+      console.warn(`[ForYou/split] Section "${sec.key}" failed on all ${uniqProviders.length} provider(s)`);
+      return null;
+    };
 
-    console.log('[ForYou/split] Dispatching', tasks.length, 'sections across', uniqProviders.length, 'provider(s):', tasks.map(t=>`${t.sec.key}→${t.prov.provider}/${t.prov.model}`));
-
-    // Fire all in parallel
+    // Fire all sections in parallel, each with its own fallback chain
     const results = await Promise.all(
-      tasks.map(({ sec, prov }) => callProviderJSON(prov, sec.prompt(ctx), sec.maxTok))
+      sectionDefs.map((sec, i) => trySection(sec, i % uniqProviders.length))
     );
 
     // Merge all section results into one object
     const merged = {};
     results.forEach((r, i) => {
       if (r) Object.assign(merged, r);
-      else console.warn(`[ForYou/split] Section "${tasks[i].sec.key}" failed`);
     });
 
     // Must have at least greeting or one section to be valid
