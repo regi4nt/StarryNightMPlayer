@@ -3953,17 +3953,17 @@ export default function App() {
           if (userKey) {
             const params = new URLSearchParams({
               key: userKey, part: 'snippet,contentDetails', chart: 'mostPopular',
-              videoCategoryId: '10', regionCode: 'ID', maxResults: '8',
+              videoCategoryId: '10', regionCode: 'ID', maxResults: '5',
               fields: 'items(id,snippet/title,snippet/channelTitle,snippet/thumbnails/medium,contentDetails/duration)',
             });
             res = await fetch(`https://www.googleapis.com/youtube/v3/videos?${params}`, { signal: ctrl.signal });
           } else {
-            const params = new URLSearchParams({ action: 'trending', regionCode: 'ID', maxResults: '8', videoCategoryId: '10' });
+            const params = new URLSearchParams({ action: 'trending', regionCode: 'ID', maxResults: '5', videoCategoryId: '10' });
             res = await fetch(`/api/youtube?${params}`, { signal: ctrl.signal });
           }
           if (res.ok) {
             const data = await res.json();
-            const chips = (data.items || []).slice(0, 8).map(v => {
+            const chips = (data.items || []).slice(0, 5).map(v => {
               let label = v.snippet?.title || '';
               if (label.length > 22) label = label.slice(0, 20) + '…';
               return { label, query: v.snippet?.title || label };
@@ -3988,7 +3988,7 @@ export default function App() {
           const data = await res.json();
           if (!Array.isArray(data) || data.length === 0) continue;
           // Extract clean titles without artist prefix for chip labels
-          const chips = data.slice(0, 8).map(v => {
+          const chips = data.slice(0, 5).map(v => {
             // Shorten title to ≤22 chars for chip display
             let label = v.title || '';
             if (label.length > 22) label = label.slice(0, 20) + '…';
@@ -4009,7 +4009,7 @@ export default function App() {
           if (!res.ok) continue;
           const data = await res.json();
           if (!Array.isArray(data) || data.length === 0) continue;
-          const chips = data.slice(0, 8).map(v => {
+          const chips = data.slice(0, 5).map(v => {
             let label = v.title || '';
             if (label.length > 22) label = label.slice(0, 20) + '…';
             return { label, query: v.title };
@@ -4030,7 +4030,7 @@ export default function App() {
       { label:'OPM hits', query:'OPM hits 2025' },
       { label:'Chill vibes', query:'chill vibes music' },
       { label:'R&B 2025', query:'RnB 2025' },
-    ]);
+    ].slice(0, 5));
     setYtTrendingLoading(false);
   }, [ytTrendingLoading, ytTrending.length]); // eslint-disable-line
 
@@ -4816,11 +4816,12 @@ export default function App() {
         const sideNavW = 52;
         const mainW = vw - sideNavW;
         const mainH = vh - 40; // minus slim header
-        // Ring column takes ~40% of mainW; remaining is info+controls
-        const ringColW = Math.round(mainW * 0.40);
-        // Ring limited by both column width and available height
-        const byH = mainH - 12; // minimal vertical padding
-        const ring = Math.max(110, Math.min(180, Math.min(byH, ringColW - 12)));
+        // Ring column takes ~42% of mainW; remaining is info+controls
+        const ringColW = Math.round(mainW * 0.42);
+        // Reserve ~46px for clock above ring
+        const clockH = 46;
+        const byH = mainH - clockH - 12; // minus clock + minimal vertical padding
+        const ring = Math.max(100, Math.min(170, Math.min(byH, ringColW - 16)));
         setRingSize(ring);
         // Compact but readable margins
         setLayoutVars({
@@ -6767,17 +6768,17 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
           </div>
           {/* Clock in header for mobile-landscape */}
           {layoutMode === 'mobile-landscape' && (
-            <div style={{ marginLeft:8, userSelect:'none' }}>
-              <div style={{ display:'inline-block', fontSize:13, fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', backgroundClip:'text', WebkitTextFillColor:'transparent', color:'transparent' }}>
-                {nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', hour12:false })}
-              </div>
-              <div style={{ fontSize:8, color:'rgba(255,255,255,0.3)', fontWeight:600, letterSpacing:'0.04em', textTransform:'uppercase' }}>
-                {nowTime.toLocaleDateString('id-ID',{ weekday:'short', day:'numeric', month:'short' })}
-              </div>
+            <div style={{ marginLeft:8, userSelect:'none', opacity:0 /* hidden — clock shown inside orbital column */ }}>
+              <div style={{ fontSize:13 }}>‌</div>
             </div>
           )}
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+          {/* Reload button */}
+          <button onClick={() => window.location.reload()} title="Reload halaman"
+            style={{ display:'flex', alignItems:'center', justifyContent:'center', width:26, height:26, borderRadius:'50%', border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.05)', cursor:'pointer', color:'rgba(255,255,255,0.45)', flexShrink:0 }}>
+            <RefreshCw size={11}/>
+          </button>
           {/* Mode toggle */}
           <button onClick={toggleMode} title={isLite ? (t ? t.liteTitle : 'Mode Lite aktif (hemat data) — ketuk untuk Pro') : (t ? t.proTitle : 'Mode Pro — ketuk untuk Lite (hemat data)')}
             style={{ display:'flex', alignItems:'center', gap:3, padding:'4px 8px', borderRadius:999, border:`1px solid ${isLite ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.15)'}`, background: isLite ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)', cursor:'pointer', color: isLite ? '#6ee7b7' : 'rgba(255,255,255,0.5)', fontSize:9, fontWeight:700, letterSpacing:'0.04em', textTransform:'uppercase' }}>
@@ -7178,7 +7179,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
             height: fullscreen ? '100%' : (layoutMode === 'mobile-landscape' ? '100%' : undefined),
             display: 'flex',
             flexDirection: (layoutMode === 'mobile-landscape' || (fullscreen && window.innerWidth > window.innerHeight)) ? 'row' : 'column',
-            alignItems: 'center',
+            alignItems: layoutMode === 'mobile-landscape' ? 'stretch' : 'center',
             justifyContent: fullscreen
               ? (window.innerWidth > window.innerHeight ? 'center' : 'space-evenly')
               : layoutMode === 'mobile-landscape' ? 'flex-start' : 'flex-start',
@@ -7218,6 +7219,20 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                   </div>
                 </div>
                 )}
+                {/* Jam landscape — di atas orbital ring, besar & bold */}
+                {layoutMode === 'mobile-landscape' && (
+                <div style={{ position:'absolute', top:6, left:0, right:0, textAlign:'center', userSelect:'none', pointerEvents:'none', zIndex:2 }}>
+                  <div style={{ display:'inline-block', fontFamily:'monospace', fontWeight:900, letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', backgroundClip:'text', WebkitTextFillColor:'transparent', color:'transparent' }}>
+                    <span style={{ fontSize:22 }}>{nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', hour12:false })}</span>
+                    <span style={{ fontSize:22, color:track.color, WebkitTextFillColor:track.color }}>
+                      {'.'+String(nowTime.getSeconds()).padStart(2,'0')}
+                    </span>
+                  </div>
+                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', fontWeight:600, marginTop:2, letterSpacing:'0.06em', textTransform:'uppercase' }}>
+                    {nowTime.toLocaleDateString('id-ID',{ weekday:'short', day:'numeric', month:'short' })}
+                  </div>
+                </div>
+                )}
                 <OrbitalRing size={ringSize} pct={embedTrack?.type==='youtube'?(ytDuration>0?ytProgress/ytDuration:0):track.isRadio?0:pct} color={embedTrack?.type==='youtube'?'#ff4444':track.color} progress={embedTrack?.type==='youtube'?ytProgress:progress} duration={embedTrack?.type==='youtube'?ytDuration:track.isRadio?0:duration} isPlaying={playing} cover={globalCover||((!globalCover&&embedTrack?.type==='youtube')?embedTrack.thumbnail:null)||getCover(track)} title={embedTrack?.type==='youtube'?embedTrack.title:track.title} onSeek={embedTrack?.type==='youtube'?seekYt:track.isRadio?null:seekByPct} isLite={isLite} isRadio={!embedTrack&&track.isRadio} downloadProg={driveDownProg} drivePhase={drivePhase} ytDownloading={embedTrack?.type==='youtube'&&ytDownloadingIds.has(embedTrack.videoId)} ytDlProg={embedTrack?.type==='youtube'?(ytDownloadProg[embedTrack.videoId]||0):0}/>
               </div>
             ) : (
@@ -7237,6 +7252,9 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                 display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
                 justifyContent: 'center', flex: 1, minWidth: 0,
                 textAlign: 'left',
+                height: '100%',
+                maxHeight: '100%',
+                overflowY: 'hidden',
               } : {}),
               ...((fullscreen && typeof window !== 'undefined' && window.innerWidth > window.innerHeight) ? {
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -7304,7 +7322,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
             </div>
 
             {/* ── Volume row */}
-            <div style={{ display:'flex', alignItems:'center', gap:10, marginTop: fullscreen ? 0 : layoutVars.volumeMt, width:'100%', maxWidth: fullscreen ? '100%' : layoutMode === 'mobile-landscape' ? 320 : 340, padding:'4px 2px' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginTop: fullscreen ? 0 : layoutVars.volumeMt, width:'100%', maxWidth: fullscreen ? '100%' : layoutMode === 'mobile-landscape' ? '100%' : 340, padding:'4px 2px' }}>
               <button onClick={()=>setMuted(m=>!m)} style={{ ...btn, color:muted?'#ef4444':'rgba(255,255,255,0.38)', padding:4, flexShrink:0 }}>{muted?<VolumeX size={16}/>:<Volume2 size={16}/>}</button>
               <input type="range" min="0" max="1" step="0.01" value={muted?0:volume} onChange={e=>{setVolume(+e.target.value);setMuted(false)}} style={{ flex:1, accentColor:embedTrack?.type==='youtube'?'#ff4444':track.color, height:3, cursor:'pointer' }}/>
               <span style={{ fontSize:10, color:'rgba(255,255,255,0.28)', fontWeight:700, minWidth:28, textAlign:'right', fontFamily:'monospace', flexShrink:0 }}>{muted?'0':Math.round(volume*100)}%</span>
