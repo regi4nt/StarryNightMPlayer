@@ -4812,16 +4812,13 @@ export default function App() {
           infoMt: `${Math.max(6, Math.min(14, Math.round(vpad * 0.6)))}px`,
         });
       } else if (mode === 'mobile-landscape') {
-        // Mobile Landscape — slim side icon nav (52px) + horizontal player layout
+        // Mobile Landscape — slim side icon nav (52px) + two-column player
         const sideNavW = 52;
         const mainW = vw - sideNavW;
         const mainH = vh - 40; // minus slim header
-        // Ring column takes ~42% of mainW; remaining is info+controls
-        const ringColW = Math.round(mainW * 0.42);
-        // Reserve ~46px for clock above ring
-        const clockH = 46;
-        const byH = mainH - clockH - 12; // minus clock + minimal vertical padding
-        const ring = Math.max(100, Math.min(170, Math.min(byH, ringColW - 16)));
+        // Left col = ~45% of mainW; ring fills height minus padding
+        const ringColW = Math.round(mainW * 0.45);
+        const ring = Math.max(120, Math.min(mainH - 16, ringColW - 16));
         setRingSize(ring);
         // Compact but readable margins
         setLayoutVars({
@@ -6768,9 +6765,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
           </div>
           {/* Clock in header for mobile-landscape */}
           {layoutMode === 'mobile-landscape' && (
-            <div style={{ marginLeft:8, userSelect:'none', opacity:0 /* hidden — clock shown inside orbital column */ }}>
-              <div style={{ fontSize:13 }}>‌</div>
-            </div>
+            <div style={{ marginLeft:8, userSelect:'none', fontSize:0 }}>‌</div>
           )}
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
@@ -7174,20 +7169,126 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
 
 
 
+          {/* ═══ MOBILE LANDSCAPE — dedicated two-column layout ═══ */}
+          {layoutMode === 'mobile-landscape' && !fullscreen && (() => {
+            const lsRing = Math.min(ringSize, window.innerHeight - 80);
+            const lsColW = lsRing + 16;
+            return (
+            <div style={{ display:'flex', flexDirection:'row', height:'100%', width:'100%', overflow:'hidden', boxSizing:'border-box' }}>
+
+              {/* ── LEFT col: clock pojok kiri atas + orbital centered ── */}
+              <div style={{ width:lsColW, flexShrink:0, position:'relative', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
+                {/* Clock — pojok kiri atas absolut */}
+                <div style={{ position:'absolute', top:8, left:8, userSelect:'none', pointerEvents:'none', zIndex:2 }}>
+                  <div style={{ fontFamily:'monospace', fontWeight:900, letterSpacing:'-0.04em', lineHeight:1 }}>
+                    <span style={{ fontSize:18, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', backgroundClip:'text', WebkitTextFillColor:'transparent' }}>
+                      {nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', hour12:false })}
+                    </span>
+                    <span style={{ fontSize:18, color:track.color }}>{'.' + String(nowTime.getSeconds()).padStart(2,'0')}</span>
+                  </div>
+                  <div style={{ fontSize:8, color:'rgba(255,255,255,0.35)', fontWeight:600, marginTop:2, letterSpacing:'0.06em', textTransform:'uppercase' }}>
+                    {nowTime.toLocaleDateString('id-ID',{ weekday:'short', day:'numeric', month:'short' })}
+                  </div>
+                </div>
+                {/* Orbital ring centered in column */}
+                <OrbitalRing size={lsRing}
+                  pct={embedTrack?.type==='youtube'?(ytDuration>0?ytProgress/ytDuration:0):track.isRadio?0:pct}
+                  color={embedTrack?.type==='youtube'?'#ff4444':track.color}
+                  progress={embedTrack?.type==='youtube'?ytProgress:progress}
+                  duration={embedTrack?.type==='youtube'?ytDuration:track.isRadio?0:duration}
+                  isPlaying={playing}
+                  cover={globalCover||((!globalCover&&embedTrack?.type==='youtube')?embedTrack.thumbnail:null)||getCover(track)}
+                  title={embedTrack?.type==='youtube'?embedTrack.title:track.title}
+                  onSeek={embedTrack?.type==='youtube'?seekYt:track.isRadio?null:seekByPct}
+                  isLite={isLite} isRadio={!embedTrack&&track.isRadio}
+                  downloadProg={driveDownProg} drivePhase={drivePhase}
+                  ytDownloading={embedTrack?.type==='youtube'&&ytDownloadingIds.has(embedTrack.videoId)}
+                  ytDlProg={embedTrack?.type==='youtube'?(ytDownloadProg[embedTrack.videoId]||0):0}/>
+              </div>
+
+              {/* ── RIGHT col: title, controls, volume, actions ── */}
+              <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', alignItems:'flex-start', justifyContent:'center', padding:'8px 12px 8px 8px', gap:6, overflow:'hidden' }}>
+                {/* Badge */}
+                {embedTrack?.type==='youtube' && <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:999, background:'rgba(255,0,0,0.12)', border:'1px solid rgba(255,0,0,0.25)' }}><span style={{ fontSize:9, fontWeight:800, color:'#ff6b6b', textTransform:'uppercase', letterSpacing:'0.1em' }}>▶ YouTube</span></div>}
+                {embedTrack?.type==='soundcloud' && <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:999, background:'rgba(255,85,0,0.12)', border:'1px solid rgba(255,85,0,0.3)' }}><span style={{ fontSize:9, fontWeight:800, color:'#ff5500', textTransform:'uppercase', letterSpacing:'0.1em' }}>🔊 SoundCloud</span></div>}
+                {!embedTrack && track.isRadio && <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:999, background:'rgba(245,158,11,0.15)', border:'1px solid rgba(245,158,11,0.35)' }}><div style={{ width:5,height:5,borderRadius:'50%',background:'#f59e0b',animation:playing?'pulse 1.2s infinite':'none' }}/><span style={{ fontSize:9, fontWeight:800, color:'#fbbf24', textTransform:'uppercase', letterSpacing:'0.1em' }}>● LIVE RADIO</span></div>}
+
+                {/* Title */}
+                <div style={{ width:'100%', minWidth:0 }}>
+                  <h2 style={{ margin:0, fontWeight:900, fontSize:'clamp(13px,3.5vw,18px)', letterSpacing:'-0.03em', lineHeight:1.2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                    {embedTrack?.type==='youtube'?embedTrack.title:embedTrack?.type==='soundcloud'?embedTrack.title:track.title}
+                  </h2>
+                  <p style={{ margin:'3px 0 0', fontSize:10, color:'rgba(255,255,255,0.45)', fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                    {embedTrack?.type==='youtube'?embedTrack.artist:embedTrack?.type==='soundcloud'?embedTrack.artist:`${track.artist} — ${track.album}`}
+                  </p>
+                </div>
+
+                {/* Playback controls */}
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  {!track.isRadio && (
+                    <button onClick={()=>setShuffle(s=>!s)} style={{ background:'none', border:'none', cursor:'pointer', color:shuffle?track.color:'rgba(255,255,255,0.3)', padding:4, position:'relative' }}>
+                      <Shuffle size={17}/>
+                      {shuffle && <div style={{ position:'absolute', bottom:1, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:track.color }}/>}
+                    </button>
+                  )}
+                  <button onClick={()=>track.isRadio?goPrevRadio():embedTrack?.type==='youtube'?ytPrev():goPrev()} style={{ background:'none', border:'none', cursor:'pointer', color:'white', padding:4 }}><SkipBack size={22} fill="currentColor"/></button>
+                  <button
+                    onClick={()=>{ if(!track.src&&!embedTrack) return; if(embedTrack?.type==='soundcloud') return; setPlaying(p=>!p); }}
+                    disabled={!track.src&&!embedTrack}
+                    style={{ width:52, height:52, borderRadius:'50%', border:'none', background:'white', color:'#07071a', cursor:(!track.src&&!embedTrack)?'default':'pointer', opacity:(!track.src&&!embedTrack)?0.4:1, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:isLite?'0 2px 10px rgba(0,0,0,0.4)':`0 0 22px ${embedTrack?.type==='youtube'?'#ff444490':track.color+'90'},0 4px 16px rgba(0,0,0,0.4)` }}>
+                    {playing?<Pause size={21} fill="currentColor"/>:<Play size={21} fill="currentColor" style={{ marginLeft:3 }}/>}
+                  </button>
+                  <button onClick={()=>track.isRadio?goNextRadio():embedTrack?.type==='youtube'?ytNext():goNext()} style={{ background:'none', border:'none', cursor:'pointer', color:'white', padding:4 }}><SkipForward size={22} fill="currentColor"/></button>
+                  {!track.isRadio && (
+                    <button onClick={cycleRepeat} style={{ background:'none', border:'none', cursor:'pointer', color:repeat!=='off'?track.color:'rgba(255,255,255,0.3)', padding:4, position:'relative' }}>
+                      {repeat==='one'?<Repeat1 size={17}/>:<Repeat size={17}/>}
+                      {repeat!=='off' && <div style={{ position:'absolute', bottom:1, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:track.color }}/>}
+                    </button>
+                  )}
+                </div>
+
+                {/* Volume */}
+                <div style={{ display:'flex', alignItems:'center', gap:10, width:'100%' }}>
+                  <button onClick={()=>setMuted(m=>!m)} style={{ background:'none', border:'none', cursor:'pointer', color:muted?'#ef4444':'rgba(255,255,255,0.38)', padding:0, flexShrink:0 }}>{muted?<VolumeX size={15}/>:<Volume2 size={15}/>}</button>
+                  <input type="range" min="0" max="1" step="0.01" value={muted?0:volume} onChange={e=>{setVolume(+e.target.value);setMuted(false)}} style={{ flex:1, accentColor:embedTrack?.type==='youtube'?'#ff4444':track.color, height:3, cursor:'pointer' }}/>
+                  <span style={{ fontSize:10, color:'rgba(255,255,255,0.28)', fontWeight:700, minWidth:30, textAlign:'right', fontFamily:'monospace', flexShrink:0 }}>{muted?'0':Math.round(volume*100)}%</span>
+                </div>
+
+                {/* Action icons */}
+                <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                  {embedTrack?.type==='youtube'
+                    ? <button onClick={likeYtTrack} style={{ background:'none', border:'none', cursor:'pointer', color:liked[`yt_${embedTrack.videoId}`]?'#f472b6':'rgba(255,255,255,0.35)', padding:'4px 7px' }}><Heart size={16} fill={liked[`yt_${embedTrack.videoId}`]?'#f472b6':'none'}/></button>
+                    : <button onClick={()=>toggleFav(track.id, track.isRadio?track:null)} style={{ background:'none', border:'none', cursor:'pointer', color:liked[track.id]?'#f472b6':'rgba(255,255,255,0.35)', padding:'4px 7px' }}><Heart size={16} fill={liked[track.id]?'#f472b6':'none'}/></button>
+                  }
+                  <button onClick={()=>{ setShowShareMenu(v=>!v); setShowQueue(false); }} style={{ background:'none', border:'none', cursor:'pointer', color:showShareMenu?track.color:'rgba(255,255,255,0.35)', padding:'4px 7px' }}><Share2 size={16}/></button>
+                  <button onClick={()=>{ setShowQueue(q=>!q); setShowShareMenu(false); }} style={{ background:'none', border:'none', cursor:'pointer', color:showQueue?track.color:'rgba(255,255,255,0.35)', padding:'4px 7px' }}><ListMusic size={16}/></button>
+                  <button onClick={()=>setShowSettings(v=>!v)} style={{ background:showSettings?'rgba(255,255,255,0.08)':'none', borderRadius:8, border:'none', cursor:'pointer', color:sleepTimer?track.color:(showSettings?'rgba(255,255,255,0.7)':'rgba(255,255,255,0.35)'), padding:'4px 7px' }}><Settings size={16}/></button>
+                  <button onClick={()=>setFullscreen(f=>!f)} style={{ background:'none', border:'none', cursor:'pointer', color:fullscreen?track.color:'rgba(255,255,255,0.35)', padding:'4px 7px' }}>{fullscreen?<Minimize2 size={16}/>:<Maximize2 size={16}/>}</button>
+                  {embedTrack && <button onClick={()=>{ closeEmbed(); setShowSettings(false); }} style={{ background:'none', border:'none', cursor:'pointer', color:'#fca5a5', padding:'4px 7px' }}><X size={16}/></button>}
+                  {!embedTrack && track.isRadio && radioStation && <button onClick={()=>{ if(audioRef.current){audioRef.current.pause();audioRef.current.src='';} setPlaying(false); setRadioStation(null); setRadioPlaying(false); setTrack(SONGS[0]); }} style={{ background:'none', border:'none', cursor:'pointer', color:'#fbbf24', padding:'4px 7px' }}><X size={16}/></button>}
+                </div>
+              </div>
+
+            </div>
+            );
+          })()}
+
+          {/* ═══ PORTRAIT + DESKTOP layout ═══ */}
+          {(layoutMode !== 'mobile-landscape' || fullscreen) && (
           <div style={{
             minHeight: fullscreen ? '100%' : undefined,
-            height: fullscreen ? '100%' : (layoutMode === 'mobile-landscape' ? '100%' : undefined),
+            height: fullscreen ? '100%' : undefined,
             display: 'flex',
-            flexDirection: (layoutMode === 'mobile-landscape' || (fullscreen && window.innerWidth > window.innerHeight)) ? 'row' : 'column',
-            alignItems: layoutMode === 'mobile-landscape' ? 'stretch' : 'center',
+            flexDirection: (fullscreen && window.innerWidth > window.innerHeight) ? 'row' : 'column',
+            alignItems: 'center',
             justifyContent: fullscreen
               ? (window.innerWidth > window.innerHeight ? 'center' : 'space-evenly')
-              : layoutMode === 'mobile-landscape' ? 'flex-start' : 'flex-start',
+              : 'flex-start',
             padding: fullscreen ? '8px 24px 10px' : layoutVars.playerPad,
             position: 'relative',
             boxSizing: 'border-box',
             overflow: 'hidden',
-            gap: (layoutMode === 'mobile-landscape' || (fullscreen && window.innerWidth > window.innerHeight)) ? '10px' : 0,
+            gap: (fullscreen && window.innerWidth > window.innerHeight) ? '10px' : 0,
           }}>
 
             {/* ── JAM — pojok kiri atas area player (desktop only) */}
@@ -7206,8 +7307,8 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
             {/* floating action button moved to root level */}
 
             {/* ── Mobile: jam kiri atas + ring tengah | Desktop: ring tengah saja */}
-            {(layoutMode === 'mobile-portrait' || layoutMode === 'mobile-landscape') ? (
-              <div style={{ position:'relative', width: layoutMode === 'mobile-landscape' ? ringSize + 'px' : '100%', height: layoutMode === 'mobile-landscape' ? '100%' : undefined, flexShrink:0, display:'flex', justifyContent:'center', alignItems:'center' }}>
+            {layoutMode === 'mobile-portrait' ? (
+              <div style={{ position:'relative', width:'100%', flexShrink:0, display:'flex', justifyContent:'center', alignItems:'center' }}>
                 {/* Jam mobile — pojok kiri, tidak overlap ring — hide on landscape (clock is in header) */}
                 {layoutMode === 'mobile-portrait' && (
                 <div style={{ position:'absolute', left:0, top:6, userSelect:'none' }}>
@@ -7219,20 +7320,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                   </div>
                 </div>
                 )}
-                {/* Jam landscape — di atas orbital ring, besar & bold */}
-                {layoutMode === 'mobile-landscape' && (
-                <div style={{ position:'absolute', top:6, left:0, right:0, textAlign:'center', userSelect:'none', pointerEvents:'none', zIndex:2 }}>
-                  <div style={{ display:'inline-block', fontFamily:'monospace', fontWeight:900, letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', backgroundClip:'text', WebkitTextFillColor:'transparent', color:'transparent' }}>
-                    <span style={{ fontSize:22 }}>{nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', hour12:false })}</span>
-                    <span style={{ fontSize:22, color:track.color, WebkitTextFillColor:track.color }}>
-                      {'.'+String(nowTime.getSeconds()).padStart(2,'0')}
-                    </span>
-                  </div>
-                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', fontWeight:600, marginTop:2, letterSpacing:'0.06em', textTransform:'uppercase' }}>
-                    {nowTime.toLocaleDateString('id-ID',{ weekday:'short', day:'numeric', month:'short' })}
-                  </div>
-                </div>
-                )}
+
                 <OrbitalRing size={ringSize} pct={embedTrack?.type==='youtube'?(ytDuration>0?ytProgress/ytDuration:0):track.isRadio?0:pct} color={embedTrack?.type==='youtube'?'#ff4444':track.color} progress={embedTrack?.type==='youtube'?ytProgress:progress} duration={embedTrack?.type==='youtube'?ytDuration:track.isRadio?0:duration} isPlaying={playing} cover={globalCover||((!globalCover&&embedTrack?.type==='youtube')?embedTrack.thumbnail:null)||getCover(track)} title={embedTrack?.type==='youtube'?embedTrack.title:track.title} onSeek={embedTrack?.type==='youtube'?seekYt:track.isRadio?null:seekByPct} isLite={isLite} isRadio={!embedTrack&&track.isRadio} downloadProg={driveDownProg} drivePhase={drivePhase} ytDownloading={embedTrack?.type==='youtube'&&ytDownloadingIds.has(embedTrack.videoId)} ytDlProg={embedTrack?.type==='youtube'?(ytDownloadProg[embedTrack.videoId]||0):0}/>
               </div>
             ) : (
@@ -7395,6 +7483,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
 
           </div>
           </div>
+          )} {/* end portrait+desktop layout */}
         )}
         {tab==='stream'&&(
           <div style={{ height:'100%', display:'flex', flexDirection:'column', padding:'14px 16px 0' }}>
