@@ -1228,10 +1228,6 @@ function getProviders() {
         { provider:'OpenRouter', key:userKey, model:'deepseek/deepseek-chat-v3-0324:free', endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true, extra:{ 'HTTP-Referer':origin,'X-Title':'Starry Night' } },
         { provider:'OpenRouter', key:userKey, model:'meta-llama/llama-4-maverick:free',    endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true, extra:{ 'HTTP-Referer':origin,'X-Title':'Starry Night' } },
       ];
-      if (userKey.startsWith('sk-') && !userKey.startsWith('sk-or-') && !userKey.startsWith('sk-ant-')) return [
-        { provider:'OpenAI', key:userKey, model:'gpt-4o-mini', endpoint:'https://api.openai.com/v1/chat/completions', isOpenAI:true, extra:{} },
-        { provider:'OpenAI', key:userKey, model:'gpt-4o',      endpoint:'https://api.openai.com/v1/chat/completions', isOpenAI:true, extra:{} },
-      ];
       if (userKey.startsWith('sk-ant-')) return [
         { provider:'Claude', key:userKey, model:'claude-haiku-4-5-20251001', endpoint:'https://api.anthropic.com/v1/messages', isOpenAI:false, extra:{ 'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' } },
       ];
@@ -1246,26 +1242,23 @@ function getProviders() {
         { provider:'Grok', key:userKey, model:'grok-3',      endpoint:'https://api.x.ai/v1/chat/completions', isOpenAI:true, extra:{} },
         { provider:'Grok', key:userKey, model:'grok-3-mini', endpoint:'https://api.x.ai/v1/chat/completions', isOpenAI:true, extra:{} },
       ];
-      if (userKey.startsWith('sk-') && !userKey.startsWith('sk-or-') && !userKey.startsWith('sk-ant-')) {
-        // Could be DeepSeek (also sk- prefix) — try both
+      if (userKey.startsWith('sk-') && !userKey.startsWith('sk-or-')) {
+        // OpenAI and DeepSeek share the sk- prefix — include both so the
+        // round-robin / race logic can try whichever actually accepts the key.
         return [
-          { provider:'DeepSeek', key:userKey, model:'deepseek-chat',     endpoint:'https://api.deepseek.com/v1/chat/completions', isOpenAI:true, extra:{} },
-          { provider:'DeepSeek', key:userKey, model:'deepseek-reasoner', endpoint:'https://api.deepseek.com/v1/chat/completions', isOpenAI:true, extra:{} },
-          { provider:'OpenAI',   key:userKey, model:'gpt-4o-mini', endpoint:'https://api.openai.com/v1/chat/completions', isOpenAI:true, extra:{} },
-          { provider:'OpenAI',   key:userKey, model:'gpt-4o',      endpoint:'https://api.openai.com/v1/chat/completions', isOpenAI:true, extra:{} },
+          { provider:'OpenAI',   key:userKey, model:'gpt-4o-mini',        endpoint:'https://api.openai.com/v1/chat/completions', isOpenAI:true, extra:{} },
+          { provider:'OpenAI',   key:userKey, model:'gpt-4o',             endpoint:'https://api.openai.com/v1/chat/completions', isOpenAI:true, extra:{} },
+          { provider:'DeepSeek', key:userKey, model:'deepseek-chat',      endpoint:'https://api.deepseek.com/v1/chat/completions', isOpenAI:true, extra:{} },
+          { provider:'DeepSeek', key:userKey, model:'deepseek-reasoner',  endpoint:'https://api.deepseek.com/v1/chat/completions', isOpenAI:true, extra:{} },
         ];
       }
       // Unknown format — try as OpenRouter
       return [{ provider:'OpenRouter', key:userKey, model:'deepseek/deepseek-chat-v3-0324:free', endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true, extra:{ 'HTTP-Referer':origin,'X-Title':'Starry Night' } }];
     })() : []),
-    // OpenAI
-    ...([
-      (import.meta.env?.VITE_OPENAI_API_KEY || ''),
-    ].filter(k => k && k.length > 10).flatMap(k => [
-      { provider:'OpenAI', key:k, model:'gpt-4o-mini',   endpoint:'https://api.openai.com/v1/chat/completions', isOpenAI:true, extra:{} },
-      { provider:'OpenAI', key:k, model:'gpt-4o',         endpoint:'https://api.openai.com/v1/chat/completions', isOpenAI:true, extra:{} },
-      { provider:'OpenAI', key:k, model:'gpt-3.5-turbo', endpoint:'https://api.openai.com/v1/chat/completions', isOpenAI:true, extra:{} },
-    ])),
+    // OpenAI — via /api/openai server-side proxy (OPENAI_API_KEY in Vercel env vars, never in browser)
+    { provider:'OpenAI', key:'__proxy__', model:'gpt-4o-mini',   endpoint:'/api/openai', isOpenAI:true, extra:{} },
+    { provider:'OpenAI', key:'__proxy__', model:'gpt-4o',         endpoint:'/api/openai', isOpenAI:true, extra:{} },
+    { provider:'OpenAI', key:'__proxy__', model:'gpt-3.5-turbo', endpoint:'/api/openai', isOpenAI:true, extra:{} },
     // Anthropic
     ...([
       (import.meta.env?.VITE_ANTHROPIC_API_KEY || ''),
@@ -1298,20 +1291,12 @@ function getProviders() {
       { provider:'Groq', key:k, model:'gemma2-9b-it',            endpoint:'https://api.groq.com/openai/v1/chat/completions', isOpenAI:true, extra:{} },
       { provider:'Groq', key:k, model:'llama3-8b-8192',          endpoint:'https://api.groq.com/openai/v1/chat/completions', isOpenAI:true, extra:{} },
     ])),
-    // DeepSeek
-    ...([
-      (import.meta.env?.VITE_DEEPSEEK_KEY_1 || ''),
-    ].filter(k => k && k.length > 10).flatMap(k => [
-      { provider:'DeepSeek', key:k, model:'deepseek-chat',     endpoint:'https://api.deepseek.com/v1/chat/completions', isOpenAI:true, extra:{} },
-      { provider:'DeepSeek', key:k, model:'deepseek-reasoner', endpoint:'https://api.deepseek.com/v1/chat/completions', isOpenAI:true, extra:{} },
-    ])),
-    // Grok (xAI)
-    ...([
-      (import.meta.env?.VITE_GROK_KEY_1 || ''),
-    ].filter(k => k && k.length > 10).flatMap(k => [
-      { provider:'Grok', key:k, model:'grok-3',      endpoint:'https://api.x.ai/v1/chat/completions', isOpenAI:true, extra:{} },
-      { provider:'Grok', key:k, model:'grok-3-mini', endpoint:'https://api.x.ai/v1/chat/completions', isOpenAI:true, extra:{} },
-    ])),
+    // DeepSeek — via /api/deepseek server-side proxy (DEEPSEEK_API_KEY in Vercel env vars, never in browser)
+    { provider:'DeepSeek', key:'__proxy__', model:'deepseek-chat',     endpoint:'/api/deepseek', isOpenAI:true, extra:{} },
+    { provider:'DeepSeek', key:'__proxy__', model:'deepseek-reasoner', endpoint:'/api/deepseek', isOpenAI:true, extra:{} },
+    // Grok (xAI) — via /api/grok server-side proxy (GROK_API_KEY in Vercel env vars, never in browser)
+    { provider:'Grok', key:'__proxy__', model:'grok-3',      endpoint:'/api/grok', isOpenAI:true, extra:{} },
+    { provider:'Grok', key:'__proxy__', model:'grok-3-mini', endpoint:'/api/grok', isOpenAI:true, extra:{} },
   ];
 }
 
@@ -1324,8 +1309,9 @@ let slotIdx = 0;
 const _ENV_SP_ID     = (import.meta.env?.VITE_SPOTIFY_CLIENT_ID     || '');
 const _ENV_SP_SECRET = (import.meta.env?.VITE_SPOTIFY_CLIENT_SECRET || '');
 const _ENV_SC_ID     = (import.meta.env?.VITE_SOUNDCLOUD_CLIENT_ID  || '');
-const _ENV_DS_KEY    = (import.meta.env?.VITE_DEEPSEEK_KEY_1        || '');
-const _ENV_GROK_KEY  = (import.meta.env?.VITE_GROK_KEY_1            || '');
+// DeepSeek & Grok keys are now handled server-side in /api/deepseek and /api/grok
+const _ENV_DS_KEY    = ''; // unused — key lives in Vercel env var DEEPSEEK_API_KEY
+const _ENV_GROK_KEY  = ''; // unused — key lives in Vercel env var GROK_API_KEY
 // YouTube Data API v3 — bisa via env (server proxy) ATAU user key langsung dari browser
 const _ENV_YT_KEY = (import.meta.env?.VITE_YOUTUBE_API_KEY || '');
 // Runtime mutable — diupdate oleh App saat settings berubah
@@ -1470,7 +1456,8 @@ const askAI = async (user, system='', tries=0) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${slot.key}`,
+          // __proxy__ slots are server-side proxies — key is injected by Vercel, not the browser
+          ...(slot.key !== '__proxy__' ? { 'Authorization': `Bearer ${slot.key}` } : {}),
           ...slot.extra,
         },
         body: JSON.stringify({
@@ -1528,8 +1515,11 @@ const askAIRace = async (user, system='') => {
           ...(system ? { system } : {}),
           messages: [{ role:'user', content:user }] };
 
+    // __proxy__ slots: key lives in Vercel env vars, not the browser — omit Authorization header
     const headers = slot.isOpenAI
-      ? { 'Content-Type':'application/json', 'Authorization':`Bearer ${slot.key}`, ...slot.extra }
+      ? { 'Content-Type':'application/json',
+          ...(slot.key !== '__proxy__' ? { 'Authorization': `Bearer ${slot.key}` } : {}),
+          ...slot.extra }
       : { 'Content-Type':'application/json', 'x-api-key': slot.key, ...slot.extra };
 
     return fetch(slot.endpoint, { method:'POST', headers, body: JSON.stringify(body) })
@@ -4388,6 +4378,8 @@ export default function App() {
   const [lyricsTranslation, setLyricsTranslation] = useState('');
   const [lyricsTranslating, setLyricsTranslating] = useState(false);
   const [lyricsGenerated, setLyricsGenerated] = useState(false);
+  const [lyricsNeedGenerate, setLyricsNeedGenerate] = useState(false);
+  const [lyricsGenerating, setLyricsGenerating] = useState(false);
   const [lyricsRomanized, setLyricsRomanized] = useState('');
   const [lyricsRomanizing, setLyricsRomanizing] = useState(false);
   // Cache in-memory lirik: key = "title|artist", value = { text, generated }
@@ -5022,7 +5014,7 @@ export default function App() {
   // ── Track history + prefetch lagu berikutnya
   useEffect(() => {
     setHistory(prev => { const f=prev.filter(s=>s.id!==track.id); return [track,...f].slice(0,15); });
-    setLyrics(''); setInsight(''); setLyricsRomanized(''); setLyricsRomanizing(false);
+    setLyrics(''); setInsight(''); setLyricsRomanized(''); setLyricsRomanizing(false); setLyricsNeedGenerate(false); setLyricsGenerated(false);
     // Prefetch lagu berikutnya di background
     const allSongs = [...builtinSongs, ...customSongs];
     const idx = allSongs.findIndex(s => s.id === track.id);
@@ -5141,8 +5133,19 @@ export default function App() {
   };
 
   // ── For You: auto-refresh setiap kali tab dibuka (result view)
-  const refreshForYou = useCallback(async () => {
+  // forceRefresh=true: abaikan cache (dari tombol Refresh Feed)
+  // forceRefresh=false (default): hanya generate jika belum ada / sudah >6 jam
+  const FOR_YOU_TTL_MS = 6 * 60 * 60 * 1000; // 6 jam
+  const refreshForYou = useCallback(async (forceRefresh = false) => {
     if (!hasKey()) return;
+    // Guard: jangan re-generate otomatis jika data sudah ada & masih fresh
+    if (!forceRefresh) {
+      if (personaLoading) return;
+      const cachedRecs = (() => { try { return JSON.parse(localStorage.getItem('sn_persona_recs') || 'null'); } catch { return null; } })();
+      const lastTs = parseInt(localStorage.getItem('sn_persona_recs_ts') || '0', 10);
+      const isStale = Date.now() - lastTs > FOR_YOU_TTL_MS;
+      if (cachedRecs && !isStale) return; // masih fresh, skip
+    }
     setPL(true);
     try {
       const savedPrefs = (() => { try { return JSON.parse(localStorage.getItem('sn_persona_prefs')||'{}'); } catch { return personaPrefs; } })();
@@ -5157,6 +5160,7 @@ export default function App() {
         setPersonaRecs(result);
         localStorage.setItem('sn_persona_recs', JSON.stringify(result));
         localStorage.setItem('sn_persona_done', '1');
+        localStorage.setItem('sn_persona_recs_ts', String(Date.now()));
       }
     } catch(e) { console.error('[ForYou/refresh] outer error:', e?.message); } finally { setPL(false); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -5167,7 +5171,8 @@ export default function App() {
 
   useEffect(() => {
     if (aiSubView === 'foryou' && personaStep === 'result') {
-      refreshForYouRef.current?.();
+      // forceRefresh=false: hanya generate jika belum ada / sudah >6 jam
+      refreshForYouRef.current?.(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aiSubView]);
@@ -6261,9 +6266,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
   // ── LYRICS
   const getLyrics = async () => {
     setLL(true);
-    setLyrics('');
-    setLyricsTranslation('');
-    setLyricsGenerated(false);
+    setLyrics(''); setLyricsNeedGenerate(false); setLyricsGenerated(false);
     setLyricsRomanized('');
     setLyricsRomanizing(false);
 
@@ -6401,23 +6404,45 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       } else if (isLite) {
         setLyrics(t?.liteLyricsDisabled||'⚡ Lyrics not found in public database.\n\nLite Mode active — AI lyrics generation is disabled to save data.\n\nEnable Pro Mode to generate lyrics with AI.');
       } else {
-        // Last resort: AI generate
-        const gen = await fetchAIGenerate().catch(() => null);
-        if (gen) {
-          setLyrics(gen.text);
-          setLyricsGenerated(true);
-          setActiveModelLabel(activeModel());
-          // Cache hasil AI generate juga agar tidak di-generate ulang
-          lyricsCacheRef.current.set(cacheKey, { text: gen.text, generated: true, modelLabel: activeModel() });
-        } else {
-          setLyrics(t?.lyricsNotFoundResult || 'Lyrics not found');
-        }
+        // Lirik tidak ditemukan di database — tampilkan tombol generate manual
+        setLyricsNeedGenerate(true);
       }
     } catch(_) {
       setLyrics(t?.lyricsNotFoundResult || 'Lyrics not found');
     }
 
     setLL(false);
+  };
+
+  // ── Generate lirik AI secara manual (dipanggil saat user klik tombol)
+  const generateLyricsManual = async () => {
+    setLyricsGenerating(true);
+    setLyricsNeedGenerate(false);
+
+    const activeTitle  = embedTrack ? (embedTrack.title  || track.title)  : track.title;
+    const activeArtist = embedTrack ? (embedTrack.artist || track.artist) : track.artist;
+    const activeMood   = track.mood || '';
+    const cacheKey = `${activeTitle.toLowerCase()}|${activeArtist.toLowerCase()}`;
+
+    try {
+      const moodCtx = activeMood ? `Genre/mood: ${activeMood}.` : '';
+      const r = await askAIRace(
+        `Tulis lirik lagu yang mungkin sesuai untuk:\nJudul: "${activeTitle}"\nArtis: ${activeArtist}\n${moodCtx}\n\nBuat lirik yang masuk akal sesuai judul, artis, dan gaya musiknya. Gunakan bahasa asli lagu (Indonesia untuk artis Indonesia, Inggris untuk artis internasional, dst). Tulis dalam aksara Latin.\nFormat: [Verse 1], [Chorus], [Verse 2], [Bridge], [Outro] sesuai kebutuhan.\nOutput HANYA liriknya saja, tanpa penjelasan, tanpa disclaimer.`,
+        'Kamu adalah penulis lirik kreatif. Tulis lirik yang sesuai dengan judul dan gaya artis. Output hanya lirik saja.'
+      );
+      if (r && r.trim().length >= 20) {
+        setLyrics(r.trim());
+        setLyricsGenerated(true);
+        setActiveModelLabel(activeModel());
+        lyricsCacheRef.current.set(cacheKey, { text: r.trim(), generated: true, modelLabel: activeModel() });
+      } else {
+        setLyrics(t?.lyricsNotFoundResult || 'Lyrics not found');
+      }
+    } catch(_) {
+      setLyrics(t?.lyricsNotFoundResult || 'Lyrics not found');
+    }
+
+    setLyricsGenerating(false);
   };
 
   // ── Auto-romanisation: detect non-Latin characters in lyrics
@@ -9192,6 +9217,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                             localStorage.setItem('sn_persona_recs', JSON.stringify(result));
                             localStorage.setItem('sn_persona_prefs', JSON.stringify(personaPrefs));
                             localStorage.setItem('sn_persona_done', '1');
+                            localStorage.setItem('sn_persona_recs_ts', String(Date.now()));
                             setPersonaStep('result');
                           } else {
                             alert('Failed to load recommendations. Please try again.');
@@ -9223,7 +9249,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                           )}
                           {/* Action bar */}
                           <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-                            <button onClick={()=>refreshForYouRef.current?.()} disabled={personaLoading}
+                            <button onClick={()=>refreshForYouRef.current?.(true)} disabled={personaLoading}
                               style={{ flex:1, padding:'9px 14px', borderRadius:12, border:`1px solid ${track.color}40`, background:`${track.color}15`, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, opacity:personaLoading?0.6:1 }}>
                               {personaLoading ? <><Loader2 size={12} style={{ animation:'spin 1s linear infinite' }}/> Updating…</> : <><Sparkles size={12}/> Refresh Feed</>}
                             </button>
@@ -9548,18 +9574,28 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                       {lyricsTranslating ? <><Loader2 size={13} style={{ animation:'spin 1s linear infinite' }}/>Menerjemahkan…</> : lyricsTranslation ? <>🌐 Sembunyikan</> : <>🌐 Terjemahkan</>}
                     </button>
                   )}
-                  <button onClick={getLyrics} disabled={lyricsLoading} style={{ padding:'7px 14px', borderRadius:999, border:'none', background:track.color, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', opacity:lyricsLoading?0.6:1, display:'flex', alignItems:'center', gap:6 }}>
+                  <button onClick={getLyrics} disabled={lyricsLoading||lyricsGenerating} style={{ padding:'7px 14px', borderRadius:999, border:'none', background:track.color, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', opacity:(lyricsLoading||lyricsGenerating)?0.6:1, display:'flex', alignItems:'center', gap:6 }}>
                     {lyricsLoading?<><Loader2 size={13} style={{ animation:'spin 1s linear infinite' }}/>{t?.lyricsSearchBtn||'Search...'}</>:<><Sparkles size={13}/>{lyrics?(t?.lyricsRefresh||'Refresh'):(t?.lyricsShow||'Show Lyrics')}</>}
                   </button>
                 </div>
-                {!lyrics&&!lyricsLoading&&(
+                {!lyrics&&!lyricsLoading&&!lyricsNeedGenerate&&!lyricsGenerating&&(
                   <div style={{ textAlign:'center', paddingTop:36 }}>
                     <Mic2 size={48} style={{ color:'rgba(255,255,255,0.1)', margin:'0 auto 16px', display:'block' }}/>
                     <div style={{ fontSize:15, fontWeight:700, color:'rgba(255,255,255,0.3)', marginBottom:8 }}>{t?.lyricsNotFound||'Lyrics not available'}</div>
                     <div style={{ fontSize:12, color:'rgba(255,255,255,0.2)' }}>{isLite ? (t?.lyricsHintLite||'Tap "Show Lyrics" to search from public database') : (t?.lyricsHintPro||'Tap "Show Lyrics" to generate lyrics with AI')}</div>
                   </div>
                 )}
-                {lyricsLoading&&(
+                {lyricsNeedGenerate&&!lyricsGenerating&&(
+                  <div style={{ textAlign:'center', paddingTop:36 }}>
+                    <Mic2 size={48} style={{ color:'rgba(255,255,255,0.1)', margin:'0 auto 16px', display:'block' }}/>
+                    <div style={{ fontSize:15, fontWeight:700, color:'rgba(255,255,255,0.3)', marginBottom:8 }}>Lirik tidak ditemukan di database</div>
+                    <div style={{ fontSize:12, color:'rgba(255,255,255,0.2)', marginBottom:20 }}>Lirik asli tidak tersedia. Kamu bisa minta AI untuk membuat lirik yang mungkin sesuai.</div>
+                    <button onClick={generateLyricsManual} style={{ padding:'9px 20px', borderRadius:999, border:`1px solid ${track.color}60`, background:`${track.color}20`, color:track.color, fontSize:13, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:7 }}>
+                      <Sparkles size={14}/> Generate Lirik dengan AI
+                    </button>
+                  </div>
+                )}
+                {(lyricsLoading||lyricsGenerating)&&(
                   <div style={{ textAlign:'center', paddingTop:36 }}>
                     <Loader2 size={40} style={{ color:track.color, margin:'0 auto 14px', display:'block', animation:'spin 1s linear infinite' }}/>
                     <div style={{ fontSize:13, color:'rgba(255,255,255,0.4)' }}>{isLite ? (t?.lyricsSearchingLite||'Searching for lyrics…') : (t?.lyricsSearchingPro||'Starry AI is writing lyrics…')}</div>
@@ -9578,12 +9614,6 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                     </div>
                   ) : (
                     <>
-                    {lyricsGenerated && (
-                      <div style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 10px', borderRadius:999, background:`${track.color}20`, border:`1px solid ${track.color}40`, marginBottom:14 }}>
-                        <Sparkles size={10} style={{ color:track.color }}/>
-                        <span style={{ fontSize:10, fontWeight:800, color:track.color, letterSpacing:'0.08em' }}>AI GENERATED · mungkin tidak akurat</span>
-                      </div>
-                    )}
                     <div style={{ lineHeight:1.9 }}>
                       {lyrics.split('\n').map((line, i) => {
                         const isTag = line.startsWith('[') && line.endsWith(']');
