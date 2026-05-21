@@ -2171,6 +2171,121 @@ const fmtSec = s => { const m=Math.floor(s/60), sec=s%60; return `${m}:${String(
 
 
 // ═══════════════════════════════════════════════════════
+//  PLAYLIST FORM VIEW - Inline Create / Edit (extracted from IIFE to fix hooks bug)
+// ═══════════════════════════════════════════════════════
+function PlaylistFormView({ editingPl, allSongs, lang, isLite, t, setPlaylists, setEditingPl, setPlView }) {
+  const isEdit = !!editingPl;
+  const [formName, setFormName] = useState(editingPl?.name || '');
+  const [formSelected, setFormSelected] = useState(() => new Set(editingPl?.songIds || []));
+  const [searchQ, setSearchQ] = useState('');
+
+  const toggleSong = id => setFormSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const filtered = allSongs.filter(s =>
+    !searchQ.trim() ||
+    s.title.toLowerCase().includes(searchQ.toLowerCase()) ||
+    s.artist.toLowerCase().includes(searchQ.toLowerCase())
+  );
+  const handleSave = () => {
+    if (!formName.trim()) { alert(lang === 'id' ? 'Isi nama playlist!' : 'Enter playlist name!'); return; }
+    if (isEdit) {
+      setPlaylists(p => p.map(pl => pl.id === editingPl.id ? { ...pl, name: formName.trim(), songIds: [...formSelected] } : pl));
+      setEditingPl(null);
+    } else {
+      const id = 'pl_' + Date.now();
+      setPlaylists(p => [...p, { id, name: formName.trim(), songIds: [...formSelected], locked: false }]);
+    }
+    setPlView('list');
+  };
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* Header */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 18px 12px', borderBottom:'1px solid rgba(255,255,255,0.07)', flexShrink:0 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:9 }}>
+          <button onClick={() => { setEditingPl(null); setPlView('list'); }}
+            style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.5)', padding:4, display:'flex' }}>
+            <ChevronLeft size={20} />
+          </button>
+          <div style={{ width:30, height:30, borderRadius:9, background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            {isEdit ? <PenLine size={15} style={{ color: 'white' }} /> : <ListPlus size={15} style={{ color: 'white' }} />}
+          </div>
+          <div>
+            <div style={{ fontWeight:800, fontSize:14 }}>{isEdit ? t?.editPlaylist || 'Edit Playlist' : t?.newPlaylist || 'Playlist Baru'}</div>
+            <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{formSelected.size} {t?.songsSelected || 'lagu dipilih'}</div>
+          </div>
+        </div>
+        <button onClick={handleSave}
+          style={{ padding:'7px 16px', borderRadius:10, border:'none', background:'linear-gradient(135deg,#6366f1,#a855f7)', color:'white', fontSize:12, fontWeight:800, cursor:'pointer', flexShrink:0 }}>
+          {isEdit ? t?.saveChanges || 'Simpan' : t?.createPlaylistBtn || 'Buat'}
+        </button>
+      </div>
+
+      {/* Scrollable body */}
+      <div className="scrollbar-hide" style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 80px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+        {/* Nama playlist */}
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 6 }}>Nama Playlist</div>
+          <input
+            value={formName}
+            onChange={e => setFormName(e.target.value)}
+            placeholder={t?.playlistNamePlaceholder || 'Nama playlist kamu...'}
+            autoFocus
+            style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1.5px solid rgba(99,102,241,0.3)', borderRadius: 10, padding: '10px 13px', fontSize: 13, color: 'white', outline: 'none', WebkitAppearance: 'none' }}
+            onFocus={e => e.target.style.borderColor = 'rgba(99,102,241,0.7)'}
+            onBlur={e => e.target.style.borderColor = 'rgba(99,102,241,0.3)'}
+          />
+        </div>
+
+        {/* Song picker */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>{t?.selectSongs || 'Pilih Lagu'}</div>
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>{allSongs.length} tersedia</span>
+          </div>
+          {/* Search songs */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(0,0,0,0.3)', borderRadius: 999, padding: '6px 12px', border: '1px solid rgba(255,255,255,0.1)', marginBottom: 8 }}>
+            <Search size={12} style={{ color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
+            <input
+              value={searchQ}
+              onChange={e => setSearchQ(e.target.value)}
+              placeholder={lang === 'id' ? 'Cari lagu...' : 'Search songs...'}
+              style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: 'white', fontSize: 12, minWidth: 0 }}
+            />
+            {searchQ && <button onClick={() => setSearchQ('')} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', padding: 0, lineHeight: 1, fontSize: 14 }}>×</button>}
+          </div>
+          {/* Song list */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {filtered.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '20px 0', color: 'rgba(255,255,255,0.25)', fontSize: 12 }}>Tidak ada lagu ditemukan</div>
+            )}
+            {filtered.map(s => {
+              const on = formSelected.has(s.id);
+              return (
+                <div key={s.id} onClick={() => toggleSong(s.id)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 12, cursor: 'pointer', background: on ? 'rgba(99,102,241,0.12)' : 'rgba(255,255,255,0.02)', border: `1px solid ${on ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.06)'}`, transition: 'all 0.1s' }}>
+                  {isLite
+                    ? <div style={{ width: 34, height: 34, borderRadius: 8, background: s.bg || 'rgba(255,255,255,0.07)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Music size={14} color={s.color} /></div>
+                    : <img src={s.cover} loading="lazy" decoding="async" style={{ width: 34, height: 34, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: on ? 'white' : 'rgba(255,255,255,0.8)' }}>{s.title}</div>
+                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>{s.artist}</div>
+                  </div>
+                  <div style={{ width: 20, height: 20, borderRadius: '50%', border: `2px solid ${on ? '#a78bfa' : 'rgba(255,255,255,0.2)'}`, background: on ? '#a78bfa' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.1s' }}>
+                    {on && <CheckCircle size={11} style={{ color: 'white' }} />}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════
 //  PLAYLIST MODAL - Create / Edit
 // ═══════════════════════════════════════════════════════
 function PlaylistModal({ onClose, onSave, allSongs, existing, isLite, t }) {
@@ -4275,6 +4390,8 @@ export default function App() {
   const [lyricsGenerated, setLyricsGenerated] = useState(false);
   const [lyricsRomanized, setLyricsRomanized] = useState('');
   const [lyricsRomanizing, setLyricsRomanizing] = useState(false);
+  // Cache in-memory lirik: key = "title|artist", value = { text, generated }
+  const lyricsCacheRef = useRef(new Map());
 
   // ── Settings panel
   const [showSettings, setShowSettings] = useState(false);
@@ -6163,10 +6280,29 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     // Helper: strip LRC timestamps
     const stripLRC = (s) => s.replace(/^\[\d+:\d+\.\d+\]\s*/gm, '').trim();
 
+    // ── Cache: cek apakah lirik sudah pernah di-fetch/generate sebelumnya
+    const cacheKey = `${cleanTitle.toLowerCase()}|${cleanArtist.toLowerCase()}`;
+    const cached = lyricsCacheRef.current.get(cacheKey);
+    if (cached) {
+      setLyrics(cached.text);
+      setLyricsGenerated(cached.generated);
+      if (cached.modelLabel) setActiveModelLabel(cached.modelLabel);
+      setLL(false);
+      return;
+    }
+
+    // ── Helper: fetch dengan timeout (default 7 detik per sumber)
+    const fetchWithTimeout = (url, options = {}, ms = 7000) => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), ms);
+      return fetch(url, { ...options, signal: controller.signal })
+        .finally(() => clearTimeout(timer));
+    };
+
     // ── Source 1: lrclib.net
     const fetchLrclib = async () => {
       const q = encodeURIComponent(`${cleanTitle} ${cleanArtist}`);
-      const resp = await fetch(`https://lrclib.net/api/search?q=${q}`);
+      const resp = await fetchWithTimeout(`https://lrclib.net/api/search?q=${q}`);
       if (!resp.ok) return null;
       const results = await resp.json();
       if (!Array.isArray(results) || results.length === 0) return null;
@@ -6184,7 +6320,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     const fetchOvh = async () => {
       const artist = encodeURIComponent(cleanArtist);
       const title  = encodeURIComponent(cleanTitle);
-      const resp = await fetch(`https://api.lyrics.ovh/v1/${artist}/${title}`);
+      const resp = await fetchWithTimeout(`https://api.lyrics.ovh/v1/${artist}/${title}`);
       if (!resp.ok) return null;
       const data = await resp.json();
       return (data.lyrics && data.lyrics.trim().length > 20) ? data.lyrics.trim() : null;
@@ -6193,7 +6329,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     // ── Source 3: textyl.co — synced lyrics, no-auth
     const fetchTextyl = async () => {
       const q = encodeURIComponent(`${cleanTitle} ${cleanArtist}`);
-      const resp = await fetch(`/api/textyl/lyrics?q=${q}`);
+      const resp = await fetchWithTimeout(`/api/textyl/lyrics?q=${q}`);
       if (!resp.ok) return null;
       const data = await resp.json();
       if (!Array.isArray(data) || data.length === 0) return null;
@@ -6206,7 +6342,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       const artist = encodeURIComponent(cleanArtist);
       const song   = encodeURIComponent(cleanTitle);
       // Step 1: search for lyric ID
-      const searchResp = await fetch(`/api/chartlyrics/SearchLyricDirect?artist=${artist}&song=${song}`);
+      const searchResp = await fetchWithTimeout(`/api/chartlyrics/SearchLyricDirect?artist=${artist}&song=${song}`);
       if (!searchResp.ok) return null;
       const xml = await searchResp.text();
       // Parse Lyric from XML
@@ -6260,6 +6396,8 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
         setLyrics(dbResult.text);
         setLyricsGenerated(dbResult.generated);
         setActiveModelLabel(activeModel());
+        // Simpan ke cache agar tidak re-fetch saat lagu sama diminta lagi
+        lyricsCacheRef.current.set(cacheKey, { text: dbResult.text, generated: dbResult.generated, modelLabel: activeModel() });
       } else if (isLite) {
         setLyrics(t?.liteLyricsDisabled||'⚡ Lyrics not found in public database.\n\nLite Mode active — AI lyrics generation is disabled to save data.\n\nEnable Pro Mode to generate lyrics with AI.');
       } else {
@@ -6269,6 +6407,8 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
           setLyrics(gen.text);
           setLyricsGenerated(true);
           setActiveModelLabel(activeModel());
+          // Cache hasil AI generate juga agar tidak di-generate ulang
+          lyricsCacheRef.current.set(cacheKey, { text: gen.text, generated: true, modelLabel: activeModel() });
         } else {
           setLyrics(t?.lyricsNotFoundResult || 'Lyrics not found');
         }
@@ -8421,7 +8561,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
 
         {/* ─── PLAYLIST TAB */}
         {tab==='playlist'&&(
-          <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
+          <div style={{ height:'100%', display:'flex', flexDirection:'column', position:'relative' }}>
 
             {/* ── Playlist list view */}
             {plView==='list'&&(
@@ -8614,116 +8754,23 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
             )}
 
 
-            {/* ── Playlist FORM view — inline buat/edit */}
-            {plView==='form'&&(()=>{
-              const isEdit = !!editingPl;
-              const [formName, setFormName] = React.useState(editingPl?.name || '');
-              const [formSelected, setFormSelected] = React.useState(new Set(editingPl?.songIds || []));
-              const [searchQ, setSearchQ] = React.useState('');
-              const toggleSong = id => setFormSelected(s => { const n=new Set(s); n.has(id)?n.delete(id):n.add(id); return n; });
-              const filtered = allSongs.filter(s =>
-                !searchQ.trim() ||
-                s.title.toLowerCase().includes(searchQ.toLowerCase()) ||
-                s.artist.toLowerCase().includes(searchQ.toLowerCase())
-              );
-              const handleSave = () => {
-                if (!formName.trim()) { alert(lang==='id'?'Isi nama playlist!':'Enter playlist name!'); return; }
-                if (isEdit) {
-                  setPlaylists(p => p.map(pl => pl.id===editingPl.id ? { ...pl, name:formName.trim(), songIds:[...formSelected] } : pl));
-                  setEditingPl(null);
-                } else {
-                  const id = 'pl_' + Date.now();
-                  setPlaylists(p => [...p, { id, name:formName.trim(), songIds:[...formSelected], locked:false }]);
-                }
-                setPlView('list');
-              };
-              return (
-                <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
-                  {/* Header */}
-                  <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <button onClick={()=>{ setEditingPl(null); setPlView('list'); }}
-                        style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.5)', padding:4, display:'flex' }}>
-                        <ChevronLeft size={20}/>
-                      </button>
-                      <div style={{ width:34, height:34, borderRadius:10, background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                        {isEdit ? <PenLine size={16} style={{color:'white'}}/> : <ListPlus size={16} style={{color:'white'}}/>}
-                      </div>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontWeight:800, fontSize:15 }}>{isEdit ? t?.editPlaylist||'Edit Playlist' : t?.newPlaylist||'Playlist Baru'}</div>
-                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:1 }}>{formSelected.size} {t?.songsSelected||'lagu dipilih'}</div>
-                      </div>
-                      <button onClick={handleSave}
-                        style={{ padding:'7px 16px', borderRadius:10, border:'none', background:'linear-gradient(135deg,#6366f1,#a855f7)', color:'white', fontSize:12, fontWeight:800, cursor:'pointer', flexShrink:0 }}>
-                        {isEdit ? t?.saveChanges||'Simpan' : t?.createPlaylistBtn||'Buat'}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Scrollable body */}
-                  <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'12px 16px 80px', display:'flex', flexDirection:'column', gap:12 }}>
-
-                    {/* Nama playlist */}
-                    <div>
-                      <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.12em', marginBottom:6 }}>Nama Playlist</div>
-                      <input
-                        value={formName}
-                        onChange={e=>setFormName(e.target.value)}
-                        placeholder={t?.playlistNamePlaceholder||'Nama playlist kamu...'}
-                        autoFocus
-                        style={{ width:'100%', background:'rgba(255,255,255,0.06)', border:'1.5px solid rgba(99,102,241,0.3)', borderRadius:10, padding:'10px 13px', fontSize:13, color:'white', outline:'none', WebkitAppearance:'none' }}
-                        onFocus={e=>e.target.style.borderColor='rgba(99,102,241,0.7)'}
-                        onBlur={e=>e.target.style.borderColor='rgba(99,102,241,0.3)'}
-                      />
-                    </div>
-
-                    {/* Song picker */}
-                    <div>
-                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
-                        <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.12em' }}>{t?.selectSongs||'Pilih Lagu'}</div>
-                        <span style={{ fontSize:10, color:'rgba(255,255,255,0.25)' }}>{allSongs.length} tersedia</span>
-                      </div>
-                      {/* Search songs */}
-                      <div style={{ display:'flex', alignItems:'center', gap:7, background:'rgba(0,0,0,0.3)', borderRadius:999, padding:'6px 12px', border:'1px solid rgba(255,255,255,0.1)', marginBottom:8 }}>
-                        <Search size={12} style={{ color:'rgba(255,255,255,0.3)', flexShrink:0 }}/>
-                        <input
-                          value={searchQ}
-                          onChange={e=>setSearchQ(e.target.value)}
-                          placeholder={lang==='id'?'Cari lagu...':'Search songs...'}
-                          style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'white', fontSize:12, minWidth:0 }}
-                        />
-                        {searchQ && <button onClick={()=>setSearchQ('')} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.3)', cursor:'pointer', padding:0, lineHeight:1, fontSize:14 }}>×</button>}
-                      </div>
-                      {/* Song list */}
-                      <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
-                        {filtered.length===0 && (
-                          <div style={{ textAlign:'center', padding:'20px 0', color:'rgba(255,255,255,0.25)', fontSize:12 }}>Tidak ada lagu ditemukan</div>
-                        )}
-                        {filtered.map(s => {
-                          const on = formSelected.has(s.id);
-                          return (
-                            <div key={s.id} onClick={()=>toggleSong(s.id)}
-                              style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 10px', borderRadius:12, cursor:'pointer', background: on?'rgba(99,102,241,0.12)':'rgba(255,255,255,0.02)', border:`1px solid ${on?'rgba(99,102,241,0.4)':'rgba(255,255,255,0.06)'}`, transition:'all 0.1s' }}>
-                              {isLite
-                                ? <div style={{ width:34, height:34, borderRadius:8, background:s.bg||'rgba(255,255,255,0.07)', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={14} color={s.color}/></div>
-                                : <img src={s.cover} loading="lazy" decoding="async" style={{ width:34, height:34, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>}
-                              <div style={{ flex:1, minWidth:0 }}>
-                                <div style={{ fontWeight:700, fontSize:12, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color: on?'white':'rgba(255,255,255,0.8)' }}>{s.title}</div>
-                                <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{s.artist}</div>
-                              </div>
-                              <div style={{ width:20, height:20, borderRadius:'50%', border:`2px solid ${on?'#a78bfa':'rgba(255,255,255,0.2)'}`, background: on?'#a78bfa':'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, transition:'all 0.1s' }}>
-                                {on && <CheckCircle size={11} style={{color:'white'}}/>}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                  </div>
+            {/* ── Playlist FORM view — overlay seperti queue/share */}
+            {plView==='form'&&(
+              <div style={{ position:'absolute', inset:0, zIndex:100, background:'rgba(0,0,0,0.55)', display:'flex', alignItems:'stretch' }}>
+                <div style={{ width:'100%', height:'100%', display:'flex', flexDirection:'column', background:'#0d0d24' }}>
+                  <PlaylistFormView
+                    editingPl={editingPl}
+                    allSongs={allSongs}
+                    lang={lang}
+                    isLite={isLite}
+                    t={t}
+                    setPlaylists={setPlaylists}
+                    setEditingPl={setEditingPl}
+                    setPlView={setPlView}
+                  />
                 </div>
-              );
-            })()}
+              </div>
+            )}
 
             {/* ── Playlist detail view */}
             {plView==='detail'&&activePl&&(
