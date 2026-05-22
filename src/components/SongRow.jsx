@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { CheckCircle, Cloud, Download, ListPlus, Loader2, Music, Trash2, Heart } from 'lucide-react';
 import { btn } from '../constants.js';
 
