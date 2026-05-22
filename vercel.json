@@ -13,14 +13,17 @@
     },
     {
       "source": "/api/jamendo",
+      "has": [{ "type": "query", "key": "search", "value": "(?<search>.*)" }],
       "destination": "https://api.jamendo.com/v3.0/tracks/?client_id=b6747d04&format=jsonpretty&limit=5&search=:search&include=musicinfo&audioformat=mp32"
     },
     {
       "source": "/api/ccmixter",
+      "has": [{ "type": "query", "key": "title", "value": "(?<title>.*)" }],
       "destination": "https://ccmixter.org/api/query?title=:title&limit=5&format=json"
     },
     {
       "source": "/api/deezer",
+      "has": [{ "type": "query", "key": "q", "value": "(?<q>.*)" }],
       "destination": "https://api.deezer.com/search?q=:q&limit=5&output=json"
     },
     {
