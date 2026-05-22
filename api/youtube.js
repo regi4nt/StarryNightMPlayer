@@ -122,7 +122,7 @@ export default async function handler(req, res) {
 
     if (action === 'search') {
       endpoint = `${YT_BASE}/search`;
-      params = new URLSearchParams({
+      const searchParams = {
         key: apiKey,
         part: 'snippet',
         type: clientParams.type || 'video',
@@ -130,10 +130,14 @@ export default async function handler(req, res) {
         maxResults: clientParams.maxResults || '15',
         q: clientParams.q || '',
         safeSearch: 'none',
+        order: clientParams.order || 'relevance',     // ← default relevansi; client bisa override ke 'date'
         relevanceLanguage: clientParams.lang || 'id',
         regionCode: clientParams.regionCode || 'ID',
         fields: 'items(id/videoId,snippet/title,snippet/channelTitle,snippet/thumbnails/medium)',
-      });
+      };
+      // Teruskan publishedAfter jika dikirim client (filter video 2 tahun terakhir)
+      if (clientParams.publishedAfter) searchParams.publishedAfter = clientParams.publishedAfter;
+      params = new URLSearchParams(searchParams);
 
     } else if (action === 'trending') {
       endpoint = `${YT_BASE}/videos`;

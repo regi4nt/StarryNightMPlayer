@@ -512,19 +512,31 @@ export default function App() {
   };
 
   const searchViaYouTubeAPI = async (query) => {
+    const userKey = getYtKey();
+    console.log('[YT] searchViaYouTubeAPI called, key:', userKey ? userKey.slice(0,8)+'…' : 'EMPTY', 'isEnabled:', isYtApiEnabled());
     if (!isYtApiEnabled()) return null;
+    // publishedAfter: 2 tahun ke belakang — saring konten terbaru, hindari video lama
+    const twoYearsAgo = new Date();
+    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+    const publishedAfter = twoYearsAgo.toISOString();
     try {
-      const userKey = getYtKey();
       let res;
       if (userKey) {
+        // Kirim langsung ke Google — harus inklusif semua param yang sama dengan /api/youtube
         const params = new URLSearchParams({
           key: userKey, part: 'snippet', q: query, type: 'video',
           videoCategoryId: '10', maxResults: '15',
+          order: 'relevance',         // ← relevansi terbaik, bukan kronologis
+          regionCode: 'ID',           // ← sesuai /api/youtube server
+          relevanceLanguage: 'id',    // ← sesuai /api/youtube server
+          publishedAfter,             // ← hanya video 2 tahun terakhir
+          safeSearch: 'none',
           fields: 'items(id/videoId,snippet/title,snippet/channelTitle,snippet/thumbnails/medium)',
         });
         res = await fetchWithTimeout(`https://www.googleapis.com/youtube/v3/search?${params}`, 5000);
       } else {
-        const params = new URLSearchParams({ action: 'search', q: query, maxResults: '10' });
+        // Lewat proxy /api/youtube — server sudah punya regionCode & relevanceLanguage
+        const params = new URLSearchParams({ action: 'search', q: query, maxResults: '15', order: 'relevance', publishedAfter });
         res = await fetchWithTimeout(`/api/youtube?${params}`, 5000);
       }
       if (!res.ok) return null;
@@ -545,7 +557,8 @@ export default function App() {
   const searchViaPiped = async (query) => {
     const tryInstance = async (base) => {
       try {
-        const res = await fetchWithTimeout(buildPipedUrl(base, '/search', { q: query, filter: 'music_songs' }), 3000);
+        // filter=music_songs + sort=newest agar hasil relevan & terbaru
+        const res = await fetchWithTimeout(buildPipedUrl(base, '/search', { q: query, filter: 'music_songs', sort: 'newest' }), 3000);
         if (!res.ok) return null;
         const data = await res.json();
         const items = (data.items || []).filter(i => i.url && i.url.includes('watch')).slice(0, 15).map(i => ({
@@ -568,7 +581,8 @@ export default function App() {
     const tryInstance = async (base) => {
       try {
         const res = await fetchWithTimeout(
-          buildInvidiousUrl(base, '/api/v1/search', { q: query, type: 'video', fields: 'videoId,title,author,lengthSeconds,videoThumbnails' }),
+          // sort_by=upload_date + date=year → video musik terbaru dalam 1 tahun terakhir
+          buildInvidiousUrl(base, '/api/v1/search', { q: query, type: 'video', sort_by: 'upload_date', date: 'year', fields: 'videoId,title,author,lengthSeconds,videoThumbnails' }),
           3000
         );
         if (!res.ok) return null;
@@ -746,45 +760,53 @@ export default function App() {
       return;
     }
 
-    // ── Gabungkan hasil dari semua sumber (deduplikasi by videoId)
-    // Tampilkan segera sumber pertama yang masuk, lalu update/gabung saat yang lain selesai
+    // ── Helper deduplikasi (pakai di fallback path)
     const mergeItems = (existing, incoming) => {
       if (!incoming || incoming.length === 0) return existing;
       const seen = new Set(existing.map(x => x.videoId));
       const deduped = incoming.filter(x => x.videoId && !seen.has(x.videoId));
-      return [...existing, ...deduped].slice(0, 20); // max 20 hasil gabungan
+      return [...existing, ...deduped].slice(0, 20);
     };
 
-    // YT API hasil lebih akurat — jika ada key, beri prioritas (taruh di depan)
     const ytApiEnabled = isYtApiEnabled();
-    const sources = {
-      piped:    searchViaPiped(query),
-      invidious: searchViaInvidious(query),
-      ...(ytApiEnabled ? { ytapi: searchViaYouTubeAPI(query) } : {}),
-    };
+    console.log('[YT] searchYouTube: key=', getYtKey() ? getYtKey().slice(0,8)+'…' : 'EMPTY', 'enabled:', ytApiEnabled);
 
+    // ── PATH A: YT API tersedia — jalankan DULUAN sebagai satu-satunya sumber utama
+    // Piped/Invidious TIDAK dijalankan paralel agar tidak mencemari urutan hasil
+    if (ytApiEnabled) {
+      const ytItems = await searchViaYouTubeAPI(query).catch(() => null);
+      if (ytItems && ytItems.length > 0) {
+        setYtResults(p => ({...p, [platformId]: ytItems}));
+        setYtLoading(p => ({...p, [platformId]: false}));
+        ytSearchCacheSet(query, ytItems);
+        return; // ← selesai, tidak perlu fallback
+      }
+      // YT API gagal (quota habis, key invalid, dsb.) — lanjut ke fallback
+      console.warn('[YT] YT API enabled tapi gagal — fallback ke Piped/Invidious');
+    }
+
+    // ── PATH B: Fallback — tidak ada key ATAU YT API gagal
+    // Jalankan Piped + Invidious paralel dengan tampilan progresif
     let allItems = [];
     let gotFirst = false;
 
-    // Handle tiap sumber saat selesai — tampilkan progresif
-    const handlers = Object.entries(sources).map(([src, promise]) =>
+    const fallbackSources = {
+      piped:     searchViaPiped(query),
+      invidious: searchViaInvidious(query),
+    };
+
+    const handlers = Object.entries(fallbackSources).map(([, promise]) =>
       promise.then(items => {
         if (!items || items.length === 0) return;
-        if (src === 'ytapi') {
-          // YT API: taruh di depan karena paling relevan
-          allItems = mergeItems(items, allItems);
-        } else {
-          allItems = mergeItems(allItems, items);
-        }
+        allItems = mergeItems(allItems, items);
         if (allItems.length > 0) {
           gotFirst = true;
           setYtResults(p => ({...p, [platformId]: [...allItems]}));
-          if (gotFirst) setYtLoading(p => ({...p, [platformId]: false}));
+          setYtLoading(p => ({...p, [platformId]: false}));
         }
       }).catch(() => {})
     );
 
-    // Tunggu semua sumber selesai
     await Promise.allSettled(handlers);
 
     if (!gotFirst) {
@@ -799,7 +821,6 @@ export default function App() {
       setYtLoading(p => ({...p, [platformId]: false}));
     }
 
-    // Cache hasil akhir gabungan
     if (allItems.length > 0) ytSearchCacheSet(query, allItems);
   };
 
