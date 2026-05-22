@@ -1061,7 +1061,7 @@ async function getSpotifyToken() {
   } catch { return null; }
 }
 
-async function searchSpotify(query, limit = 10) {
+export async function searchSpotify(query, limit = 10) {
   const token = await getSpotifyToken();
   if (!token) return null;
   try {
@@ -1089,7 +1089,7 @@ async function searchSpotify(query, limit = 10) {
 // ═══════════════════════════════════════════════════════
 export const SC_CLIENT_ID = ''; // user supplies via Settings
 
-async function searchSoundCloud(query, limit = 10) {
+export async function searchSoundCloud(query, limit = 10) {
   const scId = getScId();
   if (!scId) return null;
   try {
@@ -1291,7 +1291,7 @@ async function ytCacheGet(videoId) {
 
 // Download audio YouTube via Piped API → simpan ke cache
 // Mencoba semua instance Piped satu per satu hingga berhasil
-async function downloadYtAudio(videoId, onProgress, signal) {
+export async function downloadYtAudio(videoId, onProgress, signal) {
   // Cek cache dulu
   const existing = await ytCacheGet(videoId);
   if (existing && existing.size > 10000) { onProgress && onProgress(100); return; }
@@ -1334,7 +1334,7 @@ async function downloadYtAudio(videoId, onProgress, signal) {
 }
 
 // ── Unduh file audio ke perangkat (bukan cache browser) — memicu dialog Save As
-async function downloadToDevice(url, filename, headers = {}) {
+export async function downloadToDevice(url, filename, headers = {}) {
   const res = await fetch(url, { headers });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const blob = await res.blob();
@@ -1529,7 +1529,7 @@ async function cachePut(cacheKey, blob) {
 }
 
 // Ambil blob dari Cache API jika ada
-async function cacheGet(cacheKey) {
+export async function cacheGet(cacheKey) {
   try {
     const cache = await caches.open(DRIVE_CACHE_NAME);
     const res = await cache.match(`/drive/${cacheKey}`);
@@ -1551,7 +1551,7 @@ export function guessMime(contentType) {
 
 // Streaming via MediaSource API — audio mulai diputar segera tanpa tunggu download selesai.
 // Fallback ke blob biasa jika MediaSource tidak support mime atau response body tidak tersedia.
-async function driveStreamBlob(driveId, token) {
+export async function driveStreamBlob(driveId, token) {
   // Cache key: driveId saja (token bisa expired, tapi file-nya sama)
   const cacheKey = driveId;
   const memKey   = `${driveId}:${token.slice(-12)}`;
@@ -1632,7 +1632,7 @@ async function driveStreamBlob(driveId, token) {
 // Hanya buffer ~30 detik ke depan, lanjut fetch saat buffer menipis.
 // Hemat data + hemat storage. AbortController dikirim agar bisa dibatalkan saat skip.
 export const _liteAbortMap = new Map(); // driveId → AbortController
-async function driveStreamLite(driveId, token, audioElRef) {
+export async function driveStreamLite(driveId, token, audioElRef) {
   const memKey = `${driveId}:${token.slice(-12)}:lite`;
 
   // 1. In-memory URL dari sesi ini (MediaSource URL yang sudah dibuat)
@@ -1733,7 +1733,7 @@ async function driveStreamLite(driveId, token, audioElRef) {
 // Download full blob — Pro mode: stream langsung bisa diputar, progress nyata, simpan cache saat selesai
 // onProgress(pct 0-100) dipanggil selama download, onComplete() dipanggil saat blob penuh tersimpan
 // forceDownload: skip cache check (dipakai saat melanjutkan cache parsial)
-async function driveDownloadBlob(driveId, token, onProgress, onComplete, forceDownload = false) {
+export async function driveDownloadBlob(driveId, token, onProgress, onComplete, forceDownload = false) {
   const cacheKey = driveId;
   const memKey   = `${driveId}:${token.slice(-12)}`;
 
@@ -1837,11 +1837,11 @@ async function driveDownloadBlob(driveId, token, onProgress, onComplete, forceDo
 }
 
 // Pre-fetch lagu berikutnya di background agar instant saat diklik
-async function drivePrefetch(driveId, token) {
+export async function drivePrefetch(driveId, token) {
   if (!driveId || !token || _blobCache.has(`${driveId}:${token.slice(-12)}`)) return;
   try { await driveStreamBlob(driveId, token); } catch { /* silent fail */ }
 }
-async function driveUploadSong(file, meta, token) {
+export async function driveUploadSong(file, meta, token) {
   const folderId=await driveEnsureFolder(token), ci=randItem(SONG_COLORS), cover=randItem(COVERS);
   const metadata={ name:file.name, parents:[folderId], appProperties:{ title:meta.title||file.name.replace(/\.[^/.]+$/,''), artist:meta.artist||'Unknown', album:meta.album||'My Songs', cover, color:ci.color, bg:ci.bg } };
   const form=new FormData();
