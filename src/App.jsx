@@ -1903,7 +1903,8 @@ async function driveStreamBlob(driveId, token) {
         const pump = async () => {
           const { done, value } = await reader.read();
           if (done) {
-            if (ms.readyState === 'open') ms.endOfStream();
+            if (ms.readyState === 'open' && !sb.updating) ms.endOfStream();
+            else if (ms.readyState === 'open') { await waitUpdate(); if (ms.readyState === 'open') ms.endOfStream(); }
             const fullBlob = new Blob(chunks, { type: mime });
             markFullyCached(driveId, fullBlob.size);
             cachePut(cacheKey, fullBlob);
@@ -1911,11 +1912,11 @@ async function driveStreamBlob(driveId, token) {
           }
           chunks.push(value);
           if (sb.updating) await waitUpdate();
-          if (ms.readyState === 'open') { sb.appendBuffer(value); await waitUpdate(); }
-          await pump();
+          if (ms.readyState === 'open' && !sb.updating) { sb.appendBuffer(value); await waitUpdate(); }
+          if (ms.readyState === 'open') await pump();
         };
         await pump();
-      } catch { /* stream closed / tab navigated */ }
+      } catch(e) { if (e?.name !== 'AbortError') console.warn('[DriveBlob] stream error:', e?.message); }
     }, { once: true });
     return url;
   }
@@ -1991,15 +1992,17 @@ async function driveStreamLite(driveId, token, audioElRef) {
               paused = true;
               // Tunggu sampai buffer habis sebelum lanjut fetch
               const resume = () => {
+                if (abortCtrl.signal.aborted) return; // sudah di-abort (skip/ganti lagu)
                 const a2 = getAudio();
-                if (!a2 || a2.currentTime >= bufferedEnd - PAUSE_SEC) {
+                // Jika audio sudah null atau posisi sudah melewati akhir buffer (atau mendekati) → lanjut fetch
+                if (!a2 || a2.currentTime >= bufferedEnd - PAUSE_SEC || a2.currentTime >= bufferedEnd - 5) {
                   paused = false;
                   pump();
                 } else {
-                  setTimeout(resume, 2000);
+                  setTimeout(resume, 1500);
                 }
               };
-              setTimeout(resume, 2000);
+              setTimeout(resume, 1500);
               return;
             }
           }
@@ -2637,8 +2640,52 @@ function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDri
           {isCached && <span style={{ flexShrink:0, fontSize:9, fontWeight:800, color:'#4ade80', background:'rgba(74,222,128,0.12)', padding:'1px 5px', borderRadius:999 }}>✓ Offline</span>}
         </div>
       </div>
-      <div style={{ display:'flex', gap:2 }}>
-        {onRemove&&<button onClick={e=>{e.stopPropagation();onRemove(s.id)}} style={{ ...btn, color:'rgba(255,255,255,0.2)', padding:6 }}><Trash2 size={14}/></button>}
+      <div style={{ display:'flex', gap:2, position:'relative' }}>
+        {/* ── Tombol Hapus — hanya tampil saat editMode aktif (dikontrol dari parent) */}
+        {onRemove && (
+          <button onClick={e=>{ e.stopPropagation(); onRemove(s.id); }}
+            title={t?.deleteBtn||'Hapus'}
+            style={{ background:'none', border:'none', cursor:'pointer', padding:6, color:'#f87171', display:'flex', alignItems:'center' }}
+          >
+            <Trash2 size={14}/>
+          </button>
+        )}
+        {/* ── Tombol Tambah ke Playlist */}
+        {playlists && playlists.length > 0 && addToPlaylist && (
+          <div ref={plMenuRef} style={{ position:'relative' }}>
+            <button
+              onClick={e=>{ e.stopPropagation(); setShowPlMenu(v=>!v); }}
+              title={t?.addToPlaylistBtn||'Tambah ke Playlist'}
+              style={{ background:'none', border:'none', cursor:'pointer', flexShrink:0, padding:6, color: showPlMenu ? '#f472b6' : 'rgba(255,255,255,0.35)', transition:'color 0.2s' }}
+            >
+              <ListPlus size={14}/>
+            </button>
+            {showPlMenu && (
+              <div
+                onClick={e=>e.stopPropagation()}
+                style={{
+                  position:'absolute', right:0, bottom:'calc(100% + 6px)',
+                  background:'#1a1a2e', border:'1px solid rgba(255,255,255,0.1)',
+                  borderRadius:12, padding:'6px 0', minWidth:160, zIndex:999,
+                  boxShadow:'0 8px 32px rgba(0,0,0,0.6)'
+                }}
+              >
+                <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.3)', padding:'4px 14px 6px', textTransform:'uppercase', letterSpacing:1 }}>
+                  {t?.addToPlaylistHeader||'Tambah ke'}
+                </div>
+                {playlists.filter(pl=>!pl.locked).map(pl=>(
+                  <button key={pl.id} onClick={()=>{ addToPlaylist(pl.id, s.id); setShowPlMenu(false); }}
+                    style={{ display:'block', width:'100%', textAlign:'left', padding:'8px 14px', background:'none', border:'none', color:'rgba(255,255,255,0.75)', fontSize:12, fontWeight:600, cursor:'pointer', borderRadius:0 }}
+                    onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.07)'}
+                    onMouseLeave={e=>e.currentTarget.style.background='none'}
+                  >
+                    {pl.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         {/* ── Tombol unduh ke perangkat (tidak tampil untuk radio) */}
         {!s.isRadio&&<button onClick={handleDownload} title={dlState==='done'?'Berhasil diunduh!':dlState==='error'?'Gagal, coba lagi':'Unduh ke perangkat'}
           style={{ ...btn, color:dlColor, padding:6, transition:'color 0.2s' }}>
@@ -2648,8 +2695,6 @@ function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDri
             ? <CheckCircle size={14}/>
             : <Download size={14}/>}
         </button>}
-
-
       </div>
     </div>
   );
@@ -4919,8 +4964,44 @@ export default function App() {
       }
     };
     // Error / stall — pastikan loading state tidak terjebak selamanya
-    const onError = () => { setPlaying(false); setLoadingTrack(false); };
-    const onStall = () => { console.warn('Audio stalled:', track.src); };
+    const onError = () => {
+      const err = a.error;
+      // MediaSource / network error saat streaming Drive — coba reload
+      if (track.isDrive && track.driveId && err && (err.code === 2 || err.code === 4)) {
+        // MEDIA_ERR_NETWORK (2) atau MEDIA_ERR_SRC_NOT_SUPPORTED (4)
+        // Bisa terjadi saat MediaSource stream putus atau token expired di tengah jalan
+        const tok = tokenRef.current;
+        if (tok) {
+          const savedPos = a.currentTime;
+          console.warn('[Drive] Audio error, retrying from', savedPos, 'err:', err.code);
+          // Hapus cache in-memory agar re-fetch
+          for (const [k, v] of _blobCache) {
+            if (k.startsWith(track.driveId + ':')) { URL.revokeObjectURL(v); _blobCache.delete(k); }
+          }
+          // Re-trigger play dari posisi yang sama via token refresh
+          silentRefreshToken().catch(() => tok).then(newTok => {
+            const fn = isLite ? driveStreamLite : driveStreamBlob;
+            return fn(track.driveId, newTok, audioRef);
+          }).then(url => {
+            if (!url || !audioRef.current) return;
+            const newA = audioRef.current;
+            newA.src = url;
+            newA.currentTime = savedPos;
+            newA.play().catch(() => setPlaying(false));
+          }).catch(() => { setPlaying(false); setLoadingTrack(false); });
+          return;
+        }
+      }
+      setPlaying(false); setLoadingTrack(false);
+    };
+    const onStall = () => {
+      // Stall bisa terjadi saat buffer habis di Lite mode — coba resume
+      if (a.readyState < 3 && !a.paused) {
+        a.load();
+        const pos = a.currentTime;
+        a.addEventListener('canplay', () => { a.currentTime = pos; a.play().catch(()=>{}); }, { once: true });
+      }
+    };
     a.addEventListener('timeupdate', onTime);
     a.addEventListener('loadedmetadata', onMeta);
     a.addEventListener('durationchange', onDurChange);
@@ -8913,6 +8994,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
               // ── Special: Lagu Saya (Drive)
               if (activePl === 'my_songs') {
                 const songs = filteredCustom;
+                const [mySongsEditMode, setMySongsEditMode] = React.useState(false);
                 return (
                   <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
                     <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0, position:'sticky', top:0, zIndex:5, background:'rgba(7,7,26,0.97)', ...(isLite ? {} : { backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }) }}>
@@ -8927,6 +9009,12 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                           <div style={{ fontWeight:800, fontSize:15 }}>{t?.mySongs||'My Songs'}</div>
                           <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:1 }}>{customSongs.length} {t?.songsFromDrive||'songs from Google Drive'}</div>
                         </div>
+                        <button
+                          onClick={()=>setMySongsEditMode(v=>!v)}
+                          style={{ background: mySongsEditMode ? 'rgba(248,113,113,0.15)' : 'rgba(255,255,255,0.06)', border: mySongsEditMode ? '1px solid rgba(248,113,113,0.4)' : '1px solid rgba(255,255,255,0.12)', cursor:'pointer', color: mySongsEditMode ? '#f87171' : 'rgba(255,255,255,0.55)', fontSize:12, padding:'5px 10px', borderRadius:8, fontWeight:700, display:'flex', alignItems:'center', gap:5, transition:'all 0.2s' }}
+                        >
+                          <PenLine size={12}/> {mySongsEditMode ? (lang==='id'?'Selesai':'Done') : (t?.editBtn||'Edit')}
+                        </button>
                         {googleUser&&(
                           <button onClick={()=>loadDriveSongs(tokenRef.current, true)}
                             style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', cursor:'pointer', color:'rgba(255,255,255,0.55)', fontSize:12, padding:'5px 10px', borderRadius:8, fontWeight:700 }}>
@@ -8966,13 +9054,13 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                           )}
                         </div>
                       )}
-                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={play} isDrive isCached={cachedDriveIds.has(s.driveId)} onRemove={id=>{
+                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={play} isDrive isCached={cachedDriveIds.has(s.driveId)} onRemove={mySongsEditMode ? id=>{
                           setCustomSongs(p=>p.filter(x=>x.id!==id));
                           setPlaylists(p=>p.map(pl=>({ ...pl, songIds: pl.songIds.filter(sid=>sid!==id) })));
                           setLiked(l=>{ const n={...l}; delete n[id]; return n; });
                           setFavSongs(p=>p.filter(s=>s.id!==id));
                           if(activePlRef.current) activePlRef.current=activePlRef.current.filter(s=>s.id!==id);
-                        }} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite} t={t}
+                        } : null} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite} t={t}
                         onDownload={async(s)=>{ if(s.driveId&&tokenRef.current){ await downloadToDevice(`https://www.googleapis.com/drive/v3/files/${s.driveId}?alt=media&acknowledgeAbuse=true`,`${s.title} - ${s.artist}.mp3`,{Authorization:`Bearer ${tokenRef.current}`}); } else if(s.src){ const raw=s.src.split('?')[0]; const ext=raw.includes('.')?raw.split('.').pop():'mp3'; await downloadToDevice(s.src,`${s.title} - ${s.artist}.${ext}`); } }}
                       />)}
                     </div>
