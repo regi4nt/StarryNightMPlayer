@@ -520,21 +520,20 @@ export default function App() {
     try {
       let res;
       if (userKey) {
-        // Direct ke Google — sertakan semua param penting (sama dgn server proxy)
+        // Direct ke Google — param minimal agar latency rendah
+        // videoEmbeddable & order dihilangkan: memperlambat Google tanpa manfaat nyata
         const params = new URLSearchParams({
           key: userKey, part: 'snippet', q: query, type: 'video',
-          videoCategoryId: '10', maxResults: '15',
-          order: 'relevance',           // relevansi YT — sudah balance antara freshness & popularitas
-          regionCode: 'ID',             // sesuai server proxy
-          relevanceLanguage: 'id',      // sesuai server proxy
-          videoEmbeddable: 'true',      // pastikan video bisa diputar di player
+          videoCategoryId: '10', maxResults: '10',
+          regionCode: 'ID',
+          relevanceLanguage: 'id',
           safeSearch: 'none',
           fields: 'items(id/videoId,snippet/title,snippet/channelTitle,snippet/thumbnails/medium)',
         });
         res = await fetchWithTimeout(`https://www.googleapis.com/youtube/v3/search?${params}`, 6000);
       } else {
-        // Lewat proxy /api/youtube — server sudah handle regionCode & relevanceLanguage
-        const params = new URLSearchParams({ action: 'search', q: query, maxResults: '15', order: 'relevance', videoEmbeddable: 'true' });
+        // Lewat proxy /api/youtube
+        const params = new URLSearchParams({ action: 'search', q: query, maxResults: '10' });
         res = await fetchWithTimeout(`/api/youtube?${params}`, 6000);
       }
       // 403 = quota habis atau key invalid — throw agar caller bisa bedakan dari empty result
@@ -811,40 +810,31 @@ export default function App() {
     }
 
     // ── PATH B: Fallback — tidak ada key ATAU YT API gagal
-    // Jalankan Piped + Invidious paralel dengan tampilan progresif
+    // Race Piped vs Invidious — yang pertama berhasil langsung tampil, tidak tunggu yang lain
     let allItems = [];
-    let gotFirst = false;
 
-    const fallbackSources = {
-      piped:     searchViaPiped(query),
-      invidious: searchViaInvidious(query),
-    };
+    const raceResult = await Promise.any([
+      searchViaPiped(query).then(items => { if (!items || items.length === 0) throw new Error('empty'); return items; }),
+      searchViaInvidious(query).then(items => { if (!items || items.length === 0) throw new Error('empty'); return items; }),
+    ]).catch(() => null);
 
-    const handlers = Object.entries(fallbackSources).map(([, promise]) =>
-      promise.then(items => {
-        if (!items || items.length === 0) return;
-        allItems = mergeItems(allItems, items);
-        if (allItems.length > 0) {
-          gotFirst = true;
-          setYtResults(p => ({...p, [platformId]: [...allItems]}));
-          setYtLoading(p => ({...p, [platformId]: false}));
-        }
-      }).catch(() => {})
-    );
-
-    await Promise.allSettled(handlers);
-
-    if (!gotFirst) {
-      // Semua sumber gagal — coba AI sebagai last resort
-      const aiItems = await searchViaAI(query).catch(() => null);
-      if (aiItems && aiItems.length > 0) {
-        allItems = aiItems;
-        setYtResults(p => ({...p, [platformId]: aiItems}));
-      } else {
-        setYtError(p => ({...p, [platformId]: t?.searchFailed||'Search failed.'}));
-      }
+    if (raceResult && raceResult.length > 0) {
+      allItems = raceResult;
+      setYtResults(p => ({...p, [platformId]: allItems}));
       setYtLoading(p => ({...p, [platformId]: false}));
+      ytSearchCacheSet(query, allItems);
+      return;
     }
+
+    // Semua sumber gagal — coba AI sebagai last resort
+    const aiItems = await searchViaAI(query).catch(() => null);
+    if (aiItems && aiItems.length > 0) {
+      allItems = aiItems;
+      setYtResults(p => ({...p, [platformId]: aiItems}));
+    } else {
+      setYtError(p => ({...p, [platformId]: t?.searchFailed||'Search failed.'}));
+    }
+    setYtLoading(p => ({...p, [platformId]: false}));
 
     if (allItems.length > 0) ytSearchCacheSet(query, allItems);
   };

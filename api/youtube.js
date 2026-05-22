@@ -127,11 +127,9 @@ export default async function handler(req, res) {
         part: 'snippet',
         type: clientParams.type || 'video',
         videoCategoryId: '10',
-        maxResults: clientParams.maxResults || '15',
+        maxResults: clientParams.maxResults || '10',
         q: clientParams.q || '',
         safeSearch: 'none',
-        order: clientParams.order || 'relevance',   // relevance = balance freshness & popularitas
-        videoEmbeddable: clientParams.videoEmbeddable || 'true', // pastikan video bisa diputar
         relevanceLanguage: clientParams.lang || 'id',
         regionCode: clientParams.regionCode || 'ID',
         fields: 'items(id/videoId,snippet/title,snippet/channelTitle,snippet/thumbnails/medium)',
