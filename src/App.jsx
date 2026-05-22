@@ -1284,16 +1284,16 @@ function getProviders() {
     { provider:'Gemini', key:'__proxy__', model:'gemini-2.0-flash', endpoint:'/api/gemini', isOpenAI:true, extra:{} },
     { provider:'Gemini', key:'__proxy__', model:'gemini-1.5-flash', endpoint:'/api/gemini', isOpenAI:true, extra:{} },
     // Groq — /api/groq proxy (GROQ_API_KEY di Vercel env, tidak pernah ke browser)
-    { provider:'Groq', key:'__proxy__', model:'llama-3.3-70b-versatile', endpoint:'/api/groq', isOpenAI:true, extra:{} },
-    { provider:'Groq', key:'__proxy__', model:'gemma2-9b-it',            endpoint:'/api/groq', isOpenAI:true, extra:{} },
-    { provider:'Groq', key:'__proxy__', model:'llama3-8b-8192',          endpoint:'/api/groq', isOpenAI:true, extra:{} },
+    { provider:'Groq', key:'__proxy__', model:'llama-3.3-70b-versatile', endpoint:'/api/xai-groq?provider=groq', isOpenAI:true, extra:{} },
+    { provider:'Groq', key:'__proxy__', model:'gemma2-9b-it',            endpoint:'/api/xai-groq?provider=groq', isOpenAI:true, extra:{} },
+    { provider:'Groq', key:'__proxy__', model:'llama3-8b-8192',          endpoint:'/api/xai-groq?provider=groq', isOpenAI:true, extra:{} },
     // DeepSeek — /api/deepseek proxy (DEEPSEEK_API_KEY di Vercel env, tidak pernah ke browser)
     { provider:'DeepSeek', key:'__proxy__', model:'deepseek-chat',     endpoint:'/api/deepseek', isOpenAI:true, extra:{} },
     { provider:'DeepSeek', key:'__proxy__', model:'deepseek-reasoner', endpoint:'/api/deepseek', isOpenAI:true, extra:{} },
     // Grok (xAI) — /api/grok proxy (GROK_API_KEY di Vercel env, tidak pernah ke browser)
-    { provider:'Grok', key:'__proxy__', model:'grok-3',      endpoint:'/api/grok', isOpenAI:true, extra:{} },
-    { provider:'Grok', key:'__proxy__', model:'grok-3-mini', endpoint:'/api/grok', isOpenAI:true, extra:{} },
-    // HuggingFace — hf_ key via sn_ai_key handled above; here only legacy sn_hf_key or proxy fallback
+    { provider:'Grok', key:'__proxy__', model:'grok-3',      endpoint:'/api/xai-groq?provider=grok', isOpenAI:true, extra:{} },
+    { provider:'Grok', key:'__proxy__', model:'grok-3-mini', endpoint:'/api/xai-groq?provider=grok', isOpenAI:true, extra:{} },
+    // HuggingFace — hf_ key via sn_ai_key handled above; here only legacy sn_hf_key (no proxy)
     ...((() => {
       if (userKey && userKey.startsWith('hf_')) return []; // already handled in user-key block
       const k = getUserHfKey(); // legacy sn_hf_key fallback
@@ -1302,10 +1302,7 @@ function getProviders() {
         { provider:'HuggingFace', key:k, model:'Qwen/Qwen2.5-72B-Instruct',         endpoint:'https://router.huggingface.co/v1/chat/completions', isOpenAI:true, extra:{} },
         { provider:'HuggingFace', key:k, model:'mistralai/Mistral-7B-Instruct-v0.3', endpoint:'https://router.huggingface.co/v1/chat/completions', isOpenAI:true, extra:{} },
       ];
-      return [
-        { provider:'HuggingFace', key:'__proxy__', model:'meta-llama/Llama-3.3-70B-Instruct', endpoint:'/api/huggingface', isOpenAI:true, extra:{} },
-        { provider:'HuggingFace', key:'__proxy__', model:'Qwen/Qwen2.5-72B-Instruct',         endpoint:'/api/huggingface', isOpenAI:true, extra:{} },
-      ];
+      return []; // proxy dihapus
     })()),
     // Cloudflare Workers AI — user key direct OR via /api/cloudflare server-side proxy
     ...((() => {
