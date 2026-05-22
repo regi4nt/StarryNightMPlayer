@@ -2,32 +2,103 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "installCommand": "npm install",
+  "functions": {
+    "api/openai.js": {
+      "runtime": "nodejs20.x"
+    },
+    "api/anthropic.js": {
+      "runtime": "nodejs20.x"
+    },
+    "api/openrouter.js": {
+      "runtime": "nodejs20.x"
+    },
+    "api/gemini.js": {
+      "runtime": "nodejs20.x"
+    },
+    "api/groq.js": {
+      "runtime": "nodejs20.x"
+    },
+    "api/deepseek.js": {
+      "runtime": "nodejs20.x"
+    },
+    "api/grok.js": {
+      "runtime": "nodejs20.x"
+    },
+    "api/huggingface.js": {
+      "runtime": "nodejs20.x"
+    },
+    "api/cloudflare.js": {
+      "runtime": "nodejs20.x"
+    },
+    "api/github.js": {
+      "runtime": "nodejs20.x"
+    },
+    "api/sambanova.js": {
+      "runtime": "nodejs20.x"
+    },
+    "api/spotify-token.js": {
+      "runtime": "nodejs20.x"
+    },
+    "api/soundcloud.js": {
+      "runtime": "nodejs20.x"
+    }
+  },
   "rewrites": [
-    { "source": "/api/radio-garden/:path*", "destination": "https://radio.garden/api/ara/:path*" },
-    { "source": "/api/chartlyrics/:path*", "destination": "http://api.chartlyrics.com/apiv1.asmx/:path*" },
-    { "source": "/api/textyl/:path*", "destination": "https://api.textyl.co/api/:path*" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/api/radio-garden/:path*",
+      "destination": "https://radio.garden/api/ara/:path*"
+    },
+    {
+      "source": "/api/chartlyrics/:path*",
+      "destination": "http://api.chartlyrics.com/apiv1.asmx/:path*"
+    },
+    {
+      "source": "/api/textyl/:path*",
+      "destination": "https://api.textyl.co/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ],
   "headers": [
     {
       "source": "/assets/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
       ]
     },
     {
       "source": "/sw.js",
       "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
-        { "key": "Service-Worker-Allowed", "value": "/" }
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        }
       ]
     },
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
       ]
     }
   ]
