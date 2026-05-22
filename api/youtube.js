@@ -1,3 +1,7 @@
+import { applyRateLimit } from './_lib/rateLimit.js';
+
+export const config = { runtime: 'nodejs' };
+
 /**
  * Vercel Serverless Function: /api/youtube
  *
@@ -22,7 +26,11 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const apiKey = process.env.VITE_YOUTUBE_API_KEY;
+  // ── Rate limiting ────────────────────────────────────────────
+  if (await applyRateLimit(req, res, { max: 60, windowMs: 60000, key: 'youtube' })) return;
+  // ─────────────────────────────────────────────────────────────
+
+  const apiKey = process.env.YOUTUBE_API_KEY;
   if (!apiKey) {
     return res.status(503).json({ error: 'YouTube API key not configured' });
   }

@@ -33,25 +33,19 @@ export default defineConfig({
       workbox: {
         skipWaiting: true,
         clientsClaim: true,
-        globPatterns: ['**/*.{css,html,svg,png,ico,woff2}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
         globIgnores: ['**/node_modules/**/*', 'sw.js', 'workbox-*.js'],
+        navigateFallback: 'index.html',
+        navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
-            urlPattern: /\/assets\/.+\.(js|css)$/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'static-assets',
-              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
-              cacheableResponse: { statuses: [0, 200] }
-            }
-          },
-          {
-            urlPattern: /\.(mp3|wav|ogg|flac|m4a)$/i,
+            urlPattern: /\.(mp3|wav|ogg|flac|m4a)(\?.*)?$/i,
             handler: 'CacheFirst',
             options: {
               cacheName: 'audio-cache',
               expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 30 },
-              cacheableResponse: { statuses: [0, 200] }
+              cacheableResponse: { statuses: [0, 200] },
+              rangeRequests: true,
             }
           },
           {
@@ -82,17 +76,35 @@ export default defineConfig({
     target: ['es2020', 'chrome87', 'firefox78', 'safari14'],
     minify: 'terser',
     terserOptions: {
-      compress: {
-        passes: 2,
-        drop_console: false,
-      },
+      compress: { passes: 2, drop_console: false },
       mangle: true,
     },
-    chunkSizeWarningLimit: 1500,
+    chunkSizeWarningLimit: 800,
     rollupOptions: {
       output: {
         entryFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
+        // ── Manual chunks: pisahkan vendor & fitur besar ──────────
+        manualChunks(id) {
+          // Vendor: React core
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+            return 'vendor-react';
+          }
+          // Vendor: lucide icons (besar, jarang berubah)
+          if (id.includes('node_modules/lucide-react')) {
+            return 'vendor-icons';
+          }
+          // Translations (statis, dimuat awal)
+          if (id.includes('src/translations')) {
+            return 'translations';
+          }
+          // Constants & utils (data besar, dimuat awal)
+          if (id.includes('src/constants')) {
+            return 'app-constants';
+          }
+          // Lazy components → Rollup otomatis buat chunk terpisah karena dynamic import
+          // (SettingsPanel, PlaylistViews, UploadModal sudah jadi chunk sendiri)
+        },
       }
     },
     assetsInlineLimit: 4096,

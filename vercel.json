@@ -8,10 +8,6 @@
       "destination": "https://radio.garden/api/ara/:path*"
     },
     {
-      "source": "/api/chartlyrics/:path*",
-      "destination": "http://api.chartlyrics.com/apiv1.asmx/:path*"
-    },
-    {
       "source": "/api/textyl/:path*",
       "destination": "https://api.textyl.co/api/:path*"
     },
@@ -57,6 +53,10 @@
         {
           "key": "Referrer-Policy",
           "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; media-src 'self' https: blob:; connect-src 'self' https:; font-src 'self' data:; worker-src 'self' blob:;"
         }
       ]
     }

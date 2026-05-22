@@ -1,3 +1,7 @@
+import { applyRateLimit } from './_lib/rateLimit.js';
+
+export const config = { runtime: 'nodejs' };
+
 /**
  * Vercel Serverless Function: /api/invidious
  *
@@ -41,6 +45,10 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
+
+  // ── Rate limiting ─────────────────────────────────────────────
+  if (await applyRateLimit(req, res, { max: 60, windowMs: 60_000, key: 'invidious' })) return;
+  // ──────────────────────────────────────────────────────────────
 
   const { path: apiPath, backend, ...queryParams } = req.query;
   if (!apiPath) {
@@ -92,3 +100,4 @@ export default async function handler(req, res) {
     detail: lastError,
   });
 }
+
