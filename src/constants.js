@@ -833,7 +833,7 @@ export function getProviders() {
       ];
       if (userKey.startsWith('gsk_')) return [
         { provider:'Groq', key:userKey, model:'llama-3.3-70b-versatile', endpoint:'https://api.groq.com/openai/v1/chat/completions', isOpenAI:true, extra:{} },
-        { provider:'Groq', key:userKey, model:'llama3-8b-8192',          endpoint:'https://api.groq.com/openai/v1/chat/completions', isOpenAI:true, extra:{} },
+        { provider:'Groq', key:userKey, model:'llama-3.1-8b-instant',    endpoint:'https://api.groq.com/openai/v1/chat/completions', isOpenAI:true, extra:{} },
       ];
       if (userKey.startsWith('AIza')) return [
         { provider:'Gemini', key:userKey, model:'gemini-2.0-flash', endpoint:'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', isOpenAI:true, extra:{} },
@@ -873,15 +873,15 @@ export function getProviders() {
     // OpenRouter — /api/openrouter proxy (OPENROUTER_API_KEY di Vercel env, tidak pernah ke browser)
     { provider:'OpenRouter', key:'__proxy__', model:'deepseek/deepseek-chat:free',            endpoint:'/api/openrouter', isOpenAI:true, extra:{} },
     { provider:'OpenRouter', key:'__proxy__', model:'meta-llama/llama-3.3-70b-instruct:free', endpoint:'/api/openrouter', isOpenAI:true, extra:{} },
-    { provider:'OpenRouter', key:'__proxy__', model:'qwen/qwen3-8b:free',                     endpoint:'/api/openrouter', isOpenAI:true, extra:{} },
-    { provider:'OpenRouter', key:'__proxy__', model:'google/gemma-3-27b-it:free',             endpoint:'/api/openrouter', isOpenAI:true, extra:{} },
+    { provider:'OpenRouter', key:'__proxy__', model:'qwen/qwen3-4b:free',                     endpoint:'/api/openrouter', isOpenAI:true, extra:{} },
+    { provider:'OpenRouter', key:'__proxy__', model:'mistralai/mistral-7b-instruct:free',     endpoint:'/api/openrouter', isOpenAI:true, extra:{} },
     // Gemini — /api/gemini proxy (GEMINI_API_KEY di Vercel env, tidak pernah ke browser)
     { provider:'Gemini', key:'__proxy__', model:'gemini-2.0-flash', endpoint:'/api/gemini', isOpenAI:true, extra:{} },
-    { provider:'Gemini', key:'__proxy__', model:'gemini-1.5-flash', endpoint:'/api/gemini', isOpenAI:true, extra:{} },
+    { provider:'Gemini', key:'__proxy__', model:'gemini-2.0-flash-lite', endpoint:'/api/gemini', isOpenAI:true, extra:{} },
     // Groq — /api/groq proxy (GROQ_API_KEY di Vercel env, tidak pernah ke browser)
     { provider:'Groq', key:'__proxy__', model:'llama-3.3-70b-versatile', endpoint:'/api/groq', isOpenAI:true, extra:{} },
     { provider:'Groq', key:'__proxy__', model:'gemma2-9b-it',            endpoint:'/api/groq', isOpenAI:true, extra:{} },
-    { provider:'Groq', key:'__proxy__', model:'llama3-8b-8192',          endpoint:'/api/groq', isOpenAI:true, extra:{} },
+    { provider:'Groq', key:'__proxy__', model:'llama-3.1-8b-instant',    endpoint:'/api/groq', isOpenAI:true, extra:{} },
     // DeepSeek — /api/deepseek proxy (DEEPSEEK_API_KEY di Vercel env, tidak pernah ke browser)
     { provider:'DeepSeek', key:'__proxy__', model:'deepseek-chat',     endpoint:'/api/deepseek', isOpenAI:true, extra:{} },
     { provider:'DeepSeek', key:'__proxy__', model:'deepseek-reasoner', endpoint:'/api/deepseek', isOpenAI:true, extra:{} },
@@ -948,7 +948,7 @@ export function getProviders() {
     // Digunakan otomatis jika SEMUA provider di atas gagal / sibuk
     // Pollinations AI — free, no key, OpenAI-compatible
     { provider:'Pollinations', key:'__nokey__', model:'openai', endpoint:'https://text.pollinations.ai/openai', isOpenAI:true, extra:{ 'Referer':'https://starrynight.app' } },
-    { provider:'Pollinations', key:'__nokey__', model:'mistral', endpoint:'https://text.pollinations.ai/openai', isOpenAI:true, extra:{ 'Referer':'https://starrynight.app' } },
+    { provider:'Pollinations', key:'__nokey__', model:'phi-4', endpoint:'https://text.pollinations.ai/openai', isOpenAI:true, extra:{ 'Referer':'https://starrynight.app' } },
     { provider:'Pollinations', key:'__nokey__', model:'llama', endpoint:'https://text.pollinations.ai/openai', isOpenAI:true, extra:{ 'Referer':'https://starrynight.app' } },
   ];
 }
@@ -1166,7 +1166,7 @@ export const askAI = async (user, system='', tries=0) => {
     }
     // Berhasil — majukan slot supaya request berikutnya pakai provider berikutnya (round-robin)
     slotIdx = (startSlot + 1) % PROVIDERS.length;
-    return txt.trim();
+    return (typeof txt === "string" ? txt : JSON.stringify(txt)).trim();
   } catch(e) {
     console.warn(`[Chat] ${slot.provider}/${slot.model} network error:`, e?.message);
     slotIdx = (startSlot + 1) % PROVIDERS.length;
@@ -1218,7 +1218,7 @@ export const askAIRace = async (user, system='') => {
         const winnerLabel = `${slot.provider}·${slot.model.split('/').pop()?.replace(':free','') || slot.model}`;
         _lastWinnerLabel = winnerLabel;
         console.log(`[Chat/race] Winner: ${slot.provider}/${slot.model}`);
-        return txt.trim();
+        return (typeof txt === "string" ? txt : JSON.stringify(txt)).trim();
       })
       .catch(e => {
         console.warn(`[Chat/race] ${slot.provider}/${slot.model} failed:`, e?.message);

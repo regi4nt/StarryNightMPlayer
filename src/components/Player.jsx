@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
-import { btn } from '../constants.js';
+import { btn, fmt } from '../constants.js';
 
 function AppLogo({ size = 32 }) {
   return (
