@@ -1022,7 +1022,7 @@ export const getUserGhKey  = () => {
 };
 export const getUserSnKey  = () => _USER_SN_KEY || (typeof localStorage !== 'undefined' ? localStorage.getItem('sn_sn_key') || '' : '');
 // Ambil YT key: user key (langsung ke Google) atau fallback ke env (via proxy)
-export const getYtKey     = () => _USER_YT_KEY || _ENV_YT_KEY;
+export const getYtKey     = () => _USER_YT_KEY || (typeof localStorage !== 'undefined' ? localStorage.getItem('sn_yt_key') || '' : '') || _ENV_YT_KEY;
 export const isYtApiEnabled = () => !!(getYtKey());
 
 // ═══════════════════════════════════════════════════════
@@ -1431,7 +1431,7 @@ export const AUDIO_MIME_EXTRAS = new Set([
 ]);
 
 // Ambil file audio HANYA dari folder "Starry Night Music" di Google Drive
-async function driveListSongs(token, forceRefresh = false) {
+export async function driveListSongs(token, forceRefresh = false) {
   const now = Date.now();
   if (!forceRefresh && _driveCache.token === token && _driveCache.songs
       && (now - _driveCache.ts) < DRIVE_CACHE_TTL) {
