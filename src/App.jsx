@@ -4553,6 +4553,7 @@ export default function App() {
   const [showPlModal, setShowPlModal]     = useState(false);
   const [editingPl, setEditingPl]         = useState(null);
   const [plView, setPlView]               = useState('list'); // 'list' | 'detail' | 'form'
+  const [mySongsEditMode, setMySongsEditMode] = useState(false);
 
   // ── Responsive
   const [ringSize, setRingSize] = useState(260);
@@ -8994,7 +8995,6 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
               // ── Special: Lagu Saya (Drive)
               if (activePl === 'my_songs') {
                 const songs = filteredCustom;
-                const [mySongsEditMode, setMySongsEditMode] = React.useState(false);
                 return (
                   <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
                     <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0, position:'sticky', top:0, zIndex:5, background:'rgba(7,7,26,0.97)', ...(isLite ? {} : { backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }) }}>
