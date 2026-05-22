@@ -489,25 +489,44 @@ export default function App() {
     }
   };
 
+  // ── YT Search cache (sessionStorage, TTL 5 menit)
+  const YT_SEARCH_CACHE_TTL = 5 * 60 * 1000;
+  const ytSearchCacheGet = (query) => {
+    try {
+      const raw = sessionStorage.getItem('sn_yts_' + query);
+      if (!raw) return null;
+      const { ts, items } = JSON.parse(raw);
+      if (Date.now() - ts > YT_SEARCH_CACHE_TTL) { sessionStorage.removeItem('sn_yts_' + query); return null; }
+      return items;
+    } catch { return null; }
+  };
+  const ytSearchCacheSet = (query, items) => {
+    try { sessionStorage.setItem('sn_yts_' + query, JSON.stringify({ ts: Date.now(), items })); } catch {}
+  };
+
+  // Fetch dengan timeout helper
+  const fetchWithTimeout = (url, ms = 3000, opts = {}) => {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), ms);
+    return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(tid));
+  };
+
   const searchViaYouTubeAPI = async (query) => {
     if (!isYtApiEnabled()) return null;
     try {
-      const ctrl = new AbortController();
-      const tid  = setTimeout(() => ctrl.abort(), 7000);
       const userKey = getYtKey();
       let res;
       if (userKey) {
         const params = new URLSearchParams({
           key: userKey, part: 'snippet', q: query, type: 'video',
-          videoCategoryId: '10', maxResults: '10',
+          videoCategoryId: '10', maxResults: '15',
           fields: 'items(id/videoId,snippet/title,snippet/channelTitle,snippet/thumbnails/medium)',
         });
-        res = await fetch(`https://www.googleapis.com/youtube/v3/search?${params}`, { signal: ctrl.signal });
+        res = await fetchWithTimeout(`https://www.googleapis.com/youtube/v3/search?${params}`, 5000);
       } else {
         const params = new URLSearchParams({ action: 'search', q: query, maxResults: '10' });
-        res = await fetch(`/api/youtube?${params}`, { signal: ctrl.signal });
+        res = await fetchWithTimeout(`/api/youtube?${params}`, 5000);
       }
-      clearTimeout(tid);
       if (!res.ok) return null;
       const data = await res.json();
       const items = (data.items || []).filter(i => i.id?.videoId);
@@ -516,49 +535,46 @@ export default function App() {
         videoId: i.id.videoId,
         title: i.snippet.title,
         uploaderName: i.snippet.channelTitle,
-        duration: 0, // Search API tidak return durasi; diambil saat play
-        thumbnail: i.snippet.thumbnails?.medium?.url ||
-                   `https://i.ytimg.com/vi/${i.id.videoId}/mqdefault.jpg`,
+        duration: 0,
+        thumbnail: i.snippet.thumbnails?.medium?.url || `https://i.ytimg.com/vi/${i.id.videoId}/mqdefault.jpg`,
         url: `/watch?v=${i.id.videoId}`,
       }));
     } catch { return null; }
   };
 
   const searchViaPiped = async (query) => {
-    for (const base of PIPED_INSTANCES) {
+    const tryInstance = async (base) => {
       try {
-        const ctrl = new AbortController();
-        const tid  = setTimeout(() => ctrl.abort(), 5000);
-        const res  = await fetch(buildPipedUrl(base, '/search', { q: query, filter: 'music_songs' }), { signal: ctrl.signal });
-        clearTimeout(tid);
-        if (!res.ok) continue;
+        const res = await fetchWithTimeout(buildPipedUrl(base, '/search', { q: query, filter: 'music_songs' }), 3000);
+        if (!res.ok) return null;
         const data = await res.json();
-        const items = (data.items || []).filter(i => i.url && i.url.includes('watch')).slice(0, 10).map(i => ({
+        const items = (data.items || []).filter(i => i.url && i.url.includes('watch')).slice(0, 15).map(i => ({
           ...i,
-          videoId: i.url ? (i.url.match(/[?&v=]([^&]{11})/)?.[1] || i.url.replace('/watch?v=','')) : i.videoId,
-          thumbnail: i.thumbnail || (i.url ? `https://i.ytimg.com/vi/${i.url.replace('/watch?v=','')}/mqdefault.jpg` : ''),
+          videoId: i.url ? (i.url.match(/[?&v=]([^&]{11})/)?.[1] || i.url.replace('/watch?v=', '')) : i.videoId,
+          thumbnail: i.thumbnail || `https://i.ytimg.com/vi/${(i.url||'').replace('/watch?v=','').split('&')[0]}/mqdefault.jpg`,
           uploaderName: i.uploaderName || i.uploader || i.channel || 'YouTube',
           duration: i.duration || i.lengthSeconds || 0,
         }));
-        if (items.length > 0) return items;
-      } catch { /* try next */ }
-    }
-    return null;
+        return items.length > 0 ? items : null;
+      } catch { return null; }
+    };
+    try {
+      const results = await Promise.any(PIPED_INSTANCES.map(tryInstance));
+      return results || null;
+    } catch { return null; }
   };
 
-  // Try Invidious API instances
   const searchViaInvidious = async (query) => {
-    for (const base of INVIDIOUS_INSTANCES) {
+    const tryInstance = async (base) => {
       try {
-        const ctrl = new AbortController();
-        const tid  = setTimeout(() => ctrl.abort(), 5000);
-        const res  = await fetch(buildInvidiousUrl(base, '/api/v1/search', { q: query, type: 'video', fields: 'videoId,title,author,lengthSeconds,videoThumbnails' }), { signal: ctrl.signal });
-        clearTimeout(tid);
-        if (!res.ok) continue;
+        const res = await fetchWithTimeout(
+          buildInvidiousUrl(base, '/api/v1/search', { q: query, type: 'video', fields: 'videoId,title,author,lengthSeconds,videoThumbnails' }),
+          3000
+        );
+        if (!res.ok) return null;
         const data = await res.json();
-        if (!Array.isArray(data) || data.length === 0) continue;
-        // Normalize to Piped format
-        return data.slice(0, 10).map(v => ({
+        if (!Array.isArray(data) || data.length === 0) return null;
+        return data.slice(0, 15).map(v => ({
           url: `/watch?v=${v.videoId}`,
           title: v.title,
           uploaderName: v.author,
@@ -566,9 +582,12 @@ export default function App() {
           thumbnail: v.videoThumbnails?.[0]?.url || `https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`,
           videoId: v.videoId,
         }));
-      } catch { /* try next */ }
-    }
-    return null;
+      } catch { return null; }
+    };
+    try {
+      const results = await Promise.any(INVIDIOUS_INSTANCES.map(tryInstance));
+      return results || null;
+    } catch { return null; }
   };
 
   // Fallback: AI-powered search recommendation
@@ -719,24 +738,69 @@ export default function App() {
     setYtError(p => ({...p, [platformId]: null}));
     setYtResults(p => ({...p, [platformId]: []}));
 
-    // Coba YouTube Data API v3 dulu (jika key tersedia — hasil paling akurat)
-    let items = await searchViaYouTubeAPI(query);
-
-    // Fallback: Piped
-    if (!items) items = await searchViaPiped(query);
-
-    // Fallback: Invidious
-    if (!items) items = await searchViaInvidious(query);
-
-    // Fallback to AI recommendation
-    if (!items) items = await searchViaAI(query);
-
-    if (items && items.length > 0) {
-      setYtResults(p => ({...p, [platformId]: items}));
-    } else {
-      setYtError(p => ({...p, [platformId]: t?.searchFailed||'Search failed.'}));
+    // ── Cache hit: tampilkan instan
+    const cached = ytSearchCacheGet(query);
+    if (cached) {
+      setYtResults(p => ({...p, [platformId]: cached}));
+      setYtLoading(p => ({...p, [platformId]: false}));
+      return;
     }
-    setYtLoading(p => ({...p, [platformId]: false}));
+
+    // ── Gabungkan hasil dari semua sumber (deduplikasi by videoId)
+    // Tampilkan segera sumber pertama yang masuk, lalu update/gabung saat yang lain selesai
+    const mergeItems = (existing, incoming) => {
+      if (!incoming || incoming.length === 0) return existing;
+      const seen = new Set(existing.map(x => x.videoId));
+      const deduped = incoming.filter(x => x.videoId && !seen.has(x.videoId));
+      return [...existing, ...deduped].slice(0, 20); // max 20 hasil gabungan
+    };
+
+    // YT API hasil lebih akurat — jika ada key, beri prioritas (taruh di depan)
+    const ytApiEnabled = isYtApiEnabled();
+    const sources = {
+      piped:    searchViaPiped(query),
+      invidious: searchViaInvidious(query),
+      ...(ytApiEnabled ? { ytapi: searchViaYouTubeAPI(query) } : {}),
+    };
+
+    let allItems = [];
+    let gotFirst = false;
+
+    // Handle tiap sumber saat selesai — tampilkan progresif
+    const handlers = Object.entries(sources).map(([src, promise]) =>
+      promise.then(items => {
+        if (!items || items.length === 0) return;
+        if (src === 'ytapi') {
+          // YT API: taruh di depan karena paling relevan
+          allItems = mergeItems(items, allItems);
+        } else {
+          allItems = mergeItems(allItems, items);
+        }
+        if (allItems.length > 0) {
+          gotFirst = true;
+          setYtResults(p => ({...p, [platformId]: [...allItems]}));
+          if (gotFirst) setYtLoading(p => ({...p, [platformId]: false}));
+        }
+      }).catch(() => {})
+    );
+
+    // Tunggu semua sumber selesai
+    await Promise.allSettled(handlers);
+
+    if (!gotFirst) {
+      // Semua sumber gagal — coba AI sebagai last resort
+      const aiItems = await searchViaAI(query).catch(() => null);
+      if (aiItems && aiItems.length > 0) {
+        allItems = aiItems;
+        setYtResults(p => ({...p, [platformId]: aiItems}));
+      } else {
+        setYtError(p => ({...p, [platformId]: t?.searchFailed||'Search failed.'}));
+      }
+      setYtLoading(p => ({...p, [platformId]: false}));
+    }
+
+    // Cache hasil akhir gabungan
+    if (allItems.length > 0) ytSearchCacheSet(query, allItems);
   };
 
   const playYouTube = (item, queue, queueIdx) => {
@@ -1746,13 +1810,17 @@ export default function App() {
   // ── Play/pause
   useEffect(() => {
     // Control YouTube iframe when embedTrack is active
-    if (embedTrack?.type === 'youtube' && ytIframeRef.current) {
+    if (embedTrack?.type === 'youtube') {
       const cmd = playing ? 'playVideo' : 'pauseVideo';
-      // Tunda sedikit agar iframe sempat mount dulu sebelum postMessage
-      const t = setTimeout(() => {
+      // Kirim command dengan retry — iframe mungkin belum siap saat baru mount
+      const sendCmd = () => {
         try { ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'command', func:cmd, args:'' }), '*'); } catch(_){}
-      }, 100);
-      return () => clearTimeout(t);
+      };
+      // Coba segera, lalu retry beberapa kali agar pasti terkirim
+      const t1 = setTimeout(sendCmd, 250);
+      const t2 = setTimeout(sendCmd, 800);
+      const t3 = setTimeout(sendCmd, 1800);
+      return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
     }
     const a = audioRef.current; if (!a) return;
     if (playing) {
@@ -1784,16 +1852,32 @@ export default function App() {
   // ── YouTube time sync: listen to postMessage events from iframe
   useEffect(() => {
     if (!embedTrack || embedTrack.type !== 'youtube') return;
+    const sendCmd = (func, args = '') => {
+      try { ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'command', func, args }), '*'); } catch(_){}
+    };
     const handler = (e) => {
       try {
         const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
-        if (data?.event === 'infoDelivery' && data.info) {
+        if (!data) return;
+        // Iframe siap → paksa play jika memang harusnya playing
+        if (data.event === 'onReady') {
+          if (playingRef.current) sendCmd('playVideo');
+        }
+        if (data.event === 'infoDelivery' && data.info) {
           if (data.info.currentTime != null) setYtProgress(data.info.currentTime);
           if (data.info.duration != null && data.info.duration > 0) setYtDuration(data.info.duration);
+          // playerState: 1=playing, 2=paused — sinkronkan state playing
+          if (data.info.playerState === 1 && !playingRef.current) setPlaying(true);
+          if (data.info.playerState === 2 && playingRef.current) setPlaying(false);
         }
-        // Video ended → auto next (ytNext handles semua kasus: repeat-one, repeat-all, shuffle)
-        if (data?.event === 'onStateChange' && data.info === 0) {
+        // Video ended → auto next
+        if (data.event === 'onStateChange' && data.info === 0) {
           setTimeout(() => { if (ytNextRef.current) ytNextRef.current(); }, 300);
+        }
+        // State change: 1=playing, 2=paused
+        if (data.event === 'onStateChange') {
+          if (data.info === 1 && !playingRef.current) setPlaying(true);
+          if (data.info === 2 && playingRef.current) setPlaying(false);
         }
       } catch(_) {}
     };
@@ -6919,14 +7003,15 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       {showUpload&&<Suspense fallback={null}><UploadModal onClose={()=>!uploading&&setShowUpload(false)} onUpload={handleUpload} uploading={uploading} uploadProgress={uploadProgress} color={track.color} isLite={isLite} t={t}/></Suspense>}
 
       {/* ══ YOUTUBE HIDDEN AUDIO IFRAME — persistent, single instance ══ */}
+      {/* CATATAN: display:none memblokir autoplay di Chrome/mobile — gunakan position off-screen */}
       {embedTrack && embedTrack.type === 'youtube' && (
         <iframe
           ref={ytIframeRef}
           key={embedTrack.videoId}
-          src={`https://www.youtube.com/embed/${embedTrack.videoId}?autoplay=1&enablejsapi=1&rel=0&modestbranding=1&playsinline=1`}
+          src={`https://www.youtube.com/embed/${embedTrack.videoId}?autoplay=1&enablejsapi=1&rel=0&modestbranding=1&playsinline=1&origin=${encodeURIComponent(window.location.origin)}`}
           title={embedTrack.title}
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          style={{ display:'none', width:1, height:1, border:'none', position:'fixed', bottom:-9999, left:-9999 }}
+          style={{ position:'fixed', bottom:0, left:0, width:1, height:1, opacity:0, pointerEvents:'none', border:'none', zIndex:-1 }}
         />
       )}
 
