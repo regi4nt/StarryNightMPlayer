@@ -782,23 +782,31 @@ export const SLEEP_OPTIONS = [
 // Public Piped/Invidious API instances (YouTube search, no key needed)
 // /api/youtube (dengan backend=invidious atau backend=piped) adalah Vercel Serverless Function
 // yang proxy request server-side — no CORS, otomatis fallback ke instance lain.
+// Hanya gunakan proxy server-side — instance eksternal tidak boleh dipanggil
+// langsung dari browser karena CORS. Fallback antar instance ditangani di /api/youtube.js.
 export const PIPED_INSTANCES = [
-  '/api/youtube?backend=piped', // Vercel serverless function (primary, no CORS)
-  'https://pipedapi.kavin.rocks',
-  'https://pipedapi.tokhmi.xyz',
-  'https://pipedapi.moomoo.me',
+  '/api/youtube?backend=piped',
 ];
 export const INVIDIOUS_INSTANCES = [
-  '/api/youtube?backend=invidious', // Vercel serverless function (primary, no CORS)
-  'https://inv.tux.pizza',
-  'https://invidious.privacyredirect.com',
-  'https://invidious.nerdvpn.de',
+  '/api/youtube?backend=invidious',
 ];
 
 // ── URL builder helpers for Invidious and Piped
 // Saat base adalah proxy kita ('/api/youtube?backend=...'),
 // API path masuk sebagai ?path= query parameter.
 // Saat base adalah URL eksternal, path langsung di-append.
+// ── Radio URL helper
+// Browser tidak bisa fetch http:// dari halaman https:// (Mixed Content).
+// Fungsi ini otomatis wrap URL http:// ke /api/radio-proxy?url=...
+// URL https:// dikembalikan apa adanya.
+export function radioUrl(url) {
+  if (!url) return url;
+  if (url.startsWith('http://')) {
+    return `/api/radio-proxy?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+}
+
 export function buildInvidiousUrl(base, apiPath, params = {}) {
   if (base.startsWith('/')) {
     // base may already contain ?backend=invidious (e.g. '/api/youtube?backend=invidious')

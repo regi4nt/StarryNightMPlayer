@@ -18,7 +18,7 @@ import {
   openNewTab, STREAMING_PLATFORMS, MUSIC_SOURCES, SONGS, builtinSongs,
   GOOGLE_CLIENT_ID, GOOGLE_SCOPES, DRIVE_FOLDER, SONG_COLORS, COVERS,
   randItem, SLEEP_OPTIONS, PIPED_INSTANCES, INVIDIOUS_INSTANCES,
-  buildInvidiousUrl, buildPipedUrl, getProviders,
+  buildInvidiousUrl, buildPipedUrl, getProviders, radioUrl,
   setRuntimeKeys, setLastWinnerLabel,
   getSpId, getSpSecret, getScId,
   getUserAiKey, getUserDsKey, getUserGrokKey, getUserHfKey, getUserCfKey, getUserGhKey, getUserSnKey,
@@ -2087,7 +2087,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     const testOne = (station) => new Promise(resolve => {
       const ctrl = new AbortController();
       const tid = setTimeout(() => { ctrl.abort(); resolve({ id: station.id, ok: false }); }, 7000);
-      fetch(station.url, { method: 'GET', mode: 'no-cors', signal: ctrl.signal })
+      fetch(radioUrl(station.url), { method: 'GET', mode: 'no-cors', signal: ctrl.signal })
         .then(() => { clearTimeout(tid); resolve({ id: station.id, ok: true }); })
         .catch(e => {
           clearTimeout(tid);
@@ -2387,11 +2387,11 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
   // Uses public Icecast streams known to work
   const ICECAST_CURATED = [
     { id:'ice_bassdrive', name:'Bassdrive', desc:'Drum & Bass 24/7', url:'https://bassdrive.com/bassdrive.m3u', genre:'Drum & Bass', country:'US', color:'#8b5cf6' },
-    { id:'ice_difm_chill', name:'Digitally Imported Chillout', desc:'24/7 Chillout streaming', url:'https://di.fm/mp3/chillout', genre:'Chillout', country:'US', color:'#06b6d4' },
-    { id:'ice_difm_trance', name:'Digitally Imported Trance', desc:'24/7 Trance streaming', url:'https://di.fm/mp3/trance', genre:'Trance', country:'US', color:'#8b5cf6' },
-    { id:'ice_difm_house', name:'Digitally Imported House', desc:'24/7 House streaming', url:'https://di.fm/mp3/house', genre:'House', country:'US', color:'#f59e0b' },
-    { id:'ice_difm_techno', name:'Digitally Imported Techno', desc:'24/7 Techno streaming', url:'https://di.fm/mp3/techno', genre:'Techno', country:'US', color:'#ef4444' },
-    { id:'ice_difm_dnb', name:'Digitally Imported D&B', desc:'24/7 Drum & Bass', url:'https://di.fm/mp3/drumandbass', genre:'D&B', country:'US', color:'#7c3aed' },
+    { id:'ice_difm_chill', name:'SomaFM Thistle Radio', desc:'Celtic/folk/world music 24/7', url:'https://ice1.somafm.com/thistle-128-mp3', genre:'Chillout', country:'US', color:'#06b6d4' },
+    { id:'ice_difm_trance', name:'SomaFM Space Station', desc:'Electronic/ambient space music 24/7', url:'https://ice1.somafm.com/spacestation-128-mp3', genre:'Trance', country:'US', color:'#8b5cf6' },
+    { id:'ice_difm_house', name:'SomaFM Sonic Universe', desc:'Jazz fusion, funk & world music 24/7', url:'https://ice1.somafm.com/sonicuniverse-128-mp3', genre:'House', country:'US', color:'#f59e0b' },
+    { id:'ice_difm_techno', name:'SomaFM Deep Space One', desc:'Deep ambient electronic 24/7', url:'https://ice1.somafm.com/deepspaceone-128-mp3', genre:'Techno', country:'US', color:'#ef4444' },
+    { id:'ice_difm_dnb', name:'SomaFM Drone Zone', desc:'Atmospheric ambient drone music 24/7', url:'https://ice1.somafm.com/dronezone-128-mp3', genre:'D&B', country:'US', color:'#7c3aed' },
     { id:'ice_soma_groove', name:'SomaFM Groove Salad', desc:'Ambient/downtempo beats', url:'https://ice1.somafm.com/groovesalad-128-mp3', genre:'Ambient', country:'US', color:'#10b981' },
     { id:'ice_soma_secret', name:'SomaFM Secret Agent', desc:'Lounge/spy soundtrack', url:'https://ice1.somafm.com/secretagent-128-mp3', genre:'Lounge', country:'US', color:'#3b82f6' },
     { id:'ice_laut_jazz', name:'Jazz Radio', desc:'Jazz 24/7 from Germany', url:'https://stream.laut.fm/jazz', genre:'Jazz', country:'DE', color:'#7c3aed' },
@@ -2430,21 +2430,21 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
 
   // ── Shoutcast curated popular stations (global, community-based)
   const SHOUTCAST_CURATED = [
-    { id:'sc_kexp', name:'KEXP 90.3 FM Seattle', desc:'Indie, alternative, world music — listener-funded', url:'https://live-mp3-128.kexp.org/', genre:'Indie', country:'US', color:'#10b981', sourceLabel:'Shoutcast' },
-    { id:'sc_di_trance', name:'DI.FM Trance', desc:'24/7 Trance streaming', url:'https://www.di.fm/mp3/trance', genre:'Trance', country:'US', color:'#8b5cf6', sourceLabel:'Shoutcast' },
-    { id:'sc_di_house', name:'DI.FM Progressive House', desc:'24/7 Progressive House', url:'https://www.di.fm/mp3/progressivehouse', genre:'House', country:'US', color:'#f59e0b', sourceLabel:'Shoutcast' },
-    { id:'sc_di_chillout', name:'DI.FM Chillout', desc:'24/7 Chillout & Ambient', url:'https://www.di.fm/mp3/chillout', genre:'Chillout', country:'US', color:'#06b6d4', sourceLabel:'Shoutcast' },
-    { id:'sc_di_drumandbass', name:'DI.FM Drum & Bass', desc:'24/7 D&B and Jungle', url:'https://www.di.fm/mp3/drumandbass', genre:'Drum & Bass', country:'US', color:'#7c3aed', sourceLabel:'Shoutcast' },
-    { id:'sc_di_deephouse', name:'DI.FM Deep House', desc:'24/7 Deep House', url:'https://www.di.fm/mp3/deephouse', genre:'House', country:'US', color:'#f97316', sourceLabel:'Shoutcast' },
-    { id:'sc_di_electro', name:'DI.FM Electro House', desc:'24/7 Electro House', url:'https://www.di.fm/mp3/electrohouse', genre:'Electronic', country:'US', color:'#ef4444', sourceLabel:'Shoutcast' },
-    { id:'sc_di_ambient', name:'DI.FM Ambient', desc:'24/7 Ambient Electronic', url:'https://www.di.fm/mp3/ambient', genre:'Ambient', country:'US', color:'#3b82f6', sourceLabel:'Shoutcast' },
-    { id:'sc_di_dubstep', name:'DI.FM Dubstep', desc:'24/7 Dubstep & Bass', url:'https://www.di.fm/mp3/dubstep', genre:'Electronic', country:'US', color:'#6366f1', sourceLabel:'Shoutcast' },
-    { id:'sc_di_classical', name:'DI.FM Classical', desc:'24/7 Classical & Opera', url:'https://www.di.fm/mp3/classical', genre:'Classical', country:'US', color:'#a16207', sourceLabel:'Shoutcast' },
-    { id:'sc_di_jazzandblues', name:'DI.FM Jazz & Blues', desc:'24/7 Jazz & Blues', url:'https://www.di.fm/mp3/jazzandblues', genre:'Jazz', country:'US', color:'#5b21b6', sourceLabel:'Shoutcast' },
-    { id:'sc_di_reggae', name:'DI.FM Reggae', desc:'24/7 Reggae & Ska', url:'https://www.di.fm/mp3/reggae', genre:'Reggae', country:'US', color:'#16a34a', sourceLabel:'Shoutcast' },
-    { id:'sc_di_metal', name:'DI.FM Metal', desc:'24/7 Heavy Metal', url:'https://www.di.fm/mp3/metal', genre:'Metal', country:'US', color:'#dc2626', sourceLabel:'Shoutcast' },
-    { id:'sc_di_hiphop', name:'DI.FM Hip-Hop', desc:'24/7 Hip-Hop & RnB', url:'https://www.di.fm/mp3/hiphop', genre:'Hip-Hop', country:'US', color:'#d97706', sourceLabel:'Shoutcast' },
-    { id:'sc_di_latinhouse', name:'DI.FM Latin House', desc:'24/7 Latin & House mix', url:'https://www.di.fm/mp3/latinhouse', genre:'World', country:'US', color:'#10b981', sourceLabel:'Shoutcast' },
+    { id:'sc_kexp', name:'KEXP 90.3 FM Seattle', desc:'Indie, alternative, world music — listener-funded', url:'https://kexp-mp3-128.streamguys1.com/kexp128.mp3', genre:'Indie', country:'US', color:'#10b981', sourceLabel:'Shoutcast' },
+    { id:'sc_di_trance', name:'SomaFM Space Station', desc:'Electronic/ambient space music 24/7', url:'https://ice1.somafm.com/spacestation-128-mp3', genre:'Trance', country:'US', color:'#8b5cf6', sourceLabel:'Shoutcast' },
+    { id:'sc_di_house', name:'SomaFM Sonic Universe', desc:'Jazz fusion & world music 24/7', url:'https://ice1.somafm.com/sonicuniverse-128-mp3', genre:'House', country:'US', color:'#f59e0b', sourceLabel:'Shoutcast' },
+    { id:'sc_di_chillout', name:'SomaFM Thistle Radio', desc:'Celtic/folk/world music 24/7', url:'https://ice1.somafm.com/thistle-128-mp3', genre:'Chillout', country:'US', color:'#06b6d4', sourceLabel:'Shoutcast' },
+    { id:'sc_di_drumandbass', name:'SomaFM Drone Zone', desc:'Atmospheric ambient drone 24/7', url:'https://ice1.somafm.com/dronezone-128-mp3', genre:'Drum & Bass', country:'US', color:'#7c3aed', sourceLabel:'Shoutcast' },
+    { id:'sc_di_deephouse', name:'SomaFM Deep Space One', desc:'Deep ambient electronic 24/7', url:'https://ice1.somafm.com/deepspaceone-128-mp3', genre:'House', country:'US', color:'#f97316', sourceLabel:'Shoutcast' },
+    { id:'sc_di_electro', name:'SomaFM Beat Blender', desc:'Electronic beat-driven music 24/7', url:'https://ice1.somafm.com/beatblender-128-mp3', genre:'Electronic', country:'US', color:'#ef4444', sourceLabel:'Shoutcast' },
+    { id:'sc_di_ambient', name:'SomaFM Dark Zone', desc:'Dark ambient electronic 24/7', url:'https://ice1.somafm.com/darkzone-128-mp3', genre:'Ambient', country:'US', color:'#3b82f6', sourceLabel:'Shoutcast' },
+    { id:'sc_di_dubstep', name:'SomaFM Dubstep Beyond', desc:'Dubstep & bass music 24/7', url:'https://ice3.somafm.com/dubstep-128-mp3', genre:'Electronic', country:'US', color:'#6366f1', sourceLabel:'Shoutcast' },
+    { id:'sc_di_classical', name:'SomaFM Classical', desc:'Classical music 24/7', url:'https://ice1.somafm.com/classical-128-mp3', genre:'Classical', country:'US', color:'#a16207', sourceLabel:'Shoutcast' },
+    { id:'sc_di_jazzandblues', name:'SomaFM Lush', desc:'Smooth jazz & vocal lounge 24/7', url:'https://ice1.somafm.com/lush-128-mp3', genre:'Jazz', country:'US', color:'#5b21b6', sourceLabel:'Shoutcast' },
+    { id:'sc_di_reggae', name:'SomaFM Reggae Rec', desc:'Reggae & dancehall 24/7', url:'https://ice1.somafm.com/reggae-128-mp3', genre:'Reggae', country:'US', color:'#16a34a', sourceLabel:'Shoutcast' },
+    { id:'sc_di_metal', name:'SomaFM Metal Detector', desc:'Heavy metal 24/7', url:'https://ice1.somafm.com/metal-128-mp3', genre:'Metal', country:'US', color:'#dc2626', sourceLabel:'Shoutcast' },
+    { id:'sc_di_hiphop', name:'SomaFM Hip-Hop Spectrum', desc:'Hip-Hop & R&B 24/7', url:'https://ice1.somafm.com/hiphop-128-mp3', genre:'Hip-Hop', country:'US', color:'#d97706', sourceLabel:'Shoutcast' },
+    { id:'sc_di_latinhouse', name:'SomaFM Salsa Station', desc:'Latin salsa & tropical 24/7', url:'https://ice1.somafm.com/salsa-128-mp3', genre:'World', country:'US', color:'#10b981', sourceLabel:'Shoutcast' },
     { id:'sc_wfmu', name:'WFMU Free Music Archive', desc:'Freeform radio from Jersey City NJ', url:'https://stream.wfmu.org/freeform/high/128kbps.mp3', genre:'Eclectic', country:'US', color:'#4b5563', sourceLabel:'Shoutcast' },
     { id:'sc_bbc_6music', name:'BBC Radio 6 Music', desc:'Alternative & indie from BBC', url:'https://stream.live.vc.bbcmedia.co.uk/bbc_6music', genre:'Indie', country:'GB', color:'#e11d48', sourceLabel:'Shoutcast' },
     { id:'sc_fip_fr', name:'FIP Radio France', desc:'Eclectic mix of world music & jazz', url:'https://icecast.radiofrance.fr/fip-midfi.mp3', genre:'World', country:'FR', color:'#3b82f6', sourceLabel:'Shoutcast' },
@@ -2587,7 +2587,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
 
   // ── Universal play function for any external radio station
   const playRbStation = (station) => {
-    const streamUrl = station.url_resolved || station.url;
+    const streamUrl = radioUrl(station.url_resolved || station.url);
     stopAllMedia('radio');
     const stationColor = station.color || '#f59e0b';
     const radioTrackObj = {
@@ -3902,7 +3902,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                               artist: station.city + ' · Live Radio',
                               album: 'Live Radio',
                               cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
-                              src: station.url,
+                              src: radioUrl(station.url),
                               color: stationColor,
                               bg: `rgba(245,158,11,0.15)`,
                               mood: 'live, radio',
@@ -5013,7 +5013,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                               artist: station.city + ' · Live Radio',
                               album: 'Live Radio',
                               cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
-                              src: station.url,
+                              src: radioUrl(station.url),
                               color: stationColor,
                               bg: `rgba(245,158,11,0.15)`,
                               mood: 'live, radio',
@@ -5365,7 +5365,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                                       artist: station.city + ' · Live Radio',
                                                       album: 'Live Radio',
                                                       cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
-                                                      src: station.url,
+                                                      src: radioUrl(station.url),
                                                       color: stationColor,
                                                       bg: `rgba(245,158,11,0.15)`,
                                                       mood: 'live, radio',
@@ -5431,7 +5431,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                               artist: station.city + ' · Live Radio',
                                               album: 'Live Radio',
                                               cover: station.favicon || 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
-                                              src: station.url,
+                                              src: radioUrl(station.url),
                                               color: stationColor,
                                               bg: `rgba(245,158,11,0.15)`,
                                               mood: 'live, radio',
@@ -5550,7 +5550,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                                     artist: station.city + ' · Radio Garden',
                                                     album: 'Live Radio',
                                                     cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
-                                                    src: station.url,
+                                                    src: radioUrl(station.url),
                                                     color: stationColor,
                                                     bg: 'rgba(34,211,238,0.12)',
                                                     mood: 'live, radio',
