@@ -26,28 +26,32 @@ export const config = { runtime: 'nodejs' };
 
 // ── Instance lists ────────────────────────────────────────────────────────────
 
+// ── Instance lists (updated 2025 — sorted by reliability)
 const INVIDIOUS_INSTANCES = [
+  'https://inv.nadeko.net',
+  'https://invidious.io.lol',
   'https://inv.tux.pizza',
   'https://invidious.privacyredirect.com',
   'https://yt.drgnz.club',
   'https://iv.datura.network',
   'https://invidious.fdn.fr',
-  'https://invidious.perennialte.ch',
+  'https://yewtu.be',
   'https://invidious.nerdvpn.de',
-  'https://invidious.io.lol',
-  'https://inv.nadeko.net',
+  'https://inv.us.projectsegfault.net',
   'https://invidious.reallyaweso.me',
+  'https://invidious.perennialte.ch',
 ];
 
 const PIPED_INSTANCES = [
   'https://pipedapi.kavin.rocks',
-  'https://pipedapi.tokhmi.xyz',
-  'https://piped-api.garudalinux.org',
-  'https://pipedapi.moomoo.me',
   'https://api.piped.yt',
+  'https://piped-api.garudalinux.org',
+  'https://pipedapi.tokhmi.xyz',
+  'https://pipedapi.moomoo.me',
   'https://api.piped.projectsegfault.net',
   'https://pipedapi.colinslegacy.com',
   'https://piped-api.codespace.cz',
+  'https://pipedapi.adminforge.de',
 ];
 
 const YT_BASE = 'https://www.googleapis.com/youtube/v3';
@@ -73,10 +77,10 @@ export default async function handler(req, res) {
 
     const usePiped   = backend === 'piped';
     const instances  = usePiped ? PIPED_INSTANCES : INVIDIOUS_INSTANCES;
-    const timeout    = 3500; // agresif — instance lambat dibuang cepat
+    const timeout    = 4500; // balance antara kecepatan dan reliabilitas instance
     const cacheVal   = usePiped
-      ? 's-maxage=120, stale-while-revalidate=300'
-      : 's-maxage=300, stale-while-revalidate=600';
+      ? 's-maxage=60, stale-while-revalidate=180'
+      : 's-maxage=120, stale-while-revalidate=300';
 
     res.setHeader('Cache-Control', cacheVal);
 
@@ -97,6 +101,18 @@ export default async function handler(req, res) {
       // Validasi: harus ada data yang berguna
       if (Array.isArray(data) && data.length === 0) throw new Error('empty');
       if (data && typeof data === 'object' && Array.isArray(data.items) && data.items.length === 0) throw new Error('empty');
+      // Validasi Invidious: array items harus punya videoId valid (11 char)
+      if (Array.isArray(data)) {
+        // Filter: videoId valid, bukan live, bukan shorts (<62s)
+        const valid = data.filter(i =>
+          i.videoId && i.videoId.length === 11 &&
+          !i.liveNow && !i.isUpcoming &&
+          (i.lengthSeconds === undefined || i.lengthSeconds === 0 || i.lengthSeconds >= 62)
+        );
+        if (valid.length === 0) throw new Error('no valid videoIds');
+        // Return filtered array, bukan data asli
+        return valid;
+      }
       return data;
     };
 
@@ -130,9 +146,13 @@ export default async function handler(req, res) {
         maxResults: clientParams.maxResults || '10',
         q: clientParams.q || '',
         safeSearch: 'none',
+        videoEmbeddable: 'true',
+        videoSyndicated: 'true',          // hanya video yang bisa diembed di luar YT
+        eventType: 'none',                // exclude live streams & upcoming
+        videoDuration: clientParams.videoDuration || 'any', // caller bisa override
         relevanceLanguage: clientParams.lang || 'id',
         regionCode: clientParams.regionCode || 'ID',
-        fields: 'items(id/videoId,snippet/title,snippet/channelTitle,snippet/thumbnails/medium)',
+        fields: 'items(id/videoId,snippet/title,snippet/channelTitle,snippet/thumbnails/medium,snippet/liveBroadcastContent)',
       });
 
     } else if (action === 'trending') {

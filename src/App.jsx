@@ -502,6 +502,39 @@ export default function App() {
       return items;
     } catch { return null; }
   };
+  // ── Verifikasi batch apakah videoId benar-benar bisa diputar via oEmbed
+  // oEmbed YouTube: gratis, tanpa API key, return error jika video tidak bisa embed
+  // Dijalankan background setelah hasil tampil — update UI jika ada yang gagal
+  const verifyYtPlayableBatch = async (items, platformId) => {
+    if (!items || items.length === 0) return;
+    // Ambil yang belum diverifikasi (isPlayable masih undefined)
+    const unverified = items.filter(v => v.isPlayable === undefined && v.videoId);
+    if (unverified.length === 0) return;
+    // Check paralel, max 8 sekaligus (tidak mau flood oEmbed)
+    const BATCH = 8;
+    const badIds = new Set();
+    for (let i = 0; i < Math.min(unverified.length, BATCH); i++) {
+      const v = unverified[i];
+      try {
+        const res = await fetch(
+          `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${v.videoId}&format=json`,
+          { signal: AbortSignal.timeout(3000) }
+        );
+        if (!res.ok) badIds.add(v.videoId); // 401/404 = tidak bisa embed
+      } catch { /* timeout = asumsikan OK */ }
+    }
+    if (badIds.size === 0) return;
+    // Update state: hapus video yang tidak bisa diputar
+    setYtResults(prev => {
+      const cur = prev[platformId] || [];
+      const filtered = cur.filter(v => !badIds.has(v.videoId));
+      if (filtered.length === cur.length) return prev; // tidak ada perubahan
+      const updated = { ...prev, [platformId]: filtered };
+      ytSearchCacheSet(ytQuery[platformId] || '', filtered);
+      return updated;
+    });
+  };
+
   const ytSearchCacheSet = (query, items) => {
     try { sessionStorage.setItem(ytCacheKey(query), JSON.stringify({ ts: Date.now(), items })); } catch {}
   };
@@ -528,12 +561,18 @@ export default function App() {
           regionCode: 'ID',
           relevanceLanguage: 'id',
           safeSearch: 'none',
-          fields: 'items(id/videoId,snippet/title,snippet/channelTitle,snippet/thumbnails/medium)',
+          videoEmbeddable: 'true',
+          videoSyndicated: 'true',
+          eventType: 'none',
+          fields: 'items(id/videoId,snippet/title,snippet/channelTitle,snippet/thumbnails/medium,snippet/liveBroadcastContent)',
         });
         res = await fetchWithTimeout(`https://www.googleapis.com/youtube/v3/search?${params}`, 6000);
       } else {
         // Lewat proxy /api/youtube
-        const params = new URLSearchParams({ action: 'search', q: query, maxResults: '10' });
+        const params = new URLSearchParams({
+          action: 'search', q: query, maxResults: '10',
+          videoDuration: 'any',  // server akan pakai 'any', filter live sudah via eventType
+        });
         res = await fetchWithTimeout(`/api/youtube?${params}`, 6000);
       }
       // 403 = quota habis atau key invalid — throw agar caller bisa bedakan dari empty result
@@ -543,13 +582,18 @@ export default function App() {
       }
       if (!res.ok) return null;
       const data = await res.json();
-      const items = (data.items || []).filter(i => i.id?.videoId);
+      // Filter: hanya video reguler (bukan live/upcoming) yang embeddable
+      const items = (data.items || []).filter(i =>
+        i.id?.videoId &&
+        (!i.snippet?.liveBroadcastContent || i.snippet.liveBroadcastContent === 'none')
+      );
       if (items.length === 0) return null;
       return items.map(i => ({
         videoId: i.id.videoId,
         title: i.snippet.title,
         uploaderName: i.snippet.channelTitle,
         duration: 0,
+        isPlayable: true,
         thumbnail: i.snippet.thumbnails?.medium?.url || `https://i.ytimg.com/vi/${i.id.videoId}/mqdefault.jpg`,
         url: `/watch?v=${i.id.videoId}`,
       }));
@@ -557,23 +601,66 @@ export default function App() {
   };
 
   const searchViaPiped = async (query) => {
+    // Helper ekstrak videoId 11 karakter dari URL Piped
+    const extractVideoId = (url = '') => {
+      const m = url.match(/[?&]v=([A-Za-z0-9_-]{11})/);
+      if (m) return m[1];
+      const plain = url.replace('/watch?v=', '').split('&')[0].split('?')[0];
+      return plain.length === 11 ? plain : null;
+    };
+    // Helper: apakah video ini kemungkinan bisa diputar (bukan Shorts, bukan live)
+    const isLikelyPlayable = (item, dur) => {
+      // Shorts: durasi < 62 detik ATAU URL /shorts/ ATAU title mengandung #shorts/#short
+      if (item.url && item.url.toLowerCase().includes('/shorts/')) return false;
+      const titleLower = (item.title || '').toLowerCase();
+      if (titleLower.includes('#shorts') || titleLower.includes('#short')) return false;
+      // Live stream panjang: durasi = 0 sering berarti live; tapi juga bisa berarti tidak tersedia durasi
+      // Hanya skip jika ada sinyal live eksplisit
+      if (item.isLive || item.live) return false;
+      // Shorts biasanya < 62 detik; tapi tidak filter berdasar durasi jika tidak tersedia (=0)
+      if (dur > 0 && dur < 62) return false;
+      return true;
+    };
+
+    const mapItems = (items) => items
+      .filter(i => i.url && i.url.includes('watch'))
+      .map(i => {
+        const vid = extractVideoId(i.url);
+        const dur = i.duration || i.lengthSeconds || 0;
+        if (!vid) return null;
+        if (!isLikelyPlayable(i, dur)) return null;
+        return {
+          ...i, videoId: vid,
+          thumbnail: i.thumbnail || `https://i.ytimg.com/vi/${vid}/mqdefault.jpg`,
+          uploaderName: i.uploaderName || i.uploader || i.channel || 'YouTube',
+          duration: dur,
+          isPlayable: true,
+        };
+      })
+      .filter(Boolean)
+      .slice(0, 15);
+
     const tryInstance = async (base) => {
       try {
-        // filter=music_songs + sort=newest agar hasil relevan & terbaru
-        // Piped search API hanya mendukung param: q, filter. Tidak ada sort.
+        // Coba music_songs dulu (lebih relevan untuk musik)
         const res = await fetchWithTimeout(
           buildPipedUrl(base, '/search', { q: query, filter: 'music_songs' }),
-          3000
+          4000
         );
         if (!res.ok) return null;
         const data = await res.json();
-        const items = (data.items || []).filter(i => i.url && i.url.includes('watch')).slice(0, 15).map(i => ({
-          ...i,
-          videoId: i.url ? (i.url.match(/[?&]v=([^&]{11})/)?.[1] || i.url.replace('/watch?v=', '').split('&')[0]) : i.videoId,
-          thumbnail: i.thumbnail || `https://i.ytimg.com/vi/${(i.url||'').replace('/watch?v=','').split('&')[0]}/mqdefault.jpg`,
-          uploaderName: i.uploaderName || i.uploader || i.channel || 'YouTube',
-          duration: i.duration || i.lengthSeconds || 0,
-        }));
+        let items = mapItems(data.items || []);
+        // Fallback: jika music_songs tidak menghasilkan apa-apa, coba filter=videos
+        if (items.length === 0) {
+          const res2 = await fetchWithTimeout(
+            buildPipedUrl(base, '/search', { q: query, filter: 'videos' }),
+            3500
+          );
+          if (res2.ok) {
+            const data2 = await res2.json();
+            items = mapItems(data2.items || []);
+          }
+        }
         return items.length > 0 ? items : null;
       } catch { return null; }
     };
@@ -588,30 +675,44 @@ export default function App() {
       try {
         const res = await fetchWithTimeout(
           // sort_by=relevance: prioritas relevansi (cocok untuk semua lagu, klasik & baru)
-          buildInvidiousUrl(base, '/api/v1/search', { q: query, type: 'video', sort_by: 'relevance', fields: 'videoId,title,author,lengthSeconds,videoThumbnails' }),
-          3000
+          buildInvidiousUrl(base, '/api/v1/search', { q: query, type: 'video', sort_by: 'relevance', features: 'embeddable', fields: 'videoId,title,author,lengthSeconds,videoThumbnails' }),
+          4500
         );
         if (!res.ok) return null;
         const data = await res.json();
         if (!Array.isArray(data) || data.length === 0) return null;
-        return data.slice(0, 15).map(v => {
-          // Cari thumbnail kualitas medium/mqdefault — Invidious urutkan dari resolusi terkecil
-          const thumbs = v.videoThumbnails || [];
-          const preferred = thumbs.find(t => t.quality === 'medium' || t.quality === 'mqdefault')
-            || thumbs[thumbs.length - 1]; // fallback: thumbnail terbesar yang ada
-          const rawThumb = preferred?.url || '';
-          const thumb = rawThumb.startsWith('http')
-            ? rawThumb
-            : `https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`;
-          return {
-            url: `/watch?v=${v.videoId}`,
-            title: v.title,
-            uploaderName: v.author,
-            duration: v.lengthSeconds || 0,
-            thumbnail: thumb,
-            videoId: v.videoId,
-          };
-        });
+        return data
+          .filter(v => {
+            if (!v.videoId || v.videoId.length !== 11) return false;
+            // Invidious: liveNow = sedang live, lengthSeconds=0 bisa berarti live
+            if (v.liveNow || v.isUpcoming) return false;
+            // Filter Shorts: <62 detik ATAU title #shorts
+            const dur = v.lengthSeconds || 0;
+            if (dur > 0 && dur < 62) return false;
+            const tl = (v.title || '').toLowerCase();
+            if (tl.includes('#shorts') || tl.includes('#short')) return false;
+            return true;
+          })
+          .slice(0, 15)
+          .map(v => {
+            // Cari thumbnail kualitas medium/mqdefault — Invidious urutkan dari resolusi terkecil
+            const thumbs = v.videoThumbnails || [];
+            const preferred = thumbs.find(t => t.quality === 'medium' || t.quality === 'mqdefault')
+              || thumbs[thumbs.length - 1]; // fallback: thumbnail terbesar yang ada
+            const rawThumb = preferred?.url || '';
+            const thumb = rawThumb.startsWith('http')
+              ? rawThumb
+              : `https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`;
+            return {
+              url: `/watch?v=${v.videoId}`,
+              title: v.title,
+              uploaderName: v.author,
+              duration: v.lengthSeconds || 0,
+              thumbnail: thumb,
+              videoId: v.videoId,
+              isPlayable: true,
+            };
+          });
       } catch { return null; }
     };
     try {
@@ -621,19 +722,51 @@ export default function App() {
   };
 
   // Fallback: AI-powered search recommendation
+  // Bisa pakai user key ATAU server /api/ai (tidak perlu key user)
   const searchViaAI = async (query) => {
-    if (!hasKey()) return null;
+    const prompt = `List 5 real YouTube video IDs for the music query: "${query}".
+Return ONLY a JSON array, no explanation:
+[{"videoId":"XXXXXXXXXXX","title":"Song Title","uploaderName":"Channel Name","duration":240}]
+Rules: videoId must be exactly 11 chars, real and playable videos only.`;
+    const systemPrompt = 'You are a music search assistant. Return only valid JSON arrays with real YouTube videoIds.';
+
     try {
-      const r = await askAIRace(
-        `Berikan 5 video YouTube untuk musik "${query}". Format JSON array: [{"videoId":"xxx","title":"...","uploaderName":"...","duration":240}]. Hanya JSON, tanpa penjelasan.`,
-        'You are a music assistant. Provide valid YouTube videoIds for popular songs. Ensure valid JSON format.'
-      );
-      const clean = r.replace(/```json|```/g, '').trim();
+      // Coba user key dulu jika ada
+      if (hasKey()) {
+        const r = await askAIRace(prompt, systemPrompt);
+        const clean = r.replace(/```json|```/g, '').trim();
+        const items = JSON.parse(clean);
+        if (Array.isArray(items) && items.length > 0) {
+          const valid = items.filter(v => v.videoId && v.videoId.length === 11);
+          if (valid.length > 0) {
+            return valid.map(v => ({
+              url: `/watch?v=${v.videoId}`,
+              title: v.title || query,
+              uploaderName: v.uploaderName || 'YouTube',
+              duration: v.duration || 0,
+              thumbnail: `https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`,
+              videoId: v.videoId,
+            }));
+          }
+        }
+      }
+      // Fallback: server AI proxy (tidak butuh key user)
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, system: systemPrompt }),
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      const text = data.text || data.result || data.content || '';
+      const clean = text.replace(/```json|```/g, '').trim();
       const items = JSON.parse(clean);
       if (Array.isArray(items) && items.length > 0) {
-        return items.map(v => ({
+        const valid = items.filter(v => v.videoId && v.videoId.length === 11);
+        return valid.map(v => ({
           url: `/watch?v=${v.videoId}`,
-          title: v.title,
+          title: v.title || query,
           uploaderName: v.uploaderName || 'YouTube',
           duration: v.duration || 0,
           thumbnail: `https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`,
@@ -810,29 +943,52 @@ export default function App() {
     }
 
     // ── PATH B: Fallback — tidak ada key ATAU YT API gagal
-    // Race Piped vs Invidious — yang pertama berhasil langsung tampil, tidak tunggu yang lain
+    // Jalankan Piped & Invidious paralel — ambil yang pertama berhasil,
+    // lalu merge dengan yang kedua jika selesai dalam 1500ms setelahnya
     let allItems = [];
 
+    const pipedPromise = searchViaPiped(query).catch(() => null);
+    const invidiousPromise = searchViaInvidious(query).catch(() => null);
+
+    // Tunggu yang pertama selesai dengan hasil valid
     const raceResult = await Promise.any([
-      searchViaPiped(query).then(items => { if (!items || items.length === 0) throw new Error('empty'); return items; }),
-      searchViaInvidious(query).then(items => { if (!items || items.length === 0) throw new Error('empty'); return items; }),
+      pipedPromise.then(items => { if (!items || items.length === 0) throw new Error('empty'); return { src:'piped', items }; }),
+      invidiousPromise.then(items => { if (!items || items.length === 0) throw new Error('empty'); return { src:'invidious', items }; }),
     ]).catch(() => null);
 
-    if (raceResult && raceResult.length > 0) {
-      allItems = raceResult;
+    if (raceResult && raceResult.items && raceResult.items.length > 0) {
+      allItems = raceResult.items;
+      // Tampil langsung — jangan tunggu source kedua
       setYtResults(p => ({...p, [platformId]: allItems}));
       setYtLoading(p => ({...p, [platformId]: false}));
       ytSearchCacheSet(query, allItems);
+
+      // Merge dari source lain jika selesai cepat (max 1500ms tambahan)
+      const otherPromise = raceResult.src === 'piped' ? invidiousPromise : pipedPromise;
+      const timeout1500 = new Promise(r => setTimeout(() => r(null), 1500));
+      const otherResult = await Promise.race([otherPromise, timeout1500]);
+      let finalItems = allItems;
+      if (otherResult && otherResult.length > 0) {
+        const seen = new Set(allItems.map(x => x.videoId));
+        const extra = otherResult.filter(x => x.videoId && !seen.has(x.videoId));
+        if (extra.length > 0) {
+          finalItems = [...allItems, ...extra].slice(0, 20);
+          setYtResults(p => ({...p, [platformId]: finalItems}));
+          ytSearchCacheSet(query, finalItems);
+        }
+      }
+      // Verifikasi playability background — hapus video yang tidak bisa diputar
+      verifyYtPlayableBatch(finalItems, platformId);
       return;
     }
 
-    // Semua sumber gagal — coba AI sebagai last resort
+    // Semua sumber gagal — coba AI sebagai last resort (tidak butuh key user)
     const aiItems = await searchViaAI(query).catch(() => null);
     if (aiItems && aiItems.length > 0) {
       allItems = aiItems;
       setYtResults(p => ({...p, [platformId]: aiItems}));
     } else {
-      setYtError(p => ({...p, [platformId]: t?.searchFailed||'Search failed.'}));
+      setYtError(p => ({...p, [platformId]: t?.searchFailed||'Search failed. Coba lagi atau masukkan YouTube API key di Settings.'}));
     }
     setYtLoading(p => ({...p, [platformId]: false}));
 
@@ -4660,6 +4816,9 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                   const ch   = v.uploaderName || v.author || v.channel || 'YouTube';
                                   const thumb = v.thumbnail || `https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`;
                                   const isCurrentYt = embedTrack?.type === 'youtube' && embedTrack.videoId === v.videoId;
+                                  // Deteksi Shorts / live yang lolos filter (durasi < 62s = Shorts)
+                                  const isShort = secs > 0 && secs < 62;
+                                  const isLiveVideo = v.isLive || v.liveNow || false;
                                   return (
                                     <div key={v.videoId || vi}
                                       style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background: isCurrentYt ? 'rgba(255,68,68,0.1)' : 'rgba(255,255,255,0.04)', border: isCurrentYt ? '1px solid rgba(255,68,68,0.35)' : '1px solid rgba(255,255,255,0.08)' }}
@@ -4676,7 +4835,11 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                       </div>
                                       <div onClick={() => playYouTube(v, results, vi)} style={{ flex:1, minWidth:0, cursor:'pointer' }}>
                                         <div style={{ fontSize:12, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color: isCurrentYt ? '#ff6b6b' : 'rgba(255,255,255,0.9)' }}>{v.title}</div>
-                                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{ch}{dur ? ` · ${dur}` : ''}</div>
+                                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1, display:'flex', alignItems:'center', gap:4 }}>
+                                          <span>{ch}{dur ? ` · ${dur}` : ''}</span>
+                                          {isLiveVideo && <span style={{ fontSize:9, fontWeight:700, padding:'1px 4px', borderRadius:4, background:'rgba(255,50,50,0.25)', color:'#ff6b6b' }}>● LIVE</span>}
+                                          {isShort && <span style={{ fontSize:9, fontWeight:700, padding:'1px 4px', borderRadius:4, background:'rgba(255,255,255,0.08)', color:'rgba(255,255,255,0.4)' }}>SHORT</span>}
+                                        </div>
                                       </div>
                                       <button onClick={e => { e.stopPropagation(); openNewTab(`https://www.youtube.com/watch?v=${v.videoId}`); }}
                                         title="Buka di YouTube"
