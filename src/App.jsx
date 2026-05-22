@@ -2163,18 +2163,19 @@ const fmtSec = s => { const m=Math.floor(s/60), sec=s%60; return `${m}:${String(
 // ═══════════════════════════════════════════════════════
 //  PLAYLIST FORM VIEW - Inline Create / Edit (extracted from IIFE to fix hooks bug)
 // ═══════════════════════════════════════════════════════
-function PlaylistFormView({ editingPl, allSongs, lang, isLite, t, setPlaylists, setEditingPl, setPlView }) {
+function PlaylistFormView({ editingPl, allSongs, lang, isLite, t, setPlaylists, setEditingPl, setPlView, deletePlaylist }) {
   const isEdit = !!editingPl;
   const [formName, setFormName] = useState(editingPl?.name || '');
   const [formSelected, setFormSelected] = useState(() => new Set(editingPl?.songIds || []));
   const [searchQ, setSearchQ] = useState('');
 
   const toggleSong = id => setFormSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  const filtered = allSongs.filter(s =>
-    !searchQ.trim() ||
-    s.title.toLowerCase().includes(searchQ.toLowerCase()) ||
-    s.artist.toLowerCase().includes(searchQ.toLowerCase())
-  );
+  const filtered = allSongs.filter(s => {
+    if (isEdit && formSelected.has(s.id)) return false; // already shown in top section
+    if (!searchQ.trim()) return true;
+    return s.title.toLowerCase().includes(searchQ.toLowerCase()) ||
+      s.artist.toLowerCase().includes(searchQ.toLowerCase());
+  });
   const handleSave = () => {
     if (!formName.trim()) { alert(lang === 'id' ? 'Isi nama playlist!' : 'Enter playlist name!'); return; }
     if (isEdit) {
@@ -2204,10 +2205,18 @@ function PlaylistFormView({ editingPl, allSongs, lang, isLite, t, setPlaylists, 
             <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{formSelected.size} {t?.songsSelected || 'lagu dipilih'}</div>
           </div>
         </div>
-        <button onClick={handleSave}
-          style={{ padding:'7px 16px', borderRadius:10, border:'none', background:'linear-gradient(135deg,#6366f1,#a855f7)', color:'white', fontSize:12, fontWeight:800, cursor:'pointer', flexShrink:0 }}>
-          {isEdit ? t?.saveChanges || 'Simpan' : t?.createPlaylistBtn || 'Buat'}
-        </button>
+        <div style={{ display:'flex', gap:8, alignItems:'center', flexShrink:0 }}>
+          {isEdit && !editingPl?.locked && deletePlaylist && (
+            <button onClick={()=>{ deletePlaylist(editingPl.id); setPlView('list'); }}
+              style={{ padding:'7px 12px', borderRadius:10, border:'1px solid rgba(239,68,68,0.35)', background:'rgba(239,68,68,0.1)', color:'#f87171', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:5 }}>
+              <Trash2 size={13}/> {t?.deleteBtn||'Hapus'}
+            </button>
+          )}
+          <button onClick={handleSave}
+            style={{ padding:'7px 16px', borderRadius:10, border:'none', background:'linear-gradient(135deg,#6366f1,#a855f7)', color:'white', fontSize:12, fontWeight:800, cursor:'pointer' }}>
+            {isEdit ? t?.saveChanges || 'Simpan' : t?.createPlaylistBtn || 'Buat'}
+          </button>
+        </div>
       </div>
 
       {/* Scrollable body */}
@@ -2229,9 +2238,35 @@ function PlaylistFormView({ editingPl, allSongs, lang, isLite, t, setPlaylists, 
 
         {/* Song picker */}
         <div>
+          {/* ── Lagu yang sudah ada di playlist ini (hanya saat edit) */}
+          {isEdit && formSelected.size > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 8 }}>
+                {lang === 'id' ? 'Lagu Dalam Playlist' : 'Songs In Playlist'} ({formSelected.size})
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {allSongs.filter(s => formSelected.has(s.id)).map(s => (
+                  <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 10, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)' }}>
+                    {isLite
+                      ? <div style={{ width: 32, height: 32, borderRadius: 7, background: s.bg || 'rgba(255,255,255,0.07)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Music size={13} color={s.color} /></div>
+                      : <img src={s.cover} loading=lazy decoding=async style={{ width: 32, height: 32, borderRadius: 7, objectFit: 'cover', flexShrink: 0 }} />}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'white' }}>{s.title}</div>
+                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>{s.artist}</div>
+                    </div>
+                    <button onClick={() => toggleSong(s.id)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(239,68,68,0.6)', padding: '4px 6px', display: 'flex', borderRadius: 6, flexShrink: 0 }}>
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '12px 0' }} />
+            </div>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>{t?.selectSongs || 'Pilih Lagu'}</div>
-            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>{allSongs.length} tersedia</span>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>{t?.selectSongs || 'Tambah Lagu'}</div>
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>{allSongs.filter(s => !formSelected.has(s.id)).length} tersedia</span>
           </div>
           {/* Search songs */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(0,0,0,0.3)', borderRadius: 999, padding: '6px 12px', border: '1px solid rgba(255,255,255,0.1)', marginBottom: 8 }}>
@@ -2565,11 +2600,7 @@ function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDri
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [showPlMenu]);
-  const handleHeart = (e) => {
-    e.stopPropagation();
-    if (toggleFav) toggleFav(s.id, null); // already in allSongs — just toggle pl_fav + liked
-    else setLiked(l => ({ ...l, [s.id]: !l[s.id] }));
-  };
+
   const handleDownload = async (e) => {
     e.stopPropagation();
     if (dlState === 'loading') return;
@@ -2617,33 +2648,8 @@ function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDri
             ? <CheckCircle size={14}/>
             : <Download size={14}/>}
         </button>}
-        {playlists&&addToPlaylist&&(
-          <div ref={plMenuRef} style={{ position:'relative' }} onClick={e=>e.stopPropagation()}>
-            <button
-              style={{ ...btn, color: showPlMenu ? '#a78bfa' : 'rgba(255,255,255,0.2)', padding:6, transition:'color 0.15s' }}
-              title="Tambah ke Playlist"
-              onClick={e=>{ e.stopPropagation(); setShowPlMenu(v=>!v); }}
-            ><ListPlus size={14}/></button>
-            {showPlMenu && (
-              <div style={{ position:'absolute', right:0, top:'110%', zIndex:200, background:'#13132e', border:'1px solid rgba(99,102,241,0.3)', borderRadius:12, minWidth:180, padding:'6px 0', boxShadow:'0 12px 32px rgba(0,0,0,0.7)', overflow:'hidden' }}>
-                <div style={{ fontSize:9, fontWeight:800, color:'rgba(255,255,255,0.3)', padding:'5px 14px 7px', textTransform:'uppercase', letterSpacing:'0.12em', borderBottom:'1px solid rgba(255,255,255,0.06)', marginBottom:4 }}>{t?.addToPlaylistHeader||'Add to'}</div>
-                {playlists.length === 0 && (
-                  <div style={{ padding:'10px 14px', fontSize:11, color:'rgba(255,255,255,0.3)', fontStyle:'italic' }}>Belum ada playlist</div>
-                )}
-                {playlists.map(pl=>(
-                  <div key={pl.id} onClick={()=>{ addToPlaylist(pl.id, s.id); setShowPlMenu(false); }}
-                    style={{ padding:'8px 14px', fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.85)', cursor:'pointer', display:'flex', alignItems:'center', gap:8, transition:'background 0.1s' }}
-                    onMouseEnter={e=>e.currentTarget.style.background='rgba(99,102,241,0.15)'}
-                    onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                    <div style={{ width:6, height:6, borderRadius:'50%', background:'#a78bfa', flexShrink:0 }}/>
-                    <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{pl.name}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-        <button onClick={handleHeart} style={{ ...btn, color:liked[s.id]?'#f472b6':'rgba(255,255,255,0.2)', padding:6 }}><Heart size={15} fill={liked[s.id]?'#f472b6':'none'}/></button>
+
+
       </div>
     </div>
   );
@@ -7482,8 +7488,8 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
             </div>
 
           </div>
-          </div>
           )} {/* end portrait+desktop layout */}
+          </div>
         )}
         {tab==='stream'&&(
           <div style={{ height:'100%', display:'flex', flexDirection:'column', padding:'14px 16px 0' }}>
@@ -8757,10 +8763,6 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                             style={{ flex:1, padding:'7px 0', background:'none', border:'none', color:'#a78bfa', fontSize:11, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:5 }}>
                             <Play size={11} fill="currentColor"/>Play All
                           </button>
-                          <button onClick={()=>{ setActivePl('all_songs'); setPlView('detail'); }}
-                            style={{ flex:1, padding:'7px 0', background:'none', border:'none', borderLeft:'1px solid rgba(99,102,241,0.12)', color:'rgba(255,255,255,0.4)', fontSize:11, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:5 }}>
-                            <ListMusic size={11}/>Browse
-                          </button>
                         </div>
                       </div>
 
@@ -8865,12 +8867,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                 style={{ flex:1, padding:'7px 0', background:'none', border:'none', borderLeft:'1px solid rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.4)', fontSize:11, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:5 }}>
                                 <PenLine size={11}/>{t?.editBtn||'Edit'}
                               </button>
-                              {!pl.locked&&(
-                                <button onClick={()=>deletePlaylist(pl.id)}
-                                  style={{ flex:1, padding:'7px 0', background:'none', border:'none', borderLeft:'1px solid rgba(255,255,255,0.06)', color:'rgba(239,68,68,0.55)', fontSize:11, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:5 }}>
-                                  <Trash2 size={11}/>{t?.deleteBtn||'Hapus'}
-                                </button>
-                              )}
+
                             </div>
                           </div>
                         );
@@ -8903,6 +8900,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                     setPlaylists={setPlaylists}
                     setEditingPl={setEditingPl}
                     setPlView={setPlView}
+                    deletePlaylist={deletePlaylist}
                   />
                 </div>
               </div>
@@ -9135,10 +9133,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                             style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.2)', padding:'4px 6px', display:'flex', borderRadius:6, flexShrink:0, transition:'color 0.2s' }}>
                             <Download size={14}/>
                           </button>}
-                          <button onClick={()=>removeFromPlaylist(pl.id, s.id)}
-                            style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(239,68,68,0.5)', padding:'4px 6px', display:'flex', borderRadius:6, flexShrink:0 }}>
-                            <X size={14}/>
-                          </button>
+
                         </div>
                       );
                     })}
@@ -9355,6 +9350,12 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                               <div style={{ flex:1 }}>
                                 <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:3 }}>Starry AI</div>
                                 <div style={{ fontSize:12.5, color:'rgba(255,255,255,0.8)', lineHeight:1.6, fontWeight:500 }}>{personaRecs.greeting}</div>
+                                {personaRecs.tip && (
+                                  <div style={{ marginTop:8, display:'flex', alignItems:'flex-start', gap:7, padding:'8px 10px', borderRadius:10, background:'rgba(234,179,8,0.08)', border:'1px solid rgba(234,179,8,0.18)' }}>
+                                    <span style={{ fontSize:13, flexShrink:0, lineHeight:1 }}>💡</span>
+                                    <div style={{ fontSize:11.5, color:'rgba(255,255,255,0.6)', lineHeight:1.6 }}>{personaRecs.tip}</div>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           )}
@@ -9496,16 +9497,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                         ))}
                         </div>
 
-                        {/* Tip card */}
-                        {personaRecs.tip && (
-                          <div style={{ margin:'8px 16px 16px', padding:'14px 16px', borderRadius:18, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', display:'flex', alignItems:'flex-start', gap:12 }}>
-                            <div style={{ width:32, height:32, borderRadius:10, background:'rgba(234,179,8,0.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, flexShrink:0 }}>💡</div>
-                            <div>
-                              <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:4 }}>Tips dari Starry AI</div>
-                              <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', lineHeight:1.65 }}>{personaRecs.tip}</div>
-                            </div>
-                          </div>
-                        )}
+
                       </>
                     )}
 
