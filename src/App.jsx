@@ -2249,7 +2249,7 @@ function PlaylistFormView({ editingPl, allSongs, lang, isLite, t, setPlaylists, 
                   <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 10, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)' }}>
                     {isLite
                       ? <div style={{ width: 32, height: 32, borderRadius: 7, background: s.bg || 'rgba(255,255,255,0.07)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Music size={13} color={s.color} /></div>
-                      : <img src={s.cover} loading=lazy decoding=async style={{ width: 32, height: 32, borderRadius: 7, objectFit: 'cover', flexShrink: 0 }} />}
+                      : <img src={s.cover} loading="lazy" decoding="async" style={{ width: 32, height: 32, borderRadius: 7, objectFit: 'cover', flexShrink: 0 }} />}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'white' }}>{s.title}</div>
                       <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>{s.artist}</div>
