@@ -22,7 +22,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const apiKey = process.env.VITE_YOUTUBE_API_KEY;
+  const apiKey = process.env.YOUTUBE_API_KEY;
   if (!apiKey) {
     return res.status(503).json({ error: 'YouTube API key not configured' });
   }

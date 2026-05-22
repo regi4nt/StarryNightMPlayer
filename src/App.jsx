@@ -1184,28 +1184,29 @@ const SLEEP_OPTIONS = [
 // ═══════════════════════════════════════════════════════
 
 // Public Piped/Invidious API instances (YouTube search, no key needed)
-// /api/invidious and /api/piped are Vercel Serverless Functions that proxy
-// requests server-side — no CORS issues, tries multiple upstream instances automatically.
+// /api/video-proxy is a unified Vercel Serverless Function that proxies both Piped and
+// Invidious requests server-side — no CORS issues, tries multiple upstream instances automatically.
+// Use ?provider=piped or ?provider=invidious (defaults to piped).
 const PIPED_INSTANCES = [
-  '/api/piped',                 // Vercel serverless function (primary, no CORS)
+  '/api/video-proxy',           // Vercel serverless function (primary, no CORS)
   'https://pipedapi.kavin.rocks',
   'https://pipedapi.tokhmi.xyz',
   'https://pipedapi.moomoo.me',
 ];
 const INVIDIOUS_INSTANCES = [
-  '/api/invidious',             // Vercel serverless function (primary, no CORS)
+  '/api/video-proxy',           // Vercel serverless function (primary, no CORS)
   'https://inv.tux.pizza',
   'https://invidious.privacyredirect.com',
   'https://invidious.nerdvpn.de',
 ];
 
 // ── URL builder helpers for Invidious and Piped
-// When base is our serverless proxy ('/api/invidious' or '/api/piped'),
-// the API path goes into a ?path= query parameter.
+// When base is our serverless proxy ('/api/video-proxy'),
+// the provider, API path, and params go into query parameters.
 // When base is an external URL, the path is appended directly.
 function buildInvidiousUrl(base, apiPath, params = {}) {
   if (base.startsWith('/')) {
-    const qs = new URLSearchParams({ path: apiPath, ...params }).toString();
+    const qs = new URLSearchParams({ provider: 'invidious', path: apiPath, ...params }).toString();
     return `${base}?${qs}`;
   }
   const qs = new URLSearchParams(params).toString();
@@ -1213,7 +1214,7 @@ function buildInvidiousUrl(base, apiPath, params = {}) {
 }
 function buildPipedUrl(base, apiPath, params = {}) {
   if (base.startsWith('/')) {
-    const qs = new URLSearchParams({ path: apiPath, ...params }).toString();
+    const qs = new URLSearchParams({ provider: 'piped', path: apiPath, ...params }).toString();
     return `${base}?${qs}`;
   }
   const qs = new URLSearchParams(params).toString();
@@ -1327,21 +1328,18 @@ function getProviders() {
         { provider:'Cloudflare', key:'__proxy__', model:'@cf/qwen/qwen2.5-72b-instruct',             endpoint:'/api/cloudflare', isOpenAI:true, extra:{} },
       ];
     })()),
-    // GitHub Models — ghp_/github_pat_ via sn_ai_key handled above; here only legacy sn_gh_key or proxy fallback
+    // GitHub Models — user key only (ghp_/github_pat_ via sn_ai_key or legacy sn_gh_key); no server proxy
     ...((() => {
-      if (userKey && (userKey.startsWith('ghp_') || userKey.startsWith('github_pat_'))) return []; // already handled
+      if (userKey && (userKey.startsWith('ghp_') || userKey.startsWith('github_pat_'))) return []; // already handled above
       const k = getUserGhKey(); // legacy sn_gh_key fallback
       if (k && k.length > 10) return [
         { provider:'GitHub', key:k, model:'gpt-4o-mini',                 endpoint:'https://models.inference.ai.azure.com/chat/completions', isOpenAI:true, extra:{} },
         { provider:'GitHub', key:k, model:'meta-llama-3.3-70b-instruct', endpoint:'https://models.inference.ai.azure.com/chat/completions', isOpenAI:true, extra:{} },
         { provider:'GitHub', key:k, model:'Phi-4',                       endpoint:'https://models.inference.ai.azure.com/chat/completions', isOpenAI:true, extra:{} },
       ];
-      return [
-        { provider:'GitHub', key:'__proxy__', model:'gpt-4o-mini',                 endpoint:'/api/github', isOpenAI:true, extra:{} },
-        { provider:'GitHub', key:'__proxy__', model:'meta-llama-3.3-70b-instruct', endpoint:'/api/github', isOpenAI:true, extra:{} },
-      ];
+      return []; // no proxy available
     })()),
-    // SambaNova Cloud — user key direct OR via /api/sambanova server-side proxy
+    // SambaNova Cloud — user key only (sn_sn_key); no server proxy
     ...((() => {
       const k = getUserSnKey();
       if (k && k.length > 10) return [
@@ -1349,10 +1347,7 @@ function getProviders() {
         { provider:'SambaNova', key:k, model:'Qwen2.5-72B-Instruct',        endpoint:'https://api.sambanova.ai/v1/chat/completions', isOpenAI:true, extra:{} },
         { provider:'SambaNova', key:k, model:'DeepSeek-R1',                 endpoint:'https://api.sambanova.ai/v1/chat/completions', isOpenAI:true, extra:{} },
       ];
-      return [
-        { provider:'SambaNova', key:'__proxy__', model:'Meta-Llama-3.3-70B-Instruct', endpoint:'/api/sambanova', isOpenAI:true, extra:{} },
-        { provider:'SambaNova', key:'__proxy__', model:'Qwen2.5-72B-Instruct',        endpoint:'/api/sambanova', isOpenAI:true, extra:{} },
-      ];
+      return []; // no proxy available
     })()),
     // ── EXTERNAL FALLBACK (no key required — public free endpoints)
     // Digunakan otomatis jika SEMUA provider di atas gagal / sibuk
@@ -1487,14 +1482,12 @@ const SC_CLIENT_ID = ''; // user supplies via Settings
 
 async function searchSoundCloud(query, limit = 10) {
   const scId = getScId();
+  if (!scId) return null;
   try {
-    // If user has their own client_id, call SC directly; otherwise use server-side proxy
-    const res = scId
-      ? await fetch(
-          `https://api.soundcloud.com/tracks?q=${encodeURIComponent(query)}&limit=${limit}&client_id=${scId}`,
-          { headers: { Accept: 'application/json; charset=utf-8' } }
-        )
-      : await fetch(`/api/soundcloud?q=${encodeURIComponent(query)}&limit=${limit}`);
+    const res = await fetch(
+      `https://api.soundcloud.com/tracks?q=${encodeURIComponent(query)}&limit=${limit}&client_id=${scId}`,
+      { headers: { Accept: 'application/json; charset=utf-8' } }
+    );
     if (!res.ok) return null;
     const data = await res.json();
     return (Array.isArray(data) ? data : data.collection || []).map(t => ({
@@ -3658,7 +3651,7 @@ export default function App() {
   const [scLoading, setScLoading] = useState({});
   const [scError,   setScError]   = useState({});
   const [scWidget,  setScWidget]  = useState({}); // { [platformId]: activeWidgetUrl }
-  const scHasKey = true; // user key (sn_sc_id) or server proxy (/api/soundcloud) always available
+  const scHasKey = !!(userScId || SC_CLIENT_ID);
 
   // ── Redirect platforms search
   const [platformSearch, setPlatformSearch] = useState({});
@@ -3851,7 +3844,8 @@ export default function App() {
       })();
       const jamendoPromise = (async () => {
         try {
-          const r = await fetch(`/api/jamendo?search=${encodeURIComponent(q)}&limit=5`, { signal: AbortSignal.timeout(6000) });
+          // Vercel rewrite: /api/jamendo → api.jamendo.com/v3.0/tracks (query params forwarded)
+          const r = await fetch(`/api/jamendo?namesearch=${encodeURIComponent(q)}&limit=5`, { signal: AbortSignal.timeout(6000) });
           if (!r.ok) return [];
           const d = await r.json();
           return (d.results || []).map(t => ({
@@ -3866,7 +3860,8 @@ export default function App() {
       })();
       const ccmixtPromise = (async () => {
         try {
-          const r = await fetch(`/api/ccmixter?title=${encodeURIComponent(q)}&limit=5`, { signal: AbortSignal.timeout(6000) });
+          // Vercel rewrite: /api/ccmixter → ccmixter.org/api/query (query params forwarded)
+          const r = await fetch(`/api/ccmixter?tags=${encodeURIComponent(q)}&limit=5`, { signal: AbortSignal.timeout(6000) });
           if (!r.ok) return [];
           const d = await r.json();
           return (d || []).slice(0, 4).map(t => ({
