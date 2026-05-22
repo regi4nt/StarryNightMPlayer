@@ -505,16 +505,17 @@ export default function App() {
   // ── Verifikasi batch apakah videoId benar-benar bisa diputar via oEmbed
   // oEmbed YouTube: gratis, tanpa API key, return error jika video tidak bisa embed
   // Dijalankan background setelah hasil tampil — update UI jika ada yang gagal
-  const verifyYtPlayableBatch = async (items, platformId) => {
+  // FIX Bug 3: checks are now truly parallel via Promise.allSettled
+  // FIX Bug 4: originalQuery param captures query at call-time, prevents stale cache key
+  const verifyYtPlayableBatch = async (items, platformId, originalQuery) => {
     if (!items || items.length === 0) return;
     // Ambil yang belum diverifikasi (isPlayable masih undefined)
     const unverified = items.filter(v => v.isPlayable === undefined && v.videoId);
     if (unverified.length === 0) return;
-    // Check paralel, max 8 sekaligus (tidak mau flood oEmbed)
+    // Check paralel sejati, max 8 sekaligus (tidak mau flood oEmbed)
     const BATCH = 8;
     const badIds = new Set();
-    for (let i = 0; i < Math.min(unverified.length, BATCH); i++) {
-      const v = unverified[i];
+    const checks = unverified.slice(0, BATCH).map(async (v) => {
       try {
         const res = await fetch(
           `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${v.videoId}&format=json`,
@@ -522,7 +523,8 @@ export default function App() {
         );
         if (!res.ok) badIds.add(v.videoId); // 401/404 = tidak bisa embed
       } catch { /* timeout = asumsikan OK */ }
-    }
+    });
+    await Promise.allSettled(checks);
     if (badIds.size === 0) return;
     // Update state: hapus video yang tidak bisa diputar
     setYtResults(prev => {
@@ -530,7 +532,8 @@ export default function App() {
       const filtered = cur.filter(v => !badIds.has(v.videoId));
       if (filtered.length === cur.length) return prev; // tidak ada perubahan
       const updated = { ...prev, [platformId]: filtered };
-      ytSearchCacheSet(ytQuery[platformId] || '', filtered);
+      // FIX Bug 4: gunakan originalQuery (captured saat dipanggil), bukan ytQuery[platformId] yang bisa stale
+      ytSearchCacheSet(originalQuery || '', filtered);
       return updated;
     });
   };
@@ -554,16 +557,18 @@ export default function App() {
       let res;
       if (userKey) {
         // Direct ke Google — param minimal agar latency rendah
-        // videoEmbeddable & order dihilangkan: memperlambat Google tanpa manfaat nyata
+        // FIX Bug 1: eventType:'none' dihapus — nilai tidak valid di YT API v3
+        // (hanya 'completed'|'live'|'upcoming' yang diterima; 'none' diabaikan Google)
+        // Filter live sudah ditangani di bawah via liveBroadcastContent === 'none'
+        // FIX Search: regionCode & relevanceLanguage dihapus — keduanya bias hasil ke konten
+        // berbahasa Indonesia sehingga pencarian lagu asing (English, Korean, dll) ngawur.
+        // YT API sudah cukup relevan tanpa kedua param ini; kategori Music (10) tetap dipakai.
         const params = new URLSearchParams({
           key: userKey, part: 'snippet', q: query, type: 'video',
           videoCategoryId: '10', maxResults: '10',
-          regionCode: 'ID',
-          relevanceLanguage: 'id',
           safeSearch: 'none',
           videoEmbeddable: 'true',
           videoSyndicated: 'true',
-          eventType: 'none',
           fields: 'items(id/videoId,snippet/title,snippet/channelTitle,snippet/thumbnails/medium,snippet/liveBroadcastContent)',
         });
         res = await fetchWithTimeout(`https://www.googleapis.com/youtube/v3/search?${params}`, 6000);
@@ -571,7 +576,7 @@ export default function App() {
         // Lewat proxy /api/youtube
         const params = new URLSearchParams({
           action: 'search', q: query, maxResults: '10',
-          videoDuration: 'any',  // server akan pakai 'any', filter live sudah via eventType
+          videoDuration: 'any',  // server akan pakai 'any', filter live sudah via liveBroadcastContent
         });
         res = await fetchWithTimeout(`/api/youtube?${params}`, 6000);
       }
@@ -597,10 +602,26 @@ export default function App() {
         thumbnail: i.snippet.thumbnails?.medium?.url || `https://i.ytimg.com/vi/${i.id.videoId}/mqdefault.jpg`,
         url: `/watch?v=${i.id.videoId}`,
       }));
-    } catch { return null; }
+    } catch (e) {
+      // FIX Bug 2: re-throw error auth (403/401) agar caller (searchYouTube) bisa
+      // mendeteksi quota habis dan fallback dengan benar.
+      // Sebelumnya catch { return null } menelan error ini sehingga throw di atas
+      // tidak pernah sampai ke caller.
+      if (e.message === 'yt_api_auth') throw e;
+      return null;
+    }
   };
 
   const searchViaPiped = async (query) => {
+    // FIX Search: tambahkan music context agar Piped tidak return video random yang
+    // kebetulan mengandung kata query. Piped tidak punya videoCategoryId seperti YT API,
+    // jadi hint "official audio" / "music" di query adalah satu-satunya cara mengarahkan.
+    // Hanya ditambahkan jika query pendek (<35 char) dan belum ada kata musik di dalamnya.
+    const musicKeywords = /official|audio|music|mv|live|lyric|cover|remix|video/i;
+    const musicQuery = (query.length < 35 && !musicKeywords.test(query))
+      ? `${query} official audio`
+      : query;
+
     // Helper ekstrak videoId 11 karakter dari URL Piped
     const extractVideoId = (url = '') => {
       const m = url.match(/[?&]v=([A-Za-z0-9_-]{11})/);
@@ -608,17 +629,26 @@ export default function App() {
       const plain = url.replace('/watch?v=', '').split('&')[0].split('?')[0];
       return plain.length === 11 ? plain : null;
     };
-    // Helper: apakah video ini kemungkinan bisa diputar (bukan Shorts, bukan live)
+    // Helper: apakah video ini kemungkinan bisa diputar (bukan Shorts, bukan live, bukan premiere)
     const isLikelyPlayable = (item, dur) => {
-      // Shorts: durasi < 62 detik ATAU URL /shorts/ ATAU title mengandung #shorts/#short
+      // ── Shorts: URL /shorts/, flag isShort, atau durasi <62 s ───────────
       if (item.url && item.url.toLowerCase().includes('/shorts/')) return false;
+      if (item.isShort === true) return false;
       const titleLower = (item.title || '').toLowerCase();
       if (titleLower.includes('#shorts') || titleLower.includes('#short')) return false;
-      // Live stream panjang: durasi = 0 sering berarti live; tapi juga bisa berarti tidak tersedia durasi
-      // Hanya skip jika ada sinyal live eksplisit
-      if (item.isLive || item.live) return false;
-      // Shorts biasanya < 62 detik; tapi tidak filter berdasar durasi jika tidak tersedia (=0)
+      // Judul sangat pendek (<3 karakter) = data rusak/kosong
+      if (item.title && item.title.trim().length < 3) return false;
+
+      // ── Live / upcoming / premiere ───────────────────────────────────────
+      if (item.isLive || item.live || item.liveNow) return false;
+      if (item.isUpcoming || item.premiereTimestamp) return false;
+
+      // ── Durasi: skip jika eksplisit <62 s; durasi=0 masih lolos (tidak tersedia) ─
       if (dur > 0 && dur < 62) return false;
+
+      // ── Piped: uploaderUrl kosong = channel tidak valid ──────────────────
+      if (item.uploaderUrl !== undefined && !item.uploaderUrl) return false;
+
       return true;
     };
 
@@ -644,7 +674,7 @@ export default function App() {
       try {
         // Coba music_songs dulu (lebih relevan untuk musik)
         const res = await fetchWithTimeout(
-          buildPipedUrl(base, '/search', { q: query, filter: 'music_songs' }),
+          buildPipedUrl(base, '/search', { q: musicQuery, filter: 'music_songs' }),
           4000
         );
         if (!res.ok) return null;
@@ -653,7 +683,7 @@ export default function App() {
         // Fallback: jika music_songs tidak menghasilkan apa-apa, coba filter=videos
         if (items.length === 0) {
           const res2 = await fetchWithTimeout(
-            buildPipedUrl(base, '/search', { q: query, filter: 'videos' }),
+            buildPipedUrl(base, '/search', { q: musicQuery, filter: 'videos' }),
             3500
           );
           if (res2.ok) {
@@ -671,11 +701,18 @@ export default function App() {
   };
 
   const searchViaInvidious = async (query) => {
+    // FIX Search: sama seperti Piped, Invidious tidak punya category filter.
+    // Tambahkan hint musik ke query pendek agar hasil lebih relevan.
+    const musicKeywords = /official|audio|music|mv|live|lyric|cover|remix|video/i;
+    const musicQuery = (query.length < 35 && !musicKeywords.test(query))
+      ? `${query} official audio`
+      : query;
+
     const tryInstance = async (base) => {
       try {
         const res = await fetchWithTimeout(
           // sort_by=relevance: prioritas relevansi (cocok untuk semua lagu, klasik & baru)
-          buildInvidiousUrl(base, '/api/v1/search', { q: query, type: 'video', sort_by: 'relevance', features: 'embeddable', fields: 'videoId,title,author,lengthSeconds,videoThumbnails' }),
+          buildInvidiousUrl(base, '/api/v1/search', { q: musicQuery, type: 'video', sort_by: 'relevance', features: 'embeddable', fields: 'videoId,title,author,lengthSeconds,videoThumbnails' }),
           4500
         );
         if (!res.ok) return null;
@@ -683,14 +720,19 @@ export default function App() {
         if (!Array.isArray(data) || data.length === 0) return null;
         return data
           .filter(v => {
-            if (!v.videoId || v.videoId.length !== 11) return false;
-            // Invidious: liveNow = sedang live, lengthSeconds=0 bisa berarti live
-            if (v.liveNow || v.isUpcoming) return false;
-            // Filter Shorts: <62 detik ATAU title #shorts
+            // ── videoId valid ────────────────────────────────────────────────
+            if (!v.videoId || !/^[A-Za-z0-9_-]{11}$/.test(v.videoId)) return false;
+            // ── Live / upcoming / premiere ───────────────────────────────────
+            if (v.liveNow || v.isUpcoming || v.premiereTimestamp) return false;
+            // ── Shorts: durasi <62 s, atau title #shorts ─────────────────────
             const dur = v.lengthSeconds || 0;
             if (dur > 0 && dur < 62) return false;
             const tl = (v.title || '').toLowerCase();
             if (tl.includes('#shorts') || tl.includes('#short')) return false;
+            // ── Judul terlalu pendek = data rusak ────────────────────────────
+            if (v.title && v.title.trim().length < 3) return false;
+            // ── viewCount = 0 → kemungkinan video premiere/tersembunyi ───────
+            if (v.viewCount !== undefined && v.viewCount === 0) return false;
             return true;
           })
           .slice(0, 15)
@@ -724,30 +766,80 @@ export default function App() {
   // Fallback: AI-powered search recommendation
   // Bisa pakai user key ATAU server /api/ai (tidak perlu key user)
   const searchViaAI = async (query) => {
-    const prompt = `List 5 real YouTube video IDs for the music query: "${query}".
-Return ONLY a JSON array, no explanation:
-[{"videoId":"XXXXXXXXXXX","title":"Song Title","uploaderName":"Channel Name","duration":240}]
-Rules: videoId must be exactly 11 chars, real and playable videos only.`;
-    const systemPrompt = 'You are a music search assistant. Return only valid JSON arrays with real YouTube videoIds.';
+    // FIX Search: AI TIDAK lagi diminta menghasilkan videoId langsung — LLM sering halusin
+    // videoId yang tidak ada atau sudah dihapus sehingga hasil jadi ngawur.
+    // Sekarang AI diminta menyarankan query pencarian yang lebih baik, lalu hasil
+    // digunakan untuk re-search via Invidious (source nyata, bukan imajinasi LLM).
+    const prompt = `Suggest 3 better YouTube search queries to find music for: "${query}".
+Return ONLY a JSON array of strings, no explanation:
+["query1", "query2", "query3"]
+Rules: each query should be specific enough to find the right song/artist. Include artist name if known.`;
+    const systemPrompt = 'You are a music search assistant. Return only a JSON array of 3 search query strings. No extra text.';
+
+    const extractQueries = (text) => {
+      try {
+        const clean = text.replace(/```json|```/g, '').trim();
+        const arr = JSON.parse(clean);
+        if (Array.isArray(arr) && arr.length > 0) {
+          return arr.filter(q => typeof q === 'string' && q.trim().length > 0).slice(0, 3);
+        }
+      } catch {}
+      return null;
+    };
+
+    const searchWithQueries = async (queries) => {
+      // Coba setiap suggested query via Invidious sampai ada yang return hasil
+      for (const q of queries) {
+        const musicKeywords = /official|audio|music|mv|live|lyric|cover|remix|video/i;
+        const mq = (q.length < 35 && !musicKeywords.test(q)) ? `${q} official audio` : q;
+        try {
+          const results = await Promise.any(
+            INVIDIOUS_INSTANCES.map(async (base) => {
+              const res = await fetchWithTimeout(
+                buildInvidiousUrl(base, '/api/v1/search', { q: mq, type: 'video', sort_by: 'relevance', features: 'embeddable', fields: 'videoId,title,author,lengthSeconds,videoThumbnails' }),
+                4000
+              );
+              if (!res.ok) throw new Error('not ok');
+              const data = await res.json();
+              if (!Array.isArray(data) || data.length === 0) throw new Error('empty');
+              const valid = data.filter(v => {
+                if (!v.videoId || !/^[A-Za-z0-9_-]{11}$/.test(v.videoId)) return false;
+                if (v.liveNow || v.isUpcoming || v.premiereTimestamp) return false;
+                const dur = v.lengthSeconds || 0;
+                if (dur > 0 && dur < 62) return false;
+                const tl = (v.title || '').toLowerCase();
+                if (tl.includes('#shorts') || tl.includes('#short')) return false;
+                if (v.title && v.title.trim().length < 3) return false;
+                if (v.viewCount !== undefined && v.viewCount === 0) return false;
+                return true;
+              });
+              if (valid.length === 0) throw new Error('no valid');
+              return valid.slice(0, 8).map(v => {
+                const thumbs = v.videoThumbnails || [];
+                const preferred = thumbs.find(t => t.quality === 'medium' || t.quality === 'mqdefault') || thumbs[thumbs.length - 1];
+                const rawThumb = preferred?.url || '';
+                const thumb = rawThumb.startsWith('http') ? rawThumb : `https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`;
+                return {
+                  url: `/watch?v=${v.videoId}`, title: v.title, uploaderName: v.author,
+                  duration: v.lengthSeconds || 0, thumbnail: thumb, videoId: v.videoId, isPlayable: true,
+                };
+              });
+            })
+          );
+          if (results && results.length > 0) return results;
+        } catch {}
+      }
+      return null;
+    };
 
     try {
       // Coba user key dulu jika ada
       if (hasKey()) {
         const r = await askAIRace(prompt, systemPrompt);
-        const clean = r.replace(/```json|```/g, '').trim();
-        const items = JSON.parse(clean);
-        if (Array.isArray(items) && items.length > 0) {
-          const valid = items.filter(v => v.videoId && v.videoId.length === 11);
-          if (valid.length > 0) {
-            return valid.map(v => ({
-              url: `/watch?v=${v.videoId}`,
-              title: v.title || query,
-              uploaderName: v.uploaderName || 'YouTube',
-              duration: v.duration || 0,
-              thumbnail: `https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`,
-              videoId: v.videoId,
-            }));
-          }
+        const queries = extractQueries(r);
+        if (queries) {
+          const items = await searchWithQueries(queries);
+          if (items && items.length > 0) return items;
         }
       }
       // Fallback: server AI proxy (tidak butuh key user)
@@ -760,18 +852,10 @@ Rules: videoId must be exactly 11 chars, real and playable videos only.`;
       if (!res.ok) return null;
       const data = await res.json();
       const text = data.text || data.result || data.content || '';
-      const clean = text.replace(/```json|```/g, '').trim();
-      const items = JSON.parse(clean);
-      if (Array.isArray(items) && items.length > 0) {
-        const valid = items.filter(v => v.videoId && v.videoId.length === 11);
-        return valid.map(v => ({
-          url: `/watch?v=${v.videoId}`,
-          title: v.title || query,
-          uploaderName: v.uploaderName || 'YouTube',
-          duration: v.duration || 0,
-          thumbnail: `https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`,
-          videoId: v.videoId,
-        }));
+      const queries = extractQueries(text);
+      if (queries) {
+        const items = await searchWithQueries(queries);
+        if (items && items.length > 0) return items;
       }
     } catch { /* silent fail */ }
     return null;
@@ -978,7 +1062,8 @@ Rules: videoId must be exactly 11 chars, real and playable videos only.`;
         }
       }
       // Verifikasi playability background — hapus video yang tidak bisa diputar
-      verifyYtPlayableBatch(finalItems, platformId);
+      // FIX Bug 4: pass query agar cache key tidak stale jika user cepat search lagi
+      verifyYtPlayableBatch(finalItems, platformId, query);
       return;
     }
 
@@ -7074,6 +7159,8 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                             const ytPlatformId = 'ytmusic';
                             const query = `${songRec.title} ${songRec.artist}`;
                             setYtQuery(p=>({...p,[ytPlatformId]:query}));
+                            setUnifiedPlatform('ytmusic');
+                            setUnifiedQuery(query);
                             setTab('stream');
                             setTimeout(()=>{
                               searchYouTube(ytPlatformId, query);

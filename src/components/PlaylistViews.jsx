@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { CheckCircle, ChevronLeft, ListPlus, Music, PenLine, Search, Trash2 } from 'lucide-react';
+import { CheckCircle, ChevronLeft, ListPlus, Music, PenLine, Search, Trash2, X } from 'lucide-react';
 
 function PlaylistFormView({ editingPl, allSongs, lang, isLite, t, setPlaylists, setEditingPl, setPlView, deletePlaylist }) {
   const isEdit = !!editingPl;

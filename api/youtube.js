@@ -56,6 +56,14 @@ const PIPED_INSTANCES = [
 
 const YT_BASE = 'https://www.googleapis.com/youtube/v3';
 
+// ── Helper: ekstrak videoId 11 karakter dari URL Piped (/watch?v=... atau /watch/...) ──
+const extractVideoIdFromUrl = (url = '') => {
+  const m = url.match(/[?&]v=([A-Za-z0-9_-]{11})/);
+  if (m) return m[1];
+  const plain = url.replace('/watch?v=', '').split('&')[0].split('?')[0].replace('/watch/', '');
+  return /^[A-Za-z0-9_-]{11}$/.test(plain) ? plain : null;
+};
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
@@ -101,16 +109,40 @@ export default async function handler(req, res) {
       // Validasi: harus ada data yang berguna
       if (Array.isArray(data) && data.length === 0) throw new Error('empty');
       if (data && typeof data === 'object' && Array.isArray(data.items) && data.items.length === 0) throw new Error('empty');
-      // Validasi Invidious: array items harus punya videoId valid (11 char)
+      // Validasi Invidious/Piped: array items harus lolos filter embeddable ketat
       if (Array.isArray(data)) {
-        // Filter: videoId valid, bukan live, bukan shorts (<62s)
-        const valid = data.filter(i =>
-          i.videoId && i.videoId.length === 11 &&
-          !i.liveNow && !i.isUpcoming &&
-          (i.lengthSeconds === undefined || i.lengthSeconds === 0 || i.lengthSeconds >= 62)
-        );
-        if (valid.length === 0) throw new Error('no valid videoIds');
-        // Return filtered array, bukan data asli
+        const valid = data.filter(i => {
+          // ── videoId harus valid 11 karakter (Base64url) ──────────────────
+          const vid = i.videoId || extractVideoIdFromUrl(i.url || '');
+          if (!vid || !/^[A-Za-z0-9_-]{11}$/.test(vid)) return false;
+
+          // ── Tolak live / upcoming / premiere ────────────────────────────
+          if (i.liveNow || i.isLive || i.live) return false;
+          if (i.isUpcoming || i.premiereTimestamp) return false;
+
+          // ── Tolak Shorts: URL /shorts/, durasi <62 s, atau flag isShort ──
+          const url = (i.url || '').toLowerCase();
+          if (url.includes('/shorts/')) return false;
+          if (i.isShort === true) return false;
+          const dur = i.lengthSeconds || i.duration || 0;
+          if (dur > 0 && dur < 62) return false;
+
+          // ── Tolak jika title mengandung penanda Shorts/live ──────────────
+          const title = (i.title || '').toLowerCase();
+          if (title.includes('#shorts') || title.includes('#short')) return false;
+          // Judul sangat pendek (<3 karakter) = kemungkinan data rusak
+          if (i.title && i.title.trim().length < 3) return false;
+
+          // ── Piped: pastikan ada uploaderUrl (channel valid, bukan ghost) ─
+          // uploaderUrl biasanya '/channel/UCxxxxxx' — kosong = data tidak lengkap
+          if (i.uploaderUrl !== undefined && !i.uploaderUrl) return false;
+
+          // ── Invidious: pastikan viewCount > 0 jika tersedia ─────────────
+          if (i.viewCount !== undefined && i.viewCount === 0) return false;
+
+          return true;
+        });
+        if (valid.length === 0) throw new Error('no embeddable videoIds');
         return valid;
       }
       return data;
@@ -150,8 +182,12 @@ export default async function handler(req, res) {
         videoSyndicated: 'true',          // hanya video yang bisa diembed di luar YT
         eventType: 'none',                // exclude live streams & upcoming
         videoDuration: clientParams.videoDuration || 'any', // caller bisa override
-        relevanceLanguage: clientParams.lang || 'id',
-        regionCode: clientParams.regionCode || 'ID',
+        // FIX Search: relevanceLanguage & regionCode TIDAK di-default ke 'id'/'ID' —
+        // param ini menyebabkan hasil lagu asing (English, Korean, dll) ngawur karena
+        // YT API memprioritaskan konten berbahasa Indonesia.
+        // Hanya sertakan jika caller eksplisit kirim param tersebut.
+        ...(clientParams.lang       ? { relevanceLanguage: clientParams.lang }       : {}),
+        ...(clientParams.regionCode ? { regionCode: clientParams.regionCode }         : {}),
         fields: 'items(id/videoId,snippet/title,snippet/channelTitle,snippet/thumbnails/medium,snippet/liveBroadcastContent)',
       });
 
