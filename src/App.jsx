@@ -4167,10 +4167,15 @@ export default function App() {
     // Stop audio jika sedang radio dan incoming bukan radio
     if (incomingMode !== 'radio' && track?.isRadio) {
       if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
+      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
+      if (radioReconnectRef.current) { clearTimeout(radioReconnectRef.current); radioReconnectRef.current = null; }
+      radioReconnectCount.current = 0;
+      setStreamBuffering(false);
       setRadioPlaying(false);
     }
     // Stop audio jika incoming adalah radio/embed (bukan lokal)
-    if (incomingMode !== 'local' && !track?.isRadio) {
+    // Khusus embed-to-embed (YT next/prev): jangan setPlaying(false) — biarkan playYouTube yang set
+    if (incomingMode !== 'local' && incomingMode !== 'embed' && !track?.isRadio) {
       setPlaying(false);
     }
   };
@@ -4240,11 +4245,26 @@ export default function App() {
   // ── YouTube queue navigation
   const ytNext = useCallback(() => {
     const q = ytQueueRef.current;
-    if (repeatRef.current === 'one') { seekYt(0); return; }
-    // Single video (queue kosong) — tetap support repeat all & shuffle
-    if (!q.length) {
+    if (repeatRef.current === 'one') {
+      // Ulangi video yang sama: seekTo 0 lalu play
+      try {
+        ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'command', func:'seekTo', args:[0, true] }), '*');
+        setTimeout(() => {
+          try { ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'command', func:'playVideo', args:'' }), '*'); } catch(_) {}
+        }, 150);
+      } catch(_) {}
+      return;
+    }
+    // Single video (queue kosong atau 1 item) — repeat all → restart; shuffle → restart
+    if (!q.length || q.length === 1) {
       if (repeatRef.current === 'all' || shuffleRef.current) {
-        seekYt(0); // restart video yang sama
+        // Harus seekTo(0) langsung ke iframe, bukan via seekYt(pct) yang butuh ytDuration
+        try {
+          ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'command', func:'seekTo', args:[0, true] }), '*');
+          setTimeout(() => {
+            try { ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'command', func:'playVideo', args:'' }), '*'); } catch(_) {}
+          }, 150);
+        } catch(_) {}
       } else {
         setPlaying(false);
       }
@@ -4263,12 +4283,10 @@ export default function App() {
     const nextIdx = ytQueueIdxRef.current + 1;
     if (nextIdx >= q.length) {
       if (repeatRef.current === 'all') {
-        // Repeat all: kembali ke lagu pertama
         ytQueueIdxRef.current = 0;
         playYouTube(q[0], q, 0);
         return;
       }
-      // Sudah lagu terakhir, tidak ada repeat → berhenti
       setPlaying(false);
       return;
     }
@@ -4527,6 +4545,7 @@ export default function App() {
   const [uploading, setUploading]       = useState(false);
   const [uploadProgress, setUploadProg] = useState(0);
   const [loadingTrack, setLoadingTrack] = useState(false);
+  const [streamBuffering, setStreamBuffering] = useState(false); // buffering indicator untuk radio/stream
   const [driveDownProg, setDriveDownProg] = useState(0);   // 0-100, only in Pro mode
   const [drivePhase, setDrivePhase]       = useState('idle'); // 'idle' | 'check' | 'download'
   const [driveError, setDriveError]     = useState('');
@@ -4576,7 +4595,10 @@ export default function App() {
   });
 
   // ── Refs
-  const audioRef      = useRef(null);
+  const audioRef            = useRef(null);
+  const hlsRef              = useRef(null);   // HLS.js instance untuk stream .m3u8
+  const radioReconnectRef   = useRef(null);   // setTimeout handle untuk auto-reconnect
+  const radioReconnectCount = useRef(0);       // berapa kali sudah reconnect
   const chatEndRef    = useRef(null);
   const ytMusicSectionRef = useRef(null);
   const tokenRef      = useRef(null);
@@ -4924,6 +4946,12 @@ export default function App() {
     }
     const wasPlaying = playingRef.current || (prev && !prev.paused);
     if (prev) { prev.pause(); prev.src = ''; }
+    // Hancurkan HLS instance lama
+    if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
+    // Bersihkan reconnect timer lama
+    if (radioReconnectRef.current) { clearTimeout(radioReconnectRef.current); radioReconnectRef.current = null; }
+    radioReconnectCount.current = 0;
+    setStreamBuffering(false);
     // Guard: jangan buat Audio jika src kosong (placeholder track)
     if (!track.src) {
       audioRef.current = null;
@@ -4937,12 +4965,27 @@ export default function App() {
     if (!track.isRadio) {
       a.crossOrigin = 'anonymous';
     }
-    a.src = track.src; // set src SETELAH crossOrigin agar berlaku sejak request pertama
     audioRef.current = a;
-    if (wasPlaying) {
-      a.play().catch(e => { console.warn('autoplay blocked:', e); setPlaying(false); });
+    const isHlsSrc = track.src.includes('.m3u8') || track.src.includes('/hls/') || track.src.includes('chunklist');
+    if (track.isRadio && isHlsSrc) {
+      // HLS.js untuk stream .m3u8 (Chrome & Firefox tidak support native HLS)
+      setStreamBuffering(true);
+      attachHls(a, track.src, () => {
+        setStreamBuffering(false);
+        if (wasPlaying) {
+          a.play().catch(e => { console.warn('autoplay blocked:', e); setPlaying(false); });
+        }
+      });
+    } else {
+      a.src = track.src; // set src SETELAH crossOrigin agar berlaku sejak request pertama
+      if (wasPlaying) {
+        a.play().catch(e => { console.warn('autoplay blocked:', e); setPlaying(false); });
+      }
     }
-    return () => { a.pause(); a.src = ''; };
+    return () => {
+      a.pause(); a.src = '';
+      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
+    };
   }, [track.src]); // eslint-disable-line react-hooks/exhaustive-deps
   // ── Audio events
   useEffect(() => {
@@ -4967,6 +5010,12 @@ export default function App() {
     // Error / stall — pastikan loading state tidak terjebak selamanya
     const onError = () => {
       const err = a.error;
+      // Auto-reconnect untuk stream radio
+      if (track.isRadio) {
+        console.warn('[Radio] Stream error, scheduling reconnect. code:', err?.code);
+        scheduleRadioReconnect(track);
+        return;
+      }
       // MediaSource / network error saat streaming Drive — coba reload
       if (track.isDrive && track.driveId && err && (err.code === 2 || err.code === 4)) {
         // MEDIA_ERR_NETWORK (2) atau MEDIA_ERR_SRC_NOT_SUPPORTED (4)
@@ -4996,6 +5045,14 @@ export default function App() {
       setPlaying(false); setLoadingTrack(false);
     };
     const onStall = () => {
+      if (track.isRadio) {
+        // Untuk radio: jangan a.load() (akan reset stream dari awal)
+        // Cukup schedule reconnect jika benar-benar macet
+        if (a.readyState < 2 && !a.paused) {
+          scheduleRadioReconnect(track);
+        }
+        return;
+      }
       // Stall bisa terjadi saat buffer habis di Lite mode — coba resume
       if (a.readyState < 3 && !a.paused) {
         a.load();
@@ -5003,12 +5060,17 @@ export default function App() {
         a.addEventListener('canplay', () => { a.currentTime = pos; a.play().catch(()=>{}); }, { once: true });
       }
     };
+    // Buffering indicator untuk stream radio
+    const onWaiting = () => { if (track.isRadio) setStreamBuffering(true); };
+    const onPlaying = () => { if (track.isRadio) { setStreamBuffering(false); radioReconnectCount.current = 0; if (radioReconnectRef.current) { clearTimeout(radioReconnectRef.current); radioReconnectRef.current = null; } } };
     a.addEventListener('timeupdate', onTime);
     a.addEventListener('loadedmetadata', onMeta);
     a.addEventListener('durationchange', onDurChange);
     a.addEventListener('ended', onEnd);
     a.addEventListener('error', onError);
     a.addEventListener('stalled', onStall);
+    a.addEventListener('waiting', onWaiting);
+    a.addEventListener('playing', onPlaying);
     // Immediate check — metadata may already be loaded (blob URL / fast network)
     trySetDur();
     // Polling fallback: VBR MP3 may report Infinity initially, then settle later
@@ -5023,6 +5085,8 @@ export default function App() {
       a.removeEventListener('ended', onEnd);
       a.removeEventListener('error', onError);
       a.removeEventListener('stalled', onStall);
+      a.removeEventListener('waiting', onWaiting);
+      a.removeEventListener('playing', onPlaying);
       clearInterval(durPoll);
     };
   }, [track]); // only re-attach when track changes (not customSongs)
@@ -5035,8 +5099,11 @@ export default function App() {
     // Control YouTube iframe when embedTrack is active
     if (embedTrack?.type === 'youtube' && ytIframeRef.current) {
       const cmd = playing ? 'playVideo' : 'pauseVideo';
-      try { ytIframeRef.current.contentWindow.postMessage(JSON.stringify({ event:'command', func:cmd, args:'' }), '*'); } catch(_){}
-      return;
+      // Tunda sedikit agar iframe sempat mount dulu sebelum postMessage
+      const t = setTimeout(() => {
+        try { ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'command', func:cmd, args:'' }), '*'); } catch(_){}
+      }, 100);
+      return () => clearTimeout(t);
     }
     const a = audioRef.current; if (!a) return;
     if (playing) {
@@ -5075,14 +5142,9 @@ export default function App() {
           if (data.info.currentTime != null) setYtProgress(data.info.currentTime);
           if (data.info.duration != null && data.info.duration > 0) setYtDuration(data.info.duration);
         }
-        // Video ended → auto next
+        // Video ended → auto next (ytNext handles semua kasus: repeat-one, repeat-all, shuffle)
         if (data?.event === 'onStateChange' && data.info === 0) {
-          if (repeatRef.current === 'one') {
-            try { ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'command', func:'seekTo', args:[0, true] }), '*'); } catch(_) {}
-            setTimeout(() => {
-              try { ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'command', func:'playVideo', args:'' }), '*'); } catch(_) {}
-            }, 200);
-          } else { setTimeout(() => { if (ytNextRef.current) ytNextRef.current(); }, 600); }
+          setTimeout(() => { if (ytNextRef.current) ytNextRef.current(); }, 300);
         }
       } catch(_) {}
     };
@@ -5776,6 +5838,92 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     return { soma, icecast, nts, radioParadise, fmStream, shoutcast };
   };
 
+  // ── HLS.js dynamic loader — hanya load sekali via CDN
+  const _hlsLibRef = useRef(null);
+  const loadHlsLib = useCallback(() => {
+    if (_hlsLibRef.current) return Promise.resolve(_hlsLibRef.current);
+    return new Promise((resolve, reject) => {
+      if (window.Hls) { _hlsLibRef.current = window.Hls; resolve(window.Hls); return; }
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/hls.js@1.5.11/dist/hls.min.js';
+      script.onload = () => { _hlsLibRef.current = window.Hls; resolve(window.Hls); };
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+  }, []);
+
+  // ── Pasang HLS.js ke elemen audio untuk URL .m3u8
+  const attachHls = useCallback((audioEl, src, onReady) => {
+    // Hancurkan instance lama
+    if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
+    loadHlsLib().then(Hls => {
+      if (!Hls.isSupported()) {
+        // Fallback: browser native HLS (Safari / Edge)
+        audioEl.src = src;
+        onReady && onReady();
+        return;
+      }
+      const hls = new Hls({
+        lowLatencyMode: true,
+        liveSyncDurationCount: 3,
+        maxBufferLength: 60,
+        maxMaxBufferLength: 120,
+      });
+      hlsRef.current = hls;
+      hls.loadSource(src);
+      hls.attachMedia(audioEl);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => { onReady && onReady(); });
+      hls.on(Hls.Events.ERROR, (_evt, data) => {
+        if (data.fatal) {
+          if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+            hls.startLoad(); // coba lanjut dari jaringan
+          } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+            hls.recoverMediaError();
+          } else {
+            hls.destroy(); hlsRef.current = null;
+          }
+        }
+      });
+    }).catch(() => {
+      // Jika CDN gagal, fallback langsung
+      audioEl.src = src;
+      onReady && onReady();
+    });
+  }, [loadHlsLib]);
+
+  // ── Auto-reconnect untuk stream radio yang putus
+  const scheduleRadioReconnect = useCallback((trackObj) => {
+    if (radioReconnectRef.current) clearTimeout(radioReconnectRef.current);
+    const attempt = radioReconnectCount.current;
+    if (attempt >= 6) {
+      // Sudah 6x gagal — beri tahu user dan berhenti
+      radioReconnectCount.current = 0;
+      setPlaying(false);
+      setStreamBuffering(false);
+      return;
+    }
+    // Exponential back-off: 2s, 4s, 8s, 16s, 30s, 30s
+    const delay = Math.min(2000 * Math.pow(2, attempt), 30000);
+    console.warn(`[Radio] Reconnect attempt ${attempt + 1} in ${delay}ms`);
+    setStreamBuffering(true);
+    radioReconnectRef.current = setTimeout(() => {
+      radioReconnectCount.current += 1;
+      const a = audioRef.current;
+      if (!a || !trackObj.isRadio) return;
+      const src = trackObj.src;
+      if (src.includes('.m3u8')) {
+        attachHls(a, src, () => { a.play().catch(() => {}); });
+      } else {
+        a.src = '';
+        setTimeout(() => {
+          a.src = src;
+          a.load();
+          a.play().catch(() => {});
+        }, 100);
+      }
+    }, delay);
+  }, [attachHls]);
+
   // ── Universal play function for any external radio station
   const playRbStation = (station) => {
     const streamUrl = station.url_resolved || station.url;
@@ -6038,7 +6186,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     }
     let td = { ...t };
     stopAllMedia('local');
-    if (t.isDrive && !t.src) {
+    if (t.isDrive && t.driveId && (!t.src || !t.src.startsWith('blob:'))) {
       setLoadingTrack(true);
       setDriveDownProg(0);
 
@@ -6087,9 +6235,30 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
         } catch {}
       }
 
-      // ── Tidak ada cache — perlu stream dari Drive (harus online + token)
+      // ── Tidak ada cache di Pro mode — cek cache untuk Lite mode saat offline
       if (!navigator.onLine) {
-        setDriveError(t?.noPlayback||'This song has not been downloaded. Connect to the internet and play it once to save offline.');
+        // Lite mode belum cek cache — coba ambil dari Cache API dulu
+        if (liteModeNow) {
+          try {
+            const cachedBlob = await cacheGet(t.driveId);
+            if (cachedBlob) {
+              const url = URL.createObjectURL(cachedBlob);
+              _blobCache.set(t.driveId + ':cached', url);
+              setCustomSongs(prev => prev.map(s => s.id === t.id ? { ...s, src: url } : s));
+              setDriveError('');
+              setLoadingTrack(false);
+              setDriveDownProg(0);
+              setDrivePhase('idle');
+              setTrack({ ...t, src: url }); setProgress(0); setDuration(0); setPlaying(true);
+              setTab('player');
+              return;
+            }
+          } catch {}
+        }
+        // Benar-benar tidak ada cache
+        setDriveError(lang==='id'
+          ? 'Lagu ini belum diunduh. Sambungkan internet dan putar sekali untuk menyimpan offline.'
+          : 'This song has not been downloaded. Connect to the internet and play it once to save offline.');
         setLoadingTrack(false); setDriveDownProg(0); setDrivePhase('idle'); return;
       }
 
@@ -7299,7 +7468,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                 {/* Badge */}
                 {embedTrack?.type==='youtube' && <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:999, background:'rgba(255,0,0,0.12)', border:'1px solid rgba(255,0,0,0.25)' }}><span style={{ fontSize:9, fontWeight:800, color:'#ff6b6b', textTransform:'uppercase', letterSpacing:'0.1em' }}>▶ YouTube</span></div>}
                 {embedTrack?.type==='soundcloud' && <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:999, background:'rgba(255,85,0,0.12)', border:'1px solid rgba(255,85,0,0.3)' }}><span style={{ fontSize:9, fontWeight:800, color:'#ff5500', textTransform:'uppercase', letterSpacing:'0.1em' }}>🔊 SoundCloud</span></div>}
-                {!embedTrack && track.isRadio && <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:999, background:'rgba(245,158,11,0.15)', border:'1px solid rgba(245,158,11,0.35)' }}><div style={{ width:5,height:5,borderRadius:'50%',background:'#f59e0b',animation:playing?'pulse 1.2s infinite':'none' }}/><span style={{ fontSize:9, fontWeight:800, color:'#fbbf24', textTransform:'uppercase', letterSpacing:'0.1em' }}>● LIVE RADIO</span></div>}
+                {!embedTrack && track.isRadio && <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:999, background:'rgba(245,158,11,0.15)', border:'1px solid rgba(245,158,11,0.35)' }}>{streamBuffering ? <Loader2 size={9} style={{ animation:'spin 0.8s linear infinite', color:'#fbbf24' }}/> : <div style={{ width:5,height:5,borderRadius:'50%',background:'#f59e0b',animation:playing?'pulse 1.2s infinite':'none' }}/>}<span style={{ fontSize:9, fontWeight:800, color:'#fbbf24', textTransform:'uppercase', letterSpacing:'0.1em' }}>{streamBuffering ? 'BUFFERING…' : '● LIVE RADIO'}</span></div>}
 
                 {/* Title */}
                 <div style={{ width:'100%', minWidth:0 }}>
@@ -7353,7 +7522,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                   <button onClick={()=>setShowSettings(v=>!v)} style={{ background:showSettings?'rgba(255,255,255,0.08)':'none', borderRadius:8, border:'none', cursor:'pointer', color:sleepTimer?track.color:(showSettings?'rgba(255,255,255,0.7)':'rgba(255,255,255,0.35)'), padding:'4px 7px' }}><Settings size={16}/></button>
                   <button onClick={()=>setFullscreen(f=>!f)} style={{ background:'none', border:'none', cursor:'pointer', color:fullscreen?track.color:'rgba(255,255,255,0.35)', padding:'4px 7px' }}>{fullscreen?<Minimize2 size={16}/>:<Maximize2 size={16}/>}</button>
                   {embedTrack && <button onClick={()=>{ closeEmbed(); setShowSettings(false); }} style={{ background:'none', border:'none', cursor:'pointer', color:'#fca5a5', padding:'4px 7px' }}><X size={16}/></button>}
-                  {!embedTrack && track.isRadio && radioStation && <button onClick={()=>{ if(audioRef.current){audioRef.current.pause();audioRef.current.src='';} setPlaying(false); setRadioStation(null); setRadioPlaying(false); setTrack(SONGS[0]); }} style={{ background:'none', border:'none', cursor:'pointer', color:'#fbbf24', padding:'4px 7px' }}><X size={16}/></button>}
+                  {!embedTrack && track.isRadio && radioStation && <button onClick={()=>{ if(audioRef.current){audioRef.current.pause();audioRef.current.src='';} if(hlsRef.current){hlsRef.current.destroy();hlsRef.current=null;} if(radioReconnectRef.current){clearTimeout(radioReconnectRef.current);radioReconnectRef.current=null;} radioReconnectCount.current=0; setStreamBuffering(false); setPlaying(false); setRadioStation(null); setRadioPlaying(false); setTrack(SONGS[0]); }} style={{ background:'none', border:'none', cursor:'pointer', color:'#fbbf24', padding:'4px 7px' }}><X size={16}/></button>}
                 </div>
               </div>
 
@@ -7447,8 +7616,8 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                 </div>
               ) : track.isRadio ? (
                 <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:999, marginBottom:3, background:`rgba(245,158,11,0.15)`, border:'1px solid rgba(245,158,11,0.35)' }}>
-                  <div style={{ width:5, height:5, borderRadius:'50%', background:'#f59e0b', boxShadow:'0 0 6px #f59e0b', animation: playing ? 'pulse 1.2s infinite' : 'none' }}/>
-                  <span style={{ fontSize:9, fontWeight:800, color:'#fbbf24', textTransform:'uppercase', letterSpacing:'0.1em' }}>● LIVE RADIO</span>
+                  {streamBuffering ? <Loader2 size={9} style={{ animation:'spin 0.8s linear infinite', color:'#fbbf24' }}/> : <div style={{ width:5, height:5, borderRadius:'50%', background:'#f59e0b', boxShadow:'0 0 6px #f59e0b', animation: playing ? 'pulse 1.2s infinite' : 'none' }}/>}
+                  <span style={{ fontSize:9, fontWeight:800, color:'#fbbf24', textTransform:'uppercase', letterSpacing:'0.1em' }}>{streamBuffering ? 'BUFFERING…' : '● LIVE RADIO'}</span>
                 </div>
               ) : track.isDrive ? (
                 <div style={{ display:'inline-flex', alignItems:'center', gap:3, padding:'2px 7px', borderRadius:999, marginBottom:3, background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)' }}><Cloud size={9} style={{ color:track.color }}/><span style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.1em' }}>Drive</span></div>
@@ -7563,7 +7732,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
               )}
               {/* Tutup radio — hanya muncul saat radio sedang aktif */}
               {!embedTrack && track.isRadio && radioStation && (
-                <button onClick={()=>{ if(audioRef.current){audioRef.current.pause();audioRef.current.src='';} setPlaying(false); setRadioStation(null); setRadioPlaying(false); setTrack(SONGS[0]); setShowSettings(false); }} title={t?.closeRadioBtn||"Exit Radio"} style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:layoutVars.actionPad, borderRadius:12, background:'none', border:'none', color:'#fbbf24' }}>
+                <button onClick={()=>{ if(audioRef.current){audioRef.current.pause();audioRef.current.src='';} if(hlsRef.current){hlsRef.current.destroy();hlsRef.current=null;} if(radioReconnectRef.current){clearTimeout(radioReconnectRef.current);radioReconnectRef.current=null;} radioReconnectCount.current=0; setStreamBuffering(false); setPlaying(false); setRadioStation(null); setRadioPlaying(false); setTrack(SONGS[0]); setShowSettings(false); }} title={t?.closeRadioBtn||"Exit Radio"} style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:layoutVars.actionPad, borderRadius:12, background:'none', border:'none', color:'#fbbf24' }}>
                   <X size={16}/>
                 </button>
               )}
@@ -8224,6 +8393,9 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                       </button>
                                       <button onClick={() => {
                                         if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
+                                        if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
+                                        if (radioReconnectRef.current) { clearTimeout(radioReconnectRef.current); radioReconnectRef.current = null; }
+                                        radioReconnectCount.current = 0; setStreamBuffering(false);
                                         setPlaying(false); setRadioStation(null); setRadioPlaying(false);
                                         setTrack(SONGS[0]);
                                       }} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.3)', cursor:'pointer', fontSize:14, flexShrink:0, padding:0 }}>✕</button>
@@ -8388,6 +8560,9 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                   </button>
                                   <button onClick={() => {
                                     if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
+                                    if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
+                                    if (radioReconnectRef.current) { clearTimeout(radioReconnectRef.current); radioReconnectRef.current = null; }
+                                    radioReconnectCount.current = 0; setStreamBuffering(false);
                                     setPlaying(false); setRadioStation(null); setRadioPlaying(false);
                                     setTrack(SONGS[0]);
                                   }} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.3)', cursor:'pointer', fontSize:14, flexShrink:0, padding:0 }}>✕</button>
