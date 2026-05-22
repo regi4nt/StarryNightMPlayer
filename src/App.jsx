@@ -55,6 +55,8 @@ const T = {
       ['⚡ Semua fitur AI dinonaktifkan', 'Chat, For You, Vibe Search, Wawasan Kosmik, dan lirik AI dimatikan'],
       ['⚡ Lirik dari database publik saja', 'Ambil dari lrclib & lyrics.ovh — tidak ada fallback AI jika tidak ketemu'],
       ['⚡ Animasi & efek visual dimatikan', 'Bintang, blur, gradient, dan transisi dinonaktifkan sepenuhnya'],
+      ['⚡ Update progres dihemat', 'Bar progres diperbarui tiap 2 detik, bukan tiap 250ms — kurangi render loop'],
+      ['⚡ Animasi berhenti di tab lain', 'Semua animasi otomatis di-pause saat kamu pindah tab — hemat baterai'],
     ],
     proFeatures: [
       ['✨ Cover art dari internet', 'Gambar album/thumbnail dimuat otomatis untuk setiap lagu'],
@@ -217,6 +219,8 @@ const T = {
       ['⚡ All AI features disabled', 'Chat, For You, Vibe Search, Cosmic Insights, and AI lyrics are off'],
       ['⚡ Lyrics from public database only', 'Fetches from lrclib & lyrics.ovh — no AI fallback if not found'],
       ['⚡ Animations & visual effects off', 'Stars, blur, gradients, and transitions fully disabled'],
+      ['⚡ Progress updates throttled', 'Progress bar updates every 2s instead of 250ms — fewer render cycles'],
+      ['⚡ Animations pause in background', 'All animations auto-pause when you switch tabs — saves battery'],
     ],
     proFeatures: [
       ['✨ Cover art from the internet', 'Album art and thumbnails loaded automatically for every track'],
@@ -2591,12 +2595,17 @@ function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDri
   const [dlState, setDlState] = React.useState('idle'); // idle | loading | done | error
   const [showPlMenu, setShowPlMenu] = React.useState(false);
   const plMenuRef = React.useRef(null);
+  const plBtnRef = React.useRef(null);
+  const [plMenuPos, setPlMenuPos] = React.useState({ bottom: 0, right: 0 });
 
   // Close dropdown when clicking outside
   React.useEffect(() => {
     if (!showPlMenu) return;
     const handler = (e) => {
-      if (plMenuRef.current && !plMenuRef.current.contains(e.target)) {
+      if (
+        plMenuRef.current && !plMenuRef.current.contains(e.target) &&
+        plBtnRef.current && !plBtnRef.current.contains(e.target)
+      ) {
         setShowPlMenu(false);
       }
     };
@@ -2625,7 +2634,7 @@ function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDri
   };
   const dlColor = dlState === 'done' ? '#4ade80' : dlState === 'error' ? '#f87171' : dlState === 'loading' ? (s.color || '#a78bfa') : 'rgba(255,255,255,0.2)';
   return (
-    <div style={{ display:'flex', alignItems:'center', gap:12, padding:'9px 12px', borderRadius:14, cursor:'pointer', background:isActive?s.bg:'rgba(255,255,255,0.04)', border:`1px solid ${isActive?s.color+'50':'transparent'}` }} onClick={()=>play(s)}>
+    <div data-songrow style={{ display:'flex', alignItems:'center', gap:12, padding:'9px 12px', borderRadius:14, cursor:'pointer', background:isActive?s.bg:'rgba(255,255,255,0.04)', border:`1px solid ${isActive?s.color+'50':'transparent'}` }} onClick={()=>play(s)}>
       <div style={{ width:28, height:28, borderRadius:8, flexShrink:0, background:isActive?s.color:'rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:800, color:isActive?'white':'rgba(255,255,255,0.4)' }}>
         {isActive&&playing ? (isLite ? <Music size={12} color="white"/> : <div style={{ display:'flex', gap:1.5, alignItems:'flex-end' }}>{[12,6,10].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:'white', borderRadius:1, animation:`bounce 1.4s ease-in-out ${j*0.25}s infinite` }}/>))}</div>) : isDrive?<Cloud size={12}/>:i+1}
       </div>
@@ -2652,9 +2661,10 @@ function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDri
         )}
         {/* ── Tombol Tambah ke Playlist */}
         {playlists && playlists.length > 0 && addToPlaylist && (
-          <div ref={plMenuRef} style={{ position:'relative' }}>
+          <div style={{ position:'relative' }}>
             <button
-              onClick={e=>{ e.stopPropagation(); setShowPlMenu(v=>!v); }}
+              ref={plBtnRef}
+              onClick={e=>{ e.stopPropagation(); if(!showPlMenu && plBtnRef.current){ const r=plBtnRef.current.getBoundingClientRect(); setPlMenuPos({ bottom: window.innerHeight - r.top + 6, right: window.innerWidth - r.right }); } setShowPlMenu(v=>!v); }}
               title={t?.addToPlaylistBtn||'Tambah ke Playlist'}
               style={{ background:'none', border:'none', cursor:'pointer', flexShrink:0, padding:6, color: showPlMenu ? '#f472b6' : 'rgba(255,255,255,0.35)', transition:'color 0.2s' }}
             >
@@ -2662,11 +2672,12 @@ function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDri
             </button>
             {showPlMenu && (
               <div
+                ref={plMenuRef}
                 onClick={e=>e.stopPropagation()}
                 style={{
-                  position:'absolute', right:0, bottom:'calc(100% + 6px)',
+                  position:'fixed', right: plMenuPos.right, bottom: plMenuPos.bottom,
                   background:'#1a1a2e', border:'1px solid rgba(255,255,255,0.1)',
-                  borderRadius:12, padding:'6px 0', minWidth:160, zIndex:999,
+                  borderRadius:12, padding:'6px 0', minWidth:160, zIndex:9999,
                   boxShadow:'0 8px 32px rgba(0,0,0,0.6)'
                 }}
               >
@@ -4794,8 +4805,10 @@ export default function App() {
   }, []);
 
   // ── Re-fetch Drive songs when tab becomes visible again (catches expired tokens)
+  // Juga toggle class page-hidden untuk pause semua animasi saat tab tidak aktif (hemat baterai)
   useEffect(() => {
     const onVisible = () => {
+      document.documentElement.classList.toggle('page-hidden', document.visibilityState === 'hidden');
       if (document.visibilityState !== 'visible') return;
       const tok = tokenRef.current;
       if (!tok) return;
@@ -4834,10 +4847,28 @@ export default function App() {
       setIsDesktop(mode === 'desktop-landscape' || mode === 'desktop-portrait');
 
       if (isFs) {
-        // Fullscreen: maximize ring for both orientations
-        if (isLandscape) {
-          // Landscape fullscreen: ring limited by height, leave room for controls on the right
-          const size = Math.min(vw * 0.42, vh - 80);
+        if (!isPhone && isLandscape) {
+          // Desktop landscape fullscreen: keep column layout, expand ring (no sidebar)
+          const mainW = vw;
+          const mainH = vh;
+          const reservedH = 260;
+          const byH = mainH - reservedH;
+          const byW = mainW - 80;
+          const ring = Math.max(200, Math.min(400, Math.min(byH, byW)));
+          setRingSize(ring);
+          const vpad = Math.max(10, Math.round((mainH - ring - reservedH) / 2));
+          setLayoutVars({
+            playerPad: `${vpad}px 32px`,
+            trackTitleSize: `clamp(18px,${Math.round(mainW * 0.03)}px,30px)`,
+            artistSize: '13px', controlsGap: '16px', actionPad: '10px 0',
+            volumeMt: `${Math.max(10, Math.min(22, Math.round(vpad * 0.6)))}px`,
+            controlsMt: `${Math.max(12, Math.min(26, Math.round(vpad * 0.8)))}px`,
+            infoMt: `${Math.max(10, Math.min(22, Math.round(vpad * 0.6)))}px`,
+          });
+        } else if (isPhone && isLandscape) {
+          // Mobile landscape fullscreen: no header/sidenav, ring can fill proper column width
+          const ringColW = Math.round(vw * 0.45);
+          const size = Math.min(vh - 16, ringColW - 16);
           setRingSize(Math.max(140, Math.min(380, size)));
         } else {
           // Portrait fullscreen: centered, leave room for controls below
@@ -4990,7 +5021,16 @@ export default function App() {
   // ── Audio events
   useEffect(() => {
     const a = audioRef.current; if (!a) return;
-    const onTime  = () => setProgress(a.currentTime);
+    // Lite: throttle ke 2 detik sekali — hemat CPU render loop
+    // Pro: throttle ke 1 detik — CSS transition 0.35s mengisi gap, tetap terlihat smooth
+    let lastTimeSaved = 0;
+    const onTime = () => {
+      const now = a.currentTime;
+      const threshold = isLiteRef.current ? 2 : 1;
+      if (Math.abs(now - lastTimeSaved) < threshold) return;
+      lastTimeSaved = now;
+      setProgress(now);
+    };
     const trySetDur = () => {
       if (isFinite(a.duration) && a.duration > 0) { setDuration(a.duration); return true; }
       return false;
@@ -5149,10 +5189,11 @@ export default function App() {
       } catch(_) {}
     };
     window.addEventListener('message', handler);
-    // Poll current time every 800ms
+    // Poll current time: 1000ms (Pro) / 3000ms (Lite — hemat CPU)
+    const pollMs = isLiteRef.current ? 3000 : 1000;
     const poll = setInterval(() => {
       try { ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'listening' }), '*'); } catch(_) {}
-    }, 800);
+    }, pollMs);
     return () => { window.removeEventListener('message', handler); clearInterval(poll); };
   }, [embedTrack, seekYt]);
 
@@ -5573,12 +5614,23 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
         votes: s.votes,
       }));
       setRbBrowseStations(stations);
-      rbBrowseRef.current = stations;
+      // Gabungkan kurasi + Radio Browser untuk navigasi next/prev dan tampilan queue
+      const rbPlatform = STREAMING_PLATFORMS.find(p => p.embedType === 'radio');
+      const rbCountryData = rbPlatform?.countries?.find(c => c.id === countryId);
+      const rbGenreData = rbCountryData?.genres?.find(g => g.id === genreId);
+      const rbCurated = rbGenreData?.stations || [];
+      // Pertahankan Garden yang sudah dimuat, gabungkan kurasi + RB + Garden
+      const existingGarden = rbBrowseRef.current.filter(s => s.id?.startsWith('garden_'));
+      rbBrowseRef.current = [...rbCurated, ...stations, ...existingGarden];
       // Trigger health-check otomatis setelah stasiun dimuat
       testStationsInGenre({ id: key, stations });
     } catch(e) {
       setRbBrowseError('Failed to load from Radio Browser. Check your internet connection.');
-      rbBrowseRef.current = [];
+      // Fallback ke stasiun kurasi saja jika Radio Browser gagal
+      const rbPlatformFb = STREAMING_PLATFORMS.find(p => p.embedType === 'radio');
+      const rbCountryFb = rbPlatformFb?.countries?.find(c => c.id === countryId);
+      const rbGenreFb = rbCountryFb?.genres?.find(g => g.id === genreId);
+      rbBrowseRef.current = rbGenreFb?.stations || [];
     } finally {
       setRbBrowseLoading(false);
     }
@@ -5709,6 +5761,9 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
         stations = filtered.length > 0 ? filtered : stations;
       }
       setGardenBrowseStations(stations);
+      // Append Garden ke antrean navigasi, pertahankan kurasi + RB yang sudah ada
+      const existingNonGarden = rbBrowseRef.current.filter(s => !s.id?.startsWith('garden_'));
+      rbBrowseRef.current = [...existingNonGarden, ...stations];
     } catch(e) {
       setGardenBrowseError('Failed to load from Radio Garden.');
     } finally {
@@ -6822,6 +6877,14 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
   }, []);
 
   const updatePlaylist = useCallback(({ name, songIds }) => {
+    // Jika yang diedit adalah ❤️ Favorit, sinkronkan liked state untuk lagu yang dihapus
+    if (editingPl?.id === 'pl_fav') {
+      const removedIds = (editingPl.songIds || []).filter(id => !songIds.includes(id));
+      if (removedIds.length > 0) {
+        setLiked(l => { const n = { ...l }; removedIds.forEach(id => { n[id] = false; }); return n; });
+        setFavSongs(p => p.filter(s => songIds.includes(s.id)));
+      }
+    }
     setPlaylists(p => p.map(pl => pl.id===editingPl.id ? { ...pl, name, songIds } : pl));
     setShowPlModal(false);
     setEditingPl(null);
@@ -7015,10 +7078,12 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       {/* ══ HEADER */}
       {!fullscreen && <header style={{ position: 'sticky', top: 0, zIndex:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'space-between', padding: layoutMode === 'mobile-landscape' ? '5px 14px' : '9px 14px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: isLite ? 'rgba(7,7,26,0.98)' : 'rgba(7,7,26,0.85)', ...(isLite ? {} : { backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }) }}>
         <div style={{ display:'flex', alignItems:'center', gap:9 }}>
-          <AppLogo size={layoutMode === 'mobile-landscape' ? 24 : 30}/>
-          <div>
-            <div style={{ fontWeight:900, fontSize: layoutMode === 'mobile-landscape' ? 11 : 13, lineHeight:1, letterSpacing:'-0.03em', background:'linear-gradient(90deg,#60a5fa,#c084fc)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>Starry Night</div>
-            <div style={{ fontSize: layoutMode === 'mobile-landscape' ? 8 : 9.5, fontWeight:700, color:'rgba(255,255,255,0.35)', marginTop:0.5, letterSpacing:'0.06em', textTransform:'uppercase' }}>MPlayer</div>
+          <div onClick={() => window.location.reload()} title="Reload halaman" style={{ display:'flex', alignItems:'center', gap:9, cursor:'pointer' }}>
+            <AppLogo size={layoutMode === 'mobile-landscape' ? 24 : 30}/>
+            <div>
+              <div style={{ fontWeight:900, fontSize: layoutMode === 'mobile-landscape' ? 11 : 13, lineHeight:1, letterSpacing:'-0.03em', background:'linear-gradient(90deg,#60a5fa,#c084fc)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>Starry Night</div>
+              <div style={{ fontSize: layoutMode === 'mobile-landscape' ? 8 : 9.5, fontWeight:700, color:'rgba(255,255,255,0.35)', marginTop:0.5, letterSpacing:'0.06em', textTransform:'uppercase' }}>MPlayer</div>
+            </div>
           </div>
           {/* Clock in header for mobile-landscape */}
           {layoutMode === 'mobile-landscape' && (
@@ -7026,11 +7091,6 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
           )}
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-          {/* Reload button */}
-          <button onClick={() => window.location.reload()} title="Reload halaman"
-            style={{ display:'flex', alignItems:'center', justifyContent:'center', width:26, height:26, borderRadius:'50%', border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.05)', cursor:'pointer', color:'rgba(255,255,255,0.45)', flexShrink:0 }}>
-            <RefreshCw size={11}/>
-          </button>
           {/* Mode toggle */}
           <button onClick={toggleMode} title={isLite ? (t ? t.liteTitle : 'Mode Lite aktif (hemat data) — ketuk untuk Pro') : (t ? t.proTitle : 'Mode Pro — ketuk untuk Lite (hemat data)')}
             style={{ display:'flex', alignItems:'center', gap:3, padding:'4px 8px', borderRadius:999, border:`1px solid ${isLite ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.15)'}`, background: isLite ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)', cursor:'pointer', color: isLite ? '#6ee7b7' : 'rgba(255,255,255,0.5)', fontSize:9, fontWeight:700, letterSpacing:'0.04em', textTransform:'uppercase' }}>
@@ -7226,6 +7286,8 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                       {radioStations.map((station, i) => {
                         const isCur = radioStation?.id === station.id;
                         const stationColor = radioGenreData?.color || radioStation?.color || '#f59e0b';
+                        // Tentukan apakah ini stasiun kurasi atau dari Radio Browser
+                        const isCurated = radioGenreData?.stations?.some(s => s.id === station.id);
                         return (
                           <div key={station.id} onClick={() => {
                             const radioTrackObj = {
@@ -7241,6 +7303,8 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                               isRadio: true,
                             };
                             if (track.id === radioTrackObj.id) { setPlaying(p => !p); } else {
+                              // Antrean tetap terjaga saat pilih dari queue panel
+                              if (rbBrowseRef.current.length === 0) rbBrowseRef.current = radioStations;
                               play(radioTrackObj);
                               setRadioStation({ ...station, color: stationColor, countryId: radioStation?.countryId, genreId: radioStation?.genreId });
                               setRadioPlaying(true);
@@ -7260,6 +7324,10 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                               <div style={{ fontSize:12, fontWeight:isCur?700:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:isCur?stationColor:'rgba(255,255,255,0.88)' }}>{station.name}</div>
                               <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:2, display:'flex', alignItems:'center', gap:4 }}>
                                 <span>{station.city} · ● LIVE</span>
+                                {isCurated
+                                  ? <span style={{ color:'#f59e0b', fontWeight:700, fontSize:8 }}>⭐ Kurasi</span>
+                                  : <span style={{ color:'#4ade80', fontWeight:700, fontSize:8 }}>📡 RB</span>
+                                }
                                 {stationStatus[station.id] === 'testing' && <span style={{ color:'#fbbf24', display:'inline-flex', alignItems:'center', gap:2 }}><span style={{ width:5, height:5, borderRadius:'50%', border:'1.5px solid #fbbf24', borderTopColor:'transparent', display:'inline-block', animation:'spin 0.8s linear infinite' }}/><span style={{ fontSize:7 }}>cek…</span></span>}
                                 {stationStatus[station.id] === 'ok' && <span style={{ color:'#4ade80', fontWeight:700, fontSize:8 }}>✓</span>}
                                 {stationStatus[station.id] === 'fail' && <span style={{ color:'#f87171', fontWeight:700, fontSize:8 }}>✕ offline</span>}
@@ -7427,8 +7495,9 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
 
 
           {/* ═══ MOBILE LANDSCAPE — dedicated two-column layout ═══ */}
-          {layoutMode === 'mobile-landscape' && !fullscreen && (() => {
-            const lsRing = Math.min(ringSize, window.innerHeight - 80);
+          {layoutMode === 'mobile-landscape' && (() => {
+            // Fullscreen: header hilang → pakai hampir full height. Non-fullscreen: kurangi header ~40px
+            const lsRing = Math.min(ringSize, window.innerHeight - (fullscreen ? 16 : 80));
             const lsColW = lsRing + 16;
             return (
             <div style={{ display:'flex', flexDirection:'row', height:'100%', width:'100%', overflow:'hidden', boxSizing:'border-box' }}>
@@ -7531,21 +7600,19 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
           })()}
 
           {/* ═══ PORTRAIT + DESKTOP layout ═══ */}
-          {(layoutMode !== 'mobile-landscape' || fullscreen) && (
+          {layoutMode !== 'mobile-landscape' && (
           <div style={{
             minHeight: fullscreen ? '100%' : undefined,
             height: fullscreen ? '100%' : undefined,
             display: 'flex',
-            flexDirection: (fullscreen && window.innerWidth > window.innerHeight) ? 'row' : 'column',
+            flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: fullscreen
-              ? (window.innerWidth > window.innerHeight ? 'center' : 'space-evenly')
-              : 'flex-start',
+            justifyContent: fullscreen ? 'space-evenly' : 'flex-start',
             padding: fullscreen ? '8px 24px 10px' : layoutVars.playerPad,
             position: 'relative',
             boxSizing: 'border-box',
             overflow: 'hidden',
-            gap: (fullscreen && window.innerWidth > window.innerHeight) ? '10px' : 0,
+            gap: 0,
           }}>
 
             {/* ── JAM — pojok kiri atas area player (desktop only) */}
@@ -7587,9 +7654,9 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
             {/* Track info */}
             <div style={{
               textAlign: 'center',
-              marginTop: fullscreen ? 0 : layoutMode === 'mobile-landscape' ? 0 : layoutVars.infoMt,
+              marginTop: (fullscreen && (layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait')) ? layoutVars.infoMt : fullscreen ? 0 : layoutMode === 'mobile-landscape' ? 0 : layoutVars.infoMt,
               width: '100%',
-              maxWidth: fullscreen ? 440 : layoutMode === 'mobile-landscape' ? undefined : 340,
+              maxWidth: fullscreen ? 520 : layoutMode === 'mobile-landscape' ? undefined : 340,
               padding: layoutMode === 'mobile-landscape' ? '0 6px' : '0 8px',
               minWidth: 0,
               overflow: 'hidden',
@@ -7600,10 +7667,6 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                 height: '100%',
                 maxHeight: '100%',
                 overflowY: 'hidden',
-              } : {}),
-              ...((fullscreen && typeof window !== 'undefined' && window.innerWidth > window.innerHeight) ? {
-                display: 'flex', flexDirection: 'column', alignItems: 'center',
-                justifyContent: 'center', flex: 1, minWidth: 0,
               } : {}),
             }}>
               {embedTrack?.type==='youtube' ? (
@@ -7650,7 +7713,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
             )}
 
             {/* Main controls: Shuffle | Prev | Play | Next | Repeat */}
-            <div style={{ display:'flex', alignItems:'center', gap:layoutVars.controlsGap, marginTop: fullscreen ? 0 : layoutVars.controlsMt }}>
+            <div style={{ display:'flex', alignItems:'center', gap:layoutVars.controlsGap, marginTop: (fullscreen && (layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait')) ? layoutVars.controlsMt : fullscreen ? 0 : layoutVars.controlsMt }}>
               {!track.isRadio && <button onClick={()=>{ if(embedTrack?.type==='youtube'){ setShuffle(s=>{ const next=!s; if(next){ setRepeat('off'); ytShuffle(); } return next; }); } else if(track._wsSource && wsQueueRef.current.length > 0){ setShuffle(s=>{ const next=!s; if(next){ setRepeat('off'); wsShuffle(); } return next; }); } else { setShuffle(s=>{ const next=!s; if(next) setRepeat("off"); return next; }); } }} style={{ ...btn, color:shuffle?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', position:'relative', padding:'clamp(5px,1.2vw,8px)' }}>
                 <Shuffle size={18}/>
                 {shuffle&&<div style={{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:embedTrack?.type==='youtube'?'#ff4444':track.color }}/>}
@@ -7667,14 +7730,14 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
             </div>
 
             {/* ── Volume row */}
-            <div style={{ display:'flex', alignItems:'center', gap:10, marginTop: fullscreen ? 0 : layoutVars.volumeMt, width:'100%', maxWidth: fullscreen ? '100%' : layoutMode === 'mobile-landscape' ? '100%' : 340, padding:'4px 2px' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginTop: (fullscreen && (layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait')) ? layoutVars.volumeMt : fullscreen ? 0 : layoutVars.volumeMt, width:'100%', maxWidth: fullscreen ? '100%' : layoutMode === 'mobile-landscape' ? '100%' : 340, padding:'4px 2px' }}>
               <button onClick={()=>setMuted(m=>!m)} style={{ ...btn, color:muted?'#ef4444':'rgba(255,255,255,0.38)', padding:4, flexShrink:0 }}>{muted?<VolumeX size={16}/>:<Volume2 size={16}/>}</button>
               <input type="range" min="0" max="1" step="0.01" value={muted?0:volume} onChange={e=>{setVolume(+e.target.value);setMuted(false)}} style={{ flex:1, accentColor:embedTrack?.type==='youtube'?'#ff4444':track.color, height:3, cursor:'pointer' }}/>
               <span style={{ fontSize:10, color:'rgba(255,255,255,0.28)', fontWeight:700, minWidth:28, textAlign:'right', fontFamily:'monospace', flexShrink:0 }}>{muted?'0':Math.round(volume*100)}%</span>
             </div>
 
             {/* ── Action buttons row */}
-            <div style={{ display:'flex', alignItems:'center', flexWrap: layoutMode === 'mobile-portrait' ? 'wrap' : 'nowrap', gap:4, marginTop: fullscreen ? 0 : layoutVars.volumeMt, width:'100%', maxWidth: (fullscreen || layoutMode === 'mobile-landscape') ? '100%' : 340, justifyContent:'center' }}>
+            <div style={{ display:'flex', alignItems:'center', flexWrap: layoutMode === 'mobile-portrait' ? 'wrap' : 'nowrap', gap:4, marginTop: (fullscreen && (layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait')) ? layoutVars.volumeMt : fullscreen ? 0 : layoutVars.volumeMt, width:'100%', maxWidth: (fullscreen || layoutMode === 'mobile-landscape') ? '100%' : 340, justifyContent:'center' }}>
               {/* Like */}
               {embedTrack?.type==='youtube'
                 ? (() => {
@@ -8706,6 +8769,8 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                                       setPlaying(p=>!p); setRadioPlaying(p=>!p);
                                                     } else {
                                                       if (embedTrack?.type === 'youtube') { closeEmbed(); }
+                                                      // Perbarui antrean navigasi: kurasi + RB + Garden gabungan
+                                                      rbBrowseRef.current = [...(selGenre.stations || []), ...rbBrowseStations, ...gardenBrowseStations];
                                                       play(radioTrackObj);
                                                       setRadioStation({ ...station, color: stationColor, countryId: selCountry.id, genreId: selGenre.id });
                                                       setRadioPlaying(true);
@@ -8770,6 +8835,8 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                               setPlaying(p=>!p); setRadioPlaying(p=>!p);
                                             } else {
                                               if (embedTrack?.type === 'youtube') { closeEmbed(); }
+                                              // Perbarui antrean navigasi: kurasi + RB + Garden gabungan
+                                              rbBrowseRef.current = [...(selGenre?.stations || []), ...rbBrowseStations, ...gardenBrowseStations];
                                               play(radioTrackObj);
                                               setRadioStation({ ...station, color: stationColor, countryId: selCountry.id, genreId: selGenre.id });
                                               setRadioPlaying(true);
@@ -8887,6 +8954,8 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                                     setPlaying(p=>!p); setRadioPlaying(p=>!p);
                                                   } else {
                                                     if (embedTrack?.type === 'youtube') { closeEmbed(); }
+                                                    // Perbarui antrean navigasi: kurasi + RB + Garden gabungan
+                                                    rbBrowseRef.current = [...(selGenre?.stations || []), ...rbBrowseStations, ...gardenBrowseStations];
                                                     play(radioTrackObj);
                                                     setRadioStation({ id: station.id, name: station.name, city: station.city, color: stationColor, countryId: selCountry.id, genreId: selGenre.id });
                                                     setRadioPlaying(true);
@@ -10308,6 +10377,14 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
           .lite-mode button{box-shadow:none!important}
           /* Matikan filter drop-shadow di SVG orbital ring */
           .lite-mode svg *{filter:none!important}
+          /* Hemat GPU: matikan image-rendering interpolasi mahal */
+          .lite-mode img{image-rendering:auto;filter:none!important}
+          /* content-visibility: auto — browser skip render row di luar viewport (berlaku di semua mode) */
+          [data-songrow]{content-visibility:auto;contain-intrinsic-size:0 62px}
+          /* Kurangi paint area: hilangkan gradients dekoratif */
+          .lite-mode [data-gradient]{background:rgba(255,255,255,0.04)!important}
+          /* Pause semua animasi saat tab tidak aktif (hemat baterai background tab) */
+          .page-hidden *{animation-play-state:paused!important}
 
           /* ══ PRO MODE: kurangi animasi dekoratif yang tidak perlu ══ */
           /* Bintang twinkle — boros GPU */
