@@ -16,18 +16,6 @@
       "destination": "https://api.textyl.co/api/:path*"
     },
     {
-      "source": "/api/jamendo",
-      "destination": "https://api.jamendo.com/v3.0/tracks/?client_id=b6747d04&format=json&include=musicinfo&audioformat=mp32"
-    },
-    {
-      "source": "/api/ccmixter",
-      "destination": "https://ccmixter.org/api/query?f=json"
-    },
-    {
-      "source": "/api/deezer",
-      "destination": "https://api.deezer.com/search"
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
