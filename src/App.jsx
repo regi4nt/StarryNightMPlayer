@@ -29,6 +29,7 @@ import {
   fmt, fmtSec, isPhoneDevice,
   markFullyCached, checkCachedBlob,
   _driveCache, _blobCache, DRIVE_CACHE_NAME, DRIVE_CACHE_TTL, YT_CACHE_NAME,
+  btn,
 } from './constants.js';
 
 // ── Lazy-loaded components ────────────────────────────────

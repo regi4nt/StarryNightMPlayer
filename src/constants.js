@@ -1857,3 +1857,5 @@ export function isPhoneDevice() {
   const smallScreen = Math.min(window.screen.width, window.screen.height) < 500;
   return (isMobileUA && !isTabletUA) || smallScreen;
 }
+
+export const btn = { background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.5)', padding: 8, display: 'flex', borderRadius: 8 };

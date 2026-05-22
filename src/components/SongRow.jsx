@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { CheckCircle, Cloud, Download, ListPlus, Loader2, Music, Trash2, Heart } from 'lucide-react';
+import { btn } from '../constants.js';
 
 function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDrive, isCached, onRemove, playlists, addToPlaylist, isLite, t, onDownload }) {
   const isActive = track.id === s.id;

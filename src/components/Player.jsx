@@ -1,5 +1,6 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
+import { btn } from '../constants.js';
 
 function AppLogo({ size = 32 }) {
   return (
@@ -197,7 +198,7 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
 // ═══════════════════════════════════════════════════════
 //  SONG ROW
 // ═══════════════════════════════════════════════════════
-const btn = { background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.5)', padding:8, display:'flex', borderRadius:8 };
+
 
 
 export { AppLogo, OrbitalRing };
