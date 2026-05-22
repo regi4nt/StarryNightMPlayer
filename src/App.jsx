@@ -9,7 +9,7 @@ import {
   ChevronRight, SlidersHorizontal, History,
   Search, Mic2, Trash2, ListPlus, FolderOpen,
   PenLine, ChevronLeft, Radio, Maximize2, Minimize2,
-  Download, Share2, Wand2, Copy, Check, Star, Headphones as HeadphonesIcon, BookOpen, Waves, RefreshCw
+  Download, Share2, Wand2, Copy, Check, Star
 } from 'lucide-react';
 
 // ── Split modules ────────────────────────────────────────
@@ -491,7 +491,7 @@ export default function App() {
     try {
       const ctrl = new AbortController();
       const tid  = setTimeout(() => ctrl.abort(), 7000);
-      const userKey = _USER_YT_KEY;
+      const userKey = getYtKey();
       let res;
       if (userKey) {
         const params = new URLSearchParams({
@@ -615,7 +615,7 @@ export default function App() {
         try {
           const ctrl = new AbortController();
           setTimeout(() => ctrl.abort(), 7000);
-          const userKey = _USER_YT_KEY;
+          const userKey = getYtKey();
           let res;
           if (userKey) {
             const params = new URLSearchParams({
@@ -1042,7 +1042,7 @@ export default function App() {
       }
     })();
     return () => { cancelled = true; };
-  }, [isLite]); // eslint-disable-line — hanya trigger saat mode berubah
+  }, [isLite]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   // ── Jam live (update setiap detik)
@@ -1572,7 +1572,7 @@ export default function App() {
     calc();
     window.addEventListener('resize', calc);
     return () => window.removeEventListener('resize', calc);
-  }, []); // eslint-disable-line — fullscreen handled via ref below
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Audio init
   useEffect(() => {
@@ -5885,7 +5885,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                           <Cloud size={44} style={{color:'rgba(255,255,255,0.1)',display:'block',margin:'0 auto 14px'}}/>
                           {googleUser ? (
                             <>
-                              <div style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.5)', marginBottom:8 }}>No songsa file audio ditemukan</div>
+                              <div style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.5)', marginBottom:8 }}>No songs file audio ditemukan</div>
                               <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', lineHeight:1.7, marginBottom:16 }}>
                                 Drive kamu tidak memiliki file audio yang terdeteksi.<br/>
                                 Pastikan file berekstensi <span style={{color:'#38bdf8'}}>.mp3 .m4a .flac .wav .ogg</span><br/>

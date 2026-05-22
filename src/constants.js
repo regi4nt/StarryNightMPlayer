@@ -780,37 +780,43 @@ export const SLEEP_OPTIONS = [
 // ═══════════════════════════════════════════════════════
 
 // Public Piped/Invidious API instances (YouTube search, no key needed)
-// /api/invidious and /api/piped are Vercel Serverless Functions that proxy
-// requests server-side — no CORS issues, tries multiple upstream instances automatically.
+// /api/youtube (dengan backend=invidious atau backend=piped) adalah Vercel Serverless Function
+// yang proxy request server-side — no CORS, otomatis fallback ke instance lain.
 export const PIPED_INSTANCES = [
-  '/api/piped',                 // Vercel serverless function (primary, no CORS)
+  '/api/youtube?backend=piped', // Vercel serverless function (primary, no CORS)
   'https://pipedapi.kavin.rocks',
   'https://pipedapi.tokhmi.xyz',
   'https://pipedapi.moomoo.me',
 ];
 export const INVIDIOUS_INSTANCES = [
-  '/api/invidious',             // Vercel serverless function (primary, no CORS)
+  '/api/youtube?backend=invidious', // Vercel serverless function (primary, no CORS)
   'https://inv.tux.pizza',
   'https://invidious.privacyredirect.com',
   'https://invidious.nerdvpn.de',
 ];
 
 // ── URL builder helpers for Invidious and Piped
-// When base is our serverless proxy ('/api/invidious' or '/api/piped'),
-// the API path goes into a ?path= query parameter.
-// When base is an external URL, the path is appended directly.
+// Saat base adalah proxy kita ('/api/youtube?backend=...'),
+// API path masuk sebagai ?path= query parameter.
+// Saat base adalah URL eksternal, path langsung di-append.
 export function buildInvidiousUrl(base, apiPath, params = {}) {
   if (base.startsWith('/')) {
-    const qs = new URLSearchParams({ path: apiPath, ...params }).toString();
-    return `${base}?${qs}`;
+    // base may already contain ?backend=invidious (e.g. '/api/youtube?backend=invidious')
+    const [path, existing] = base.split('?');
+    const merged = Object.fromEntries(new URLSearchParams(existing || ''));
+    const qs = new URLSearchParams({ path: apiPath, ...merged, ...params }).toString();
+    return `${path}?${qs}`;
   }
   const qs = new URLSearchParams(params).toString();
   return `${base}${apiPath}${qs ? '?' + qs : ''}`;
 }
 export function buildPipedUrl(base, apiPath, params = {}) {
   if (base.startsWith('/')) {
-    const qs = new URLSearchParams({ path: apiPath, ...params }).toString();
-    return `${base}?${qs}`;
+    // base may already contain ?backend=piped (e.g. '/api/youtube?backend=piped')
+    const [path, existing] = base.split('?');
+    const merged = Object.fromEntries(new URLSearchParams(existing || ''));
+    const qs = new URLSearchParams({ path: apiPath, backend: 'piped', ...merged, ...params }).toString();
+    return `${path}?${qs}`;
   }
   const qs = new URLSearchParams(params).toString();
   return `${base}${apiPath}${qs ? '?' + qs : ''}`;
@@ -864,30 +870,30 @@ export function getProviders() {
       return [{ provider:'OpenRouter', key:userKey, model:'deepseek/deepseek-chat:free', endpoint:'https://openrouter.ai/api/v1/chat/completions', isOpenAI:true, extra:{ 'HTTP-Referer':origin,'X-Title':'Starry Night' } }];
     })() : []),
     // OpenAI — via /api/openai server-side proxy (OPENAI_API_KEY in Vercel env vars, never in browser)
-    { provider:'OpenAI', key:'__proxy__', model:'gpt-4o-mini',   endpoint:'/api/openai', isOpenAI:true, extra:{} },
-    { provider:'OpenAI', key:'__proxy__', model:'gpt-4o',         endpoint:'/api/openai', isOpenAI:true, extra:{} },
-    { provider:'OpenAI', key:'__proxy__', model:'gpt-3.5-turbo', endpoint:'/api/openai', isOpenAI:true, extra:{} },
+    { provider:'OpenAI', key:'__proxy__', model:'gpt-4o-mini',   endpoint:'/api/ai?provider=openai', isOpenAI:true, extra:{} },
+    { provider:'OpenAI', key:'__proxy__', model:'gpt-4o',         endpoint:'/api/ai?provider=openai', isOpenAI:true, extra:{} },
+    { provider:'OpenAI', key:'__proxy__', model:'gpt-3.5-turbo', endpoint:'/api/ai?provider=openai', isOpenAI:true, extra:{} },
     // Anthropic — /api/anthropic proxy (ANTHROPIC_API_KEY di Vercel env, tidak pernah ke browser)
-    { provider:'Claude', key:'__proxy__', model:'claude-haiku-4-5-20251001', endpoint:'/api/anthropic', isOpenAI:false, extra:{} },
-    { provider:'Claude', key:'__proxy__', model:'claude-sonnet-4-6',         endpoint:'/api/anthropic', isOpenAI:false, extra:{} },
+    { provider:'Claude', key:'__proxy__', model:'claude-haiku-4-5-20251001', endpoint:'/api/ai?provider=anthropic', isOpenAI:false, extra:{} },
+    { provider:'Claude', key:'__proxy__', model:'claude-sonnet-4-6',         endpoint:'/api/ai?provider=anthropic', isOpenAI:false, extra:{} },
     // OpenRouter — /api/openrouter proxy (OPENROUTER_API_KEY di Vercel env, tidak pernah ke browser)
-    { provider:'OpenRouter', key:'__proxy__', model:'deepseek/deepseek-chat:free',            endpoint:'/api/openrouter', isOpenAI:true, extra:{} },
-    { provider:'OpenRouter', key:'__proxy__', model:'meta-llama/llama-3.3-70b-instruct:free', endpoint:'/api/openrouter', isOpenAI:true, extra:{} },
-    { provider:'OpenRouter', key:'__proxy__', model:'qwen/qwen3-4b:free',                     endpoint:'/api/openrouter', isOpenAI:true, extra:{} },
-    { provider:'OpenRouter', key:'__proxy__', model:'mistralai/mistral-7b-instruct:free',     endpoint:'/api/openrouter', isOpenAI:true, extra:{} },
+    { provider:'OpenRouter', key:'__proxy__', model:'deepseek/deepseek-chat:free',            endpoint:'/api/ai?provider=openrouter', isOpenAI:true, extra:{} },
+    { provider:'OpenRouter', key:'__proxy__', model:'meta-llama/llama-3.3-70b-instruct:free', endpoint:'/api/ai?provider=openrouter', isOpenAI:true, extra:{} },
+    { provider:'OpenRouter', key:'__proxy__', model:'qwen/qwen3-4b:free',                     endpoint:'/api/ai?provider=openrouter', isOpenAI:true, extra:{} },
+    { provider:'OpenRouter', key:'__proxy__', model:'mistralai/mistral-7b-instruct:free',     endpoint:'/api/ai?provider=openrouter', isOpenAI:true, extra:{} },
     // Gemini — /api/gemini proxy (GEMINI_API_KEY di Vercel env, tidak pernah ke browser)
-    { provider:'Gemini', key:'__proxy__', model:'gemini-2.0-flash', endpoint:'/api/gemini', isOpenAI:true, extra:{} },
-    { provider:'Gemini', key:'__proxy__', model:'gemini-2.0-flash-lite', endpoint:'/api/gemini', isOpenAI:true, extra:{} },
+    { provider:'Gemini', key:'__proxy__', model:'gemini-2.0-flash', endpoint:'/api/ai?provider=gemini', isOpenAI:true, extra:{} },
+    { provider:'Gemini', key:'__proxy__', model:'gemini-2.0-flash-lite', endpoint:'/api/ai?provider=gemini', isOpenAI:true, extra:{} },
     // Groq — /api/groq proxy (GROQ_API_KEY di Vercel env, tidak pernah ke browser)
-    { provider:'Groq', key:'__proxy__', model:'llama-3.3-70b-versatile', endpoint:'/api/groq', isOpenAI:true, extra:{} },
-    { provider:'Groq', key:'__proxy__', model:'gemma2-9b-it',            endpoint:'/api/groq', isOpenAI:true, extra:{} },
-    { provider:'Groq', key:'__proxy__', model:'llama-3.1-8b-instant',    endpoint:'/api/groq', isOpenAI:true, extra:{} },
+    { provider:'Groq', key:'__proxy__', model:'llama-3.3-70b-versatile', endpoint:'/api/ai?provider=groq', isOpenAI:true, extra:{} },
+    { provider:'Groq', key:'__proxy__', model:'gemma2-9b-it',            endpoint:'/api/ai?provider=groq', isOpenAI:true, extra:{} },
+    { provider:'Groq', key:'__proxy__', model:'llama-3.1-8b-instant',    endpoint:'/api/ai?provider=groq', isOpenAI:true, extra:{} },
     // DeepSeek — /api/deepseek proxy (DEEPSEEK_API_KEY di Vercel env, tidak pernah ke browser)
-    { provider:'DeepSeek', key:'__proxy__', model:'deepseek-chat',     endpoint:'/api/deepseek', isOpenAI:true, extra:{} },
-    { provider:'DeepSeek', key:'__proxy__', model:'deepseek-reasoner', endpoint:'/api/deepseek', isOpenAI:true, extra:{} },
+    { provider:'DeepSeek', key:'__proxy__', model:'deepseek-chat',     endpoint:'/api/ai?provider=deepseek', isOpenAI:true, extra:{} },
+    { provider:'DeepSeek', key:'__proxy__', model:'deepseek-reasoner', endpoint:'/api/ai?provider=deepseek', isOpenAI:true, extra:{} },
     // Grok (xAI) — /api/grok proxy (GROK_API_KEY di Vercel env, tidak pernah ke browser)
-    { provider:'Grok', key:'__proxy__', model:'grok-3',      endpoint:'/api/grok', isOpenAI:true, extra:{} },
-    { provider:'Grok', key:'__proxy__', model:'grok-3-mini', endpoint:'/api/grok', isOpenAI:true, extra:{} },
+    { provider:'Grok', key:'__proxy__', model:'grok-3',      endpoint:'/api/ai?provider=grok', isOpenAI:true, extra:{} },
+    { provider:'Grok', key:'__proxy__', model:'grok-3-mini', endpoint:'/api/ai?provider=grok', isOpenAI:true, extra:{} },
     // HuggingFace — hf_ key via sn_ai_key handled above; here only legacy sn_hf_key or proxy fallback
     ...((() => {
       if (userKey && userKey.startsWith('hf_')) return []; // already handled in user-key block
@@ -898,8 +904,8 @@ export function getProviders() {
         { provider:'HuggingFace', key:k, model:'mistralai/Mistral-7B-Instruct-v0.3', endpoint:'https://router.huggingface.co/v1/chat/completions', isOpenAI:true, extra:{} },
       ];
       return [
-        { provider:'HuggingFace', key:'__proxy__', model:'meta-llama/Llama-3.3-70B-Instruct', endpoint:'/api/huggingface', isOpenAI:true, extra:{} },
-        { provider:'HuggingFace', key:'__proxy__', model:'Qwen/Qwen2.5-72B-Instruct',         endpoint:'/api/huggingface', isOpenAI:true, extra:{} },
+        { provider:'HuggingFace', key:'__proxy__', model:'meta-llama/Llama-3.3-70B-Instruct', endpoint:'/api/ai?provider=huggingface', isOpenAI:true, extra:{} },
+        { provider:'HuggingFace', key:'__proxy__', model:'Qwen/Qwen2.5-72B-Instruct',         endpoint:'/api/ai?provider=huggingface', isOpenAI:true, extra:{} },
       ];
     })()),
     // Cloudflare Workers AI — user key direct OR via /api/cloudflare server-side proxy
@@ -919,8 +925,8 @@ export function getProviders() {
         }
       }
       return [
-        { provider:'Cloudflare', key:'__proxy__', model:'@cf/meta/llama-3.3-70b-instruct-fp8-fast', endpoint:'/api/cloudflare', isOpenAI:true, extra:{} },
-        { provider:'Cloudflare', key:'__proxy__', model:'@cf/qwen/qwen2.5-72b-instruct',             endpoint:'/api/cloudflare', isOpenAI:true, extra:{} },
+        { provider:'Cloudflare', key:'__proxy__', model:'@cf/meta/llama-3.3-70b-instruct-fp8-fast', endpoint:'/api/ai?provider=cloudflare', isOpenAI:true, extra:{} },
+        { provider:'Cloudflare', key:'__proxy__', model:'@cf/qwen/qwen2.5-72b-instruct',             endpoint:'/api/ai?provider=cloudflare', isOpenAI:true, extra:{} },
       ];
     })()),
     // GitHub Models — user key only (ghp_/github_pat_ via sn_ai_key or legacy sn_gh_key); no server proxy

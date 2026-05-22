@@ -12,7 +12,71 @@
       "destination": "https://api.textyl.co/api/:path*"
     },
     {
-      "source": "/(.*)",
+      "source": "/api/jamendo",
+      "destination": "https://api.jamendo.com/v3.0/tracks/?client_id=b6747d04&format=jsonpretty&limit=5&search=:search&include=musicinfo&audioformat=mp32"
+    },
+    {
+      "source": "/api/ccmixter",
+      "destination": "https://ccmixter.org/api/query?title=:title&limit=5&format=json"
+    },
+    {
+      "source": "/api/deezer",
+      "destination": "https://api.deezer.com/search?q=:q&limit=5&output=json"
+    },
+    {
+      "source": "/api/chartlyrics/:path*",
+      "destination": "http://api.chartlyrics.com/apiv1.asmx/:path*"
+    },
+    {
+      "source": "/api/invidious",
+      "destination": "/api/youtube?backend=invidious"
+    },
+    {
+      "source": "/api/piped",
+      "destination": "/api/youtube?backend=piped"
+    },
+    {
+      "source": "/api/anthropic",
+      "destination": "/api/ai?provider=anthropic"
+    },
+    {
+      "source": "/api/openai",
+      "destination": "/api/ai?provider=openai"
+    },
+    {
+      "source": "/api/gemini",
+      "destination": "/api/ai?provider=gemini"
+    },
+    {
+      "source": "/api/groq",
+      "destination": "/api/ai?provider=groq"
+    },
+    {
+      "source": "/api/grok",
+      "destination": "/api/ai?provider=grok"
+    },
+    {
+      "source": "/api/deepseek",
+      "destination": "/api/ai?provider=deepseek"
+    },
+    {
+      "source": "/api/openrouter",
+      "destination": "/api/ai?provider=openrouter"
+    },
+    {
+      "source": "/api/cloudflare",
+      "destination": "/api/ai?provider=cloudflare"
+    },
+    {
+      "source": "/api/huggingface",
+      "destination": "/api/ai?provider=huggingface"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
+    },
+    {
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ],

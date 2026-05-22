@@ -138,6 +138,135 @@ function MaskedKeyInput({ value, onChange, onBlur, placeholder, accentColor, lab
   );
 }
 
+// ── CacheManager: sub-komponen terpisah agar hooks tidak dipanggil di dalam IIFE
+function CacheManager({ lang }) {
+  const [cacheInfo, setCacheInfo] = React.useState(null);
+  const [clearing, setClearing] = React.useState(false);
+  const [cleared, setCleared] = React.useState(false);
+  const [clearDone, setClearDone] = React.useState(false);
+
+  React.useEffect(() => {
+    async function loadCacheInfo() {
+      try {
+        let driveCount = 0, ytCount = 0, totalBytes = 0;
+        if ('caches' in window) {
+          try {
+            const driveCache = await caches.open('sn-drive-v1');
+            const driveKeys = await driveCache.keys();
+            driveCount = driveKeys.length;
+            for (const req of driveKeys) {
+              const res = await driveCache.match(req);
+              if (res) { const blob = await res.blob(); totalBytes += blob.size; }
+            }
+          } catch(e) {}
+          try {
+            const ytCache = await caches.open('sn-yt-v1');
+            const ytKeys = await ytCache.keys();
+            ytCount = ytKeys.length;
+            for (const req of ytKeys) {
+              const res = await ytCache.match(req);
+              if (res) { const blob = await res.blob(); totalBytes += blob.size; }
+            }
+          } catch(e) {}
+        }
+        setCacheInfo({ driveCount, ytCount, totalMB: (totalBytes / 1024 / 1024).toFixed(1) });
+      } catch(e) {
+        setCacheInfo({ driveCount: 0, ytCount: 0, totalMB: '0.0' });
+      }
+    }
+    loadCacheInfo();
+  }, [cleared]);
+
+  const handleClearCache = async () => {
+    setClearing(true);
+    try {
+      if ('caches' in window) {
+        try { await caches.delete('sn-drive-v1'); } catch(e) {}
+        try { await caches.delete('sn-yt-v1'); } catch(e) {}
+      }
+      try {
+        if (window._snBlobCacheRef) {
+          for (const v of window._snBlobCacheRef.values()) URL.revokeObjectURL(v);
+          window._snBlobCacheRef.clear();
+        }
+      } catch(e) {}
+      setCleared(c => !c);
+      setClearDone(true);
+      setTimeout(() => setClearDone(false), 2500);
+    } catch(e) {}
+    setClearing(false);
+  };
+
+  const hasCache = cacheInfo && (cacheInfo.driveCount > 0 || cacheInfo.ytCount > 0);
+
+  return (
+    <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+        <span style={{ fontSize:16 }}>🗑️</span>
+        <div>
+          <div style={{ fontWeight:800, fontSize:14 }}>{lang==='id' ? 'Hapus Cache' : 'Clear Cache'}</div>
+          <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>
+            {lang==='id' ? 'Bebaskan storage dari audio yang tersimpan' : 'Free up storage from saved audio'}
+          </div>
+        </div>
+      </div>
+      {cacheInfo === null ? (
+        <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', padding:'8px 0' }}>
+          {lang==='id' ? 'Menghitung cache...' : 'Calculating cache...'}
+        </div>
+      ) : (
+        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+          <div style={{ padding:'10px 14px', borderRadius:12, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+              {cacheInfo.driveCount > 0 && (
+                <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>
+                  🎵 Drive: <span style={{ color:'rgba(255,255,255,0.75)', fontWeight:600 }}>{cacheInfo.driveCount} {lang==='id' ? 'lagu' : 'songs'}</span>
+                </div>
+              )}
+              {cacheInfo.ytCount > 0 && (
+                <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>
+                  ▶️ YouTube: <span style={{ color:'rgba(255,255,255,0.75)', fontWeight:600 }}>{cacheInfo.ytCount} {lang==='id' ? 'lagu' : 'songs'}</span>
+                </div>
+              )}
+              {!hasCache && (
+                <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)' }}>
+                  {lang==='id' ? 'Tidak ada cache tersimpan' : 'No cache stored'}
+                </div>
+              )}
+            </div>
+            {hasCache && (
+              <div style={{ fontSize:13, fontWeight:700, color:'#a5b4fc' }}>{cacheInfo.totalMB} MB</div>
+            )}
+          </div>
+          <button
+            onClick={handleClearCache}
+            disabled={clearing || !hasCache}
+            style={{
+              width:'100%', padding:'11px 0', borderRadius:12, border:'none',
+              background: clearDone
+                ? 'linear-gradient(135deg,#22c55e,#16a34a)'
+                : hasCache
+                  ? (clearing ? 'rgba(239,68,68,0.4)' : 'linear-gradient(135deg,#ef4444,#dc2626)')
+                  : 'rgba(255,255,255,0.06)',
+              color: hasCache ? 'white' : 'rgba(255,255,255,0.25)',
+              fontSize:13, fontWeight:800, cursor: hasCache ? 'pointer' : 'default',
+              display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+              transition:'all 0.3s'
+            }}
+          >
+            <span style={{ fontSize:14 }}>{clearing ? '⏳' : clearDone ? '✅' : '🗑️'}</span>
+            {clearing
+              ? (lang==='id' ? 'Menghapus...' : 'Clearing...')
+              : clearDone
+                ? (lang==='id' ? 'Cache Dihapus!' : 'Cache Cleared!')
+                : (lang==='id' ? 'Hapus Semua Cache' : 'Clear All Cache')}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t, userSpId, setUserSpId, userSpSecret, setUserSpSecret, userScId, setUserScId, userAiKey, setUserAiKey, userYtKey, setUserYtKey, userCfKey, setUserCfKey, userSnKey, setUserSnKey }) {
   const coverRef = useRef(null);
   const [apiKeyTab, setApiKeyTab] = React.useState('spotify');
@@ -551,142 +680,7 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
         </div>
 
         {/* ── HAPUS CACHE */}
-        {(() => {
-          const [cacheInfo, setCacheInfo] = React.useState(null); // { driveCount, ytCount, totalMB }
-          const [clearing, setClearing] = React.useState(false);
-          const [cleared, setCleared] = React.useState(false);
-          const [clearDone, setClearDone] = React.useState(false);
-
-          React.useEffect(() => {
-            async function loadCacheInfo() {
-              try {
-                let driveCount = 0, ytCount = 0, totalBytes = 0;
-                if ('caches' in window) {
-                  try {
-                    const driveCache = await caches.open('sn-drive-v1');
-                    const driveKeys = await driveCache.keys();
-                    driveCount = driveKeys.length;
-                    for (const req of driveKeys) {
-                      const res = await driveCache.match(req);
-                      if (res) {
-                        const blob = await res.blob();
-                        totalBytes += blob.size;
-                      }
-                    }
-                  } catch(e) {}
-                  try {
-                    const ytCache = await caches.open('sn-yt-v1');
-                    const ytKeys = await ytCache.keys();
-                    ytCount = ytKeys.length;
-                    for (const req of ytKeys) {
-                      const res = await ytCache.match(req);
-                      if (res) {
-                        const blob = await res.blob();
-                        totalBytes += blob.size;
-                      }
-                    }
-                  } catch(e) {}
-                }
-                setCacheInfo({ driveCount, ytCount, totalMB: (totalBytes / 1024 / 1024).toFixed(1) });
-              } catch(e) {
-                setCacheInfo({ driveCount: 0, ytCount: 0, totalMB: '0.0' });
-              }
-            }
-            loadCacheInfo();
-          }, [cleared]);
-
-          const handleClearCache = async () => {
-            setClearing(true);
-            try {
-              if ('caches' in window) {
-                try { await caches.delete('sn-drive-v1'); } catch(e) {}
-                try { await caches.delete('sn-yt-v1'); } catch(e) {}
-              }
-              // clear in-memory blob cache
-              try {
-                if (window._snBlobCacheRef) {
-                  for (const v of window._snBlobCacheRef.values()) URL.revokeObjectURL(v);
-                  window._snBlobCacheRef.clear();
-                }
-              } catch(e) {}
-              setCleared(c => !c);
-              setClearDone(true);
-              setTimeout(() => setClearDone(false), 2500);
-            } catch(e) {}
-            setClearing(false);
-          };
-
-          const hasCache = cacheInfo && (cacheInfo.driveCount > 0 || cacheInfo.ytCount > 0);
-
-          return (
-            <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
-                <span style={{ fontSize:16 }}>🗑️</span>
-                <div>
-                  <div style={{ fontWeight:800, fontSize:14 }}>{lang==='id' ? 'Hapus Cache' : 'Clear Cache'}</div>
-                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>
-                    {lang==='id' ? 'Bebaskan storage dari audio yang tersimpan' : 'Free up storage from saved audio'}
-                  </div>
-                </div>
-              </div>
-              {cacheInfo === null ? (
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', padding:'8px 0' }}>
-                  {lang==='id' ? 'Menghitung cache...' : 'Calculating cache...'}
-                </div>
-              ) : (
-                <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                  <div style={{ padding:'10px 14px', borderRadius:12, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                    <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
-                      {cacheInfo.driveCount > 0 && (
-                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>
-                          🎵 Drive: <span style={{ color:'rgba(255,255,255,0.75)', fontWeight:600 }}>{cacheInfo.driveCount} {lang==='id' ? 'lagu' : 'songs'}</span>
-                        </div>
-                      )}
-                      {cacheInfo.ytCount > 0 && (
-                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>
-                          ▶️ YouTube: <span style={{ color:'rgba(255,255,255,0.75)', fontWeight:600 }}>{cacheInfo.ytCount} {lang==='id' ? 'lagu' : 'songs'}</span>
-                        </div>
-                      )}
-                      {!hasCache && (
-                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)' }}>
-                          {lang==='id' ? 'Tidak ada cache tersimpan' : 'No cache stored'}
-                        </div>
-                      )}
-                    </div>
-                    {hasCache && (
-                      <div style={{ fontSize:13, fontWeight:700, color:'#a5b4fc' }}>
-                        {cacheInfo.totalMB} MB
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    onClick={handleClearCache}
-                    disabled={clearing || !hasCache}
-                    style={{
-                      width:'100%', padding:'11px 0', borderRadius:12, border:'none',
-                      background: clearDone
-                        ? 'linear-gradient(135deg,#22c55e,#16a34a)'
-                        : hasCache
-                          ? (clearing ? 'rgba(239,68,68,0.4)' : 'linear-gradient(135deg,#ef4444,#dc2626)')
-                          : 'rgba(255,255,255,0.06)',
-                      color: hasCache ? 'white' : 'rgba(255,255,255,0.25)',
-                      fontSize:13, fontWeight:800, cursor: hasCache ? 'pointer' : 'default',
-                      display:'flex', alignItems:'center', justifyContent:'center', gap:8,
-                      transition:'all 0.3s'
-                    }}
-                  >
-                    <span style={{ fontSize:14 }}>{clearing ? '⏳' : clearDone ? '✅' : '🗑️'}</span>
-                    {clearing
-                      ? (lang==='id' ? 'Menghapus...' : 'Clearing...')
-                      : clearDone
-                        ? (lang==='id' ? 'Cache Dihapus!' : 'Cache Cleared!')
-                        : (lang==='id' ? 'Hapus Semua Cache' : 'Clear All Cache')}
-                  </button>
-                </div>
-              )}
-            </div>
-          );
-        })()}
+        <CacheManager lang={lang} />
 
         {/* ── INSTALL APP (PWA) */}
         <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>

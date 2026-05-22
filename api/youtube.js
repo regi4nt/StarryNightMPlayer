@@ -5,49 +5,120 @@ export const config = { runtime: 'nodejs' };
 /**
  * Vercel Serverless Function: /api/youtube
  *
- * Proxy untuk YouTube Data API v3 — menyembunyikan API key di server,
- * tidak pernah ter-expose ke browser/client.
+ * Unified proxy untuk tiga sumber data YouTube:
  *
- * Endpoints yang didukung:
- *   GET /api/youtube?action=search&q=lofi+hip+hop&maxResults=10&type=video
- *   GET /api/youtube?action=trending&regionCode=ID&maxResults=8&videoCategoryId=10
- *   GET /api/youtube?action=videos&id=dQw4w9WgXcQ,abc123  (detail video)
+ * 1. YouTube Data API v3  (action=search|trending|videos — butuh YOUTUBE_API_KEY)
+ *    GET /api/youtube?action=search&q=lofi&maxResults=10
+ *    GET /api/youtube?action=trending&regionCode=ID&maxResults=8
+ *    GET /api/youtube?action=videos&id=dQw4w9WgXcQ
  *
- * Response selalu dalam format yang sama dengan YouTube Data API v3 (items array).
+ * 2. Invidious  (backend=invidious — tidak butuh key, fallback antar instance)
+ *    GET /api/youtube?backend=invidious&path=/api/v1/trending&type=Music
+ *    GET /api/youtube?backend=invidious&path=/api/v1/search&q=lofi&type=video
+ *
+ * 3. Piped  (backend=piped — tidak butuh key, fallback antar instance)
+ *    GET /api/youtube?backend=piped&path=/trending&region=ID
+ *    GET /api/youtube?backend=piped&path=/search&q=lofi&filter=music_songs
+ *    GET /api/youtube?backend=piped&path=/streams/dQw4w9WgXcQ
+ *
+ * Legacy routes /api/invidious dan /api/piped di-redirect via vercel.json rewrites.
  */
+
+// ── Instance lists ────────────────────────────────────────────────────────────
+
+const INVIDIOUS_INSTANCES = [
+  'https://inv.tux.pizza',
+  'https://invidious.privacyredirect.com',
+  'https://yt.drgnz.club',
+  'https://iv.datura.network',
+  'https://invidious.fdn.fr',
+  'https://invidious.perennialte.ch',
+];
+
+const PIPED_INSTANCES = [
+  'https://pipedapi.kavin.rocks',
+  'https://pipedapi.tokhmi.xyz',
+  'https://piped-api.garudalinux.org',
+  'https://pipedapi.moomoo.me',
+  'https://api.piped.yt',
+  'https://api.piped.projectsegfault.net',
+];
 
 const YT_BASE = 'https://www.googleapis.com/youtube/v3';
 
+// ── Handler ───────────────────────────────────────────────────────────────────
+
 export default async function handler(req, res) {
-  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // ── Rate limiting ────────────────────────────────────────────
-  if (await applyRateLimit(req, res, { max: 60, windowMs: 60000, key: 'youtube' })) return;
-  // ─────────────────────────────────────────────────────────────
+  if (await applyRateLimit(req, res, { max: 60, windowMs: 60_000, key: 'youtube' })) return;
 
-  const apiKey = process.env.YOUTUBE_API_KEY;
-  if (!apiKey) {
-    return res.status(503).json({ error: 'YouTube API key not configured' });
+  const { action, backend, path: apiPath, ...clientParams } = req.query;
+
+  // ── Route: Invidious / Piped proxy ─────────────────────────────────────────
+  if (backend === 'invidious' || backend === 'piped') {
+    if (!apiPath) {
+      return res.status(400).json({ error: 'Missing ?path= parameter for backend proxy' });
+    }
+
+    const usePiped   = backend === 'piped';
+    const instances  = usePiped ? PIPED_INSTANCES : INVIDIOUS_INSTANCES;
+    const timeout    = usePiped ? 8000 : 6000;
+    const cacheVal   = usePiped
+      ? 's-maxage=60, stale-while-revalidate=120'
+      : 's-maxage=300, stale-while-revalidate=600';
+
+    res.setHeader('Cache-Control', cacheVal);
+
+    const qs     = new URLSearchParams(clientParams).toString();
+    const suffix = `${apiPath}${qs ? '?' + qs : ''}`;
+
+    let lastError = null;
+    for (const base of instances) {
+      try {
+        const upstream = await fetch(`${base}${suffix}`, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; StarryNightMPlayer/1.0)',
+            Accept: 'application/json',
+          },
+          signal: AbortSignal.timeout(timeout),
+        });
+
+        if (!upstream.ok) { lastError = `${base} returned ${upstream.status}`; continue; }
+
+        const data = await upstream.json();
+        return res.status(200).json(data);
+      } catch (e) {
+        lastError = e.message;
+      }
+    }
+
+    return res.status(503).json({
+      error: `All ${usePiped ? 'Piped' : 'Invidious'} instances unavailable`,
+      detail: lastError,
+    });
   }
 
-  const { action, ...clientParams } = req.query;
+  // ── Route: YouTube Data API v3 ─────────────────────────────────────────────
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey) {
+    return res.status(503).json({ error: 'YOUTUBE_API_KEY not configured on server' });
+  }
 
   try {
     let endpoint, params;
 
     if (action === 'search') {
-      // Search videos
       endpoint = `${YT_BASE}/search`;
       params = new URLSearchParams({
         key: apiKey,
         part: 'snippet',
         type: clientParams.type || 'video',
-        videoCategoryId: '10', // Music
+        videoCategoryId: '10',
         maxResults: clientParams.maxResults || '10',
         q: clientParams.q || '',
         safeSearch: 'none',
@@ -57,20 +128,18 @@ export default async function handler(req, res) {
       });
 
     } else if (action === 'trending') {
-      // Trending music videos
       endpoint = `${YT_BASE}/videos`;
       params = new URLSearchParams({
         key: apiKey,
         part: 'snippet,contentDetails',
         chart: 'mostPopular',
-        videoCategoryId: clientParams.videoCategoryId || '10', // 10 = Music
+        videoCategoryId: clientParams.videoCategoryId || '10',
         regionCode: clientParams.regionCode || 'ID',
         maxResults: clientParams.maxResults || '8',
         fields: 'items(id,snippet/title,snippet/channelTitle,snippet/thumbnails/medium,contentDetails/duration)',
       });
 
     } else if (action === 'videos') {
-      // Video details (for duration etc)
       endpoint = `${YT_BASE}/videos`;
       params = new URLSearchParams({
         key: apiKey,
@@ -80,7 +149,9 @@ export default async function handler(req, res) {
       });
 
     } else {
-      return res.status(400).json({ error: `Unknown action: ${action}. Use search, trending, or videos.` });
+      return res.status(400).json({
+        error: `Unknown action "${action}". Use action=search|trending|videos or backend=invidious|piped.`,
+      });
     }
 
     const response = await fetch(`${endpoint}?${params}`, {
@@ -98,8 +169,6 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-
-    // Cache successful responses (search: 2min, trending: 10min)
     const maxAge = action === 'trending' ? 600 : 120;
     res.setHeader('Cache-Control', `s-maxage=${maxAge}, stale-while-revalidate=${maxAge * 2}`);
 
