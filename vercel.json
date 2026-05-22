@@ -3,45 +3,19 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "functions": {
-    "api/openai.js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/anthropic.js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/openrouter.js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/gemini.js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/groq.js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/deepseek.js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/grok.js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/huggingface.js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/cloudflare.js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/github.js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/sambanova.js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/spotify-token.js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/soundcloud.js": {
-      "runtime": "nodejs20.x"
-    }
+    "api/openai.js": {},
+    "api/anthropic.js": {},
+    "api/openrouter.js": {},
+    "api/gemini.js": {},
+    "api/groq.js": {},
+    "api/deepseek.js": {},
+    "api/grok.js": {},
+    "api/huggingface.js": {},
+    "api/cloudflare.js": {},
+    "api/github.js": {},
+    "api/sambanova.js": {},
+    "api/spotify-token.js": {},
+    "api/soundcloud.js": {}
   },
   "rewrites": [
     {
