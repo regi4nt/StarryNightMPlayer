@@ -22,7 +22,7 @@ import {
   setRuntimeKeys, setLastWinnerLabel,
   getSpId, getSpSecret, getScId,
   getUserAiKey, getUserDsKey, getUserGrokKey, getUserHfKey, getUserCfKey, getUserGhKey, getUserSnKey,
-  getYtKey, isYtApiEnabled,
+  getYtKey, isYtApiEnabled, setServerYtKeyStatus,
   SP_CLIENT_ID, SP_CLIENT_SECRET, SC_CLIENT_ID,
   askAI, askAIRace, activeModel, hasKey,
   AUDIO_EXTS, isAudioExt, AUDIO_MIME_EXTRAS, guessMime,
@@ -84,6 +84,15 @@ export default function App() {
   const [userCfKey,    setUserCfKey]    = useState(() => localStorage.getItem('sn_cf_key')   ||'');
   const [userSnKey,    setUserSnKey]    = useState(() => localStorage.getItem('sn_sn_key')   ||'');
   useEffect(() => { setRuntimeKeys(userSpId, userSpSecret, userScId, userAiKey, '', '', userYtKey, '', userCfKey, '', userSnKey); }, [userSpId, userSpSecret, userScId, userAiKey, userYtKey, userCfKey, userSnKey]);
+
+  // ── Startup: cek apakah server punya YOUTUBE_API_KEY (via /api/yt-status)
+  // Ini memungkinkan isYtApiEnabled() = true meskipun user tidak input key sendiri
+  useEffect(() => {
+    fetch('/api/yt-status')
+      .then(r => r.json())
+      .then(d => { if (d.hasKey) setServerYtKeyStatus(true); })
+      .catch(() => {}); // gagal = tetap pakai fallback Invidious/Piped
+  }, []);
 
   // ── Built-in songs dihapus; semua musik dicari di platform eksternal
   // builtinSongs is defined at module level as empty array
@@ -573,12 +582,12 @@ export default function App() {
         });
         res = await fetchWithTimeout(`https://www.googleapis.com/youtube/v3/search?${params}`, 6000);
       } else {
-        // Lewat proxy /api/youtube
+        // Tidak ada user key — pakai server proxy /api/youtube (butuh YOUTUBE_API_KEY di env Vercel)
         const params = new URLSearchParams({
           action: 'search', q: query, maxResults: '10',
-          videoDuration: 'any',  // server akan pakai 'any', filter live sudah via liveBroadcastContent
+          videoDuration: 'any',
         });
-        res = await fetchWithTimeout(`/api/youtube?${params}`, 6000);
+        res = await fetchWithTimeout(`/api/youtube?${params}`, 8000);
       }
       // 403 = quota habis atau key invalid — throw agar caller bisa bedakan dari empty result
       if (res.status === 403 || res.status === 401) {

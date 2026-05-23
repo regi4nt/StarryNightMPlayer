@@ -981,6 +981,9 @@ const _ENV_DS_KEY    = ''; // unused — key lives in Vercel env var DEEPSEEK_AP
 const _ENV_GROK_KEY  = ''; // unused — key lives in Vercel env var GROK_API_KEY
 // YouTube Data API v3 — bisa via env (server proxy) ATAU user key langsung dari browser
 const _ENV_YT_KEY = ''; // user supplies via Settings — env key would be VITE_ (client) so removed
+// Flag: apakah server (Vercel) punya YOUTUBE_API_KEY — di-set saat startup via /api/yt-status
+let _SERVER_HAS_YT_KEY = false;
+export const setServerYtKeyStatus = (hasKey) => { _SERVER_HAS_YT_KEY = !!hasKey; };
 // Runtime mutable — diupdate oleh App saat settings berubah
 let _USER_SP_ID     = '';
 let _USER_SP_SECRET = '';
@@ -1023,7 +1026,7 @@ export const getUserGhKey  = () => {
 export const getUserSnKey  = () => _USER_SN_KEY || (typeof localStorage !== 'undefined' ? localStorage.getItem('sn_sn_key') || '' : '');
 // Ambil YT key: user key (langsung ke Google) atau fallback ke env (via proxy)
 export const getYtKey     = () => _USER_YT_KEY || (typeof localStorage !== 'undefined' ? localStorage.getItem('sn_yt_key') || '' : '') || _ENV_YT_KEY;
-export const isYtApiEnabled = () => !!(getYtKey());
+export const isYtApiEnabled = () => !!(getYtKey()) || _SERVER_HAS_YT_KEY;
 
 // ═══════════════════════════════════════════════════════
 //  SPOTIFY — Client Credentials token + search

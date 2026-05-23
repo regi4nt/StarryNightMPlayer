@@ -27,31 +27,32 @@ export const config = { runtime: 'nodejs' };
 // ── Instance lists ────────────────────────────────────────────────────────────
 
 // ── Instance lists (updated 2025 — sorted by reliability)
+// Updated May 2026 — dari docs.invidious.io/instances/ (official list)
+// Catatan: list resmi Invidious sangat pendek di 2026 karena Google makin agresif block instance publik
 const INVIDIOUS_INSTANCES = [
-  'https://inv.nadeko.net',
-  'https://invidious.io.lol',
-  'https://inv.tux.pizza',
-  'https://invidious.privacyredirect.com',
-  'https://yt.drgnz.club',
-  'https://iv.datura.network',
-  'https://invidious.fdn.fr',
-  'https://yewtu.be',
-  'https://invidious.nerdvpn.de',
-  'https://inv.us.projectsegfault.net',
-  'https://invidious.reallyaweso.me',
-  'https://invidious.perennialte.ch',
+  'https://inv.nadeko.net',           // 🇨🇱 Chile — instance terlama, paling stabil
+  'https://invidious.nerdvpn.de',     // 🇺🇦 Ukraine
+  'https://inv.thepixora.com',        // 🇨🇦 Canada — baru, API enabled
+  'https://yt.chocolatemoo53.com',    // 🇺🇸 US
+  'https://invidious.tiekoetter.com', // 🇩🇪 Jerman
+  'https://invidious.f5.si',          // 🇯🇵 Jepang
 ];
 
+// Updated May 2026 — dari github.com/TeamPiped/documentation (official list)
 const PIPED_INSTANCES = [
-  'https://pipedapi.kavin.rocks',
-  'https://api.piped.yt',
-  'https://piped-api.garudalinux.org',
-  'https://pipedapi.tokhmi.xyz',
-  'https://pipedapi.moomoo.me',
-  'https://api.piped.projectsegfault.net',
-  'https://pipedapi.colinslegacy.com',
-  'https://piped-api.codespace.cz',
-  'https://pipedapi.adminforge.de',
+  'https://pipedapi.kavin.rocks',          // 🌍 Official, multi-region CDN
+  'https://pipedapi-libre.kavin.rocks',    // 🇳🇱 Official libre (no CDN)
+  'https://pipedapi.leptons.xyz',          // 🇦🇹 Austria
+  'https://piped-api.privacy.com.de',      // 🇩🇪 Jerman
+  'https://pipedapi.adminforge.de',        // 🇩🇪 Jerman
+  'https://api.piped.yt',                  // 🇩🇪 Jerman
+  'https://pipedapi.drgns.space',          // 🇺🇸 US
+  'https://pipedapi.owo.si',               // 🇩🇪 Jerman
+  'https://pipedapi.ducks.party',          // 🇳🇱 Belanda
+  'https://piped-api.codespace.cz',        // 🇨🇿 Ceko
+  'https://pipedapi.reallyaweso.me',       // 🇩🇪 Jerman
+  'https://api.piped.private.coffee',      // 🇦🇹 Austria
+  'https://pipedapi.darkness.services',    // 🇺🇸 US
 ];
 
 const YT_BASE = 'https://www.googleapis.com/youtube/v3';
