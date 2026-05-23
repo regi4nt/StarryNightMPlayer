@@ -193,12 +193,42 @@ export default function App() {
   const [wsError,   setWsError]   = useState(null);
   const [wsEmbedUrl, setWsEmbedUrl] = useState(null); // active embed URL
   const [spWsEmbedId, setSpWsEmbedId] = useState(null); // Spotify track ID for embed in web search
-  const wsQueueRef  = useRef([]);   // current ws native audio queue
+  const wsQueueRef    = useRef([]);   // current ws native audio queue
   const wsQueueIdxRef = useRef(-1);
+  const wsAbortRef    = useRef(null); // abort controller untuk doWebSearch aktif
+  const audiusHostRef = useRef(null); // cache Audius host agar tidak di-fetch ulang
 
   const doWebSearch = async (q) => {
     if (!q.trim()) return;
+
+    // ── Batalkan pencarian sebelumnya jika masih jalan
+    if (wsAbortRef.current) { wsAbortRef.current.abort(); }
+    const ctrl = new AbortController();
+    wsAbortRef.current = ctrl;
+    const sig = ctrl.signal;
+
     setWsLoading(true); setWsError(null); setWsResults([]); setWsEmbedUrl(null); setSpWsEmbedId(null);
+
+    // Helper: fetch dengan timeout + abort signal (compat semua browser)
+    const ft = (url, ms = 5000, opts = {}) => {
+      const tCtrl = new AbortController();
+      const tid = setTimeout(() => tCtrl.abort(), ms);
+      // Batalkan timeout timer jika global abort duluan
+      sig.addEventListener('abort', () => { clearTimeout(tid); tCtrl.abort(); }, { once: true });
+      return fetch(url, { ...opts, signal: tCtrl.signal }).finally(() => clearTimeout(tid));
+    };
+
+    // Helper: deduplikasi hasil berdasarkan title+artist (case-insensitive)
+    const dedup = (arr) => {
+      const seen = new Set();
+      return arr.filter(item => {
+        if (!item.title) return true;
+        const key = `${item.title}|${item.artist||''}`.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key); return true;
+      });
+    };
+
     try {
       // ── Deteksi URL langsung SoundCloud → embed
       if (q.includes('soundcloud.com/')) {
@@ -216,9 +246,10 @@ export default function App() {
         setWsError('Gunakan tab YouTube untuk link YouTube.');
         setWsLoading(false); return;
       }
+
       const vimeoM       = q.match(/vimeo\.com\/(\d+)/);
       const dailymotionM = q.match(/dailymotion\.com\/video\/([a-z0-9]+)/i);
-      const archiveM     = q.match(/archive\.org(?:\/(?:details|embed|download))?\/?([^/?#]+)/);
+      const archiveM     = q.match(/archive\.org(?:\/(?:details|embed|download))?\/([^/?#]+)/);
       const bandcampM    = q.match(/([a-z0-9-]+)\.bandcamp\.com\/(track|album)\/([a-z0-9-]+)/i);
       const audiomackM   = q.match(/audiomack\.com\/(song|album|playlist)\/([^/?#]+)\/([^/?#]+)/i);
       const mixcloudM    = q.match(/mixcloud\.com\/([^/?#]+\/[^/?#]+)/i);
@@ -231,22 +262,15 @@ export default function App() {
 
       if (vimeoM) {
         const vid = vimeoM[1];
-        // fetch oEmbed for title
         let title = 'Vimeo Video', thumb = `https://vumbnail.com/${vid}.jpg`;
-        try {
-          const oe = await fetch(`https://vimeo.com/api/oembed.json?url=${encodeURIComponent(q)}&width=400`, { signal: AbortSignal.timeout(4000) });
-          if (oe.ok) { const d = await oe.json(); title = d.title || title; thumb = d.thumbnail_url || thumb; }
-        } catch {}
+        try { const oe = await ft(`https://vimeo.com/api/oembed.json?url=${encodeURIComponent(q)}&width=400`, 4000); if (oe.ok) { const d = await oe.json(); title = d.title||title; thumb = d.thumbnail_url||thumb; } } catch {}
         setWsResults([{ type:'vimeo', embedUrl:`https://player.vimeo.com/video/${vid}?autoplay=0`, title, artist:'Vimeo', thumbnail:thumb, source:'vimeo' }]);
         setWsLoading(false); return;
       }
       if (dailymotionM) {
         const dmId = dailymotionM[1];
         let title = 'Dailymotion Video', thumb = `https://www.dailymotion.com/thumbnail/video/${dmId}`;
-        try {
-          const oe = await fetch(`https://www.dailymotion.com/services/oembed?url=${encodeURIComponent(q)}&format=json`, { signal: AbortSignal.timeout(4000) });
-          if (oe.ok) { const d = await oe.json(); title = d.title || title; thumb = d.thumbnail_url || thumb; }
-        } catch {}
+        try { const oe = await ft(`https://www.dailymotion.com/services/oembed?url=${encodeURIComponent(q)}&format=json`, 4000); if (oe.ok) { const d = await oe.json(); title = d.title||title; thumb = d.thumbnail_url||thumb; } } catch {}
         setWsResults([{ type:'dailymotion', embedUrl:`https://www.dailymotion.com/embed/video/${dmId}?autoplay=0`, title, artist:'Dailymotion', thumbnail:thumb, source:'dailymotion' }]);
         setWsLoading(false); return;
       }
@@ -256,24 +280,16 @@ export default function App() {
         setWsLoading(false); return;
       }
       if (audiomackM) {
-        // Audiomack oEmbed → get embed_url
         let embedUrl = null, title = audiomackM[3].replace(/-/g,' '), thumb = null;
-        try {
-          const oe = await fetch(`https://audiomack.com/oembed?url=${encodeURIComponent(q)}&format=json`, { signal: AbortSignal.timeout(4000) });
-          if (oe.ok) { const d = await oe.json(); title = d.title || title; thumb = d.thumbnail_url || null;
-            const src = d.html?.match(/src="([^"]+)"/)?.[1]; if (src) embedUrl = src; }
-        } catch {}
+        try { const oe = await ft(`https://audiomack.com/oembed?url=${encodeURIComponent(q)}&format=json`, 4000); if (oe.ok) { const d = await oe.json(); title = d.title||title; thumb = d.thumbnail_url||null; const src = d.html?.match(/src="([^"]+)"/)?.[1]; if (src) embedUrl = src; } } catch {}
         if (!embedUrl) embedUrl = `https://audiomack.com/embed/${audiomackM[1]}/${audiomackM[2]}/${audiomackM[3]}`;
-        setWsResults([{ type:'audiomack', embedUrl, title, artist: audiomackM[2], thumbnail:thumb, source:'audiomack' }]);
+        setWsResults([{ type:'audiomack', embedUrl, title, artist:audiomackM[2], thumbnail:thumb, source:'audiomack' }]);
         setWsLoading(false); return;
       }
       if (mixcloudM) {
         const key = mixcloudM[1];
         let title = key.replace(/\//g,' – '), thumb = null;
-        try {
-          const oe = await fetch(`https://www.mixcloud.com/oembed/?url=${encodeURIComponent(q)}&format=json`, { signal: AbortSignal.timeout(4000) });
-          if (oe.ok) { const d = await oe.json(); title = d.title || title; thumb = d.thumbnail_url || null; }
-        } catch {}
+        try { const oe = await ft(`https://www.mixcloud.com/oembed/?url=${encodeURIComponent(q)}&format=json`, 4000); if (oe.ok) { const d = await oe.json(); title = d.title||title; thumb = d.thumbnail_url||null; } } catch {}
         setWsResults([{ type:'mixcloud', embedUrl:`https://www.mixcloud.com/widget/iframe/?feed=${encodeURIComponent('/'+key+'/')}&hide_cover=1&light=1`, title, artist:'Mixcloud', thumbnail:thumb, source:'mixcloud' }]);
         setWsLoading(false); return;
       }
@@ -310,10 +326,15 @@ export default function App() {
         setWsLoading(false); return;
       }
 
-      // ── Keyword search: 5 sumber paralel
+      // ── Keyword search: semua sumber paralel dengan abort & dedup ────────────
+
+      // Archive.org — sort by downloads, batasi 4 hasil, timeout 5 detik
       const archivePromise = (async () => {
         try {
-          const r = await fetch(`https://archive.org/advancedsearch.php?q=${encodeURIComponent(q)}+AND+mediatype:(audio)&fl[]=identifier,title,creator&sort[]=downloads+desc&rows=5&output=json`, { signal: AbortSignal.timeout(6000) });
+          const r = await ft(
+            `https://archive.org/advancedsearch.php?q=${encodeURIComponent(q)}+AND+mediatype:(audio)&fl[]=identifier,title,creator&sort[]=downloads+desc&rows=4&output=json`,
+            5000
+          );
           if (!r.ok) return [];
           const d = await r.json();
           return (d.response?.docs || []).slice(0, 4).map(doc => ({
@@ -324,9 +345,11 @@ export default function App() {
           }));
         } catch { return []; }
       })();
+
+      // Jamendo — timeout 5 detik
       const jamendoPromise = (async () => {
         try {
-          const r = await fetch(`/api/jamendo?search=${encodeURIComponent(q)}&limit=5`, { signal: AbortSignal.timeout(6000) });
+          const r = await ft(`/api/jamendo?search=${encodeURIComponent(q)}&limit=5`, 5000);
           if (!r.ok) return [];
           const d = await r.json();
           return (d.results || []).map(t => ({
@@ -335,13 +358,11 @@ export default function App() {
           }));
         } catch { return []; }
       })();
-      const fmaPromise = (async () => {
-        // FMA API sudah mati (404) — skip, return kosong
-        return [];
-      })();
+
+      // ccMixter — timeout 5 detik
       const ccmixtPromise = (async () => {
         try {
-          const r = await fetch(`/api/ccmixter?title=${encodeURIComponent(q)}&limit=5`, { signal: AbortSignal.timeout(6000) });
+          const r = await ft(`/api/ccmixter?title=${encodeURIComponent(q)}&limit=5`, 5000);
           if (!r.ok) return [];
           const d = await r.json();
           return (d || []).slice(0, 4).map(t => ({
@@ -352,106 +373,108 @@ export default function App() {
           }));
         } catch { return []; }
       })();
-      // ── SoundCloud: user key → Audius (pihak ketiga, publik, audio bisa diputar) → iframe embed
+
+      // Audius — cache host agar tidak fetch ulang setiap pencarian
       const scPublicPromise = !scHasKey ? (async () => {
-        // Tier 1: Audius — API publik tanpa key, lagu indie/electronic/hip-hop, audio stream langsung
         try {
-          // Ambil host Audius aktif dulu
-          let audiusHost = 'https://discoveryprovider.audius.co';
-          try {
-            const hRes = await fetch('https://api.audius.co', { signal: AbortSignal.timeout(3000) });
-            if (hRes.ok) {
-              const hData = await hRes.json();
-              audiusHost = (hData.data?.[0] || audiusHost).replace(/\/$/, '');
-            }
-          } catch {}
-          const r = await fetch(
-            `${audiusHost}/v1/tracks/search?query=${encodeURIComponent(q)}&limit=5&app_name=StarryNightPlayer`,
-            { signal: AbortSignal.timeout(5000) }
-          );
+          if (!audiusHostRef.current) {
+            try {
+              const hRes = await ft('https://api.audius.co', 2500);
+              if (hRes.ok) { const hData = await hRes.json(); audiusHostRef.current = (hData.data?.[0] || 'https://discoveryprovider.audius.co').replace(/\/$/, ''); }
+            } catch {}
+            if (!audiusHostRef.current) audiusHostRef.current = 'https://discoveryprovider.audius.co';
+          }
+          const audiusHost = audiusHostRef.current;
+          const r = await ft(`${audiusHost}/v1/tracks/search?query=${encodeURIComponent(q)}&limit=5&app_name=StarryNightPlayer`, 5000);
           if (!r.ok) throw new Error('audius failed');
           const d = await r.json();
-          const tracks = (d.data || []).filter(t => t.downloadable || t.access?.streaming);
+          const tracks = (d.data || []).filter(t => t.id); // semua track valid
           if (tracks.length === 0) throw new Error('no audius results');
           return tracks.slice(0, 5).map(t => ({
-            type:'sc_track',
-            id: `audius_${t.id}`,
-            title: t.title,
-            artist: t.user?.name || t.user?.handle || 'Audius',
-            duration: t.duration || 0,
-            thumbnail: t.artwork?.['150x150'] || t.artwork?.['480x480'] || null,
-            permalinkUrl: `https://audius.co${t.permalink || ''}`,
-            streamUrl: `${audiusHost}/v1/tracks/${t.id}/stream?app_name=StarryNightPlayer`,
-            audioUrl: `${audiusHost}/v1/tracks/${t.id}/stream?app_name=StarryNightPlayer`,
+            type:'sc_track', id:`audius_${t.id}`, title:t.title,
+            artist:t.user?.name||t.user?.handle||'Audius', duration:t.duration||0,
+            thumbnail:t.artwork?.['150x150']||t.artwork?.['480x480']||null,
+            permalinkUrl:`https://audius.co${t.permalink||''}`,
+            streamUrl:`${audiusHost}/v1/tracks/${t.id}/stream?app_name=StarryNightPlayer`,
+            audioUrl:`${audiusHost}/v1/tracks/${t.id}/stream?app_name=StarryNightPlayer`,
             source:'audius',
           }));
         } catch {}
-        // Tier 2: iframe embed fallback
-        return [{ type:'sc_embed_fallback', query: q, source:'soundcloud' }];
+        return []; // Audius tidak ada hasil, biarkan merged logic pakai sc_embed
       })() : Promise.resolve([]);
 
-      // ── Spotify: user key → Deezer (pihak ketiga, publik, preview 30s) → iframe embed
+      // Deezer — timeout 5 detik
       const spPublicPromise = !spHasKey ? (async () => {
-        // Tier 1: Deezer via proxy — preview 30 detik mp3
         try {
-          const r = await fetch(
-            `/api/deezer?q=${encodeURIComponent(q)}&limit=5`,
-            { signal: AbortSignal.timeout(6000) }
-          );
+          const r = await ft(`https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=5&output=json`, 5000);
           if (!r.ok) throw new Error('deezer failed');
           const d = await r.json();
           const tracks = (d.data || []).filter(t => t.preview);
           if (tracks.length === 0) throw new Error('no deezer results');
           return tracks.slice(0, 5).map(t => ({
-            type:'sp_track',
-            id: `deezer_${t.id}`,
-            title: t.title,
-            artist: t.artist?.name || 'Deezer',
-            duration: (t.duration || 0) * 1000, // Deezer return detik, kode SP pakai ms
-            cover: t.album?.cover_medium || t.album?.cover || null,
-            previewUrl: t.preview || null,
-            spotifyUrl: t.link || `https://www.deezer.com/track/${t.id}`,
+            type:'sp_track', id:`deezer_${t.id}`, title:t.title,
+            artist:t.artist?.name||'Deezer', duration:(t.duration||0)*1000,
+            cover:t.album?.cover_medium||t.album?.cover||null,
+            previewUrl:t.preview||null,
+            spotifyUrl:t.link||`https://www.deezer.com/track/${t.id}`,
             source:'deezer',
           }));
         } catch {}
-        // Tier 2: iframe embed fallback
-        return [{ type:'sp_embed_fallback', query: q, source:'spotify' }];
+        return []; // Deezer tidak ada hasil, biarkan merged logic pakai sp_embed
       })() : Promise.resolve([]);
 
-      // ── SoundCloud: API search jika ada key
+      // SoundCloud & Spotify API (jika ada key)
       const scPromise = scHasKey ? (async () => {
         try { const items = await searchSoundCloud(q, 5); return (items||[]).map(t=>({...t,source:'soundcloud',type:'soundcloud'})); } catch { return []; }
       })() : Promise.resolve([]);
-      // ── Spotify: API search jika ada key
       const spPromise = spHasKey ? (async () => {
         try { const items = await searchSpotify(q, 5); return (items||[]).map(t=>({...t,source:'spotify',type:'spotify_track'})); } catch { return []; }
       })() : Promise.resolve([]);
 
-      const [archRes, jamRes, fmaRes, ccRes, scWsRes, spWsRes, scPubRes, spPubRes] = await Promise.all([archivePromise, jamendoPromise, fmaPromise, ccmixtPromise, scPromise, spPromise, scPublicPromise, spPublicPromise]);
-      // interleave sources agar tidak monoton
+      // Jalankan semua paralel — tidak ada yang saling menunggu
+      const [archRes, jamRes, ccRes, scWsRes, spWsRes, scPubRes, spPubRes] = await Promise.all([
+        archivePromise, jamendoPromise, ccmixtPromise,
+        scPromise, spPromise, scPublicPromise, spPublicPromise,
+      ]);
+
+      if (sig.aborted) { setWsLoading(false); return; } // pencarian dibatalkan karena ada query baru
+
+      // ── Susun hasil: SC & SP dulu, lalu interleave sumber lain ──
       const merged = [];
-      // SoundCloud: tampilkan hasil API jika ada key, atau hasil public search (mirip YT), atau embed fallback
       if (scHasKey && scWsRes.length > 0) merged.push({ type:'sc_section', source:'soundcloud_section', _items: scWsRes });
-      else if (!scHasKey && scPubRes.length > 0 && scPubRes[0].type !== 'sc_embed_fallback') merged.push({ type:'sc_section', source:'soundcloud_section', _items: scPubRes });
+      else if (!scHasKey && scPubRes.length > 0) merged.push({ type:'sc_section', source:'soundcloud_section', _items: scPubRes });
       else merged.push({ type:'sc_embed', source:'soundcloud_embed', query: q });
-      // Spotify: tampilkan hasil API jika ada key, atau hasil public search (mirip YT), atau embed fallback
+
       if (spHasKey && spWsRes.length > 0) merged.push({ type:'sp_section', source:'spotify_section', _items: spWsRes });
-      else if (!spHasKey && spPubRes.length > 0 && spPubRes[0].type !== 'sp_embed_fallback') merged.push({ type:'sp_section', source:'spotify_section', _items: spPubRes });
+      else if (!spHasKey && spPubRes.length > 0) merged.push({ type:'sp_section', source:'spotify_section', _items: spPubRes });
       else merged.push({ type:'sp_embed', source:'spotify_embed', query: q });
-      const maxLen = Math.max(archRes.length, jamRes.length, fmaRes.length, ccRes.length);
+
+      // Interleave sumber lain, dengan deduplikasi
+      const maxLen = Math.max(archRes.length, jamRes.length, ccRes.length);
       for (let i = 0; i < maxLen; i++) {
         if (jamRes[i])  merged.push(jamRes[i]);
-        if (fmaRes[i])  merged.push(fmaRes[i]);
         if (archRes[i]) merged.push(archRes[i]);
         if (ccRes[i])   merged.push(ccRes[i]);
       }
-      const hasRealResults = archRes.length+jamRes.length+fmaRes.length+ccRes.length+scWsRes.length+spWsRes.length+scPubRes.filter(x=>x.type!=='sc_embed_fallback').length+spPubRes.filter(x=>x.type!=='sp_embed_fallback').length > 0;
-      // Selalu set results — SC & Spotify selalu ditampilkan
-      setWsResults(merged);
-      if (!hasRealResults && merged.every(m=>m.type==='sc_embed'||m.type==='sp_embed')) {
+
+      // Dedup merged (kecuali section/embed items yang sudah berbeda struktur)
+      const dedupedMerged = merged.map(item => {
+        if (item._items) return { ...item, _items: dedup(item._items) };
+        return item;
+      });
+
+      const hasRealResults = archRes.length+jamRes.length+ccRes.length+scWsRes.length+spWsRes.length
+        +scPubRes.length
+        +spPubRes.length > 0;
+
+      setWsResults(dedupedMerged);
+      if (!hasRealResults && dedupedMerged.every(m=>m.type==='sc_embed'||m.type==='sp_embed')) {
         setWsError('No results from other sources. SoundCloud & Spotify shown as embeds.');
       }
-    } catch(e) { setWsError('Pencarian gagal: ' + (e.message||'error')); }
+    } catch(e) {
+      if (sig.aborted) { setWsLoading(false); return; } // jangan set error jika memang sengaja di-abort
+      setWsError('Pencarian gagal: ' + (e.message||'error'));
+    }
     setWsLoading(false);
   };
 
@@ -1507,6 +1530,12 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
   const [userLocationCountry, setUserLocationCountry] = useState(() => {
     try { return localStorage.getItem('sn_user_location_country') || 'ID'; } catch { return 'ID'; }
   });
+  const [userWeather, setUserWeather] = useState(() => {
+    try {
+      const cached = localStorage.getItem('sn_user_weather');
+      return cached ? JSON.parse(cached) : null;
+    } catch { return null; }
+  }); // { temp, unit, emoji, desc, windkmh }
 
   // ── New playback features
   const [shuffle, setShuffle] = useState(() => localStorage.getItem('sn_shuffle') === 'true');
@@ -1709,32 +1738,76 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
   // ── Geolocation: ambil lokasi user sekali, simpan ke localStorage
   useEffect(() => {
     if (!navigator.geolocation) return;
-    // Jika sudah ada cache & tidak expired (24 jam), skip
     const locTs = parseInt(localStorage.getItem('sn_location_ts') || '0', 10);
-    if (userLocation && Date.now() - locTs < 24 * 60 * 60 * 1000) return;
+    const weatherTs = parseInt(localStorage.getItem('sn_weather_ts') || '0', 10);
+    const locFresh = userLocation && Date.now() - locTs < 24 * 60 * 60 * 1000;
+    const weatherFresh = userWeather && Date.now() - weatherTs < 30 * 60 * 1000; // 30 menit
+    if (locFresh && weatherFresh) return;
+
     navigator.geolocation.getCurrentPosition(async (pos) => {
       const { latitude, longitude } = pos.coords;
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`, {
-          headers: { 'Accept-Language': 'id,en', 'User-Agent': 'StarryNightMPlayer/1.0' }
-        });
-        const data = await res.json();
-        const city = data?.address?.city || data?.address?.town || data?.address?.village || data?.address?.county || '';
-        const country = data?.address?.country_code?.toUpperCase() || 'ID';
-        const countryName = data?.address?.country || '';
-        const displayLoc = city ? `${city}${countryName && country !== 'ID' ? ', ' + countryName : ''}` : countryName;
-        if (displayLoc) {
-          setUserLocation(displayLoc);
-          setUserLocationCountry(country);
-          localStorage.setItem('sn_user_location', displayLoc);
-          localStorage.setItem('sn_user_location_country', country);
-          localStorage.setItem('sn_location_ts', String(Date.now()));
-          // Hapus popularRecs cache agar di-refetch dengan lokasi baru
-          localStorage.removeItem('sn_popular_recs_ts');
-          setPopularRecs(null);
-        }
-      } catch {}
-    }, () => {/* user deny — tidak apa-apa */}, { timeout: 8000 });
+
+      // ── Reverse geocode (skip jika lokasi masih fresh)
+      let lat = latitude, lon = longitude;
+      if (!locFresh) {
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`, {
+            headers: { 'Accept-Language': 'id,en', 'User-Agent': 'StarryNightMPlayer/1.0' }
+          });
+          const data = await res.json();
+          const city = data?.address?.city || data?.address?.town || data?.address?.village || data?.address?.county || '';
+          const country = data?.address?.country_code?.toUpperCase() || 'ID';
+          const countryName = data?.address?.country || '';
+          const displayLoc = city ? `${city}${countryName && country !== 'ID' ? ', ' + countryName : ''}` : countryName;
+          if (displayLoc) {
+            setUserLocation(displayLoc);
+            setUserLocationCountry(country);
+            localStorage.setItem('sn_user_location', displayLoc);
+            localStorage.setItem('sn_user_location_country', country);
+            localStorage.setItem('sn_location_ts', String(Date.now()));
+            localStorage.removeItem('sn_popular_recs_ts');
+            setPopularRecs(null);
+          }
+        } catch {}
+      }
+
+      // ── Cuaca via Open-Meteo (gratis, no API key)
+      if (!weatherFresh) {
+        try {
+          const wRes = await fetch(
+            `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,wind_speed_10m&wind_speed_unit=kmh&timezone=auto`
+          );
+          const wData = await wRes.json();
+          const curr = wData?.current;
+          if (curr) {
+            const code = curr.weather_code ?? 0;
+            const temp = Math.round(curr.temperature_2m ?? 0);
+            const wind = Math.round(curr.wind_speed_10m ?? 0);
+            // WMO weather code → emoji + deskripsi singkat
+            const weatherMap = (c) => {
+              if (c === 0) return { emoji: '☀️', desc: 'Cerah' };
+              if (c <= 2)  return { emoji: '🌤️', desc: 'Sebagian berawan' };
+              if (c === 3) return { emoji: '☁️', desc: 'Berawan' };
+              if (c <= 49) return { emoji: '🌫️', desc: 'Berkabut' };
+              if (c <= 59) return { emoji: '🌦️', desc: 'Gerimis' };
+              if (c <= 69) return { emoji: '🌧️', desc: 'Hujan' };
+              if (c <= 79) return { emoji: '❄️', desc: 'Salju' };
+              if (c <= 84) return { emoji: '🌨️', desc: 'Hujan bersalju' };
+              if (c <= 99) return { emoji: '⛈️', desc: 'Badai petir' };
+              return { emoji: '🌡️', desc: 'Cuaca tak dikenal' };
+            };
+            const { emoji, desc } = weatherMap(code);
+            const weather = { temp, unit: '°C', emoji, desc, windkmh: wind };
+            setUserWeather(weather);
+            localStorage.setItem('sn_user_weather', JSON.stringify(weather));
+            localStorage.setItem('sn_weather_ts', String(Date.now()));
+            // Hapus cache popular agar di-refetch dengan konteks cuaca baru
+            localStorage.removeItem('sn_popular_recs_ts');
+            setPopularRecs(null);
+          }
+        } catch {}
+      }
+    }, () => {}, { timeout: 8000 });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => { localStorage.setItem('sn_tab', tab); if (tab !== 'player') setFullscreen(false); }, [tab]);
@@ -2510,9 +2583,10 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
     setPopularLoading(true);
     try {
       const locCtx = userLocation ? `Lokasi user: ${userLocation} (kode negara: ${userLocationCountry}).` : 'Lokasi user: Indonesia (kode negara: ID).';
+      const weatherCtx = userWeather ? `Cuaca saat ini: ${userWeather.desc}, ${userWeather.temp}${userWeather.unit}, angin ${userWeather.windkmh} km/h.` : '';
       const isIndonesia = !userLocationCountry || userLocationCountry === 'ID';
       const localLabel = isIndonesia ? 'Lagu lokal Indonesia' : `Lagu lokal ${userLocation || 'setempat'}`;
-      const prompt = `Kamu adalah kurator musik & audio global. ${locCtx} Berikan daftar konten POPULER & TRENDING saat ini yang relevan dengan lokasi user dalam format JSON. Sertakan campuran lagu global populer dan lagu lokal sesuai lokasi user.
+      const prompt = `Kamu adalah kurator musik & audio global. ${locCtx}${weatherCtx ? ' ' + weatherCtx : ''} Berikan daftar konten POPULER & TRENDING saat ini yang relevan dengan lokasi dan suasana cuaca user dalam format JSON. Sesuaikan rekomendasi dengan mood cuaca (misal: hujan → lagu melankolis/santai, cerah → lagu energik/upbeat, badai → lagu dramatis/intens). Sertakan campuran lagu global populer dan lagu lokal sesuai lokasi user.
 
 Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
 {"trending_music":[{"title":"Judul Lagu 1","artist":"Artis 1","reason":"alasan singkat max 8 kata"},{"title":"Judul Lagu 2","artist":"Artis 2","reason":"alasan singkat max 8 kata"},{"title":"Judul Lagu 3","artist":"Artis 3","reason":"alasan singkat max 8 kata"},{"title":"Judul Lagu 4","artist":"Artis 4","reason":"alasan singkat max 8 kata"},{"title":"Judul Lagu 5","artist":"Artis 5","reason":"alasan singkat max 8 kata"}],"trending_radio":[{"name":"Nama Stasiun 1","genre":"genre","reason":"alasan singkat max 8 kata"},{"name":"Nama Stasiun 2","genre":"genre","reason":"alasan singkat max 8 kata"},{"name":"Nama Stasiun 3","genre":"genre","reason":"alasan singkat max 8 kata"},{"name":"Nama Stasiun 4","genre":"genre","reason":"alasan singkat max 8 kata"},{"name":"Nama Stasiun 5","genre":"genre","reason":"alasan singkat max 8 kata"}],"trending_local":[{"title":"Judul Lokal 1","artist":"Artis Lokal 1","reason":"alasan singkat max 8 kata"},{"title":"Judul Lokal 2","artist":"Artis Lokal 2","reason":"alasan singkat max 8 kata"},{"title":"Judul Lokal 3","artist":"Artis Lokal 3","reason":"alasan singkat max 8 kata"},{"title":"Judul Lokal 4","artist":"Artis Lokal 4","reason":"alasan singkat max 8 kata"},{"title":"Judul Lokal 5","artist":"Artis Lokal 5","reason":"alasan singkat max 8 kata"}]}`;
@@ -4142,7 +4216,14 @@ Rules: use real, well-known station names that likely exist on RadioBrowser or i
   const pct = duration>0?progress/duration:0;
 
   // ── All songs (combined from all sources)
-  const allSongs = [...builtinSongs, ...customSongs, ...ytSongs, ...favSongs];
+  // Deduplikasi allSongs berdasarkan id — favSongs bisa overlap dengan builtinSongs
+  const allSongs = (() => {
+    const seen = new Set();
+    return [...builtinSongs, ...customSongs, ...ytSongs, ...favSongs].filter(s => {
+      if (!s.id || seen.has(s.id)) return false;
+      seen.add(s.id); return true;
+    });
+  })();
 
   // ── Search filter
   const q = searchQuery.toLowerCase();
@@ -4688,15 +4769,15 @@ Rules: use real, well-known station names that likely exist on RadioBrowser or i
 
           {/* ═══ MOBILE LANDSCAPE — dedicated two-column layout ═══ */}
           {layoutMode === 'mobile-landscape' && (() => {
-            // Fullscreen: header hilang → pakai hampir full height. Non-fullscreen: kurangi header ~40px
             const lsRing = Math.min(ringSize, window.innerHeight - (fullscreen ? 16 : 80));
             const lsColW = lsRing + 16;
+            const activeTitle = embedTrack ? (embedTrack.title || track.title) : track.title;
+            const activeArtist = embedTrack ? (embedTrack.artist || track.artist) : `${track.artist} — ${track.album}`;
             return (
             <div style={{ display:'flex', flexDirection:'row', height:'100%', width:'100%', overflow:'hidden', boxSizing:'border-box' }}>
 
               {/* ── LEFT col: clock pojok kiri atas + orbital centered ── */}
               <div style={{ width:lsColW, flexShrink:0, position:'relative', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
-                {/* Clock — pojok kiri atas absolut */}
                 <div style={{ position:'absolute', top:8, left:8, userSelect:'none', pointerEvents:'none', zIndex:2 }}>
                   <div style={{ fontFamily:'monospace', fontWeight:900, letterSpacing:'-0.04em', lineHeight:1 }}>
                     <span style={{ fontSize:18, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', backgroundClip:'text', WebkitTextFillColor:'transparent' }}>
@@ -4708,12 +4789,12 @@ Rules: use real, well-known station names that likely exist on RadioBrowser or i
                     {nowTime.toLocaleDateString('id-ID',{ weekday:'short', day:'numeric', month:'short' })}
                   </div>
                   {userLocation && (
-                    <div style={{ fontSize:7.5, color:'rgba(255,255,255,0.28)', fontWeight:600, marginTop:1.5, letterSpacing:'0.05em', display:'flex', alignItems:'center', gap:2 }}>
-                      <span style={{ fontSize:7 }}>📍</span>{userLocation}
+                    <div style={{ fontSize:7.5, color:'rgba(255,255,255,0.28)', fontWeight:600, marginTop:1.5, letterSpacing:'0.05em', display:'flex', alignItems:'center', gap:3, flexWrap:'wrap' }}>
+                      {userWeather && <span style={{ display:'flex', alignItems:'center', gap:2, color:'rgba(255,255,255,0.4)' }}>{userWeather.emoji} {userWeather.temp}{userWeather.unit}</span>}
+                      <span style={{ display:'flex', alignItems:'center', gap:2 }}><span style={{ fontSize:7 }}>📍</span>{userLocation}</span>
                     </div>
                   )}
                 </div>
-                {/* Orbital ring centered in column */}
                 <OrbitalRing size={lsRing}
                   pct={embedTrack?.type==='youtube'?(ytDuration>0?ytProgress/ytDuration:0):track.isRadio?0:pct}
                   color={embedTrack?.type==='youtube'?'#ff4444':track.color}
@@ -4721,7 +4802,7 @@ Rules: use real, well-known station names that likely exist on RadioBrowser or i
                   duration={embedTrack?.type==='youtube'?ytDuration:track.isRadio?0:duration}
                   isPlaying={playing}
                   cover={globalCover||((!globalCover&&embedTrack?.type==='youtube')?embedTrack.thumbnail:null)||getCover(track)}
-                  title={embedTrack?.type==='youtube'?embedTrack.title:track.title}
+                  title={activeTitle}
                   onSeek={embedTrack?.type==='youtube'?seekYt:track.isRadio?null:seekByPct}
                   isLite={isLite} isRadio={!embedTrack&&track.isRadio}
                   downloadProg={driveDownProg} drivePhase={drivePhase}
@@ -4729,56 +4810,56 @@ Rules: use real, well-known station names that likely exist on RadioBrowser or i
                   ytDlProg={embedTrack?.type==='youtube'?(ytDownloadProg[embedTrack.videoId]||0):0}/>
               </div>
 
-              {/* ── RIGHT col: title, controls, volume, actions ── */}
-              <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', alignItems:'flex-start', justifyContent:'center', padding:'8px 12px 8px 8px', gap:6, overflow:'hidden' }}>
-                {/* Badge */}
-                {embedTrack?.type==='youtube' && <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:999, background:'rgba(255,0,0,0.12)', border:'1px solid rgba(255,0,0,0.25)' }}><span style={{ fontSize:9, fontWeight:800, color:'#ff6b6b', textTransform:'uppercase', letterSpacing:'0.1em' }}>▶ YouTube</span></div>}
-                {embedTrack?.type==='soundcloud' && <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:999, background:'rgba(255,85,0,0.12)', border:'1px solid rgba(255,85,0,0.3)' }}><span style={{ fontSize:9, fontWeight:800, color:'#ff5500', textTransform:'uppercase', letterSpacing:'0.1em' }}>🔊 SoundCloud</span></div>}
-                {!embedTrack && track.isRadio && <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:999, background:'rgba(245,158,11,0.15)', border:'1px solid rgba(245,158,11,0.35)' }}>{streamBuffering ? <Loader2 size={9} style={{ animation:'spin 0.8s linear infinite', color:'#fbbf24' }}/> : <div style={{ width:5,height:5,borderRadius:'50%',background:'#f59e0b',animation:playing?'pulse 1.2s infinite':'none' }}/>}<span style={{ fontSize:9, fontWeight:800, color:'#fbbf24', textTransform:'uppercase', letterSpacing:'0.1em' }}>{streamBuffering ? 'BUFFERING…' : '● LIVE RADIO'}</span></div>}
+              {/* ── RIGHT col: title (atas) → controls (tengah) → volume → actions (bawah) ── */}
+              <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', justifyContent:'center', padding:'6px 14px 6px 6px', gap:0, overflow:'hidden' }}>
 
-                {/* Title */}
-                <div style={{ width:'100%', minWidth:0 }}>
-                  <h2 style={{ margin:0, fontWeight:900, fontSize:'clamp(13px,3.5vw,18px)', letterSpacing:'-0.03em', lineHeight:1.2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                    {embedTrack?.type==='youtube'?embedTrack.title:embedTrack?.type==='soundcloud'?embedTrack.title:track.title}
+                {/* ── Judul & badge — atas, centered ── */}
+                <div style={{ display:'flex', flexDirection:'column', alignItems:'center', marginBottom:6, minWidth:0, width:'100%' }}>
+                  {/* Badge */}
+                  {embedTrack?.type==='youtube' && <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:999, background:'rgba(255,0,0,0.12)', border:'1px solid rgba(255,0,0,0.25)', marginBottom:4 }}><span style={{ fontSize:9, fontWeight:800, color:'#ff6b6b', textTransform:'uppercase', letterSpacing:'0.1em' }}>▶ YouTube</span></div>}
+                  {embedTrack?.type==='soundcloud' && <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:999, background:'rgba(255,85,0,0.12)', border:'1px solid rgba(255,85,0,0.3)', marginBottom:4 }}><span style={{ fontSize:9, fontWeight:800, color:'#ff5500', textTransform:'uppercase', letterSpacing:'0.1em' }}>🔊 SoundCloud</span></div>}
+                  {!embedTrack && track.isRadio && <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:999, background:'rgba(245,158,11,0.15)', border:'1px solid rgba(245,158,11,0.35)', marginBottom:4 }}>{streamBuffering ? <Loader2 size={9} style={{ animation:'spin 0.8s linear infinite', color:'#fbbf24' }}/> : <div style={{ width:5,height:5,borderRadius:'50%',background:'#f59e0b',animation:playing?'pulse 1.2s infinite':'none' }}/>}<span style={{ fontSize:9, fontWeight:800, color:'#fbbf24', textTransform:'uppercase', letterSpacing:'0.1em' }}>{streamBuffering ? 'BUFFERING…' : '● LIVE RADIO'}</span></div>}
+                  <h2 style={{ margin:0, fontWeight:900, fontSize:'clamp(13px,2.8vw,17px)', letterSpacing:'-0.03em', lineHeight:1.2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', textAlign:'center', width:'100%' }}>
+                    {activeTitle}
                   </h2>
-                  <p style={{ margin:'3px 0 0', fontSize:10, color:'rgba(255,255,255,0.45)', fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                    {embedTrack?.type==='youtube'?embedTrack.artist:embedTrack?.type==='soundcloud'?embedTrack.artist:`${track.artist} — ${track.album}`}
+                  <p style={{ margin:'2px 0 0', fontSize:10, color:'rgba(255,255,255,0.4)', fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', textAlign:'center', width:'100%' }}>
+                    {activeArtist}
                   </p>
                 </div>
 
-                {/* Playback controls */}
-                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                {/* ── Kontrol media — centered ── */}
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:7 }}>
                   {!track.isRadio && (
-                    <button onClick={()=>setShuffle(s=>!s)} style={{ background:'none', border:'none', cursor:'pointer', color:shuffle?track.color:'rgba(255,255,255,0.3)', padding:4, position:'relative' }}>
-                      <Shuffle size={17}/>
+                    <button onClick={()=>setShuffle(s=>!s)} style={{ background:'none', border:'none', cursor:'pointer', color:shuffle?track.color:'rgba(255,255,255,0.3)', padding:4, position:'relative', flexShrink:0 }}>
+                      <Shuffle size={16}/>
                       {shuffle && <div style={{ position:'absolute', bottom:1, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:track.color }}/>}
                     </button>
                   )}
-                  <button onClick={()=>track.isRadio?goPrevRadio():embedTrack?.type==='youtube'?ytPrev():goPrev()} style={{ background:'none', border:'none', cursor:'pointer', color:'white', padding:4 }}><SkipBack size={22} fill="currentColor"/></button>
+                  <button onClick={()=>track.isRadio?goPrevRadio():embedTrack?.type==='youtube'?ytPrev():goPrev()} style={{ background:'none', border:'none', cursor:'pointer', color:'white', padding:4, flexShrink:0 }}><SkipBack size={20} fill="currentColor"/></button>
                   <button
                     onClick={()=>{ if(!track.src&&!embedTrack) return; if(embedTrack?.type==='soundcloud') return; setPlaying(p=>!p); }}
                     disabled={!track.src&&!embedTrack}
-                    style={{ width:52, height:52, borderRadius:'50%', border:'none', background:'white', color:'#07071a', cursor:(!track.src&&!embedTrack)?'default':'pointer', opacity:(!track.src&&!embedTrack)?0.4:1, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:isLite?'0 2px 10px rgba(0,0,0,0.4)':`0 0 22px ${embedTrack?.type==='youtube'?'#ff444490':track.color+'90'},0 4px 16px rgba(0,0,0,0.4)` }}>
-                    {playing?<Pause size={21} fill="currentColor"/>:<Play size={21} fill="currentColor" style={{ marginLeft:3 }}/>}
+                    style={{ width:46, height:46, borderRadius:'50%', border:'none', background:'white', color:'#07071a', cursor:(!track.src&&!embedTrack)?'default':'pointer', opacity:(!track.src&&!embedTrack)?0.4:1, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:isLite?'0 2px 10px rgba(0,0,0,0.4)':`0 0 18px ${embedTrack?.type==='youtube'?'#ff444490':track.color+'90'},0 4px 14px rgba(0,0,0,0.4)` }}>
+                    {playing?<Pause size={19} fill="currentColor"/>:<Play size={19} fill="currentColor" style={{ marginLeft:2 }}/>}
                   </button>
-                  <button onClick={()=>track.isRadio?goNextRadio():embedTrack?.type==='youtube'?ytNext():goNext()} style={{ background:'none', border:'none', cursor:'pointer', color:'white', padding:4 }}><SkipForward size={22} fill="currentColor"/></button>
+                  <button onClick={()=>track.isRadio?goNextRadio():embedTrack?.type==='youtube'?ytNext():goNext()} style={{ background:'none', border:'none', cursor:'pointer', color:'white', padding:4, flexShrink:0 }}><SkipForward size={20} fill="currentColor"/></button>
                   {!track.isRadio && (
-                    <button onClick={cycleRepeat} style={{ background:'none', border:'none', cursor:'pointer', color:repeat!=='off'?track.color:'rgba(255,255,255,0.3)', padding:4, position:'relative' }}>
-                      {repeat==='one'?<Repeat1 size={17}/>:<Repeat size={17}/>}
+                    <button onClick={cycleRepeat} style={{ background:'none', border:'none', cursor:'pointer', color:repeat!=='off'?track.color:'rgba(255,255,255,0.3)', padding:4, position:'relative', flexShrink:0 }}>
+                      {repeat==='one'?<Repeat1 size={16}/>:<Repeat size={16}/>}
                       {repeat!=='off' && <div style={{ position:'absolute', bottom:1, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:track.color }}/>}
                     </button>
                   )}
                 </div>
 
-                {/* Volume */}
-                <div style={{ display:'flex', alignItems:'center', gap:10, width:'100%' }}>
-                  <button onClick={()=>setMuted(m=>!m)} style={{ background:'none', border:'none', cursor:'pointer', color:muted?'#ef4444':'rgba(255,255,255,0.38)', padding:0, flexShrink:0 }}>{muted?<VolumeX size={15}/>:<Volume2 size={15}/>}</button>
+                {/* ── Volume bar — full width ── */}
+                <div style={{ display:'flex', alignItems:'center', gap:8, width:'100%', marginBottom:7 }}>
+                  <button onClick={()=>setMuted(m=>!m)} style={{ background:'none', border:'none', cursor:'pointer', color:muted?'#ef4444':'rgba(255,255,255,0.38)', padding:0, flexShrink:0 }}>{muted?<VolumeX size={14}/>:<Volume2 size={14}/>}</button>
                   <input type="range" min="0" max="1" step="0.01" value={muted?0:volume} onChange={e=>{setVolume(+e.target.value);setMuted(false)}} style={{ flex:1, accentColor:embedTrack?.type==='youtube'?'#ff4444':track.color, height:3, cursor:'pointer' }}/>
-                  <span style={{ fontSize:10, color:'rgba(255,255,255,0.28)', fontWeight:700, minWidth:30, textAlign:'right', fontFamily:'monospace', flexShrink:0 }}>{muted?'0':Math.round(volume*100)}%</span>
+                  <span style={{ fontSize:10, color:'rgba(255,255,255,0.28)', fontWeight:700, minWidth:28, textAlign:'right', fontFamily:'monospace', flexShrink:0 }}>{muted?'0':Math.round(volume*100)}%</span>
                 </div>
 
-                {/* Action icons */}
-                <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                {/* ── Action icons — bawah, centered ── */}
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:2 }}>
                   {embedTrack?.type==='youtube'
                     ? <button onClick={likeYtTrack} style={{ background:'none', border:'none', cursor:'pointer', color:liked[`yt_${embedTrack.videoId}`]?'#f472b6':'rgba(255,255,255,0.35)', padding:'4px 7px' }}><Heart size={16} fill={liked[`yt_${embedTrack.videoId}`]?'#f472b6':'none'}/></button>
                     : <button onClick={()=>toggleFav(track.id, track.isRadio?track:null)} style={{ background:'none', border:'none', cursor:'pointer', color:liked[track.id]?'#f472b6':'rgba(255,255,255,0.35)', padding:'4px 7px' }}><Heart size={16} fill={liked[track.id]?'#f472b6':'none'}/></button>
@@ -4790,8 +4871,8 @@ Rules: use real, well-known station names that likely exist on RadioBrowser or i
                   {embedTrack && <button onClick={()=>{ closeEmbed(); setShowSettings(false); }} style={{ background:'none', border:'none', cursor:'pointer', color:'#fca5a5', padding:'4px 7px' }}><X size={16}/></button>}
                   {!embedTrack && track.isRadio && radioStation && <button onClick={()=>{ if(audioRef.current){audioRef.current.pause();audioRef.current.src='';} if(hlsRef.current){hlsRef.current.destroy();hlsRef.current=null;} if(radioReconnectRef.current){clearTimeout(radioReconnectRef.current);radioReconnectRef.current=null;} radioReconnectCount.current=0; setStreamBuffering(false); setPlaying(false); setRadioStation(null); setRadioPlaying(false); setTrack(SONGS[0]); }} style={{ background:'none', border:'none', cursor:'pointer', color:'#fbbf24', padding:'4px 7px' }}><X size={16}/></button>}
                 </div>
-              </div>
 
+              </div>
             </div>
             );
           })()}
@@ -4822,8 +4903,9 @@ Rules: use real, well-known station names that likely exist on RadioBrowser or i
                   {nowTime.toLocaleDateString('id-ID',{ weekday:'long', day:'numeric', month:'long' })}
                 </div>
                 {userLocation && (
-                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.28)', fontWeight:600, marginTop:3, letterSpacing:'0.04em', display:'flex', alignItems:'center', gap:3 }}>
-                    <span style={{ fontSize:9 }}>📍</span>{userLocation}
+                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.28)', fontWeight:600, marginTop:3, letterSpacing:'0.04em', display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                    {userWeather && <span style={{ display:'flex', alignItems:'center', gap:3, color:'rgba(255,255,255,0.45)' }}>{userWeather.emoji} {userWeather.temp}{userWeather.unit}</span>}
+                    <span style={{ display:'flex', alignItems:'center', gap:3 }}><span>📍</span>{userLocation}</span>
                   </div>
                 )}
               </div>
@@ -4845,8 +4927,9 @@ Rules: use real, well-known station names that likely exist on RadioBrowser or i
                     {nowTime.toLocaleDateString('id-ID',{ weekday:'short', day:'numeric', month:'short' })}
                   </div>
                   {userLocation && (
-                    <div style={{ fontSize:8, color:'rgba(255,255,255,0.28)', fontWeight:600, marginTop:2, letterSpacing:'0.04em', display:'flex', alignItems:'center', gap:2, whiteSpace:'nowrap' }}>
-                      <span style={{ fontSize:8 }}>📍</span>{userLocation}
+                    <div style={{ fontSize:8, color:'rgba(255,255,255,0.28)', fontWeight:600, marginTop:2, letterSpacing:'0.04em', display:'flex', alignItems:'center', gap:4, whiteSpace:'nowrap', flexWrap:'wrap' }}>
+                      {userWeather && <span style={{ display:'flex', alignItems:'center', gap:2, color:'rgba(255,255,255,0.45)' }}>{userWeather.emoji} {userWeather.temp}{userWeather.unit}</span>}
+                      <span style={{ display:'flex', alignItems:'center', gap:2 }}><span style={{ fontSize:8 }}>📍</span>{userLocation}</span>
                     </div>
                   )}
                 </div>

@@ -72,13 +72,13 @@ function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDri
           </button>
         )}
         {/* ── Tombol Tambah ke Playlist */}
-        {playlists && playlists.length > 0 && addToPlaylist && (
+        {playlists && playlists.filter(pl=>!pl.locked).length > 0 && addToPlaylist && (
           <div style={{ position:'relative' }}>
             <button
               ref={plBtnRef}
               onClick={e=>{ e.stopPropagation(); if(!showPlMenu && plBtnRef.current){ const r=plBtnRef.current.getBoundingClientRect(); setPlMenuPos({ bottom: window.innerHeight - r.top + 6, right: window.innerWidth - r.right }); } setShowPlMenu(v=>!v); }}
               title={t?.addToPlaylistBtn||'Tambah ke Playlist'}
-              style={{ background:'none', border:'none', cursor:'pointer', flexShrink:0, padding:6, color: showPlMenu ? '#f472b6' : 'rgba(255,255,255,0.35)', transition:'color 0.2s' }}
+              style={{ background:'none', border:'none', cursor:'pointer', flexShrink:0, padding:6, color: showPlMenu ? '#a78bfa' : 'rgba(255,255,255,0.35)', transition:'color 0.2s' }}
             >
               <ListPlus size={14}/>
             </button>
@@ -88,23 +88,46 @@ function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDri
                 onClick={e=>e.stopPropagation()}
                 style={{
                   position:'fixed', right: plMenuPos.right, bottom: plMenuPos.bottom,
-                  background:'#1a1a2e', border:'1px solid rgba(255,255,255,0.1)',
-                  borderRadius:12, padding:'6px 0', minWidth:160, zIndex:9999,
-                  boxShadow:'0 8px 32px rgba(0,0,0,0.6)'
+                  background:'#1a1a2e', border:'1px solid rgba(255,255,255,0.12)',
+                  borderRadius:14, padding:'6px 0', minWidth:176, zIndex:9999,
+                  boxShadow:'0 8px 32px rgba(0,0,0,0.7)'
                 }}
               >
-                <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.3)', padding:'4px 14px 6px', textTransform:'uppercase', letterSpacing:1 }}>
-                  {t?.addToPlaylistHeader||'Tambah ke'}
+                <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.3)', padding:'6px 14px 8px', textTransform:'uppercase', letterSpacing:1, borderBottom:'1px solid rgba(255,255,255,0.07)' }}>
+                  {t?.addToPlaylistHeader||'Tambah ke Playlist'}
                 </div>
-                {playlists.filter(pl=>!pl.locked).map(pl=>(
-                  <button key={pl.id} onClick={()=>{ addToPlaylist(pl.id, s.id); setShowPlMenu(false); }}
-                    style={{ display:'block', width:'100%', textAlign:'left', padding:'8px 14px', background:'none', border:'none', color:'rgba(255,255,255,0.75)', fontSize:12, fontWeight:600, cursor:'pointer', borderRadius:0 }}
-                    onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.07)'}
-                    onMouseLeave={e=>e.currentTarget.style.background='none'}
-                  >
-                    {pl.name}
-                  </button>
-                ))}
+                {playlists.filter(pl=>!pl.locked).map(pl=>{
+                  const alreadyIn = pl.songIds?.includes(s.id);
+                  return (
+                    <button key={pl.id}
+                      onClick={()=>{
+                        if (!alreadyIn) {
+                          addToPlaylist(pl.id, s.id);
+                          // Toast feedback
+                          const toast = document.createElement('div');
+                          toast.textContent = `✓ Ditambahkan ke ${pl.name}`;
+                          Object.assign(toast.style, {
+                            position:'fixed', bottom:'80px', left:'50%', transform:'translateX(-50%)',
+                            background:'rgba(99,102,241,0.92)', color:'white', padding:'9px 18px',
+                            borderRadius:'999px', fontSize:'13px', fontWeight:'700',
+                            zIndex:'99999', pointerEvents:'none', whiteSpace:'nowrap',
+                            boxShadow:'0 4px 20px rgba(0,0,0,0.4)',
+                            transition:'opacity 0.3s',
+                          });
+                          document.body.appendChild(toast);
+                          setTimeout(()=>{ toast.style.opacity='0'; setTimeout(()=>toast.remove(),300); }, 2000);
+                        }
+                        setShowPlMenu(false);
+                      }}
+                      style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, width:'100%', textAlign:'left', padding:'9px 14px', background:'none', border:'none', color: alreadyIn ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.8)', fontSize:12, fontWeight:600, cursor: alreadyIn ? 'default' : 'pointer' }}
+                      onMouseEnter={e=>{ if(!alreadyIn) e.currentTarget.style.background='rgba(255,255,255,0.07)'; }}
+                      onMouseLeave={e=>e.currentTarget.style.background='none'}
+                    >
+                      <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{pl.name}</span>
+                      {alreadyIn && <span style={{ fontSize:10, color:'#4ade80', flexShrink:0 }}>✓ Ada</span>}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
