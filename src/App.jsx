@@ -106,8 +106,10 @@ export default function App() {
   const ytQueueRef    = useRef([]);   // current list of YT results
   const ytQueueIdxRef = useRef(-1);  // index of current video in queue
   const ytShufflePlayedRef = useRef(null); // Set of played indices in current shuffle session
-  const ytProgressRef  = useRef(0);   // mirror of ytProgress for use in intervals
-  const ytDurationRef  = useRef(0);   // mirror of ytDuration for use in intervals
+  const ytProgressRef   = useRef(0);   // mirror of ytProgress for use in intervals
+  const ytDurationRef   = useRef(0);   // mirror of ytDuration for use in intervals
+  const playYouTubeRef  = useRef(null); // always-fresh ref to playYouTube
+  const ytEndedFiredRef = useRef(false); // prevent double-fire of ytNext on video end
   const [ytSongs, setYtSongs]         = useState(() => {
     try { return JSON.parse(localStorage.getItem('sn_yt_songs') || '[]'); } catch { return []; }
   }); // YT tracks saved to playlist/liked
@@ -1386,7 +1388,7 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
     const doSwitch = () => {
       stopAllMedia('embed');
       setEmbedTrack(ytTrack);
-      setYtProgress(0); setYtDuration(secs||0); ytProgressRef.current = 0; ytDurationRef.current = secs||0;
+      setYtProgress(0); setYtDuration(secs||0); ytProgressRef.current = 0; ytDurationRef.current = secs||0; ytEndedFiredRef.current = false;
       if (queue) { const queueChanged = queue !== ytQueueRef.current; ytQueueRef.current = queue; ytQueueIdxRef.current = queueIdx ?? queue.findIndex(v=>(v.videoId||v.url?.includes(videoId))===videoId); if (queueChanged) ytShufflePlayedRef.current = null; }
       setEmbedMinimized(false);
       if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
@@ -1397,6 +1399,8 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
     };
     doSwitch();
   };
+  // Keep ref always pointing to latest playYouTube (avoids stale closure in ytNext/ytPrev)
+  playYouTubeRef.current = playYouTube;
 
 
   // ── Tutup semua media aktif sebelum switch ke sumber baru
@@ -1538,11 +1542,11 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
         if (!fresh.length) { setPlaying(false); return; }
         const idx = fresh[Math.floor(Math.random() * fresh.length)];
         ytQueueIdxRef.current = idx;
-        playYouTube(q[idx], q, idx);
+        playYouTubeRef.current(q[idx], q, idx);
       } else {
         const idx = unplayed[Math.floor(Math.random() * unplayed.length)];
         ytQueueIdxRef.current = idx;
-        playYouTube(q[idx], q, idx);
+        playYouTubeRef.current(q[idx], q, idx);
       }
       return;
     }
@@ -1550,14 +1554,14 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
     if (nextIdx >= q.length) {
       if (repeatRef.current === 'all') {
         ytQueueIdxRef.current = 0;
-        playYouTube(q[0], q, 0);
+        playYouTubeRef.current(q[0], q, 0);
         return;
       }
       setPlaying(false);
       return;
     }
     ytQueueIdxRef.current = nextIdx;
-    playYouTube(q[nextIdx], q, nextIdx);
+    playYouTubeRef.current(q[nextIdx], q, nextIdx);
   }, [seekYt]); // eslint-disable-line
 
   const ytPrev = useCallback(() => {
@@ -1565,14 +1569,14 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
     if (ytProgress > 3) { seekYt(0); return; }
     const idx = (ytQueueIdxRef.current - 1 + q.length) % q.length;
     ytQueueIdxRef.current = idx;
-    playYouTube(q[idx], q, idx);
+    playYouTubeRef.current(q[idx], q, idx);
   }, [seekYt, ytProgress]); // eslint-disable-line
 
   const ytShuffle = useCallback(() => {
     const q = ytQueueRef.current; if (!q.length) return;
     const idx = Math.floor(Math.random()*q.length);
     ytQueueIdxRef.current = idx;
-    playYouTube(q[idx], q, idx);
+    playYouTubeRef.current(q[idx], q, idx);
   }, []); // eslint-disable-line
 
   const wsShuffle = useCallback(() => {
@@ -2546,7 +2550,7 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
           if (data.info === 0) {
             // Video ended → auto next; do NOT set playing=false here
             // (ytNext will handle play state itself)
-            setTimeout(() => { if (ytNextRef.current) ytNextRef.current(); }, 300);
+            if (!ytEndedFiredRef.current) { ytEndedFiredRef.current = true; setTimeout(() => { if (ytNextRef.current) ytNextRef.current(); }, 300); }
           } else if (data.info === 1) {
             if (!playingRef.current) setPlaying(true);
           } else if (data.info === 2) {
@@ -2558,7 +2562,7 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
         // YT error codes: 2=bad param, 5=HTML5 error, 100=not found, 101/150=embedding disabled
         if (data.event === 'onError') {
           console.warn('[YT] iframe error code:', data.info, '— skip ke lagu berikutnya');
-          setTimeout(() => { if (ytNextRef.current) ytNextRef.current(); }, 500);
+          if (!ytEndedFiredRef.current) { ytEndedFiredRef.current = true; setTimeout(() => { if (ytNextRef.current) ytNextRef.current(); }, 500); }
         }
       } catch(_) {}
     };
@@ -2570,12 +2574,11 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
     }, pollMs);
     // Fallback: deteksi video selesai via progress jika onStateChange tidak terpanggil
     // (terjadi di beberapa browser/device karena iframe off-screen atau policy browser)
-    let endedFired = false;
     const endedFallback = setInterval(() => {
-      if (!endedFired && ytDurationRef.current > 0 && ytProgressRef.current > 0) {
+      if (!ytEndedFiredRef.current && ytDurationRef.current > 0 && ytProgressRef.current > 0) {
         const remaining = ytDurationRef.current - ytProgressRef.current;
         if (remaining <= 1.5 && playingRef.current) {
-          endedFired = true;
+          ytEndedFiredRef.current = true;
           setTimeout(() => { if (ytNextRef.current) ytNextRef.current(); }, 400);
         }
       }
@@ -2971,6 +2974,100 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     world:      ['world', 'latin', 'afrobeat', 'bossa', 'samba', 'flamenco', 'asian', 'bollywood'],
     dangdut:    ['dangdut', 'koplo', 'campursari', 'tarling', 'orkes melayu'],
     islamic:    ['islamic', 'islam', 'religi', 'quran', 'nasyid', 'muslim', 'religious', 'islami'],
+  };
+
+  // Mood/suasana → genre tag mapping
+  const MOOD_TO_GENRE = {
+    // Mood santai / relaks
+    santai:'ambient', relax:'ambient', relaxing:'ambient', relaxed:'ambient',
+    tenang:'ambient', damai:'ambient', peaceful:'ambient', calm:'ambient', kalem:'ambient',
+    tidur:'ambient', sleep:'ambient', sleepy:'ambient', bobo:'ambient',
+    meditasi:'ambient', meditation:'ambient', focus:'ambient', fokus:'ambient', konsentrasi:'ambient',
+    study:'ambient', belajar:'ambient', kerja:'ambient', working:'ambient',
+    // Mood semangat / energik
+    semangat:'electronic', energik:'electronic', energy:'electronic', workout:'electronic',
+    olahraga:'electronic', gym:'electronic', lari:'electronic', running:'electronic',
+    party:'electronic', pesta:'electronic', dance:'electronic', dansa:'electronic', dugem:'electronic',
+    // Mood sedih / galau
+    sedih:'jazz', galau:'jazz', mellow:'jazz', melankolis:'jazz', sad:'jazz', lonely:'jazz',
+    sendu:'jazz', haru:'jazz', nostalgia:'jazz', nostalgic:'jazz',
+    // Mood bahagia / ceria
+    bahagia:'pop', ceria:'pop', happy:'pop', gembira:'pop', senang:'pop', fun:'pop',
+    pagi:'pop', morning:'pop', siang:'pop', afternoon:'pop',
+    // Mood romantis
+    romantis:'lounge', romantic:'lounge', love:'lounge', cinta:'lounge', date:'lounge',
+    'makan malam':'lounge', dinner:'lounge', malam:'lounge', evening:'lounge', night:'lounge',
+    // Mood kerja keras / produktif
+    produktif:'folk', motivasi:'folk', motivation:'folk', inspirasi:'folk', creative:'folk',
+    // Mood santai malam
+    lofi:'electronic', 'lo-fi':'electronic', chillin:'lounge', chill:'lounge',
+  };
+
+  // Kota/negara → country code RadioBrowser + nama kota untuk Radio Garden
+  const CITY_COUNTRY_MAP = [
+    // Indonesia
+    { keys:['jakarta','jkt','betawi'], rb:'ID', city:'jakarta' },
+    { keys:['surabaya','sby'], rb:'ID', city:'surabaya' },
+    { keys:['bandung','kota kembang'], rb:'ID', city:'bandung' },
+    { keys:['medan'], rb:'ID', city:'medan' },
+    { keys:['yogyakarta','jogja','jogjakarta'], rb:'ID', city:'yogyakarta' },
+    { keys:['bali','denpasar'], rb:'ID', city:'bali' },
+    { keys:['semarang'], rb:'ID', city:'semarang' },
+    { keys:['makassar','ujung pandang'], rb:'ID', city:'makassar' },
+    { keys:['indonesia','indo','nusantara'], rb:'ID', city:'' },
+    // Amerika
+    { keys:['new york','nyc','manhattan'], rb:'US', city:'new york' },
+    { keys:['los angeles','la','hollywood'], rb:'US', city:'los angeles' },
+    { keys:['chicago'], rb:'US', city:'chicago' },
+    { keys:['miami'], rb:'US', city:'miami' },
+    { keys:['london','uk','inggris'], rb:'GB', city:'london' },
+    // Eropa
+    { keys:['paris','prancis','france'], rb:'FR', city:'paris' },
+    { keys:['berlin','jerman','germany'], rb:'DE', city:'berlin' },
+    { keys:['amsterdam','belanda','netherlands'], rb:'NL', city:'amsterdam' },
+    { keys:['tokyo','jepang','japan'], rb:'JP', city:'tokyo' },
+    { keys:['seoul','korea','k-pop','kpop'], rb:'KR', city:'seoul' },
+    { keys:['sydney','australia'], rb:'AU', city:'sydney' },
+    { keys:['brazil','brasil','sao paulo'], rb:'BR', city:'sao paulo' },
+    { keys:['india','mumbai','bollywood'], rb:'IN', city:'mumbai' },
+    { keys:['mexico','meksiko'], rb:'MX', city:'mexico' },
+  ];
+
+  // Parse query: deteksi mood, kota, atau genre biasa
+  const SOURCE_MAP = [
+    { keys:['somafm','soma fm','soma'],              source:'SomaFM' },
+    { keys:['nts','nts radio'],                      source:'NTS' },
+    { keys:['radio paradise','radioparadise'],        source:'Radio Paradise' },
+    { keys:['icecast'],                              source:'Icecast' },
+    { keys:['shoutcast','di.fm','difm'],             source:'Shoutcast' },
+    { keys:['fm stream','fmstream','lautfm','laut.fm'], source:'FM Stream' },
+    { keys:['radio garden','radiogarden','garden'],  source:'Radio Garden' },
+    { keys:['radiobrowser','radio browser'],         source:'RadioBrowser' },
+  ];
+
+  const parseRadioQuery = (rawQuery) => {
+    const q = rawQuery.trim().toLowerCase();
+    // Cek sumber dulu (prioritas tertinggi)
+    for (const entry of SOURCE_MAP) {
+      if (entry.keys.some(k => q.includes(k))) {
+        // Ekstrak sisa query setelah nama sumber sebagai sub-query
+        let subQuery = q;
+        for (const k of entry.keys) subQuery = subQuery.replace(k, '').trim();
+        return { type: 'source', source: entry.source, subQuery, originalQuery: q };
+      }
+    }
+    // Cek mood
+    for (const [mood, genre] of Object.entries(MOOD_TO_GENRE)) {
+      if (q.includes(mood)) return { type: 'mood', genre, originalQuery: q };
+    }
+    // Cek kota
+    for (const entry of CITY_COUNTRY_MAP) {
+      if (entry.keys.some(k => q.includes(k))) {
+        return { type: 'city', rb: entry.rb, city: entry.city, originalQuery: q };
+      }
+    }
+    // Fallback: genre biasa atau nama stasiun
+    return { type: 'text', originalQuery: q };
   };
 
   const matchGenreKeywords = (label, keywords) => {
@@ -3420,11 +3517,149 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
   // ── All-source search (searches RadioBrowser + filters SomaFM + Icecast + NTS by genre)
   const multiSearch = async (query, genreTag) => {
     setMultiLoading(true); setMultiResults([]); setRbAiResults([]); setRbAiLoading(false);
-    const q = query.trim().toLowerCase();
+    const rawQ = query.trim();
+    const q = rawQ.toLowerCase();
     const isTopMode = !q && !genreTag;
+
+    // Smart query parsing: deteksi mood, kota, atau genre/nama biasa
+    const parsed = !genreTag && q ? parseRadioQuery(rawQ) : { type: 'text', originalQuery: q };
+
+    // Jika query adalah kota — langsung search RadioBrowser by country + Radio Garden by city
+    if (parsed.type === 'city') {
+      try {
+        const base = await getRbServer();
+        const cityResults = [];
+        // RadioBrowser by country
+        const rbUrl = `${base}/json/stations/bycountrycodeexact/${parsed.rb}?limit=40&hidebroken=true&order=votes&reverse=true`;
+        const rbData = await fetch(rbUrl).then(r => r.json()).catch(() => []);
+        rbData.filter(s => s.url_resolved || s.url).slice(0, 20).forEach(s =>
+          cityResults.push({ ...s, sourceLabel: 'RadioBrowser', color: '#f59e0b' })
+        );
+        // Filter by city name jika ada
+        if (parsed.city) {
+          const cityFiltered = cityResults.filter(s =>
+            (s.city||'').toLowerCase().includes(parsed.city) ||
+            (s.state||'').toLowerCase().includes(parsed.city) ||
+            (s.name||'').toLowerCase().includes(parsed.city)
+          );
+          if (cityFiltered.length >= 5) cityResults.splice(0, cityResults.length, ...cityFiltered);
+        }
+        // Radio Garden by city
+        try {
+          let gardenPlacesLocal = gardenPlaces;
+          if (gardenPlacesLocal.length === 0) {
+            const data = await fetch('/api/radio-garden/content/places').then(r=>r.json());
+            gardenPlacesLocal = (data?.data?.list || []).slice(0, 500);
+            setGardenPlaces(gardenPlacesLocal);
+          }
+          const matchPlaces = gardenPlacesLocal.filter(p =>
+            (p.title||'').toLowerCase().includes(parsed.city || q) ||
+            (p.country||'').toLowerCase().includes(q)
+          ).slice(0, 5);
+          const gardenRes = await Promise.allSettled(matchPlaces.map(p => {
+            const placeId = p.id || (p.url||'').split('/').pop();
+            return fetch(`/api/radio-garden/content/page/${placeId}/channels`).then(r=>r.json()).then(data => {
+              const items = data?.data?.content?.[0]?.items || [];
+              return items.slice(0, 6).map(ch => {
+                const chId = ch.page?.url?.split('/').pop() || ch.href?.split('/').pop() || '';
+                return { id:`garden_city_${chId}`, name:ch.page?.title||ch.title||'Station', city:p.title||'', country:p.country||'', genre:ch.page?.subtitle||'', url:getGardenStreamUrl(chId), sourceLabel:'Radio Garden', color:'#22d3ee', stationuuid:`garden_city_${chId}`, chId };
+              });
+            });
+          }));
+          gardenRes.flatMap(r => r.status==='fulfilled'?r.value:[]).filter(s=>s.chId).slice(0,10).forEach(s => cityResults.push(s));
+        } catch {}
+        setMultiResults(cityResults);
+        setMultiLoading(false);
+        if (cityResults.length === 0) setRbError(`Tidak ada stasiun ditemukan untuk "${rawQ}"`);
+        const msKey = `city__${q}`;
+        testStationsInGenre({ id: msKey, stations: cityResults.map(s => ({ id: s.id || s.stationuuid, url: s.url })) });
+        return;
+      } catch(e) {
+        setRbError('Gagal mencari stasiun kota. Coba lagi.');
+        setMultiLoading(false);
+        return;
+      }
+    }
+
+    // Jika query adalah sumber tertentu — filter hasil hanya dari sumber itu
+    if (parsed.type === 'source') {
+      const src = parsed.source;
+      const sq = parsed.subQuery;
+      try {
+        const base = await getRbServer();
+        let srcResults = [];
+
+        if (src === 'SomaFM') {
+          let somaData = somaChannels;
+          if (somaData.length === 0) {
+            try { const d = await fetch('https://somafm.com/channels.json').then(r=>r.json()); somaData = d.channels||[]; setSomaChannels(somaData); } catch {}
+          }
+          srcResults = somaData.filter(ch => !sq || ch.title?.toLowerCase().includes(sq) || ch.genre?.toLowerCase().includes(sq) || ch.description?.toLowerCase().includes(sq))
+            .map(ch => ({ id:`soma_${ch.id}`, name:ch.title, url:ch.plls?.[0]?.url||`https://ice1.somafm.com/${ch.id}-128-mp3`, country:'US', tags:ch.genre, favicon:ch.image, sourceLabel:'SomaFM', color:'#10b981', description:ch.description }));
+        } else if (src === 'NTS') {
+          srcResults = NTS_STREAMS.filter(s => !sq || s.name.toLowerCase().includes(sq) || s.genre?.toLowerCase().includes(sq))
+            .map(s => ({ ...s, sourceLabel:'NTS Radio', country:'UK' }));
+        } else if (src === 'Radio Paradise') {
+          srcResults = RADIO_PARADISE_CHANNELS.filter(s => !sq || s.name.toLowerCase().includes(sq) || s.genre?.toLowerCase().includes(sq))
+            .map(s => ({ ...s, sourceLabel:'Radio Paradise', stationuuid:s.id, favicon:s.image }));
+        } else if (src === 'Icecast') {
+          srcResults = ICECAST_CURATED.filter(s => !sq || s.name.toLowerCase().includes(sq) || s.genre?.toLowerCase().includes(sq))
+            .map(s => ({ ...s, sourceLabel:'Icecast' }));
+        } else if (src === 'Shoutcast') {
+          srcResults = SHOUTCAST_CURATED.filter(s => !sq || s.name.toLowerCase().includes(sq) || s.genre?.toLowerCase().includes(sq))
+            .map(s => ({ ...s, stationuuid:s.id }));
+        } else if (src === 'FM Stream') {
+          srcResults = FMSTREAM_CURATED.filter(s => !sq || s.name.toLowerCase().includes(sq) || s.genre?.toLowerCase().includes(sq))
+            .map(s => ({ ...s, stationuuid:s.id }));
+        } else if (src === 'RadioBrowser') {
+          const url = sq
+            ? `${base}/json/stations/search?name=${encodeURIComponent(sq)}&limit=40&hidebroken=true&order=votes&reverse=true`
+            : `${base}/json/stations/topvote/40?hidebroken=true`;
+          const rbData = await fetch(url).then(r=>r.json()).catch(()=>[]);
+          srcResults = rbData.filter(s=>s.url_resolved||s.url).map(s=>({ ...s, sourceLabel:'RadioBrowser', color:'#f59e0b' }));
+        } else if (src === 'Radio Garden') {
+          let gardenPlacesLocal = gardenPlaces;
+          if (gardenPlacesLocal.length === 0) {
+            const data = await fetch('/api/radio-garden/content/places').then(r=>r.json());
+            gardenPlacesLocal = (data?.data?.list||[]).slice(0,500);
+            setGardenPlaces(gardenPlacesLocal);
+          }
+          const targetPlaces = sq
+            ? gardenPlacesLocal.filter(p=>(p.title||'').toLowerCase().includes(sq)||(p.country||'').toLowerCase().includes(sq)).slice(0,8)
+            : gardenPlacesLocal.slice(0,8);
+          const gardenRes = await Promise.allSettled(targetPlaces.map(p=>{
+            const placeId = p.id||(p.url||'').split('/').pop();
+            return fetch(`/api/radio-garden/content/page/${placeId}/channels`).then(r=>r.json()).then(data=>{
+              const items = data?.data?.content?.[0]?.items||[];
+              return items.slice(0,5).map(ch=>{
+                const chId = ch.page?.url?.split('/').pop()||ch.href?.split('/').pop()||'';
+                return { id:`garden_src_${chId}`, name:ch.page?.title||ch.title||'Station', city:p.title||'', country:p.country||'', genre:ch.page?.subtitle||'', url:getGardenStreamUrl(chId), sourceLabel:'Radio Garden', color:'#22d3ee', stationuuid:`garden_src_${chId}`, chId };
+              });
+            });
+          }));
+          srcResults = gardenRes.flatMap(r=>r.status==='fulfilled'?r.value:[]).filter(s=>s.chId);
+          if (sq) srcResults = srcResults.filter(s=>s.name.toLowerCase().includes(sq)||s.city.toLowerCase().includes(sq)||s.genre.toLowerCase().includes(sq));
+        }
+
+        setMultiResults(srcResults);
+        setMultiLoading(false);
+        const msKey = `source__${src}__${sq}`;
+        testStationsInGenre({ id:msKey, stations:srcResults.map(s=>({ id:s.id||s.stationuuid, url:s.url })) });
+        return;
+      } catch(e) {
+        setRbError('Gagal mengambil dari sumber tersebut.');
+        setMultiLoading(false);
+        return;
+      }
+    }
+
+    // Jika query adalah mood — override genreTag dengan genre yang sesuai
+    const effectiveGenreTag = genreTag || (parsed.type === 'mood' ? parsed.genre : null);
+    const textQuery = parsed.type === 'mood' ? '' : q; // mood: jangan cari by teks
+
     // Build genre keyword list from tag or query
-    const tagLow = (genreTag||'').toLowerCase();
-    const bucket = tagLow ? getGenreBucket(tagLow) : (q ? getGenreBucket(q) : null);
+    const tagLow = (effectiveGenreTag||'').toLowerCase();
+    const bucket = tagLow ? getGenreBucket(tagLow) : (textQuery ? getGenreBucket(textQuery) : null);
     const genreKeywords = bucket ? GENRE_KEYWORDS[bucket] : (tagLow ? [tagLow] : null);
     const matchesGenre = (label) => {
       if (!genreKeywords) return true; // no genre filter
@@ -3476,7 +3711,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       : somaData;
     const somaMatched = somaPool.filter(ch => {
       const genreOk = matchesGenre(ch.genre) || matchesGenre(ch.title) || matchesGenre(ch.description);
-      const textOk = !q || ch.title?.toLowerCase().includes(q) || ch.genre?.toLowerCase().includes(q) || ch.description?.toLowerCase().includes(q);
+      const textOk = !textQuery || ch.title?.toLowerCase().includes(textQuery) || ch.genre?.toLowerCase().includes(textQuery) || ch.description?.toLowerCase().includes(textQuery);
       return genreKeywords ? genreOk : textOk;
     }).slice(0, 8).map(ch => ({
       id: `soma_${ch.id}`, name: ch.title, url: ch.plls?.[0]?.url || `https://ice1.somafm.com/${ch.id}-128-mp3`,
@@ -3498,28 +3733,28 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     const ntsOk = !genreKeywords || (bucket && ntsGenreBuckets.includes(bucket));
     if (ntsOk) {
       const ntsMatched = NTS_STREAMS.filter(s =>
-        !q || s.name.toLowerCase().includes(q) || s.genre?.toLowerCase().includes(q) || s.desc?.toLowerCase().includes(q)
+        !textQuery || s.name.toLowerCase().includes(textQuery) || s.genre?.toLowerCase().includes(textQuery) || s.desc?.toLowerCase().includes(textQuery)
       ).map(s => ({ ...s, sourceLabel: 'NTS Radio', country: 'UK', stationuuid: null }));
       results.push(...ntsMatched);
     }
     // Radio Paradise — 4 curated high-fidelity channels, always relevant
     const rpMatched = RADIO_PARADISE_CHANNELS.filter(s => {
       const genreOk = !genreKeywords || matchGenreKeywords(s.genre, genreKeywords) || matchGenreKeywords(s.desc, genreKeywords);
-      const textOk = !q || s.name.toLowerCase().includes(q) || s.genre?.toLowerCase().includes(q) || s.desc?.toLowerCase().includes(q);
+      const textOk = !textQuery || s.name.toLowerCase().includes(textQuery) || s.genre?.toLowerCase().includes(textQuery) || s.desc?.toLowerCase().includes(textQuery);
       return genreKeywords ? genreOk : textOk;
     }).map(s => ({ ...s, sourceLabel: 'Radio Paradise', stationuuid: s.id, favicon: s.image }));
     results.push(...rpMatched);
     // FM Stream (laut.fm extended) — filter by genre & query
     const fmMatched = FMSTREAM_CURATED.filter(s => {
       const genreOk = !genreKeywords || matchGenreKeywords(s.genre, genreKeywords) || matchGenreKeywords(s.name, genreKeywords);
-      const textOk = !q || s.name.toLowerCase().includes(q) || s.genre?.toLowerCase().includes(q) || s.desc?.toLowerCase().includes(q);
+      const textOk = !textQuery || s.name.toLowerCase().includes(textQuery) || s.genre?.toLowerCase().includes(textQuery) || s.desc?.toLowerCase().includes(textQuery);
       return genreKeywords ? genreOk : textOk;
     }).slice(0, 6).map(s => ({ ...s, stationuuid: s.id }));
     results.push(...fmMatched);
     // Shoutcast (DI.FM + others) — filter by genre & query
     const scMatched = SHOUTCAST_CURATED.filter(s => {
       const genreOk = !genreKeywords || matchGenreKeywords(s.genre, genreKeywords) || matchGenreKeywords(s.name, genreKeywords);
-      const textOk = !q || s.name.toLowerCase().includes(q) || s.genre?.toLowerCase().includes(q) || s.desc?.toLowerCase().includes(q);
+      const textOk = !textQuery || s.name.toLowerCase().includes(textQuery) || s.genre?.toLowerCase().includes(textQuery) || s.desc?.toLowerCase().includes(textQuery);
       return genreKeywords ? genreOk : textOk;
     }).slice(0, 8).map(s => ({ ...s, stationuuid: s.id }));
     results.push(...scMatched);
@@ -3528,10 +3763,10 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     try {
       const base = await getRbServer();
       let url;
-      if (genreTag) {
-        url = `${base}/json/stations/bytag/${encodeURIComponent(genreTag)}?limit=30&hidebroken=true&order=votes&reverse=true`;
-      } else if (q) {
-        url = `${base}/json/stations/search?name=${encodeURIComponent(q)}&limit=30&hidebroken=true&order=votes&reverse=true`;
+      if (effectiveGenreTag) {
+        url = `${base}/json/stations/bytag/${encodeURIComponent(effectiveGenreTag)}?limit=30&hidebroken=true&order=votes&reverse=true`;
+      } else if (textQuery) {
+        url = `${base}/json/stations/search?name=${encodeURIComponent(textQuery)}&limit=30&hidebroken=true&order=votes&reverse=true`;
       } else {
         url = `${base}/json/stations/topvote/30?hidebroken=true`;
       }
@@ -3548,9 +3783,9 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       }
       // Pilih kota yang relevan
       let targetPlaces;
-      if (q) {
+      if (textQuery) {
         targetPlaces = gardenPlacesLocal.filter(p =>
-          p.title?.toLowerCase().includes(q) || p.country?.toLowerCase().includes(q)
+          p.title?.toLowerCase().includes(textQuery) || p.country?.toLowerCase().includes(textQuery)
         ).slice(0, 6);
         if (targetPlaces.length === 0) targetPlaces = gardenPlacesLocal.slice(0, 5);
       } else {
@@ -3591,10 +3826,10 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
         if (gFiltered.length > 0) gardenStns = gFiltered;
       }
       // Filter by text query
-      if (q) {
+      if (textQuery) {
         gardenStns = gardenStns.filter(s =>
-          s.name.toLowerCase().includes(q) || s.city.toLowerCase().includes(q) ||
-          s.country.toLowerCase().includes(q) || s.genre.toLowerCase().includes(q)
+          s.name.toLowerCase().includes(textQuery) || s.city.toLowerCase().includes(textQuery) ||
+          s.country.toLowerCase().includes(textQuery) || s.genre.toLowerCase().includes(textQuery)
         );
       }
       results.push(...gardenStns.slice(0, 10));
@@ -3602,16 +3837,16 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     setMultiResults(results);
     setMultiLoading(false);
     // Trigger health check untuk semua hasil multi-search
-    const msKey = `multisearch__${q}__${genreTag||''}`;
+    const msKey = `multisearch__${textQuery}__${effectiveGenreTag||''}`;
     testStationsInGenre({ id: msKey, stations: results.map(s => ({ id: s.id || s.stationuuid, url: s.url })) });
 
     // ── AI Fallback: jika hasil terlalu sedikit dan ada query teks, minta AI sarankan stasiun
     // lalu cari nama-nama itu di RadioBrowser (source nyata, bukan imajinasi AI)
-    if (q && results.length < 8) {
+    if (textQuery && results.length < 8) {
       setRbAiLoading(true);
       setRbAiResults([]);
       try {
-        const aiPrompt = `You are a radio station expert. The user is searching for: "${query}".
+        const aiPrompt = `You are a radio station expert. The user is searching for: "${rawQ}".
 Suggest 6 real internet radio stations that match this query. These stations must be real and well-known.
 Return ONLY a valid JSON array of objects. No explanation, no markdown, no extra text.
 Format exactly:
@@ -4420,12 +4655,22 @@ Format exactly:
   }, []);
 
   const removeFromPlaylist = useCallback((plId, songId) => {
-    setPlaylists(p => p.map(pl => pl.id===plId
-      ? { ...pl, songIds: pl.songIds.filter(id=>id!==songId) } : pl));
-    if (plId === 'pl_fav') {
-      setLiked(l => ({ ...l, [songId]: false }));
-      setFavSongs(p => p.filter(s => s.id !== songId));
-    }
+    setPlaylists(p => {
+      const updated = p.map(pl => pl.id===plId
+        ? { ...pl, songIds: pl.songIds.filter(id=>id!==songId) } : pl);
+      if (plId === 'pl_fav') {
+        // Hapus tanda fav
+        setLiked(l => { const n = { ...l }; delete n[songId]; return n; });
+        setFavSongs(p => p.filter(s => s.id !== songId));
+        // Hapus dari koleksi hanya jika tidak ada di playlist lain selain pl_fav
+        const inOtherPlaylist = updated.some(pl => pl.id !== 'pl_fav' && pl.songIds.includes(songId));
+        if (!inOtherPlaylist) {
+          setCustomSongs(p => p.filter(s => s.id !== songId));
+          setYtSongs(p => p.filter(s => s.id !== songId));
+        }
+      }
+      return updated;
+    });
   }, []);
 
   // ── Google
@@ -6099,7 +6344,86 @@ Format exactly:
                                     <span style={{ color:'#e11d48', fontWeight:700 }}>● Shoutcast</span>
                                     <span style={{ color:'#22d3ee', fontWeight:700 }}>● Radio Garden</span>
                                   </div>
-                                  {/* Genre pills — fixed list dengan ikon, mapping ke GENRE_KEYWORDS */}
+                                  {/* Source pills */}
+                                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.3)', marginBottom:4, fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase' }}>Sumber</div>
+                                  <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginBottom:8 }}>
+                                    {[
+                                      { label:'● RadioBrowser', q:'radiobrowser', color:'#f59e0b' },
+                                      { label:'● SomaFM',       q:'somafm',       color:'#10b981' },
+                                      { label:'● Icecast',      q:'icecast',      color:'#6366f1' },
+                                      { label:'● NTS Radio',    q:'nts',          color:'#ff4500' },
+                                      { label:'● Radio Paradise',q:'radio paradise',color:'#8b5cf6' },
+                                      { label:'● FM Stream',    q:'fm stream',    color:'#06b6d4' },
+                                      { label:'● Shoutcast',    q:'shoutcast',    color:'#e11d48' },
+                                      { label:'● Radio Garden', q:'radio garden', color:'#22d3ee' },
+                                    ].map((s,i) => {
+                                      const isActive = rbQuery === s.q;
+                                      return (
+                                        <button key={i} onClick={() => {
+                                          setRbSelectedTag(null); setRbQuery(s.q);
+                                          multiSearch(s.q, null);
+                                        }}
+                                          style={{ padding:'4px 10px', borderRadius:999, border:`1px solid ${isActive ? s.color : 'rgba(255,255,255,0.1)'}`, background:isActive ? `${s.color}22` : 'rgba(255,255,255,0.04)', color:isActive ? s.color : 'rgba(255,255,255,0.45)', fontSize:10, cursor:'pointer', fontWeight: isActive ? 700 : 500, transition:'all 0.15s' }}>
+                                          {s.label}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                  {/* Mood pills */}
+                                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.3)', marginBottom:4, fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase' }}>Mood</div>
+                                  <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginBottom:8 }}>
+                                    {[
+                                      { label:'😴 Tidur',     q:'tidur',    color:'#8b5cf6' },
+                                      { label:'🧘 Fokus',     q:'fokus',    color:'#06b6d4' },
+                                      { label:'💪 Semangat',  q:'semangat', color:'#f59e0b' },
+                                      { label:'🎉 Party',     q:'party',    color:'#ec4899' },
+                                      { label:'😢 Galau',     q:'galau',    color:'#3b82f6' },
+                                      { label:'❤️ Romantis',  q:'romantis', color:'#ef4444' },
+                                      { label:'🌅 Pagi',      q:'pagi',     color:'#f97316' },
+                                      { label:'🌙 Malam',     q:'malam',    color:'#a78bfa' },
+                                      { label:'☕ Santai',    q:'santai',   color:'#10b981' },
+                                      { label:'📚 Belajar',   q:'belajar',  color:'#22d3ee' },
+                                    ].map((m,i) => {
+                                      const isActive = rbQuery === m.q;
+                                      return (
+                                        <button key={i} onClick={() => {
+                                          setRbSelectedTag(null); setRbQuery(m.q);
+                                          multiSearch(m.q, null);
+                                        }}
+                                          style={{ padding:'4px 10px', borderRadius:999, border:`1px solid ${isActive ? m.color : 'rgba(255,255,255,0.1)'}`, background:isActive ? `${m.color}22` : 'rgba(255,255,255,0.04)', color:isActive ? m.color : 'rgba(255,255,255,0.45)', fontSize:10, cursor:'pointer', fontWeight: isActive ? 700 : 500, transition:'all 0.15s' }}>
+                                          {m.label}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                  {/* Kota pills */}
+                                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.3)', marginBottom:4, fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase' }}>Kota</div>
+                                  <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginBottom:8 }}>
+                                    {[
+                                      { label:'🇮🇩 Jakarta',    q:'jakarta' },
+                                      { label:'🇮🇩 Surabaya',   q:'surabaya' },
+                                      { label:'🇮🇩 Bandung',    q:'bandung' },
+                                      { label:'🇮🇩 Bali',       q:'bali' },
+                                      { label:'🇺🇸 New York',   q:'new york' },
+                                      { label:'🇬🇧 London',     q:'london' },
+                                      { label:'🇯🇵 Tokyo',      q:'tokyo' },
+                                      { label:'🇰🇷 Seoul',      q:'seoul' },
+                                      { label:'🇫🇷 Paris',      q:'paris' },
+                                    ].map((c,i) => {
+                                      const isActive = rbQuery === c.q;
+                                      return (
+                                        <button key={i} onClick={() => {
+                                          setRbSelectedTag(null); setRbQuery(c.q);
+                                          multiSearch(c.q, null);
+                                        }}
+                                          style={{ padding:'4px 10px', borderRadius:999, border:`1px solid ${isActive ? '#22d3ee' : 'rgba(255,255,255,0.1)'}`, background:isActive ? 'rgba(34,211,238,0.15)' : 'rgba(255,255,255,0.04)', color:isActive ? '#22d3ee' : 'rgba(255,255,255,0.45)', fontSize:10, cursor:'pointer', fontWeight: isActive ? 700 : 500, transition:'all 0.15s' }}>
+                                          {c.label}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                  {/* Genre pills */}
+                                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.3)', marginBottom:4, fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase' }}>Genre</div>
                                   {(() => {
                                     const GENRE_PILLS = [
                                       { label:'🔥 Top Semua',  tag: null,          color:'#f59e0b' },
@@ -6112,11 +6436,16 @@ Format exactly:
                                       { label:'🌿 Reggae',     tag: 'reggae',      color:'#10b981' },
                                       { label:'🌍 World',      tag: 'world',       color:'#f97316' },
                                       { label:'🏡 Ambient',    tag: 'ambient',     color:'#8b5cf6' },
+                                      { label:'🎧 Lounge',     tag: 'lounge',      color:'#ec4899' },
+                                      { label:'🌊 Lo-Fi',      tag: 'lofi',        color:'#22d3ee' },
+                                      { label:'🕌 Religi',     tag: 'islamic',     color:'#10b981' },
+                                      { label:'🥁 Dangdut',    tag: 'dangdut',     color:'#f97316' },
+                                      { label:'📰 News/Talk',  tag: 'news',        color:'#94a3b8' },
                                     ];
                                     return (
                                       <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginBottom:10 }}>
                                         {GENRE_PILLS.map((p, i) => {
-                                          const isActive = p.tag === null ? rbSelectedTag === null : rbSelectedTag === p.tag;
+                                          const isActive = p.tag === null ? (rbSelectedTag === null && !rbQuery) : rbSelectedTag === p.tag;
                                           const activeColor = p.color || '#f59e0b';
                                           return (
                                             <button key={i} onClick={() => {
