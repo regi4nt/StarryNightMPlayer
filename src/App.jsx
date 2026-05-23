@@ -106,6 +106,8 @@ export default function App() {
   const ytQueueRef    = useRef([]);   // current list of YT results
   const ytQueueIdxRef = useRef(-1);  // index of current video in queue
   const ytShufflePlayedRef = useRef(null); // Set of played indices in current shuffle session
+  const ytProgressRef  = useRef(0);   // mirror of ytProgress for use in intervals
+  const ytDurationRef  = useRef(0);   // mirror of ytDuration for use in intervals
   const [ytSongs, setYtSongs]         = useState(() => {
     try { return JSON.parse(localStorage.getItem('sn_yt_songs') || '[]'); } catch { return []; }
   }); // YT tracks saved to playlist/liked
@@ -1384,7 +1386,7 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
     const doSwitch = () => {
       stopAllMedia('embed');
       setEmbedTrack(ytTrack);
-      setYtProgress(0); setYtDuration(secs||0);
+      setYtProgress(0); setYtDuration(secs||0); ytProgressRef.current = 0; ytDurationRef.current = secs||0;
       if (queue) { const queueChanged = queue !== ytQueueRef.current; ytQueueRef.current = queue; ytQueueIdxRef.current = queueIdx ?? queue.findIndex(v=>(v.videoId||v.url?.includes(videoId))===videoId); if (queueChanged) ytShufflePlayedRef.current = null; }
       setEmbedMinimized(false);
       if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
@@ -2533,8 +2535,8 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
           if (playingRef.current) sendCmd('playVideo');
         }
         if (data.event === 'infoDelivery' && data.info) {
-          if (data.info.currentTime != null) setYtProgress(data.info.currentTime);
-          if (data.info.duration != null && data.info.duration > 0) setYtDuration(data.info.duration);
+          if (data.info.currentTime != null) { setYtProgress(data.info.currentTime); ytProgressRef.current = data.info.currentTime; }
+          if (data.info.duration != null && data.info.duration > 0) { setYtDuration(data.info.duration); ytDurationRef.current = data.info.duration; }
           // playerState: 1=playing, 2=paused — sinkronkan state playing
           if (data.info.playerState === 1 && !playingRef.current) setPlaying(true);
           if (data.info.playerState === 2 && playingRef.current) setPlaying(false);
@@ -2566,7 +2568,19 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
     const poll = setInterval(() => {
       try { ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'listening' }), '*'); } catch(_) {}
     }, pollMs);
-    return () => { window.removeEventListener('message', handler); clearInterval(poll); };
+    // Fallback: deteksi video selesai via progress jika onStateChange tidak terpanggil
+    // (terjadi di beberapa browser/device karena iframe off-screen atau policy browser)
+    let endedFired = false;
+    const endedFallback = setInterval(() => {
+      if (!endedFired && ytDurationRef.current > 0 && ytProgressRef.current > 0) {
+        const remaining = ytDurationRef.current - ytProgressRef.current;
+        if (remaining <= 1.5 && playingRef.current) {
+          endedFired = true;
+          setTimeout(() => { if (ytNextRef.current) ytNextRef.current(); }, 400);
+        }
+      }
+    }, 800);
+    return () => { window.removeEventListener('message', handler); clearInterval(poll); clearInterval(endedFallback); };
   }, [embedTrack, seekYt]);
 
   // ── Chat scroll
@@ -8010,7 +8024,7 @@ Format exactly:
           src={`https://www.youtube.com/embed/${embedTrack.videoId}?autoplay=1&enablejsapi=1&rel=0&modestbranding=1&playsinline=1&origin=${encodeURIComponent(window.location.origin)}`}
           title={embedTrack.title}
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          style={{ position:'fixed', bottom:0, left:0, width:1, height:1, opacity:0, pointerEvents:'none', border:'none', zIndex:-1 }}
+          style={{ position:'fixed', top:'-9999px', left:'-9999px', width:320, height:180, pointerEvents:'none', border:'none', zIndex:-1 }}
         />
       )}
 
