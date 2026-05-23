@@ -4659,15 +4659,13 @@ Format exactly:
       const updated = p.map(pl => pl.id===plId
         ? { ...pl, songIds: pl.songIds.filter(id=>id!==songId) } : pl);
       if (plId === 'pl_fav') {
-        // Hapus tanda fav
+        // Hapus tanda fav dan dari semua koleksi + playlist lain
         setLiked(l => { const n = { ...l }; delete n[songId]; return n; });
         setFavSongs(p => p.filter(s => s.id !== songId));
-        // Hapus dari koleksi hanya jika tidak ada di playlist lain selain pl_fav
-        const inOtherPlaylist = updated.some(pl => pl.id !== 'pl_fav' && pl.songIds.includes(songId));
-        if (!inOtherPlaylist) {
-          setCustomSongs(p => p.filter(s => s.id !== songId));
-          setYtSongs(p => p.filter(s => s.id !== songId));
-        }
+        setCustomSongs(p => p.filter(s => s.id !== songId));
+        setYtSongs(p => p.filter(s => s.id !== songId));
+        // Hapus dari semua playlist lain juga
+        return updated.map(pl => ({ ...pl, songIds: pl.songIds.filter(id => id !== songId) }));
       }
       return updated;
     });
@@ -6344,123 +6342,35 @@ Format exactly:
                                     <span style={{ color:'#e11d48', fontWeight:700 }}>● Shoutcast</span>
                                     <span style={{ color:'#22d3ee', fontWeight:700 }}>● Radio Garden</span>
                                   </div>
-                                  {/* Source pills */}
-                                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.3)', marginBottom:4, fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase' }}>Sumber</div>
-                                  <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginBottom:8 }}>
+                                  {/* Pills — satu baris scroll horizontal */}
+                                  <div className="scrollbar-hide" style={{ display:'flex', gap:5, overflowX:'auto', marginBottom:10, paddingBottom:2 }}>
                                     {[
-                                      { label:'● RadioBrowser', q:'radiobrowser', color:'#f59e0b' },
-                                      { label:'● SomaFM',       q:'somafm',       color:'#10b981' },
-                                      { label:'● Icecast',      q:'icecast',      color:'#6366f1' },
-                                      { label:'● NTS Radio',    q:'nts',          color:'#ff4500' },
-                                      { label:'● Radio Paradise',q:'radio paradise',color:'#8b5cf6' },
-                                      { label:'● FM Stream',    q:'fm stream',    color:'#06b6d4' },
-                                      { label:'● Shoutcast',    q:'shoutcast',    color:'#e11d48' },
-                                      { label:'● Radio Garden', q:'radio garden', color:'#22d3ee' },
-                                    ].map((s,i) => {
-                                      const isActive = rbQuery === s.q;
-                                      return (
-                                        <button key={i} onClick={() => {
-                                          setRbSelectedTag(null); setRbQuery(s.q);
-                                          multiSearch(s.q, null);
-                                        }}
-                                          style={{ padding:'4px 10px', borderRadius:999, border:`1px solid ${isActive ? s.color : 'rgba(255,255,255,0.1)'}`, background:isActive ? `${s.color}22` : 'rgba(255,255,255,0.04)', color:isActive ? s.color : 'rgba(255,255,255,0.45)', fontSize:10, cursor:'pointer', fontWeight: isActive ? 700 : 500, transition:'all 0.15s' }}>
-                                          {s.label}
-                                        </button>
-                                      );
-                                    })}
+                                      { label:'🔥 Top',        act: () => { setRbSelectedTag(null); setRbQuery(''); rbSearch('',null); multiSearch('',null); }, isActive: rbSelectedTag===null&&!rbQuery, color:'#f59e0b' },
+                                      { label:'🎵 Pop',        act: () => { setRbSelectedTag('pop'); setRbQuery(''); rbSearch('','pop'); multiSearch('','pop'); }, isActive: rbSelectedTag==='pop', color:'#3b82f6' },
+                                      { label:'🎸 Rock',       act: () => { setRbSelectedTag('rock'); setRbQuery(''); rbSearch('','rock'); multiSearch('','rock'); }, isActive: rbSelectedTag==='rock', color:'#ef4444' },
+                                      { label:'🎷 Jazz',       act: () => { setRbSelectedTag('jazz'); setRbQuery(''); rbSearch('','jazz'); multiSearch('','jazz'); }, isActive: rbSelectedTag==='jazz', color:'#7c3aed' },
+                                      { label:'⚡ Electronic', act: () => { setRbSelectedTag('electronic'); setRbQuery(''); rbSearch('','electronic'); multiSearch('','electronic'); }, isActive: rbSelectedTag==='electronic', color:'#06b6d4' },
+                                      { label:'🎤 Hip-Hop',    act: () => { setRbSelectedTag('hip-hop'); setRbQuery(''); rbSearch('','hip-hop'); multiSearch('','hip-hop'); }, isActive: rbSelectedTag==='hip-hop', color:'#f59e0b' },
+                                      { label:'🏡 Ambient',    act: () => { setRbSelectedTag('ambient'); setRbQuery(''); rbSearch('','ambient'); multiSearch('','ambient'); }, isActive: rbSelectedTag==='ambient', color:'#8b5cf6' },
+                                      { label:'🎧 Lounge',     act: () => { setRbSelectedTag('lounge'); setRbQuery(''); rbSearch('','lounge'); multiSearch('','lounge'); }, isActive: rbSelectedTag==='lounge', color:'#ec4899' },
+                                      { label:'🌊 Lo-Fi',      act: () => { setRbSelectedTag('lofi'); setRbQuery(''); rbSearch('','lofi'); multiSearch('','lofi'); }, isActive: rbSelectedTag==='lofi', color:'#22d3ee' },
+                                      { label:'🌍 World',      act: () => { setRbSelectedTag('world'); setRbQuery(''); rbSearch('','world'); multiSearch('','world'); }, isActive: rbSelectedTag==='world', color:'#f97316' },
+                                      { label:'🕌 Religi',     act: () => { setRbSelectedTag('islamic'); setRbQuery(''); rbSearch('','islamic'); multiSearch('','islamic'); }, isActive: rbSelectedTag==='islamic', color:'#10b981' },
+                                      { label:'🥁 Dangdut',    act: () => { setRbSelectedTag('dangdut'); setRbQuery(''); rbSearch('','dangdut'); multiSearch('','dangdut'); }, isActive: rbSelectedTag==='dangdut', color:'#f97316' },
+                                      { label:'😴 Tidur',      act: () => { setRbSelectedTag(null); setRbQuery('tidur'); multiSearch('tidur',null); }, isActive: rbQuery==='tidur', color:'#8b5cf6' },
+                                      { label:'🧘 Fokus',      act: () => { setRbSelectedTag(null); setRbQuery('fokus'); multiSearch('fokus',null); }, isActive: rbQuery==='fokus', color:'#06b6d4' },
+                                      { label:'💪 Semangat',   act: () => { setRbSelectedTag(null); setRbQuery('semangat'); multiSearch('semangat',null); }, isActive: rbQuery==='semangat', color:'#f59e0b' },
+                                      { label:'😢 Galau',      act: () => { setRbSelectedTag(null); setRbQuery('galau'); multiSearch('galau',null); }, isActive: rbQuery==='galau', color:'#3b82f6' },
+                                      { label:'🌙 Malam',      act: () => { setRbSelectedTag(null); setRbQuery('malam'); multiSearch('malam',null); }, isActive: rbQuery==='malam', color:'#a78bfa' },
+                                      { label:'● SomaFM',      act: () => { setRbSelectedTag(null); setRbQuery('somafm'); multiSearch('somafm',null); }, isActive: rbQuery==='somafm', color:'#10b981' },
+                                      { label:'● NTS',         act: () => { setRbSelectedTag(null); setRbQuery('nts'); multiSearch('nts',null); }, isActive: rbQuery==='nts', color:'#ff4500' },
+                                      { label:'● Garden',      act: () => { setRbSelectedTag(null); setRbQuery('radio garden'); multiSearch('radio garden',null); }, isActive: rbQuery==='radio garden', color:'#22d3ee' },
+                                    ].map((p,i) => (
+                                      <button key={i} onClick={p.act} style={{ flexShrink:0, padding:'4px 10px', borderRadius:999, border:`1px solid ${p.isActive ? p.color : 'rgba(255,255,255,0.1)'}`, background:p.isActive ? `${p.color}22` : 'rgba(255,255,255,0.04)', color:p.isActive ? p.color : 'rgba(255,255,255,0.4)', fontSize:10, cursor:'pointer', fontWeight:p.isActive?700:500, transition:'all 0.15s', whiteSpace:'nowrap' }}>
+                                        {p.label}
+                                      </button>
+                                    ))}
                                   </div>
-                                  {/* Mood pills */}
-                                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.3)', marginBottom:4, fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase' }}>Mood</div>
-                                  <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginBottom:8 }}>
-                                    {[
-                                      { label:'😴 Tidur',     q:'tidur',    color:'#8b5cf6' },
-                                      { label:'🧘 Fokus',     q:'fokus',    color:'#06b6d4' },
-                                      { label:'💪 Semangat',  q:'semangat', color:'#f59e0b' },
-                                      { label:'🎉 Party',     q:'party',    color:'#ec4899' },
-                                      { label:'😢 Galau',     q:'galau',    color:'#3b82f6' },
-                                      { label:'❤️ Romantis',  q:'romantis', color:'#ef4444' },
-                                      { label:'🌅 Pagi',      q:'pagi',     color:'#f97316' },
-                                      { label:'🌙 Malam',     q:'malam',    color:'#a78bfa' },
-                                      { label:'☕ Santai',    q:'santai',   color:'#10b981' },
-                                      { label:'📚 Belajar',   q:'belajar',  color:'#22d3ee' },
-                                    ].map((m,i) => {
-                                      const isActive = rbQuery === m.q;
-                                      return (
-                                        <button key={i} onClick={() => {
-                                          setRbSelectedTag(null); setRbQuery(m.q);
-                                          multiSearch(m.q, null);
-                                        }}
-                                          style={{ padding:'4px 10px', borderRadius:999, border:`1px solid ${isActive ? m.color : 'rgba(255,255,255,0.1)'}`, background:isActive ? `${m.color}22` : 'rgba(255,255,255,0.04)', color:isActive ? m.color : 'rgba(255,255,255,0.45)', fontSize:10, cursor:'pointer', fontWeight: isActive ? 700 : 500, transition:'all 0.15s' }}>
-                                          {m.label}
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-                                  {/* Kota pills */}
-                                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.3)', marginBottom:4, fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase' }}>Kota</div>
-                                  <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginBottom:8 }}>
-                                    {[
-                                      { label:'🇮🇩 Jakarta',    q:'jakarta' },
-                                      { label:'🇮🇩 Surabaya',   q:'surabaya' },
-                                      { label:'🇮🇩 Bandung',    q:'bandung' },
-                                      { label:'🇮🇩 Bali',       q:'bali' },
-                                      { label:'🇺🇸 New York',   q:'new york' },
-                                      { label:'🇬🇧 London',     q:'london' },
-                                      { label:'🇯🇵 Tokyo',      q:'tokyo' },
-                                      { label:'🇰🇷 Seoul',      q:'seoul' },
-                                      { label:'🇫🇷 Paris',      q:'paris' },
-                                    ].map((c,i) => {
-                                      const isActive = rbQuery === c.q;
-                                      return (
-                                        <button key={i} onClick={() => {
-                                          setRbSelectedTag(null); setRbQuery(c.q);
-                                          multiSearch(c.q, null);
-                                        }}
-                                          style={{ padding:'4px 10px', borderRadius:999, border:`1px solid ${isActive ? '#22d3ee' : 'rgba(255,255,255,0.1)'}`, background:isActive ? 'rgba(34,211,238,0.15)' : 'rgba(255,255,255,0.04)', color:isActive ? '#22d3ee' : 'rgba(255,255,255,0.45)', fontSize:10, cursor:'pointer', fontWeight: isActive ? 700 : 500, transition:'all 0.15s' }}>
-                                          {c.label}
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-                                  {/* Genre pills */}
-                                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.3)', marginBottom:4, fontWeight:700, letterSpacing:'0.05em', textTransform:'uppercase' }}>Genre</div>
-                                  {(() => {
-                                    const GENRE_PILLS = [
-                                      { label:'🔥 Top Semua',  tag: null,          color:'#f59e0b' },
-                                      { label:'🎵 Pop',        tag: 'pop',         color:'#3b82f6' },
-                                      { label:'🎸 Rock',       tag: 'rock',        color:'#ef4444' },
-                                      { label:'🎷 Jazz',       tag: 'jazz',        color:'#7c3aed' },
-                                      { label:'🎹 Classical',  tag: 'classical',   color:'#a78bfa' },
-                                      { label:'⚡ Electronic', tag: 'electronic',  color:'#06b6d4' },
-                                      { label:'🎤 Hip-Hop',    tag: 'hip-hop',     color:'#f59e0b' },
-                                      { label:'🌿 Reggae',     tag: 'reggae',      color:'#10b981' },
-                                      { label:'🌍 World',      tag: 'world',       color:'#f97316' },
-                                      { label:'🏡 Ambient',    tag: 'ambient',     color:'#8b5cf6' },
-                                      { label:'🎧 Lounge',     tag: 'lounge',      color:'#ec4899' },
-                                      { label:'🌊 Lo-Fi',      tag: 'lofi',        color:'#22d3ee' },
-                                      { label:'🕌 Religi',     tag: 'islamic',     color:'#10b981' },
-                                      { label:'🥁 Dangdut',    tag: 'dangdut',     color:'#f97316' },
-                                      { label:'📰 News/Talk',  tag: 'news',        color:'#94a3b8' },
-                                    ];
-                                    return (
-                                      <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginBottom:10 }}>
-                                        {GENRE_PILLS.map((p, i) => {
-                                          const isActive = p.tag === null ? (rbSelectedTag === null && !rbQuery) : rbSelectedTag === p.tag;
-                                          const activeColor = p.color || '#f59e0b';
-                                          return (
-                                            <button key={i} onClick={() => {
-                                              setRbSelectedTag(p.tag); setRbQuery('');
-                                              rbSearch('', p.tag);
-                                              multiSearch('', p.tag);
-                                            }}
-                                              style={{ padding:'4px 10px', borderRadius:999, border:`1px solid ${isActive ? activeColor : 'rgba(255,255,255,0.1)'}`, background:isActive ? `${activeColor}22` : 'rgba(255,255,255,0.04)', color:isActive ? activeColor : 'rgba(255,255,255,0.45)', fontSize:10, cursor:'pointer', fontWeight: isActive ? 700 : 500, transition:'all 0.15s' }}>
-                                              {p.label}
-                                            </button>
-                                          );
-                                        })}
-                                      </div>
-                                    );
-                                  })()}
                                   {/* Loading */}
                                   {(rbLoading || multiLoading) && (
                                     <div style={{ textAlign:'center', padding:'20px 0', color:'rgba(255,255,255,0.35)', fontSize:11 }}>
