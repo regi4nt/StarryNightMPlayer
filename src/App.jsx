@@ -1385,7 +1385,7 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
       stopAllMedia('embed');
       setEmbedTrack(ytTrack);
       setYtProgress(0); setYtDuration(secs||0);
-      if (queue) { ytQueueRef.current = queue; ytQueueIdxRef.current = queueIdx ?? queue.findIndex(v=>(v.videoId||v.url?.includes(videoId))===videoId); ytShufflePlayedRef.current = null; }
+      if (queue) { const queueChanged = queue !== ytQueueRef.current; ytQueueRef.current = queue; ytQueueIdxRef.current = queueIdx ?? queue.findIndex(v=>(v.videoId||v.url?.includes(videoId))===videoId); if (queueChanged) ytShufflePlayedRef.current = null; }
       setEmbedMinimized(false);
       if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
       setRadioStation(null);
@@ -5067,7 +5067,7 @@ Format exactly:
                 {/* ── Kontrol media — centered ── */}
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:7 }}>
                   {!track.isRadio && (
-                    <button onClick={()=>setShuffle(s=>!s)} style={{ background:'none', border:'none', cursor:'pointer', color:shuffle?track.color:'rgba(255,255,255,0.3)', padding:4, position:'relative', flexShrink:0 }}>
+                    <button onClick={()=>{ if(embedTrack?.type==='youtube'){ setShuffle(s=>{ const next=!s; if(next) setRepeat('off'); else ytShufflePlayedRef.current=null; return next; }); } else { setShuffle(s=>{ const next=!s; if(next) setRepeat('off'); return next; }); } }} style={{ background:'none', border:'none', cursor:'pointer', color:shuffle?track.color:'rgba(255,255,255,0.3)', padding:4, position:'relative', flexShrink:0 }}>
                       <Shuffle size={16}/>
                       {shuffle && <div style={{ position:'absolute', bottom:1, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:track.color }}/>}
                     </button>
