@@ -86,13 +86,14 @@ export default defineConfig({
         assetFileNames: 'assets/[name]-[hash].[ext]',
         // ── Manual chunks: pisahkan vendor & fitur besar ──────────
         manualChunks(id) {
-          // Vendor: React core
-          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+          // Vendor: React core + lucide-react digabung agar icon selalu tersedia
+          // sebelum App.jsx dieksekusi (mencegah ReferenceError: Music is not defined)
+          if (
+            id.includes('node_modules/react') ||
+            id.includes('node_modules/react-dom') ||
+            id.includes('node_modules/lucide-react')
+          ) {
             return 'vendor-react';
-          }
-          // Vendor: lucide icons (besar, jarang berubah)
-          if (id.includes('node_modules/lucide-react')) {
-            return 'vendor-icons';
           }
           // Translations (statis, dimuat awal)
           if (id.includes('src/translations')) {
