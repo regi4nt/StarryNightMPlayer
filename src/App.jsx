@@ -513,7 +513,7 @@ export default function App() {
     const unverified = items.filter(v => v.isPlayable === undefined && v.videoId);
     if (unverified.length === 0) return;
     // Check paralel sejati, max 8 sekaligus (tidak mau flood oEmbed)
-    const BATCH = 8;
+    const BATCH = 15;
     const badIds = new Set();
     const checks = unverified.slice(0, BATCH).map(async (v) => {
       try {
@@ -664,7 +664,7 @@ export default function App() {
           thumbnail: i.thumbnail || `https://i.ytimg.com/vi/${vid}/mqdefault.jpg`,
           uploaderName: i.uploaderName || i.uploader || i.channel || 'YouTube',
           duration: dur,
-          isPlayable: true,
+          // isPlayable sengaja tidak di-set agar verifyYtPlayableBatch bisa verifikasi embed
         };
       })
       .filter(Boolean)
@@ -752,7 +752,7 @@ export default function App() {
               duration: v.lengthSeconds || 0,
               thumbnail: thumb,
               videoId: v.videoId,
-              isPlayable: true,
+              // isPlayable sengaja tidak di-set agar verifyYtPlayableBatch bisa verifikasi embed
             };
           });
       } catch { return null; }
@@ -821,7 +821,8 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
                 const thumb = rawThumb.startsWith('http') ? rawThumb : `https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`;
                 return {
                   url: `/watch?v=${v.videoId}`, title: v.title, uploaderName: v.author,
-                  duration: v.lengthSeconds || 0, thumbnail: thumb, videoId: v.videoId, isPlayable: true,
+                  duration: v.lengthSeconds || 0, thumbnail: thumb, videoId: v.videoId,
+                  // isPlayable sengaja tidak di-set agar verifyYtPlayableBatch bisa verifikasi embed
                 };
               });
             })
@@ -4912,7 +4913,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                       <div onClick={() => { if(isCurrentYt) setPlaying(p=>!p); else playYouTube(v, results, vi); }}
                                         style={{ width:38, height:38, borderRadius:8, background:`${platform.color}20`, flexShrink:0, cursor:'pointer', overflow:'hidden', position:'relative' }}>
                                         {!isLite && <img src={thumb} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{ e.target.style.display='none'; }}/>}
-                                        <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background: isCurrentYt ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.3)', borderRadius:8 }}>
+                                        <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background: isCurrentYt ? 'rgba(0,0,0,0.45)' : isLite ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.18)', borderRadius:8 }}>
                                           {isCurrentYt && playing
                                             ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12 }}>{[8,5,7].map((h,i)=>(<div key={i} style={{ width:2.5, height:h, background:'#ff4444', borderRadius:1, animation:`bounce 1.4s ease-in-out ${i*0.25}s infinite` }}/>))}</div>
                                             : <Play size={13} style={{ color: isCurrentYt ? '#ff6b6b' : platform.color, marginLeft:2 }}/>}
