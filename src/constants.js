@@ -1,5 +1,9 @@
 
 export function openNewTab(url) {
+  // Cara 1: window.open langsung — paling andal jika dipanggil dari user gesture
+  const w = window.open(url, '_blank', 'noopener,noreferrer');
+  if (w) { w.opener = null; return; }
+  // Cara 2: fallback <a> jika window.open diblokir (misal iOS PWA mode)
   const a = document.createElement('a');
   a.href = url;
   a.target = '_blank';
@@ -1116,13 +1120,29 @@ export async function searchSoundCloud(query, limit = 10) {
 }
 
 
-export const askAI = async (user, system='', tries=0) => {
+// history: array of {from:'user'|'ai', text:string} — dikonversi ke format messages API
+const buildMessages = (user, history = []) => {
+  // Ambil maks 10 pesan terakhir (5 turn) agar tidak overflow context
+  const recent = history.slice(-10);
+  const msgs = [];
+  for (const m of recent) {
+    if (m.from === 'user') msgs.push({ role: 'user', content: m.text });
+    else if (m.from === 'ai' && m.text) msgs.push({ role: 'assistant', content: m.text });
+  }
+  // Pastikan diawali role user (beberapa API menolak jika pertama assistant)
+  while (msgs.length > 0 && msgs[0].role === 'assistant') msgs.shift();
+  msgs.push({ role: 'user', content: user });
+  return msgs;
+};
+
+export const askAI = async (user, system='', tries=0, history=[]) => {
   const PROVIDERS = getProviders();
   if (!PROVIDERS.length) return '⚠️ No API key found. Add one in Settings or Vercel Environment Variables.';
   if (tries >= PROVIDERS.length) { slotIdx = 0; return 'Semua provider tidak tersedia saat ini, coba beberapa saat lagi.'; }
   // Round-robin: mulai dari slotIdx, tapi jangan reset global sampai berhasil
   const startSlot = slotIdx % PROVIDERS.length;
   const slot = PROVIDERS[startSlot];
+  const msgs = buildMessages(user, history);
   try {
     let res, data, txt;
     if (!slot.isOpenAI) {
@@ -1138,14 +1158,14 @@ export const askAI = async (user, system='', tries=0) => {
           model: slot.model,
           max_tokens: 500,
           ...(system ? { system } : {}),
-          messages: [{ role:'user', content:user }],
+          messages: msgs,
         }),
       });
       data = await res.json();
       if (res.status === 429 || res.status === 503 || res.status === 401 || res.status === 404 || data.error) {
         console.warn(`[Chat] ${slot.provider}/${slot.model} status ${res.status}`, data.error?.message || '');
         slotIdx = (startSlot + 1) % PROVIDERS.length;
-        return askAI(user, system, tries + 1);
+        return askAI(user, system, tries + 1, history);
       }
       txt = data.content?.[0]?.text;
     } else {
@@ -1164,7 +1184,7 @@ export const askAI = async (user, system='', tries=0) => {
           max_tokens: 500,
           messages: [
             ...(system ? [{ role:'system', content:system }] : []),
-            { role:'user', content:user },
+            ...msgs,
           ],
         }),
       });
@@ -1172,14 +1192,14 @@ export const askAI = async (user, system='', tries=0) => {
       if (res.status === 429 || res.status === 503 || res.status === 401 || res.status === 404 || data.error) {
         console.warn(`[Chat] ${slot.provider}/${slot.model} status ${res.status}`, data.error?.message || '');
         slotIdx = (startSlot + 1) % PROVIDERS.length;
-        return askAI(user, system, tries + 1);
+        return askAI(user, system, tries + 1, history);
       }
       txt = data.choices?.[0]?.message?.content;
     }
     if (!txt) {
       console.warn(`[Chat] ${slot.provider}/${slot.model} returned no text`);
       slotIdx = (startSlot + 1) % PROVIDERS.length;
-      return askAI(user, system, tries + 1);
+      return askAI(user, system, tries + 1, history);
     }
     // Berhasil — majukan slot supaya request berikutnya pakai provider berikutnya (round-robin)
     slotIdx = (startSlot + 1) % PROVIDERS.length;
@@ -1187,12 +1207,13 @@ export const askAI = async (user, system='', tries=0) => {
   } catch(e) {
     console.warn(`[Chat] ${slot.provider}/${slot.model} network error:`, e?.message);
     slotIdx = (startSlot + 1) % PROVIDERS.length;
-    return askAI(user, system, tries + 1);
+    return askAI(user, system, tries + 1, history);
   }
 }
 
 // ── askAIRace: kirim ke SEMUA provider paralel, ambil yang pertama berhasil balas
-export const askAIRace = async (user, system='') => {
+// history: array of {from:'user'|'ai', text:string} — untuk menjaga konteks percakapan
+export const askAIRace = async (user, system='', history=[]) => {
   const PROVIDERS = getProviders();
   if (!PROVIDERS.length) return '⚠️ No API key found. Add one in Settings or Vercel Environment Variables.';
 
@@ -1205,14 +1226,15 @@ export const askAIRace = async (user, system='') => {
   });
 
   // Build one fetch promise per provider
+  const msgs = buildMessages(user, history);
   const makeReq = (slot) => {
     const body = slot.isOpenAI
       ? { model: slot.model, max_tokens: 500,
-          messages: [...(system ? [{ role:'system', content:system }] : []), { role:'user', content:user }],
+          messages: [...(system ? [{ role:'system', content:system }] : []), ...msgs],
           ...slot.extra }
       : { model: slot.model, max_tokens: 500,
           ...(system ? { system } : {}),
-          messages: [{ role:'user', content:user }] };
+          messages: msgs };
 
     // __proxy__ slots: key lives in Vercel env vars, not the browser — omit Authorization header
     // __nokey__ slots: public free endpoints — no auth header at all

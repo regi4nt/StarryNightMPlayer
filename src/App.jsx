@@ -105,6 +105,7 @@ export default function App() {
   const [ytDuration, setYtDuration]   = useState(0);
   const ytQueueRef    = useRef([]);   // current list of YT results
   const ytQueueIdxRef = useRef(-1);  // index of current video in queue
+  const ytShufflePlayedRef = useRef(null); // Set of played indices in current shuffle session
   const [ytSongs, setYtSongs]         = useState(() => {
     try { return JSON.parse(localStorage.getItem('sn_yt_songs') || '[]'); } catch { return []; }
   }); // YT tracks saved to playlist/liked
@@ -170,6 +171,8 @@ export default function App() {
   const [ntsShows, setNtsShows] = useState([]);
   const [multiResults, setMultiResults] = useState([]); // merged results from all sources
   const [multiLoading, setMultiLoading] = useState(false);
+  const [rbAiResults, setRbAiResults]   = useState([]); // AI-suggested stations fallback
+  const [rbAiLoading, setRbAiLoading]   = useState(false);
 
   // ── Spotify in-app search state
   const [spQuery,    setSpQuery]    = useState('');
@@ -521,8 +524,9 @@ export default function App() {
     // Ambil yang belum diverifikasi (isPlayable masih undefined)
     const unverified = items.filter(v => v.isPlayable === undefined && v.videoId);
     if (unverified.length === 0) return;
-    // Check paralel sejati, max 8 sekaligus (tidak mau flood oEmbed)
-    const BATCH = 15;
+    // FIX Bug 6: BATCH dikurangi dari 15 → 10 agar tidak flood oEmbed dan kena rate-limit
+    // Rate-limit → semua timeout → semua dianggap OK → filter tidak efektif
+    const BATCH = 10;
     const badIds = new Set();
     const checks = unverified.slice(0, BATCH).map(async (v) => {
       try {
@@ -545,6 +549,24 @@ export default function App() {
       ytSearchCacheSet(originalQuery || '', filtered);
       return updated;
     });
+    // FIX Bug 3: sync ytQueueRef jika queue aktif mengandung video yang baru dihapus
+    // Queue diambil snapshot saat user klik, sehingga tidak otomatis ikut state update.
+    // Hapus badIds dari queue agar ytNext tidak skip ke video unplayable.
+    if (badIds.size > 0 && ytQueueRef.current.length > 0) {
+      const curQueue = ytQueueRef.current;
+      const hasStale = curQueue.some(v => badIds.has(v.videoId));
+      if (hasStale) {
+        const cleanQueue = curQueue.filter(v => !badIds.has(v.videoId));
+        // Hitung ulang index: cari posisi video yang sedang diputar di queue baru
+        const currentVideoId = cleanQueue[ytQueueIdxRef.current]?.videoId
+          ?? curQueue[ytQueueIdxRef.current]?.videoId;
+        const newIdx = currentVideoId
+          ? cleanQueue.findIndex(v => v.videoId === currentVideoId)
+          : -1;
+        ytQueueRef.current = cleanQueue;
+        if (newIdx >= 0) ytQueueIdxRef.current = newIdx;
+      }
+    }
   };
 
   const ytSearchCacheSet = (query, items) => {
@@ -980,6 +1002,63 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
     setYtTrendingLoading(false);
   }, [ytTrendingLoading, ytTrending.length]); // eslint-disable-line
 
+  // ── Client-side relevance re-ranking untuk hasil YT search ──────────────────
+  // Backend (Piped/Invidious) mengembalikan hasil berdasarkan algoritma mereka sendiri
+  // yang tidak selalu relevan untuk pencarian musik spesifik. Scoring ini memprioritaskan
+  // hasil yang judulnya paling cocok dengan query user.
+  const rankYtResults = (items, query) => {
+    if (!items || items.length === 0) return items;
+    const q = query.trim().toLowerCase();
+    // Tokenisasi query: pisah kata-kata penting (min 2 karakter)
+    const qTokens = q.split(/\s+/).filter(t => t.length >= 2);
+    if (qTokens.length === 0) return items;
+
+    const score = (item) => {
+      const title  = (item.title || '').toLowerCase();
+      const artist = (item.uploaderName || item.author || '').toLowerCase();
+      let s = 0;
+
+      // ── Exact match judul (tertinggi) ────────────────────────────────────
+      if (title === q) s += 100;
+      // ── Judul starts with query ──────────────────────────────────────────
+      else if (title.startsWith(q)) s += 70;
+      // ── Judul contains query persis ─────────────────────────────────────
+      else if (title.includes(q)) s += 50;
+
+      // ── Setiap token query ditemukan di judul ────────────────────────────
+      const titleTokens = title.split(/\s+/);
+      for (const t of qTokens) {
+        if (title.includes(t)) s += 10;
+        // Bonus jika token ada di awal judul
+        if (titleTokens[0] === t || titleTokens[1] === t) s += 5;
+      }
+
+      // ── Semua token query ada di judul ──────────────────────────────────
+      if (qTokens.every(t => title.includes(t))) s += 20;
+
+      // ── Token query ditemukan di nama artist/channel ─────────────────────
+      for (const t of qTokens) {
+        if (artist.includes(t)) s += 6;
+      }
+
+      // ── Bonus: audio/lyric/official (video musik yang relevan) ──────────
+      if (/official audio|official video|lyric|lyrics|mv\b/i.test(title)) s += 8;
+      // ── Penalti: cover, parody, reaction, review, karaoke ───────────────
+      if (/\bcover\b|\bparody\b|\breaction\b|\breview\b|\bkaraoke\b|\btutorial\b/i.test(title)) s -= 15;
+      // ── Penalti ringan: durasi sangat panjang (>20 menit, bisa podcast/mix) ─
+      const dur = item.duration || item.lengthSeconds || 0;
+      if (dur > 1200) s -= 10;
+
+      return s;
+    };
+
+    // Stable sort: item dengan skor sama tetap di urutan asli (preserves backend ranking)
+    return [...items]
+      .map((item, idx) => ({ item, score: score(item), idx }))
+      .sort((a, b) => b.score - a.score || a.idx - b.idx)
+      .map(x => x.item);
+  };
+
   const searchYouTube = async (platformId, query) => {
     if (!query.trim()) return;
 
@@ -1028,9 +1107,10 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
         // error lain (network timeout dsb.) juga jatuh ke fallback
       }
       if (ytItems && ytItems.length > 0) {
-        setYtResults(p => ({...p, [platformId]: ytItems}));
+        const ranked = rankYtResults(ytItems, query);
+        setYtResults(p => ({...p, [platformId]: ranked}));
         setYtLoading(p => ({...p, [platformId]: false}));
-        ytSearchCacheSet(query, ytItems);
+        ytSearchCacheSet(query, ranked);
         return; // ← selesai, tidak perlu fallback
       }
       console.warn('[YT] YT API tidak menghasilkan data — fallback ke Piped/Invidious');
@@ -1051,7 +1131,7 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
     ]).catch(() => null);
 
     if (raceResult && raceResult.items && raceResult.items.length > 0) {
-      allItems = raceResult.items;
+      allItems = rankYtResults(raceResult.items, query);
       // Tampil langsung — jangan tunggu source kedua
       setYtResults(p => ({...p, [platformId]: allItems}));
       setYtLoading(p => ({...p, [platformId]: false}));
@@ -1066,7 +1146,8 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
         const seen = new Set(allItems.map(x => x.videoId));
         const extra = otherResult.filter(x => x.videoId && !seen.has(x.videoId));
         if (extra.length > 0) {
-          finalItems = [...allItems, ...extra].slice(0, 20);
+          // Re-rank setelah merge: gabungan dua source, sort ulang berdasarkan relevansi
+          finalItems = rankYtResults([...allItems, ...extra], query).slice(0, 20);
           setYtResults(p => ({...p, [platformId]: finalItems}));
           ytSearchCacheSet(query, finalItems);
         }
@@ -1080,8 +1161,10 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
     // Semua sumber gagal — coba AI sebagai last resort (tidak butuh key user)
     const aiItems = await searchViaAI(query).catch(() => null);
     if (aiItems && aiItems.length > 0) {
-      allItems = aiItems;
-      setYtResults(p => ({...p, [platformId]: aiItems}));
+      allItems = rankYtResults(aiItems, query);
+      setYtResults(p => ({...p, [platformId]: allItems}));
+      // FIX Bug 1: AI fallback juga perlu verifikasi embed — LLM bisa halusin videoId
+      verifyYtPlayableBatch(allItems, platformId, query);
     } else {
       setYtError(p => ({...p, [platformId]: t?.searchFailed||'Search failed. Coba lagi atau masukkan YouTube API key di Settings.'}));
     }
@@ -1106,7 +1189,7 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
       stopAllMedia('embed');
       setEmbedTrack(ytTrack);
       setYtProgress(0); setYtDuration(secs||0);
-      if (queue) { ytQueueRef.current = queue; ytQueueIdxRef.current = queueIdx ?? queue.findIndex(v=>(v.videoId||v.url?.includes(videoId))===videoId); }
+      if (queue) { ytQueueRef.current = queue; ytQueueIdxRef.current = queueIdx ?? queue.findIndex(v=>(v.videoId||v.url?.includes(videoId))===videoId); ytShufflePlayedRef.current = null; }
       setEmbedMinimized(false);
       if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
       setRadioStation(null);
@@ -1217,6 +1300,8 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
     const q = ytQueueRef.current;
     if (repeatRef.current === 'one') {
       // Ulangi video yang sama: seekTo 0 lalu play
+      // setPlaying(true) dulu agar playingRef sync sebelum iframe event masuk
+      setPlaying(true);
       try {
         ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'command', func:'seekTo', args:[0, true] }), '*');
         setTimeout(() => {
@@ -1228,7 +1313,8 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
     // Single video (queue kosong atau 1 item) — repeat all → restart; shuffle → restart
     if (!q.length || q.length === 1) {
       if (repeatRef.current === 'all' || shuffleRef.current) {
-        // Harus seekTo(0) langsung ke iframe, bukan via seekYt(pct) yang butuh ytDuration
+        // setPlaying(true) dulu agar state sync sebelum iframe event masuk
+        setPlaying(true);
         try {
           ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'command', func:'seekTo', args:[0, true] }), '*');
           setTimeout(() => {
@@ -1241,13 +1327,25 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
       return;
     }
     if (shuffleRef.current) {
-      // Acak: pilih lagu lain secara random dari queue
-      const others = q.filter((_, i) => i !== ytQueueIdxRef.current);
-      const pool = others.length ? others : q;
-      const picked = pool[Math.floor(Math.random() * pool.length)];
-      const idx = q.indexOf(picked);
-      ytQueueIdxRef.current = idx;
-      playYouTube(q[idx], q, idx);
+      // Acak: pilih video yang belum diputar di sesi shuffle ini
+      // Tracking via Set of played indices — reset saat semua sudah diputar (loop baru)
+      if (!ytShufflePlayedRef.current) ytShufflePlayedRef.current = new Set();
+      ytShufflePlayedRef.current.add(ytQueueIdxRef.current);
+      // Cari index yang belum diputar
+      const unplayed = q.map((_, i) => i).filter(i => !ytShufflePlayedRef.current.has(i));
+      if (unplayed.length === 0) {
+        // Semua sudah diputar — reset dan mulai loop baru
+        ytShufflePlayedRef.current = new Set([ytQueueIdxRef.current]);
+        const fresh = q.map((_, i) => i).filter(i => i !== ytQueueIdxRef.current);
+        if (!fresh.length) { setPlaying(false); return; }
+        const idx = fresh[Math.floor(Math.random() * fresh.length)];
+        ytQueueIdxRef.current = idx;
+        playYouTube(q[idx], q, idx);
+      } else {
+        const idx = unplayed[Math.floor(Math.random() * unplayed.length)];
+        ytQueueIdxRef.current = idx;
+        playYouTube(q[idx], q, idx);
+      }
       return;
     }
     const nextIdx = ytQueueIdxRef.current + 1;
@@ -1401,6 +1499,14 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
 
   // ── Jam live (update setiap detik)
   const [nowTime, setNowTime] = useState(() => new Date());
+
+  // ── Lokasi user (kota, negara)
+  const [userLocation, setUserLocation] = useState(() => {
+    try { return localStorage.getItem('sn_user_location') || null; } catch { return null; }
+  });
+  const [userLocationCountry, setUserLocationCountry] = useState(() => {
+    try { return localStorage.getItem('sn_user_location_country') || 'ID'; } catch { return 'ID'; }
+  });
 
   // ── New playback features
   const [shuffle, setShuffle] = useState(() => localStorage.getItem('sn_shuffle') === 'true');
@@ -1600,7 +1706,37 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
     return () => clearTimeout(id);
   }, []);
 
-  // ── Persist preferences to localStorage
+  // ── Geolocation: ambil lokasi user sekali, simpan ke localStorage
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    // Jika sudah ada cache & tidak expired (24 jam), skip
+    const locTs = parseInt(localStorage.getItem('sn_location_ts') || '0', 10);
+    if (userLocation && Date.now() - locTs < 24 * 60 * 60 * 1000) return;
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      const { latitude, longitude } = pos.coords;
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`, {
+          headers: { 'Accept-Language': 'id,en', 'User-Agent': 'StarryNightMPlayer/1.0' }
+        });
+        const data = await res.json();
+        const city = data?.address?.city || data?.address?.town || data?.address?.village || data?.address?.county || '';
+        const country = data?.address?.country_code?.toUpperCase() || 'ID';
+        const countryName = data?.address?.country || '';
+        const displayLoc = city ? `${city}${countryName && country !== 'ID' ? ', ' + countryName : ''}` : countryName;
+        if (displayLoc) {
+          setUserLocation(displayLoc);
+          setUserLocationCountry(country);
+          localStorage.setItem('sn_user_location', displayLoc);
+          localStorage.setItem('sn_user_location_country', country);
+          localStorage.setItem('sn_location_ts', String(Date.now()));
+          // Hapus popularRecs cache agar di-refetch dengan lokasi baru
+          localStorage.removeItem('sn_popular_recs_ts');
+          setPopularRecs(null);
+        }
+      } catch {}
+    }, () => {/* user deny — tidak apa-apa */}, { timeout: 8000 });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => { localStorage.setItem('sn_tab', tab); if (tab !== 'player') setFullscreen(false); }, [tab]);
   useEffect(() => { localStorage.setItem('sn_shuffle', shuffle); }, [shuffle]);
   useEffect(() => { localStorage.setItem('sn_repeat', repeat); }, [repeat]);
@@ -2157,14 +2293,24 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
           if (data.info.playerState === 1 && !playingRef.current) setPlaying(true);
           if (data.info.playerState === 2 && playingRef.current) setPlaying(false);
         }
-        // Video ended → auto next
-        if (data.event === 'onStateChange' && data.info === 0) {
-          setTimeout(() => { if (ytNextRef.current) ytNextRef.current(); }, 300);
-        }
-        // State change: 1=playing, 2=paused
+        // State change handling — order matters: ended (0) must be exclusive
         if (data.event === 'onStateChange') {
-          if (data.info === 1 && !playingRef.current) setPlaying(true);
-          if (data.info === 2 && playingRef.current) setPlaying(false);
+          if (data.info === 0) {
+            // Video ended → auto next; do NOT set playing=false here
+            // (ytNext will handle play state itself)
+            setTimeout(() => { if (ytNextRef.current) ytNextRef.current(); }, 300);
+          } else if (data.info === 1) {
+            if (!playingRef.current) setPlaying(true);
+          } else if (data.info === 2) {
+            // paused — only update if not in the middle of a repeat/seek operation
+            if (playingRef.current) setPlaying(false);
+          }
+        }
+        // FIX Bug 2: handle iframe error (video private / geo-block / embedding disabled)
+        // YT error codes: 2=bad param, 5=HTML5 error, 100=not found, 101/150=embedding disabled
+        if (data.event === 'onError') {
+          console.warn('[YT] iframe error code:', data.info, '— skip ke lagu berikutnya');
+          setTimeout(() => { if (ytNextRef.current) ytNextRef.current(); }, 500);
         }
       } catch(_) {}
     };
@@ -2314,10 +2460,12 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
     // Guard: jangan re-generate otomatis jika data sudah ada & masih fresh
     if (!forceRefresh) {
       if (personaLoading) return;
-      const cachedRecs = (() => { try { return JSON.parse(localStorage.getItem('sn_persona_recs') || 'null'); } catch { return null; } })();
+      // BUG FIX 2: cek state dulu (lebih cepat), lalu fallback ke localStorage
       const lastTs = parseInt(localStorage.getItem('sn_persona_recs_ts') || '0', 10);
       const isStale = Date.now() - lastTs > FOR_YOU_TTL_MS;
-      if (cachedRecs && !isStale) return; // masih fresh, skip
+      if (personaRecs && !isStale) return; // data di state masih segar
+      const cachedRecs = (() => { try { return JSON.parse(localStorage.getItem('sn_persona_recs') || 'null'); } catch { return null; } })();
+      if (cachedRecs && !isStale) return; // masih fresh di localStorage, skip
     }
     setPL(true);
     try {
@@ -2351,15 +2499,23 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
   }, [aiSubView]);
 
   // ── For You: fetch AI popular recs once per session
+  const POPULAR_TTL_MS = 60 * 60 * 1000; // 1 jam
   const fetchPopularRecs = useCallback(async () => {
-    if (popularLoading || popularRecs) return;
+    if (popularLoading) return;
     if (!hasKey()) return;
+    // BUG FIX 4: cek TTL agar popularRecs refresh setiap 1 jam, bukan selamanya
+    const lastPopTs = parseInt(localStorage.getItem('sn_popular_recs_ts') || '0', 10);
+    const popIsStale = Date.now() - lastPopTs > POPULAR_TTL_MS;
+    if (popularRecs && !popIsStale) return;
     setPopularLoading(true);
     try {
-      const prompt = `Kamu adalah kurator musik & audio global. Berikan daftar konten POPULER & TRENDING saat ini (bukan personalisasi) dalam format JSON. Isi dengan judul/artis/stasiun nyata yang benar-benar populer secara global maupun di Indonesia saat ini.
+      const locCtx = userLocation ? `Lokasi user: ${userLocation} (kode negara: ${userLocationCountry}).` : 'Lokasi user: Indonesia (kode negara: ID).';
+      const isIndonesia = !userLocationCountry || userLocationCountry === 'ID';
+      const localLabel = isIndonesia ? 'Lagu lokal Indonesia' : `Lagu lokal ${userLocation || 'setempat'}`;
+      const prompt = `Kamu adalah kurator musik & audio global. ${locCtx} Berikan daftar konten POPULER & TRENDING saat ini yang relevan dengan lokasi user dalam format JSON. Sertakan campuran lagu global populer dan lagu lokal sesuai lokasi user.
 
 Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
-{"trending_music":[{"title":"Judul Lagu 1","artist":"Artis 1","reason":"alasan singkat max 8 kata"},{"title":"Judul Lagu 2","artist":"Artis 2","reason":"alasan singkat max 8 kata"},{"title":"Judul Lagu 3","artist":"Artis 3","reason":"alasan singkat max 8 kata"},{"title":"Judul Lagu 4","artist":"Artis 4","reason":"alasan singkat max 8 kata"},{"title":"Judul Lagu 5","artist":"Artis 5","reason":"alasan singkat max 8 kata"}],"trending_radio":[{"name":"Nama Stasiun 1","genre":"genre","reason":"alasan singkat max 8 kata"},{"name":"Nama Stasiun 2","genre":"genre","reason":"alasan singkat max 8 kata"},{"name":"Nama Stasiun 3","genre":"genre","reason":"alasan singkat max 8 kata"},{"name":"Nama Stasiun 4","genre":"genre","reason":"alasan singkat max 8 kata"},{"name":"Nama Stasiun 5","genre":"genre","reason":"alasan singkat max 8 kata"}],"trending_indo":[{"title":"Lagu Indo 1","artist":"Artis Indonesia 1","reason":"alasan singkat max 8 kata"},{"title":"Lagu Indo 2","artist":"Artis Indonesia 2","reason":"alasan singkat max 8 kata"},{"title":"Lagu Indo 3","artist":"Artis Indonesia 3","reason":"alasan singkat max 8 kata"},{"title":"Lagu Indo 4","artist":"Artis Indonesia 4","reason":"alasan singkat max 8 kata"},{"title":"Lagu Indo 5","artist":"Artis Indonesia 5","reason":"alasan singkat max 8 kata"}]}`;
+{"trending_music":[{"title":"Judul Lagu 1","artist":"Artis 1","reason":"alasan singkat max 8 kata"},{"title":"Judul Lagu 2","artist":"Artis 2","reason":"alasan singkat max 8 kata"},{"title":"Judul Lagu 3","artist":"Artis 3","reason":"alasan singkat max 8 kata"},{"title":"Judul Lagu 4","artist":"Artis 4","reason":"alasan singkat max 8 kata"},{"title":"Judul Lagu 5","artist":"Artis 5","reason":"alasan singkat max 8 kata"}],"trending_radio":[{"name":"Nama Stasiun 1","genre":"genre","reason":"alasan singkat max 8 kata"},{"name":"Nama Stasiun 2","genre":"genre","reason":"alasan singkat max 8 kata"},{"name":"Nama Stasiun 3","genre":"genre","reason":"alasan singkat max 8 kata"},{"name":"Nama Stasiun 4","genre":"genre","reason":"alasan singkat max 8 kata"},{"name":"Nama Stasiun 5","genre":"genre","reason":"alasan singkat max 8 kata"}],"trending_local":[{"title":"Judul Lokal 1","artist":"Artis Lokal 1","reason":"alasan singkat max 8 kata"},{"title":"Judul Lokal 2","artist":"Artis Lokal 2","reason":"alasan singkat max 8 kata"},{"title":"Judul Lokal 3","artist":"Artis Lokal 3","reason":"alasan singkat max 8 kata"},{"title":"Judul Lokal 4","artist":"Artis Lokal 4","reason":"alasan singkat max 8 kata"},{"title":"Judul Lokal 5","artist":"Artis Lokal 5","reason":"alasan singkat max 8 kata"}]}`;
       const providers = getProviders();
       let result = null;
       for (const prov of providers) {
@@ -2378,7 +2534,10 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
           }
         } catch {}
       }
-      if (result) setPopularRecs(result);
+      if (result) {
+        setPopularRecs(result);
+        localStorage.setItem('sn_popular_recs_ts', String(Date.now()));
+      }
     } catch {}
     finally { setPopularLoading(false); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2992,7 +3151,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
 
   // ── All-source search (searches RadioBrowser + filters SomaFM + Icecast + NTS by genre)
   const multiSearch = async (query, genreTag) => {
-    setMultiLoading(true); setMultiResults([]);
+    setMultiLoading(true); setMultiResults([]); setRbAiResults([]); setRbAiLoading(false);
     const q = query.trim().toLowerCase();
     const isTopMode = !q && !genreTag;
     // Build genre keyword list from tag or query
@@ -3177,6 +3336,52 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     // Trigger health check untuk semua hasil multi-search
     const msKey = `multisearch__${q}__${genreTag||''}`;
     testStationsInGenre({ id: msKey, stations: results.map(s => ({ id: s.id || s.stationuuid, url: s.url })) });
+
+    // ── AI Fallback: jika hasil terlalu sedikit dan ada query teks, minta AI sarankan stasiun
+    // lalu cari nama-nama itu di RadioBrowser (source nyata, bukan imajinasi AI)
+    if (q && results.length < 5) {
+      setRbAiLoading(true);
+      setRbAiResults([]);
+      try {
+        const aiPrompt = `Suggest 5 real internet radio stations for: "${query}".
+Return ONLY a JSON array of station names, no explanation:
+["Station Name 1", "Station Name 2", "Station Name 3", "Station Name 4", "Station Name 5"]
+Rules: use real, well-known station names that likely exist on RadioBrowser or internet. Prefer genre-appropriate stations.`;
+        const aiSystem = 'You are a radio station expert. Return only a JSON array of 5 real station name strings. No extra text.';
+        const aiText = await askAIRace(aiPrompt, aiSystem);
+        // Parse JSON dari respons AI
+        const clean = aiText.replace(/```json|```/g, '').trim();
+        let suggestions = [];
+        try { suggestions = JSON.parse(clean); } catch { suggestions = []; }
+        if (!Array.isArray(suggestions) || suggestions.length === 0) throw new Error('bad parse');
+        // Cari setiap nama di RadioBrowser
+        const rbBase = await getRbServer();
+        const aiStations = [];
+        const seen = new Set(results.map(s => (s.name||'').toLowerCase()));
+        for (const name of suggestions.slice(0, 5)) {
+          if (typeof name !== 'string' || name.trim().length < 2) continue;
+          try {
+            const url = `${rbBase}/json/stations/search?name=${encodeURIComponent(name.trim())}&limit=3&hidebroken=true&order=votes&reverse=true`;
+            const found = await fetch(url, { signal: AbortSignal.timeout(4000) }).then(r => r.json());
+            for (const s of (found || []).slice(0, 2)) {
+              if (!s.url_resolved && !s.url) continue;
+              const nameLow = (s.name||'').toLowerCase();
+              if (seen.has(nameLow)) continue;
+              seen.add(nameLow);
+              aiStations.push({ ...s, sourceLabel: 'AI · RadioBrowser', color: '#a78bfa' });
+            }
+          } catch { /* satu stasiun gagal, lanjut */ }
+        }
+        if (aiStations.length > 0) {
+          setRbAiResults(aiStations);
+          // Health check untuk AI results
+          testStationsInGenre({ id: msKey + '__ai', stations: aiStations.map(s => ({ id: s.id || s.stationuuid, url: s.url })) });
+        }
+      } catch { /* AI gagal = tidak apa-apa, hasil reguler sudah ada */ }
+      setRbAiLoading(false);
+    } else {
+      setRbAiResults([]);
+    }
   };
 
   // ── PLAY
@@ -3797,12 +4002,19 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       setMessages(p=>[...p,{from:'user',text:msg},{from:'ai',text:t?.liteAiDisabled||'⚡ Lite Mode active — AI chat is disabled. Tap the Lite ⚡ button in the header to switch to Pro Mode.'}]);
       return;
     }
+    const historySnap = messages.filter(m => m.from === 'user' || m.from === 'ai');
     const msg=input; setInput(''); setMessages(p=>[...p,{from:'user',text:msg}]); setCL(true);
     const r = await askAIRace(
       msg,
-      `${t?.aiSystemPrompt||'You are Starry AI — a warm, fun, and versatile chat companion. Your personality: relaxed, friendly, a bit playful, but can be serious when needed. Use casual English. Answer briefly and naturally (max 100 words), not like a stiff chatbot. You can talk about anything: music, daily life, feelings, recommendations, trivia, jokes, motivation, or just hang out. Context: the user is listening to'} "${embedTrack ? (embedTrack.title || track.title) : track.title}" by ${embedTrack ? (embedTrack.artist || track.artist) : track.artist}${track.mood ? ' (mood: ' + track.mood + ')' : ''}.`
+      `You are Starry AI — a warm, fun, music-aware chat companion. Be relaxed, friendly, a bit playful. Reply briefly and naturally (max 120 words). Chat about anything: music, feelings, daily life, trivia, motivation, or just hang out. Context: the user is currently listening to "${embedTrack ? (embedTrack.title || track.title) : track.title}" by ${embedTrack ? (embedTrack.artist || track.artist) : track.artist}${track.mood ? ' (mood: ' + track.mood + ')' : ''}. SMART RECOMMENDATION RULES: (1) If user mentions a mood, feeling, activity, or time of day (sad, chill, semangat, fokus, pagi, tidur, workout, dll) — proactively recommend ONE fitting song [YT:] or radio station [RADIO:] whichever suits best. (2) If user asks for song/artist suggestion — use [YT: TITLE - ARTIST]. (3) If user asks about radio or live stream — use [RADIO: STATION NAME]. (4) If user mentions an artist — suggest a similar artist song with [YT:]. (5) General chat with no music context — no tag. Add the tag on a new line at the very end. ONE tag max per response. Format exactly: [YT: SONG - ARTIST] or [RADIO: STATION NAME].`,
+      historySnap
     );
-    setMessages(p=>[...p,{from:'ai',text:r}]);
+    // Parse action tag from AI response
+    const ytTagMatch = r.match(/\[YT:\s*([^\]]+)\]/i);
+    const radioTagMatch = r.match(/\[RADIO:\s*([^\]]+)\]/i);
+    const cleanAiText = r.replace(/\[(YT|RADIO):[^\]]+\]/gi, '').trim();
+    const aiAction = ytTagMatch ? { type: 'yt', query: ytTagMatch[1].trim() } : radioTagMatch ? { type: 'radio', query: radioTagMatch[1].trim() } : null;
+    setMessages(p=>[...p,{from:'ai',text:cleanAiText,action:aiAction}]);
     setActiveModelLabel(activeModel());
     setCL(false);
   };
@@ -4495,6 +4707,11 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                   <div style={{ fontSize:8, color:'rgba(255,255,255,0.35)', fontWeight:600, marginTop:2, letterSpacing:'0.06em', textTransform:'uppercase' }}>
                     {nowTime.toLocaleDateString('id-ID',{ weekday:'short', day:'numeric', month:'short' })}
                   </div>
+                  {userLocation && (
+                    <div style={{ fontSize:7.5, color:'rgba(255,255,255,0.28)', fontWeight:600, marginTop:1.5, letterSpacing:'0.05em', display:'flex', alignItems:'center', gap:2 }}>
+                      <span style={{ fontSize:7 }}>📍</span>{userLocation}
+                    </div>
+                  )}
                 </div>
                 {/* Orbital ring centered in column */}
                 <OrbitalRing size={lsRing}
@@ -4604,6 +4821,11 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                 <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', fontWeight:600, marginTop:4, letterSpacing:'0.04em', textTransform:'uppercase' }}>
                   {nowTime.toLocaleDateString('id-ID',{ weekday:'long', day:'numeric', month:'long' })}
                 </div>
+                {userLocation && (
+                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.28)', fontWeight:600, marginTop:3, letterSpacing:'0.04em', display:'flex', alignItems:'center', gap:3 }}>
+                    <span style={{ fontSize:9 }}>📍</span>{userLocation}
+                  </div>
+                )}
               </div>
             )}
 
@@ -4622,6 +4844,11 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                   <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', fontWeight:600, marginTop:3, letterSpacing:'0.04em', textTransform:'uppercase', whiteSpace:'nowrap' }}>
                     {nowTime.toLocaleDateString('id-ID',{ weekday:'short', day:'numeric', month:'short' })}
                   </div>
+                  {userLocation && (
+                    <div style={{ fontSize:8, color:'rgba(255,255,255,0.28)', fontWeight:600, marginTop:2, letterSpacing:'0.04em', display:'flex', alignItems:'center', gap:2, whiteSpace:'nowrap' }}>
+                      <span style={{ fontSize:8 }}>📍</span>{userLocation}
+                    </div>
+                  )}
                 </div>
                 )}
 
@@ -4694,7 +4921,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
 
             {/* Main controls: Shuffle | Prev | Play | Next | Repeat */}
             <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:layoutVars.controlsGap, marginTop: (fullscreen && (layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait')) ? layoutVars.controlsMt : fullscreen ? 0 : layoutVars.controlsMt, width:'100%', maxWidth: fullscreen ? '100%' : layoutMode === 'mobile-landscape' ? undefined : 340 }}>
-              {!track.isRadio && <button onClick={()=>{ if(embedTrack?.type==='youtube'){ setShuffle(s=>{ const next=!s; if(next){ setRepeat('off'); ytShuffle(); } return next; }); } else if(track._wsSource && wsQueueRef.current.length > 0){ setShuffle(s=>{ const next=!s; if(next){ setRepeat('off'); wsShuffle(); } return next; }); } else { setShuffle(s=>{ const next=!s; if(next) setRepeat("off"); return next; }); } }} style={{ ...btn, color:shuffle?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', position:'relative', padding:'clamp(5px,1.2vw,8px)' }}>
+              {!track.isRadio && <button onClick={()=>{ if(embedTrack?.type==='youtube'){ setShuffle(s=>{ const next=!s; if(next) setRepeat('off'); else ytShufflePlayedRef.current=null; return next; }); } else if(track._wsSource && wsQueueRef.current.length > 0){ setShuffle(s=>{ const next=!s; if(next){ setRepeat('off'); wsShuffle(); } return next; }); } else { setShuffle(s=>{ const next=!s; if(next) setRepeat("off"); return next; }); } }} style={{ ...btn, color:shuffle?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', position:'relative', padding:'clamp(5px,1.2vw,8px)' }}>
                 <Shuffle size={18}/>
                 {shuffle&&<div style={{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:embedTrack?.type==='youtube'?'#ff4444':track.color }}/>}
               </button>}
@@ -4936,9 +5163,11 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                           {isShort && <span style={{ fontSize:9, fontWeight:700, padding:'1px 4px', borderRadius:4, background:'rgba(255,255,255,0.08)', color:'rgba(255,255,255,0.4)' }}>SHORT</span>}
                                         </div>
                                       </div>
-                                      <button onClick={e => { e.stopPropagation(); openNewTab(`https://www.youtube.com/watch?v=${v.videoId}`); }}
+                                      <a href={`https://www.youtube.com/watch?v=${v.videoId}`}
+                                        target="_blank" rel="noopener noreferrer"
+                                        onClick={e => e.stopPropagation()}
                                         title="Buka di YouTube"
-                                        style={{ background:'none', border:`1px solid ${platform.color}40`, borderRadius:6, color:platform.color, fontSize:10, fontWeight:700, padding:'3px 7px', cursor:'pointer', flexShrink:0, lineHeight:1.2 }}>↗</button>
+                                        style={{ background:'none', border:`1px solid ${platform.color}40`, borderRadius:6, color:platform.color, fontSize:10, fontWeight:700, padding:'3px 7px', cursor:'pointer', flexShrink:0, lineHeight:1.2, textDecoration:'none', display:'inline-flex', alignItems:'center' }}>↗</a>
                                     </div>
                                   );
                                 })}
@@ -5588,6 +5817,50 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                     <div style={{ textAlign:'center', padding:'24px 10px', color:'rgba(255,255,255,0.22)', fontSize:11 }}>
                                       <div style={{ fontSize:24, marginBottom:8 }}>🔍</div>
                                       Type a station name, genre, or city<br/>then press Enter — or pick a genre pill above
+                                    </div>
+                                  )}
+                                  {/* ── AI Fallback Results */}
+                                  {(rbAiLoading || rbAiResults.length > 0) && (
+                                    <div style={{ marginTop:10 }}>
+                                      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
+                                        <div style={{ fontSize:9, fontWeight:700, color:'#a78bfa', display:'flex', alignItems:'center', gap:4 }}>
+                                          <span>✦</span><span>AI Suggestion</span>
+                                        </div>
+                                        {rbAiLoading && <div style={{ width:8, height:8, borderRadius:'50%', border:'1.5px solid #a78bfa', borderTopColor:'transparent', animation:'spin 0.8s linear infinite' }}/>}
+                                      </div>
+                                      {rbAiLoading && (
+                                        <div style={{ textAlign:'center', padding:'12px 0', color:'rgba(255,255,255,0.3)', fontSize:10 }}>
+                                          Asking AI for station suggestions…
+                                        </div>
+                                      )}
+                                      {!rbAiLoading && rbAiResults.map((station, idx) => {
+                                        const stId = `rb_${station.stationuuid || station.id}`;
+                                        const isActive = track.isRadio && track.id === stId;
+                                        const srcColor = '#a78bfa';
+                                        const sStatus = stationStatus[station.id || station.stationuuid];
+                                        return (
+                                          <div key={`ai_${station.stationuuid}_${idx}`} onClick={() => playRbStation(station)}
+                                            style={{ display:'flex', alignItems:'center', gap:9, padding:'7px 9px', borderRadius:10, marginBottom:4, background: isActive ? `${srcColor}15` : 'rgba(167,139,250,0.05)', border:`1px solid ${isActive ? srcColor+'55' : sStatus==='fail' ? 'rgba(248,113,113,0.2)' : 'rgba(167,139,250,0.2)'}`, cursor:'pointer' }}>
+                                            <div style={{ width:32, height:32, borderRadius:7, overflow:'hidden', flexShrink:0, background:'rgba(167,139,250,0.12)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13 }}>
+                                              {(station.favicon||station.image) && (station.favicon||station.image).startsWith('http')
+                                                ? <img src={station.favicon||station.image} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{e.target.style.display='none';}} />
+                                                : '📻'}
+                                            </div>
+                                            <div style={{ flex:1, minWidth:0 }}>
+                                              <div style={{ fontSize:11, fontWeight:700, color: isActive ? srcColor : sStatus==='fail' ? 'rgba(255,255,255,0.4)' : 'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{station.name || station.title}</div>
+                                              <div style={{ fontSize:9, color:'rgba(255,255,255,0.3)', display:'flex', gap:5, alignItems:'center' }}>
+                                                <span style={{ color:srcColor, fontWeight:700 }}>✦ AI · RadioBrowser</span>
+                                                {station.country && <span>{station.country}{station.tags ? ' · '+String(station.tags).split(',')[0] : ''}</span>}
+                                                {sStatus === 'ok' && <span style={{ color:'#4ade80', fontWeight:800, fontSize:8 }}>✓ aktif</span>}
+                                                {sStatus === 'fail' && <span style={{ color:'#f87171', fontWeight:800, fontSize:8 }}>✕ offline</span>}
+                                              </div>
+                                            </div>
+                                            <div style={{ width:26, height:26, borderRadius:'50%', background: isActive && playing ? srcColor : sStatus==='fail' ? 'rgba(248,113,113,0.15)' : 'rgba(167,139,250,0.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color: sStatus==='fail' ? '#f87171' : 'white', flexShrink:0 }}>
+                                              {isActive && playing ? '⏸' : sStatus==='fail' ? '!' : '▶'}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
                                     </div>
                                   )}
                                 </div>
@@ -6623,7 +6896,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                     </div>
 
                     {/* Q3 — Bahasa */}
-                    <div style={{ marginBottom:28 }}>
+                    <div style={{ marginBottom:24 }}>
                       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14 }}>
                         <div style={{ width:5, height:18, borderRadius:99, background:'linear-gradient(to bottom,#22c55e,#06b6d4)' }}/>
                         <div style={{ fontSize:13, fontWeight:800, color:'white' }}>Bahasa konten?</div>
@@ -6644,6 +6917,29 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                       </div>
                     </div>
 
+                    {/* Q4 — Waktu */}
+                    <div style={{ marginBottom:28 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14 }}>
+                        <div style={{ width:5, height:18, borderRadius:99, background:'linear-gradient(to bottom,#f59e0b,#ef4444)' }}/>
+                        <div style={{ fontSize:13, fontWeight:800, color:'white' }}>Biasanya dengerin kapan?</div>
+                      </div>
+                      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
+                        {[
+                          { id:'pagi',   icon:'🌅', label:'Pagi', sub:'06–12' },
+                          { id:'siang',  icon:'☀️',  label:'Siang', sub:'12–17' },
+                          { id:'malam',  icon:'🌙', label:'Malam', sub:'17–24' },
+                          { id:'random', icon:'🎲', label:'Kapan saja', sub:'Mix' },
+                        ].map(td => (
+                          <button key={td.id} onClick={()=>setPersonaPrefs(p=>({ ...p, timeOfDay: personaPrefs.timeOfDay===td.id ? '' : td.id }))}
+                            style={{ padding:'12px 6px', borderRadius:14, border:`1.5px solid ${personaPrefs.timeOfDay===td.id?'#f59e0b70':'rgba(255,255,255,0.08)'}`, background:personaPrefs.timeOfDay===td.id?'rgba(245,158,11,0.15)':'rgba(255,255,255,0.03)', color:personaPrefs.timeOfDay===td.id?'white':'rgba(255,255,255,0.45)', fontSize:11, fontWeight:personaPrefs.timeOfDay===td.id?800:500, cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:4, transition:isLite?'none':'all 0.15s', gridColumn: td.id==='random'?'span 3':'span 1' }}>
+                            <span style={{ fontSize:20 }}>{td.icon}</span>
+                            <span style={{ fontWeight:700, fontSize:11.5 }}>{td.label}</span>
+                            <span style={{ fontSize:9.5, opacity:0.55 }}>{td.sub}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
                     {/* Count selected */}
                     {(personaPrefs.categories.length > 0 || personaPrefs.moods.length > 0) && (
                       <div style={{ textAlign:'center', fontSize:11, color:'rgba(255,255,255,0.35)', marginBottom:12 }}>
@@ -6655,17 +6951,18 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                       onClick={async () => {
                         if (!hasKey()) { alert(t?.aiOffline||'Tambahkan API key di Settings untuk menggunakan fitur ini.'); return; }
                         setPL(true);
+                        // BUG FIX 1: simpan prefs dulu sebelum fetch agar tidak hilang jika AI gagal
+                        localStorage.setItem('sn_persona_prefs', JSON.stringify(personaPrefs));
                         try {
                           const result = await fetchForYouSplit(personaPrefs, null, null);
                           if (result) {
                             setPersonaRecs(result);
                             localStorage.setItem('sn_persona_recs', JSON.stringify(result));
-                            localStorage.setItem('sn_persona_prefs', JSON.stringify(personaPrefs));
                             localStorage.setItem('sn_persona_done', '1');
                             localStorage.setItem('sn_persona_recs_ts', String(Date.now()));
                             setPersonaStep('result');
                           } else {
-                            alert('Failed to load recommendations. Please try again.');
+                            alert('Gagal memuat rekomendasi. Coba lagi.');
                           }
                         } catch (e) {
                           alert('Error: ' + e.message);
@@ -6704,7 +7001,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                               style={{ flex:1, padding:'9px 14px', borderRadius:12, border:`1px solid ${track.color}40`, background:`${track.color}15`, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, opacity:personaLoading?0.6:1 }}>
                               {personaLoading ? <><Loader2 size={12} style={{ animation:'spin 1s linear infinite' }}/> Updating…</> : <><Sparkles size={12}/> Refresh Feed</>}
                             </button>
-                            <button onClick={()=>{ setPersonaStep('onboard'); localStorage.removeItem('sn_persona_done'); }}
+                            <button onClick={()=>{ setPersonaStep('onboard'); setPersonaRecs(null); localStorage.removeItem('sn_persona_done'); localStorage.removeItem('sn_persona_recs'); localStorage.removeItem('sn_persona_recs_ts'); }}
                               style={{ padding:'9px 14px', borderRadius:12, border:'1px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.05)', color:'rgba(255,255,255,0.6)', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
                               <SlidersHorizontal size={12}/> Edit
                             </button>
@@ -6822,7 +7119,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                     {item.reason && (
                                       <div style={{ fontSize:9.5, color:'rgba(255,255,255,0.3)', lineHeight:1.45, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', marginBottom:8 }}>{item.reason}</div>
                                     )}
-                                    <button style={{ width:'100%', padding:'7px 0', borderRadius:10, border:'none', background:`${section.accent}22`, color:section.accent, fontSize:11, fontWeight:700, cursor:'pointer', letterSpacing:'0.01em' }}>
+                                    <button onClick={e=>{ e.stopPropagation(); item.onPlay(); }} style={{ width:'100%', padding:'7px 0', borderRadius:10, border:'none', background:`${section.accent}22`, color:section.accent, fontSize:11, fontWeight:700, cursor:'pointer', letterSpacing:'0.01em' }}>
                                       {item.btnLabel}
                                     </button>
                                   </div>
@@ -6962,14 +7259,18 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                 </div>
                               )}
 
-                              {/* Indo Trending */}
-                              {popularRecs.trending_indo?.length > 0 && (
+                              {/* Local Trending */}
+                              {(popularRecs.trending_local || popularRecs.trending_indo)?.length > 0 && (() => {
+                                const localData = popularRecs.trending_local || popularRecs.trending_indo;
+                                const localFlag = !userLocationCountry || userLocationCountry === 'ID' ? '🇮🇩' : '📍';
+                                const localTitle = userLocation ? `Trending di ${userLocation}` : 'Trending Indonesia';
+                                return (
                                 <div style={{ marginBottom:16 }}>
                                   <div style={{ padding:'0 16px 8px', fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.1em' }}>
-                                    🇮🇩 Trending Indonesia
+                                    {localFlag} {localTitle}
                                   </div>
                                   <div className="scrollbar-hide" style={{ display:'flex', gap:10, overflowX:'auto', paddingLeft:16, paddingRight:16, paddingBottom:4 }}>
-                                    {popularRecs.trending_indo.map((m, i) => (
+                                    {localData.map((m, i) => (
                                       <div key={i}
                                         onClick={() => {
                                           const q = `${m.title} ${m.artist}`;
@@ -6981,7 +7282,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                         onMouseEnter={e=>{ e.currentTarget.style.background='rgba(220,38,38,0.1)'; if(!isLite) e.currentTarget.style.transform='scale(1.02)'; }}
                                         onMouseLeave={e=>{ e.currentTarget.style.background='rgba(255,255,255,0.04)'; if(!isLite) e.currentTarget.style.transform='scale(1)'; }}>
                                         <div style={{ height:48, background:'linear-gradient(135deg,rgba(220,38,38,0.25),rgba(220,38,38,0.06))', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 12px' }}>
-                                          <span style={{ fontSize:22 }}>🇮🇩</span>
+                                          <span style={{ fontSize:22 }}>{localFlag}</span>
                                           <span style={{ fontSize:9, fontWeight:700, color:'#fca5a5', background:'rgba(220,38,38,0.2)', padding:'2px 7px', borderRadius:99 }}>#{i+1}</span>
                                         </div>
                                         <div style={{ padding:'10px 12px 12px' }}>
@@ -6994,7 +7295,8 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                                     ))}
                                   </div>
                                 </div>
-                              )}
+                                );
+                              })()}
                             </>
                           )}
                         </div>
@@ -7130,19 +7432,31 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                   </div>
                 )}
                 {messages.map((m,i)=>{
-                  // Deteksi rekomendasi lagu dari pesan AI: format "JUDUL - ARTIS" atau "JUDUL" by "ARTIS"
+                  // Use action tag from AI response (set in sendChat), fallback to pattern detection
                   let songRec = null;
+                  let radioRec = null;
                   if (m.from==='ai') {
-                    const patterns = [
-                      /[""]([^""]+)[""]\s*[-–]\s*([^\n,.(]+)/,
-                      /[""]([^""]+)[""]\s+by\s+([^\n,.(]+)/i,
-                      /^([^-\n]+)\s+-\s+([^\n]+)$/m,
-                    ];
-                    for (const pat of patterns) {
-                      const match = m.text.match(pat);
-                      if (match) {
-                        songRec = { title: match[1].trim(), artist: match[2].trim() };
-                        break;
+                    if (m.action?.type === 'yt') {
+                      // Parse "TITLE - ARTIST" from the tag query
+                      const parts = m.action.query.split(/\s*-\s*/);
+                      songRec = parts.length >= 2
+                        ? { title: parts.slice(0, -1).join(' - '), artist: parts[parts.length - 1] }
+                        : { title: m.action.query, artist: '' };
+                    } else if (m.action?.type === 'radio') {
+                      radioRec = { name: m.action.query };
+                    } else {
+                      // Fallback pattern detection for older messages without action tag
+                      const patterns = [
+                        /[\u201c\u201d]([^\u201c\u201d]+)[\u201c\u201d]\s*[-\u2013]\s*([^\n,.(]+)/,
+                        /[\u201c\u201d]([^\u201c\u201d]+)[\u201c\u201d]\s+by\s+([^\n,.(]+)/i,
+                        /^([^-\n]+)\s+-\s+([^\n]+)$/m,
+                      ];
+                      for (const pat of patterns) {
+                        const match = m.text.match(pat);
+                        if (match) {
+                          songRec = { title: match[1].trim(), artist: match[2].trim() };
+                          break;
+                        }
                       }
                     }
                   }
@@ -7160,27 +7474,32 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
                               s.title.toLowerCase().includes(songRec.title.toLowerCase()) ||
                               songRec.title.toLowerCase().includes(s.title.toLowerCase())
                             );
-                            if (found) {
-                              play(found);
-                              setTab('player');
-                              return;
-                            }
-                            // 2. Pindah ke Stream tab, isi query YouTube, langsung search
+                            if (found) { play(found); setTab('player'); return; }
+                            // 2. Search YouTube
                             const ytPlatformId = 'ytmusic';
-                            const query = `${songRec.title} ${songRec.artist}`;
+                            const query = songRec.artist ? `${songRec.title} ${songRec.artist}` : songRec.title;
                             setYtQuery(p=>({...p,[ytPlatformId]:query}));
                             setUnifiedPlatform('ytmusic');
                             setUnifiedQuery(query);
                             setTab('stream');
                             setTimeout(()=>{
                               searchYouTube(ytPlatformId, query);
-                              setTimeout(()=>{
-                                ytMusicSectionRef.current?.scrollIntoView({ behavior:'smooth', block:'start' });
-                              }, 300);
+                              setTimeout(()=>{ ytMusicSectionRef.current?.scrollIntoView({ behavior:'smooth', block:'start' }); }, 300);
                             }, 120);
                           }}
                           style={{ marginTop:6, display:'flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:999, border:`1px solid ${track.color}50`, background:`${track.color}18`, color:track.color, fontSize:11, fontWeight:700, cursor:'pointer' }}>
                           <Search size={11}/> {t?.searchYouTube||'Search on YouTube'}: {songRec.title}
+                        </button>
+                      )}
+                      {radioRec && (
+                        <button
+                          onClick={()=>{
+                            setUnifiedPlatform('radio');
+                            setTab('stream');
+                            setTimeout(()=>{ setRbMode('search'); setRbQuery(radioRec.name); rbSearch(radioRec.name, null); }, 300);
+                          }}
+                          style={{ marginTop:6, display:'flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:999, border:'1px solid rgba(251,146,60,0.5)', background:'rgba(251,146,60,0.12)', color:'#fb923c', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                          <Radio size={11}/> {t?.searchRadio||'Cari Radio'}: {radioRec.name}
                         </button>
                       )}
                     </div>
