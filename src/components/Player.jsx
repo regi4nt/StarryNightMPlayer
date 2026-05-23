@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { Loader2, Radio } from 'lucide-react';
+import { Loader2, Music, Radio } from 'lucide-react';
 import { btn, fmt } from '../constants.js';
 
 function AppLogo({ size = 32 }) {
