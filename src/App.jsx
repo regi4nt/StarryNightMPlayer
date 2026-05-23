@@ -124,6 +124,27 @@ export default function App() {
   const [ytError,   setYtError]   = useState({});
   const [ytTrending, setYtTrending] = useState([]); // live trending chips
   const [ytTrendingLoading, setYtTrendingLoading] = useState(false);
+  // ── YouTube search mode: 'video' | 'channel' | 'playlist' | 'genre'
+  const [ytSearchMode, setYtSearchMode] = useState('video');
+  // Genre list untuk YT search mode 'genre'
+  const YT_GENRES = [
+    { id: 'pop',       label: '🎵 Pop',        query: 'pop music hits' },
+    { id: 'rock',      label: '🎸 Rock',       query: 'rock music hits' },
+    { id: 'hiphop',    label: '🎤 Hip-Hop',    query: 'hip hop rap music' },
+    { id: 'rnb',       label: '🎶 R&B',        query: 'rnb soul music' },
+    { id: 'jazz',      label: '🎷 Jazz',       query: 'jazz music' },
+    { id: 'classical', label: '🎻 Classical',  query: 'classical music orchestral' },
+    { id: 'electronic',label: '🎛 Electronic', query: 'electronic dance music edm' },
+    { id: 'indie',     label: '🌿 Indie',      query: 'indie alternative music' },
+    { id: 'kpop',      label: '🇰🇷 K-Pop',    query: 'kpop korean music' },
+    { id: 'lofi',      label: '🌙 Lo-fi',      query: 'lofi hip hop chill beats' },
+    { id: 'metal',     label: '🤘 Metal',      query: 'metal rock heavy music' },
+    { id: 'acoustic',  label: '🪕 Acoustic',   query: 'acoustic guitar music' },
+    { id: 'latin',     label: '🌴 Latin',      query: 'latin music reggaeton' },
+    { id: 'country',   label: '🤠 Country',    query: 'country music' },
+    { id: 'gospel',    label: '✝️ Gospel',     query: 'gospel worship music' },
+    { id: 'dangdut',   label: '🇮🇩 Dangdut',  query: 'dangdut indonesia terbaru' },
+  ];
 
   // ── SoundCloud in-app search state (keyed by platform id)
   const [scQuery,   setScQuery]   = useState({});
@@ -439,8 +460,18 @@ export default function App() {
 
       if (sig.aborted) { setWsLoading(false); return; } // pencarian dibatalkan karena ada query baru
 
-      // ── Susun hasil: SC & SP dulu, lalu interleave sumber lain ──
+      // ── Susun hasil: sumber lain dulu, SC & SP paling bawah ──
       const merged = [];
+
+      // Interleave sumber lain terlebih dahulu
+      const maxLen = Math.max(archRes.length, jamRes.length, ccRes.length);
+      for (let i = 0; i < maxLen; i++) {
+        if (jamRes[i])  merged.push(jamRes[i]);
+        if (archRes[i]) merged.push(archRes[i]);
+        if (ccRes[i])   merged.push(ccRes[i]);
+      }
+
+      // SC & SP ditaruh paling bawah
       if (scHasKey && scWsRes.length > 0) merged.push({ type:'sc_section', source:'soundcloud_section', _items: scWsRes });
       else if (!scHasKey && scPubRes.length > 0) merged.push({ type:'sc_section', source:'soundcloud_section', _items: scPubRes });
       else merged.push({ type:'sc_embed', source:'soundcloud_embed', query: q });
@@ -448,14 +479,6 @@ export default function App() {
       if (spHasKey && spWsRes.length > 0) merged.push({ type:'sp_section', source:'spotify_section', _items: spWsRes });
       else if (!spHasKey && spPubRes.length > 0) merged.push({ type:'sp_section', source:'spotify_section', _items: spPubRes });
       else merged.push({ type:'sp_embed', source:'spotify_embed', query: q });
-
-      // Interleave sumber lain, dengan deduplikasi
-      const maxLen = Math.max(archRes.length, jamRes.length, ccRes.length);
-      for (let i = 0; i < maxLen; i++) {
-        if (jamRes[i])  merged.push(jamRes[i]);
-        if (archRes[i]) merged.push(archRes[i]);
-        if (ccRes[i])   merged.push(ccRes[i]);
-      }
 
       // Dedup merged (kecuali section/embed items yang sudah berbeda struktur)
       const dedupedMerged = merged.map(item => {
@@ -603,20 +626,67 @@ export default function App() {
     return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(tid));
   };
 
-  const searchViaYouTubeAPI = async (query) => {
+  const searchViaYouTubeAPI = async (query, searchMode = 'video') => {
     const userKey = getYtKey();
-    console.log('[YT] searchViaYouTubeAPI called, key:', userKey ? userKey.slice(0,8)+'…' : 'EMPTY', 'isEnabled:', isYtApiEnabled());
+    console.log('[YT] searchViaYouTubeAPI called, key:', userKey ? userKey.slice(0,8)+'…' : 'EMPTY', 'isEnabled:', isYtApiEnabled(), 'mode:', searchMode);
     if (!isYtApiEnabled()) return null;
     try {
       let res;
+
+      // ── MODE: channel / profile ──────────────────────────────────────────
+      if (searchMode === 'channel') {
+        const params = userKey
+          ? new URLSearchParams({ key: userKey, part: 'snippet', q: query, type: 'channel', maxResults: '10', fields: 'items(id/channelId,snippet/title,snippet/description,snippet/thumbnails/medium,snippet/customUrl)' })
+          : new URLSearchParams({ action: 'search', q: query, type: 'channel', maxResults: '10' });
+        const url = userKey
+          ? `https://www.googleapis.com/youtube/v3/search?${params}`
+          : `/api/youtube?${params}`;
+        res = await fetchWithTimeout(url, 8000);
+        if (res.status === 403 || res.status === 401) { const err = await res.json().catch(()=>({})); throw Object.assign(new Error('yt_api_auth'), { status: res.status, detail: err }); }
+        if (!res.ok) return null;
+        const data = await res.json();
+        const ch = (data.items || []).filter(i => i.id?.channelId);
+        if (ch.length === 0) return null;
+        return ch.map(i => ({
+          resultType: 'channel',
+          channelId: i.id.channelId,
+          title: i.snippet.title,
+          uploaderName: i.snippet.title,
+          description: i.snippet.description || '',
+          customUrl: i.snippet.customUrl || '',
+          thumbnail: i.snippet.thumbnails?.medium?.url || `https://yt3.googleusercontent.com/channel/${i.id.channelId}`,
+          channelUrl: `https://www.youtube.com/channel/${i.id.channelId}`,
+        }));
+      }
+
+      // ── MODE: playlist / album ───────────────────────────────────────────
+      if (searchMode === 'playlist') {
+        const params = userKey
+          ? new URLSearchParams({ key: userKey, part: 'snippet', q: query, type: 'playlist', maxResults: '10', fields: 'items(id/playlistId,snippet/title,snippet/channelTitle,snippet/thumbnails/medium,snippet/description)' })
+          : new URLSearchParams({ action: 'search', q: query, type: 'playlist', maxResults: '10' });
+        const url = userKey
+          ? `https://www.googleapis.com/youtube/v3/search?${params}`
+          : `/api/youtube?${params}`;
+        res = await fetchWithTimeout(url, 8000);
+        if (res.status === 403 || res.status === 401) { const err = await res.json().catch(()=>({})); throw Object.assign(new Error('yt_api_auth'), { status: res.status, detail: err }); }
+        if (!res.ok) return null;
+        const data = await res.json();
+        const pl = (data.items || []).filter(i => i.id?.playlistId);
+        if (pl.length === 0) return null;
+        return pl.map(i => ({
+          resultType: 'playlist',
+          playlistId: i.id.playlistId,
+          title: i.snippet.title,
+          uploaderName: i.snippet.channelTitle,
+          description: i.snippet.description || '',
+          thumbnail: i.snippet.thumbnails?.medium?.url || '',
+          playlistUrl: `https://www.youtube.com/playlist?list=${i.id.playlistId}`,
+        }));
+      }
+
+      // ── MODE: video (default) ────────────────────────────────────────────
       if (userKey) {
         // Direct ke Google — param minimal agar latency rendah
-        // FIX Bug 1: eventType:'none' dihapus — nilai tidak valid di YT API v3
-        // (hanya 'completed'|'live'|'upcoming' yang diterima; 'none' diabaikan Google)
-        // Filter live sudah ditangani di bawah via liveBroadcastContent === 'none'
-        // FIX Search: regionCode & relevanceLanguage dihapus — keduanya bias hasil ke konten
-        // berbahasa Indonesia sehingga pencarian lagu asing (English, Korean, dll) ngawur.
-        // YT API sudah cukup relevan tanpa kedua param ini; kategori Music (10) tetap dipakai.
         const params = new URLSearchParams({
           key: userKey, part: 'snippet', q: query, type: 'video',
           videoCategoryId: '10', maxResults: '10',
@@ -627,7 +697,6 @@ export default function App() {
         });
         res = await fetchWithTimeout(`https://www.googleapis.com/youtube/v3/search?${params}`, 6000);
       } else {
-        // Tidak ada user key — pakai server proxy /api/youtube (butuh YOUTUBE_API_KEY di env Vercel)
         const params = new URLSearchParams({
           action: 'search', q: query, maxResults: '10',
           videoDuration: 'any',
@@ -657,16 +726,63 @@ export default function App() {
         url: `/watch?v=${i.id.videoId}`,
       }));
     } catch (e) {
-      // FIX Bug 2: re-throw error auth (403/401) agar caller (searchYouTube) bisa
-      // mendeteksi quota habis dan fallback dengan benar.
-      // Sebelumnya catch { return null } menelan error ini sehingga throw di atas
-      // tidak pernah sampai ke caller.
       if (e.message === 'yt_api_auth') throw e;
       return null;
     }
   };
 
-  const searchViaPiped = async (query) => {
+  const searchViaPiped = async (query, searchMode = 'video') => {
+    // Mode channel/playlist: Piped supports channel/playlist search via filter param
+    if (searchMode === 'channel') {
+      const tryChannel = async (base) => {
+        try {
+          const res = await fetchWithTimeout(buildPipedUrl(base, '/search', { q: query, filter: 'channels' }), 5000);
+          if (!res.ok) return null;
+          const data = await res.json();
+          const items = (data.items || []).filter(i => i.type === 'channel' && i.url);
+          if (items.length === 0) throw new Error('empty');
+          return items.slice(0, 10).map(i => {
+            const chId = (i.url || '').replace('/channel/', '');
+            return {
+              resultType: 'channel',
+              channelId: chId,
+              title: i.name || i.title || '',
+              uploaderName: i.name || i.title || '',
+              description: i.description || '',
+              thumbnail: i.thumbnail || i.avatar || '',
+              channelUrl: `https://www.youtube.com/channel/${chId}`,
+              subscriberCount: i.subscriberCount || 0,
+            };
+          });
+        } catch { return null; }
+      };
+      try { return await Promise.any(PIPED_INSTANCES.map(tryChannel)); } catch { return null; }
+    }
+    if (searchMode === 'playlist') {
+      const tryPlaylist = async (base) => {
+        try {
+          const res = await fetchWithTimeout(buildPipedUrl(base, '/search', { q: query, filter: 'playlists' }), 5000);
+          if (!res.ok) return null;
+          const data = await res.json();
+          const items = (data.items || []).filter(i => i.type === 'playlist' && i.url);
+          if (items.length === 0) throw new Error('empty');
+          return items.slice(0, 10).map(i => {
+            const plId = (i.url || '').replace('/playlist?list=', '');
+            return {
+              resultType: 'playlist',
+              playlistId: plId,
+              title: i.name || i.title || '',
+              uploaderName: i.uploaderName || i.uploader || '',
+              thumbnail: i.thumbnail || '',
+              videoCount: i.videos || 0,
+              playlistUrl: `https://www.youtube.com/playlist?list=${plId}`,
+            };
+          });
+        } catch { return null; }
+      };
+      try { return await Promise.any(PIPED_INSTANCES.map(tryPlaylist)); } catch { return null; }
+    }
+
     // FIX Search: tambahkan music context agar Piped tidak return video random yang
     // kebetulan mengandung kata query. Piped tidak punya videoCategoryId seperti YT API,
     // jadi hint "official audio" / "music" di query adalah satu-satunya cara mengarahkan.
@@ -754,7 +870,51 @@ export default function App() {
     } catch { return null; }
   };
 
-  const searchViaInvidious = async (query) => {
+  const searchViaInvidious = async (query, searchMode = 'video') => {
+    // Mode channel
+    if (searchMode === 'channel') {
+      const tryChannel = async (base) => {
+        try {
+          const res = await fetchWithTimeout(buildInvidiousUrl(base, '/api/v1/search', { q: query, type: 'channel', fields: 'authorId,author,authorThumbnails,subCount,description' }), 5000);
+          if (!res.ok) return null;
+          const data = await res.json();
+          if (!Array.isArray(data) || data.length === 0) return null;
+          return data.slice(0, 10).map(i => ({
+            resultType: 'channel',
+            channelId: i.authorId,
+            title: i.author,
+            uploaderName: i.author,
+            description: i.description || '',
+            thumbnail: (i.authorThumbnails || []).find(t => t.width >= 80)?.url || `https://yt3.googleusercontent.com/channel/${i.authorId}`,
+            channelUrl: `https://www.youtube.com/channel/${i.authorId}`,
+            subscriberCount: i.subCount || 0,
+          }));
+        } catch { return null; }
+      };
+      try { return await Promise.any(INVIDIOUS_INSTANCES.map(tryChannel)); } catch { return null; }
+    }
+    // Mode playlist
+    if (searchMode === 'playlist') {
+      const tryPlaylist = async (base) => {
+        try {
+          const res = await fetchWithTimeout(buildInvidiousUrl(base, '/api/v1/search', { q: query, type: 'playlist', fields: 'playlistId,title,author,videoCount,playlistThumbnail' }), 5000);
+          if (!res.ok) return null;
+          const data = await res.json();
+          if (!Array.isArray(data) || data.length === 0) return null;
+          return data.slice(0, 10).map(i => ({
+            resultType: 'playlist',
+            playlistId: i.playlistId,
+            title: i.title,
+            uploaderName: i.author,
+            thumbnail: i.playlistThumbnail || '',
+            videoCount: i.videoCount || 0,
+            playlistUrl: `https://www.youtube.com/playlist?list=${i.playlistId}`,
+          }));
+        } catch { return null; }
+      };
+      try { return await Promise.any(INVIDIOUS_INSTANCES.map(tryPlaylist)); } catch { return null; }
+    }
+
     // FIX Search: sama seperti Piped, Invidious tidak punya category filter.
     // Tambahkan hint musik ke query pendek agar hasil lebih relevan.
     const musicKeywords = /official|audio|music|mv|live|lyric|cover|remix|video/i;
@@ -1075,22 +1235,29 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
       return s;
     };
 
-    // Stable sort: item dengan skor sama tetap di urutan asli (preserves backend ranking)
-    return [...items]
+    // Stable sort + filter relevansi:
+    // Hanya tampilkan item yang memiliki skor positif (minimal 1 token query cocok di judul/artis)
+    const scored = [...items]
       .map((item, idx) => ({ item, score: score(item), idx }))
-      .sort((a, b) => b.score - a.score || a.idx - b.idx)
-      .map(x => x.item);
+      .filter(x => x.score > 0)             // buang hasil yang sama sekali tidak relevan
+      .sort((a, b) => b.score - a.score || a.idx - b.idx);
+
+    // Jika semua hasil terbuang (query terlalu spesifik / typo), kembalikan semua (fallback urutan asli)
+    return scored.length > 0 ? scored.map(x => x.item) : items;
   };
 
-  const searchYouTube = async (platformId, query) => {
+  const searchYouTube = async (platformId, query, searchMode) => {
     if (!query.trim()) return;
+    const mode = searchMode || ytSearchMode || 'video';
 
-    // Deteksi URL YouTube → langsung play
-    const ytUrlMatch = query.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
-    if (ytUrlMatch) {
-      const videoId = ytUrlMatch[1];
-      playYouTube({ videoId, title: query, uploaderName: 'YouTube', duration: 0, thumbnail: `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg` }, [], 0);
-      return;
+    // Deteksi URL YouTube → langsung play (hanya untuk mode video)
+    if (mode === 'video') {
+      const ytUrlMatch = query.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+      if (ytUrlMatch) {
+        const videoId = ytUrlMatch[1];
+        playYouTube({ videoId, title: query, uploaderName: 'YouTube', duration: 0, thumbnail: `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg` }, [], 0);
+        return;
+      }
     }
 
     setYtLoading(p => ({...p, [platformId]: true}));
@@ -1098,7 +1265,7 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
     setYtResults(p => ({...p, [platformId]: []}));
 
     // ── Cache hit: tampilkan instan
-    const cached = ytSearchCacheGet(query);
+    const cached = ytSearchCacheGet(query + '_' + mode);
     if (cached) {
       setYtResults(p => ({...p, [platformId]: cached}));
       setYtLoading(p => ({...p, [platformId]: false}));
@@ -1114,14 +1281,14 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
     };
 
     const ytApiEnabled = isYtApiEnabled();
-    console.log('[YT] searchYouTube: key=', getYtKey() ? getYtKey().slice(0,8)+'…' : 'EMPTY', 'enabled:', ytApiEnabled);
+    console.log('[YT] searchYouTube: key=', getYtKey() ? getYtKey().slice(0,8)+'…' : 'EMPTY', 'enabled:', ytApiEnabled, 'mode:', mode);
 
     // ── PATH A: YT API tersedia — jalankan DULUAN sebagai satu-satunya sumber utama
     // Piped/Invidious TIDAK dijalankan paralel agar tidak mencemari urutan hasil
     if (ytApiEnabled) {
       let ytItems = null;
       try {
-        ytItems = await searchViaYouTubeAPI(query);
+        ytItems = await searchViaYouTubeAPI(query, mode);
       } catch (err) {
         // 403/401 = quota habis atau key invalid — langsung fallback, tidak perlu tunggu timeout
         if (err?.status === 403 || err?.status === 401) {
@@ -1130,10 +1297,10 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
         // error lain (network timeout dsb.) juga jatuh ke fallback
       }
       if (ytItems && ytItems.length > 0) {
-        const ranked = rankYtResults(ytItems, query);
+        const ranked = mode === 'video' ? rankYtResults(ytItems, query) : ytItems;
         setYtResults(p => ({...p, [platformId]: ranked}));
         setYtLoading(p => ({...p, [platformId]: false}));
-        ytSearchCacheSet(query, ranked);
+        ytSearchCacheSet(query + '_' + mode, ranked);
         return; // ← selesai, tidak perlu fallback
       }
       console.warn('[YT] YT API tidak menghasilkan data — fallback ke Piped/Invidious');
@@ -1144,8 +1311,8 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
     // lalu merge dengan yang kedua jika selesai dalam 1500ms setelahnya
     let allItems = [];
 
-    const pipedPromise = searchViaPiped(query).catch(() => null);
-    const invidiousPromise = searchViaInvidious(query).catch(() => null);
+    const pipedPromise = searchViaPiped(query, mode).catch(() => null);
+    const invidiousPromise = searchViaInvidious(query, mode).catch(() => null);
 
     // Tunggu yang pertama selesai dengan hasil valid
     const raceResult = await Promise.any([
@@ -1154,46 +1321,52 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
     ]).catch(() => null);
 
     if (raceResult && raceResult.items && raceResult.items.length > 0) {
-      allItems = rankYtResults(raceResult.items, query);
+      allItems = mode === 'video' ? rankYtResults(raceResult.items, query) : raceResult.items;
       // Tampil langsung — jangan tunggu source kedua
       setYtResults(p => ({...p, [platformId]: allItems}));
       setYtLoading(p => ({...p, [platformId]: false}));
-      ytSearchCacheSet(query, allItems);
+      ytSearchCacheSet(query + '_' + mode, allItems);
 
-      // Merge dari source lain jika selesai cepat (max 1500ms tambahan)
-      const otherPromise = raceResult.src === 'piped' ? invidiousPromise : pipedPromise;
-      const timeout1500 = new Promise(r => setTimeout(() => r(null), 1500));
-      const otherResult = await Promise.race([otherPromise, timeout1500]);
-      let finalItems = allItems;
-      if (otherResult && otherResult.length > 0) {
-        const seen = new Set(allItems.map(x => x.videoId));
-        const extra = otherResult.filter(x => x.videoId && !seen.has(x.videoId));
-        if (extra.length > 0) {
-          // Re-rank setelah merge: gabungan dua source, sort ulang berdasarkan relevansi
-          finalItems = rankYtResults([...allItems, ...extra], query).slice(0, 20);
-          setYtResults(p => ({...p, [platformId]: finalItems}));
-          ytSearchCacheSet(query, finalItems);
+      // Merge dari source lain jika selesai cepat (max 1500ms tambahan) — hanya untuk mode video
+      if (mode === 'video') {
+        const otherPromise = raceResult.src === 'piped' ? invidiousPromise : pipedPromise;
+        const timeout1500 = new Promise(r => setTimeout(() => r(null), 1500));
+        const otherResult = await Promise.race([otherPromise, timeout1500]);
+        let finalItems = allItems;
+        if (otherResult && otherResult.length > 0) {
+          const seen = new Set(allItems.map(x => x.videoId));
+          const extra = otherResult.filter(x => x.videoId && !seen.has(x.videoId));
+          if (extra.length > 0) {
+            // Re-rank setelah merge: gabungan dua source, sort ulang berdasarkan relevansi
+            finalItems = rankYtResults([...allItems, ...extra], query).slice(0, 20);
+            setYtResults(p => ({...p, [platformId]: finalItems}));
+            ytSearchCacheSet(query + '_' + mode, finalItems);
+          }
         }
+        // Verifikasi playability background — hapus video yang tidak bisa diputar
+        // FIX Bug 4: pass query agar cache key tidak stale jika user cepat search lagi
+        verifyYtPlayableBatch(finalItems, platformId, query);
       }
-      // Verifikasi playability background — hapus video yang tidak bisa diputar
-      // FIX Bug 4: pass query agar cache key tidak stale jika user cepat search lagi
-      verifyYtPlayableBatch(finalItems, platformId, query);
       return;
     }
 
-    // Semua sumber gagal — coba AI sebagai last resort (tidak butuh key user)
-    const aiItems = await searchViaAI(query).catch(() => null);
-    if (aiItems && aiItems.length > 0) {
-      allItems = rankYtResults(aiItems, query);
-      setYtResults(p => ({...p, [platformId]: allItems}));
-      // FIX Bug 1: AI fallback juga perlu verifikasi embed — LLM bisa halusin videoId
-      verifyYtPlayableBatch(allItems, platformId, query);
+    // Semua sumber gagal — coba AI sebagai last resort (hanya untuk mode video)
+    if (mode === 'video') {
+      const aiItems = await searchViaAI(query).catch(() => null);
+      if (aiItems && aiItems.length > 0) {
+        allItems = rankYtResults(aiItems, query);
+        setYtResults(p => ({...p, [platformId]: allItems}));
+        // FIX Bug 1: AI fallback juga perlu verifikasi embed — LLM bisa halusin videoId
+        verifyYtPlayableBatch(allItems, platformId, query);
+      } else {
+        setYtError(p => ({...p, [platformId]: t?.searchFailed||'Search failed. Coba lagi atau masukkan YouTube API key di Settings.'}));
+      }
     } else {
-      setYtError(p => ({...p, [platformId]: t?.searchFailed||'Search failed. Coba lagi atau masukkan YouTube API key di Settings.'}));
+      setYtError(p => ({...p, [platformId]: `Hasil tidak ditemukan untuk "${query}". Coba kata kunci lain.`}));
     }
     setYtLoading(p => ({...p, [platformId]: false}));
 
-    if (allItems.length > 0) ytSearchCacheSet(query, allItems);
+    if (allItems.length > 0) ytSearchCacheSet(query + '_' + mode, allItems);
   };
 
   const playYouTube = (item, queue, queueIdx) => {
@@ -2977,6 +3150,13 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       // Append Garden ke antrean navigasi, pertahankan kurasi + RB yang sudah ada
       const existingNonGarden = rbBrowseRef.current.filter(s => !s.id?.startsWith('garden_'));
       rbBrowseRef.current = [...existingNonGarden, ...stations];
+      // ── Health check: cek apakah setiap stasiun Garden bisa diakses
+      if (stations.length > 0) {
+        testStationsInGenre({
+          id: `garden__${key}`,
+          stations: stations.map(s => ({ id: s.id, url: s.url })),
+        });
+      }
     } catch(e) {
       setGardenBrowseError('Failed to load from Radio Garden.');
     } finally {
@@ -3413,43 +3593,100 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
 
     // ── AI Fallback: jika hasil terlalu sedikit dan ada query teks, minta AI sarankan stasiun
     // lalu cari nama-nama itu di RadioBrowser (source nyata, bukan imajinasi AI)
-    if (q && results.length < 5) {
+    if (q && results.length < 8) {
       setRbAiLoading(true);
       setRbAiResults([]);
       try {
-        const aiPrompt = `Suggest 5 real internet radio stations for: "${query}".
-Return ONLY a JSON array of station names, no explanation:
-["Station Name 1", "Station Name 2", "Station Name 3", "Station Name 4", "Station Name 5"]
-Rules: use real, well-known station names that likely exist on RadioBrowser or internet. Prefer genre-appropriate stations.`;
-        const aiSystem = 'You are a radio station expert. Return only a JSON array of 5 real station name strings. No extra text.';
+        const aiPrompt = `You are a radio station expert. The user is searching for: "${query}".
+Suggest 6 real internet radio stations that match this query. These stations must be real and well-known.
+Return ONLY a valid JSON array of objects. No explanation, no markdown, no extra text.
+Format exactly:
+[
+  {"name": "Station Name", "genre": "Genre", "country": "Country Code e.g. US"},
+  ...
+]`;
+        const aiSystem = 'Return only a valid JSON array of radio station objects with keys: name, genre, country. No extra text.';
         const aiText = await askAIRace(aiPrompt, aiSystem);
         // Parse JSON dari respons AI
         const clean = aiText.replace(/```json|```/g, '').trim();
         let suggestions = [];
-        try { suggestions = JSON.parse(clean); } catch { suggestions = []; }
+        try { suggestions = JSON.parse(clean); } catch {
+          // Fallback: coba extract array string jika format berbeda
+          const arrMatch = clean.match(/\[[\s\S]*\]/);
+          if (arrMatch) try { suggestions = JSON.parse(arrMatch[0]); } catch {}
+        }
         if (!Array.isArray(suggestions) || suggestions.length === 0) throw new Error('bad parse');
-        // Cari setiap nama di RadioBrowser
+
+        // Normalize: support both string[] dan object[]
+        const normalized = suggestions.slice(0, 6).map(s =>
+          typeof s === 'string' ? { name: s, genre: '', country: '' } : s
+        );
+
+        // Cari setiap nama di RadioBrowser — fuzzy: coba nama penuh, lalu kata pertama
         const rbBase = await getRbServer();
         const aiStations = [];
         const seen = new Set(results.map(s => (s.name||'').toLowerCase()));
-        for (const name of suggestions.slice(0, 5)) {
-          if (typeof name !== 'string' || name.trim().length < 2) continue;
+        for (const sug of normalized) {
+          if (!sug.name || String(sug.name).trim().length < 2) continue;
+          const nameTrim = String(sug.name).trim();
+          let found = [];
           try {
-            const url = `${rbBase}/json/stations/search?name=${encodeURIComponent(name.trim())}&limit=3&hidebroken=true&order=votes&reverse=true`;
-            const found = await fetch(url, { signal: AbortSignal.timeout(4000) }).then(r => r.json());
-            for (const s of (found || []).slice(0, 2)) {
+            // Coba nama penuh dulu
+            const url = `${rbBase}/json/stations/search?name=${encodeURIComponent(nameTrim)}&limit=3&hidebroken=true&order=votes&reverse=true`;
+            found = await fetch(url, { signal: AbortSignal.timeout(4000) }).then(r => r.json()).catch(() => []);
+
+            // Jika tidak ada hasil, coba kata pertama + kata kedua sebagai query
+            if (!found || found.length === 0) {
+              const shortName = nameTrim.split(' ').slice(0, 2).join(' ');
+              if (shortName !== nameTrim && shortName.length >= 3) {
+                const url2 = `${rbBase}/json/stations/search?name=${encodeURIComponent(shortName)}&limit=3&hidebroken=true&order=votes&reverse=true`;
+                found = await fetch(url2, { signal: AbortSignal.timeout(3000) }).then(r => r.json()).catch(() => []);
+              }
+            }
+          } catch {}
+
+          if (found && found.length > 0) {
+            // Ambil stasiun terbaik (sudah diurutkan by votes)
+            for (const s of found.slice(0, 2)) {
               if (!s.url_resolved && !s.url) continue;
               const nameLow = (s.name||'').toLowerCase();
               if (seen.has(nameLow)) continue;
               seen.add(nameLow);
-              aiStations.push({ ...s, sourceLabel: 'AI · RadioBrowser', color: '#a78bfa' });
+              aiStations.push({
+                ...s,
+                sourceLabel: 'AI · RadioBrowser',
+                color: '#a78bfa',
+                _aiGenre: sug.genre || '',
+                _aiCountry: sug.country || '',
+              });
             }
-          } catch { /* satu stasiun gagal, lanjut */ }
+          } else {
+            // Tidak ditemukan di RadioBrowser — tampilkan sebagai saran tanpa stream (info saja)
+            const nameLow = nameTrim.toLowerCase();
+            if (!seen.has(nameLow)) {
+              seen.add(nameLow);
+              aiStations.push({
+                stationuuid: `ai_${nameLow.replace(/\s+/g,'_')}`,
+                name: nameTrim,
+                tags: sug.genre || '',
+                country: sug.country || '',
+                url: '',
+                url_resolved: '',
+                favicon: '',
+                sourceLabel: 'AI · Saran',
+                color: '#a78bfa',
+                _notFound: true, // tidak ada di RadioBrowser
+              });
+            }
+          }
         }
         if (aiStations.length > 0) {
           setRbAiResults(aiStations);
-          // Health check untuk AI results
-          testStationsInGenre({ id: msKey + '__ai', stations: aiStations.map(s => ({ id: s.id || s.stationuuid, url: s.url })) });
+          // Health check hanya untuk stasiun yang punya URL
+          const playable = aiStations.filter(s => s.url || s.url_resolved);
+          if (playable.length > 0) {
+            testStationsInGenre({ id: msKey + '__ai', stations: playable.map(s => ({ id: s.id || s.stationuuid, url: s.url })) });
+          }
         }
       } catch { /* AI gagal = tidak apa-apa, hasil reguler sudah ada */ }
       setRbAiLoading(false);
@@ -5113,12 +5350,13 @@ Rules: use real, well-known station names that likely exist on RadioBrowser or i
                   if (!unifiedQuery.trim()) return;
                   if (unifiedPlatform === 'ytmusic') {
                     setYtQuery(p => ({...p, ytmusic: unifiedQuery}));
-                    searchYouTube('ytmusic', unifiedQuery);
+                    searchYouTube('ytmusic', unifiedQuery, ytSearchMode);
                   } else if (unifiedPlatform === 'websearch') {
                     setWsQuery(unifiedQuery);
                     doWebSearch(unifiedQuery);
                   }
                 };
+
                 return (
                   <div style={{ marginBottom:8 }}>
                     {/* Platform filter tabs */}
@@ -5134,11 +5372,11 @@ Rules: use real, well-known station names that likely exist on RadioBrowser or i
                         );
                       })}
                     </div>
-                    {/* Search input */}
+                    {/* Search input — selalu tampil */}
                     <div style={{ display:'flex', gap:6 }}>
                       <div style={{ flex:1, display:'flex', alignItems:'center', gap:6, background:'rgba(0,0,0,0.35)', borderRadius:999, padding:'7px 13px', border:`1.5px solid ${activePlat.color}35` }}>
                         <Search size={12} style={{ color:activePlat.color, flexShrink:0 }}/>
-                        <input type="text" placeholder={activePlat.hint}
+                        <input type="text" placeholder={activePlat.hint || 'Cari lagu, artis…'}
                           value={unifiedQuery}
                           onChange={e => setUnifiedQuery(e.target.value)}
                           onKeyDown={e => { if(e.key==='Enter') handleUnifiedSearch(); }}
@@ -5215,7 +5453,57 @@ Rules: use real, well-known station names that likely exist on RadioBrowser or i
                             {/* Results — with thumbnail & playing indicator */}
                             {!loading && results.length > 0 && (
                               <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:4 }}>
-                                {results.map((v, vi) => {
+                                {/* ── Tombol tutup hasil ── */}
+                                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:2 }}>
+                                  <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)', fontWeight:600 }}>{results.length} hasil</span>
+                                  <button onClick={() => { setYtResults(p=>({...p,[platform.id]:[]})); setYtQuery(p=>({...p,[platform.id]:''})); setUnifiedQuery(''); }}
+                                    style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:999, color:'rgba(255,255,255,0.45)', fontSize:10, fontWeight:700, padding:'2px 9px', cursor:'pointer', display:'flex', alignItems:'center', gap:4, lineHeight:1.4 }}>
+                                    ✕ Tutup
+                                  </button>
+                                </div>
+                                {/* ── Channel results ── */}
+                                {results[0]?.resultType === 'channel' && results.map((v, vi) => (
+                                  <a key={v.channelId || vi} href={v.channelUrl} target="_blank" rel="noopener noreferrer"
+                                    style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', textDecoration:'none', cursor:'pointer' }}
+                                    onMouseEnter={e=>{ e.currentTarget.style.background='rgba(255,68,68,0.08)'; e.currentTarget.style.borderColor='rgba(255,68,68,0.3)'; }}
+                                    onMouseLeave={e=>{ e.currentTarget.style.background='rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; }}>
+                                    <div style={{ width:38, height:38, borderRadius:999, background:'rgba(255,68,68,0.15)', flexShrink:0, overflow:'hidden' }}>
+                                      {v.thumbnail && <img src={v.thumbnail} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{ e.target.style.display='none'; }}/>}
+                                    </div>
+                                    <div style={{ flex:1, minWidth:0 }}>
+                                      <div style={{ fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.9)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{v.title}</div>
+                                      <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1, display:'flex', alignItems:'center', gap:4 }}>
+                                        <span>👤 Channel</span>
+                                        {v.subscriberCount > 0 && <span>· {v.subscriberCount >= 1000000 ? (v.subscriberCount/1000000).toFixed(1)+'M' : v.subscriberCount >= 1000 ? (v.subscriberCount/1000).toFixed(0)+'K' : v.subscriberCount} subs</span>}
+                                      </div>
+                                    </div>
+                                    <div style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:999, background:'rgba(255,68,68,0.15)', color:'#ff6b6b', flexShrink:0 }}>BUKA ↗</div>
+                                  </a>
+                                ))}
+                                {/* ── Playlist results ── */}
+                                {results[0]?.resultType === 'playlist' && results.map((v, vi) => (
+                                  <a key={v.playlistId || vi} href={v.playlistUrl} target="_blank" rel="noopener noreferrer"
+                                    style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', textDecoration:'none', cursor:'pointer' }}
+                                    onMouseEnter={e=>{ e.currentTarget.style.background='rgba(255,68,68,0.08)'; e.currentTarget.style.borderColor='rgba(255,68,68,0.3)'; }}
+                                    onMouseLeave={e=>{ e.currentTarget.style.background='rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; }}>
+                                    <div style={{ width:38, height:38, borderRadius:8, background:'rgba(255,68,68,0.15)', flexShrink:0, overflow:'hidden', position:'relative' }}>
+                                      {v.thumbnail && <img src={v.thumbnail} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{ e.target.style.display='none'; }}/>}
+                                      <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,0.3)' }}>
+                                        <span style={{ fontSize:14 }}>📂</span>
+                                      </div>
+                                    </div>
+                                    <div style={{ flex:1, minWidth:0 }}>
+                                      <div style={{ fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.9)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{v.title}</div>
+                                      <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1, display:'flex', alignItems:'center', gap:4 }}>
+                                        <span>{v.uploaderName || 'YouTube'}</span>
+                                        {v.videoCount > 0 && <span>· {v.videoCount} video</span>}
+                                      </div>
+                                    </div>
+                                    <div style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:999, background:'rgba(255,68,68,0.15)', color:'#ff6b6b', flexShrink:0 }}>BUKA ↗</div>
+                                  </a>
+                                ))}
+                                {/* ── Video results (default) ── */}
+                                {!results[0]?.resultType && results.map((v, vi) => {
                                   const secs = v.duration || v.lengthSeconds || 0;
                                   const dur  = secs > 0 ? `${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}` : '';
                                   const ch   = v.uploaderName || v.author || v.channel || 'YouTube';
@@ -5246,11 +5534,10 @@ Rules: use real, well-known station names that likely exist on RadioBrowser or i
                                           {isShort && <span style={{ fontSize:9, fontWeight:700, padding:'1px 4px', borderRadius:4, background:'rgba(255,255,255,0.08)', color:'rgba(255,255,255,0.4)' }}>SHORT</span>}
                                         </div>
                                       </div>
-                                      <a href={`https://www.youtube.com/watch?v=${v.videoId}`}
-                                        target="_blank" rel="noopener noreferrer"
-                                        onClick={e => e.stopPropagation()}
+                                      <button
+                                        onClick={e => { e.stopPropagation(); e.preventDefault(); window.open(`https://www.youtube.com/watch?v=${v.videoId}`, '_blank', 'noopener,noreferrer'); }}
                                         title="Buka di YouTube"
-                                        style={{ background:'none', border:`1px solid ${platform.color}40`, borderRadius:6, color:platform.color, fontSize:10, fontWeight:700, padding:'3px 7px', cursor:'pointer', flexShrink:0, lineHeight:1.2, textDecoration:'none', display:'inline-flex', alignItems:'center' }}>↗</a>
+                                        style={{ background:'none', border:`1px solid ${platform.color}40`, borderRadius:6, color:platform.color, fontSize:10, fontWeight:700, padding:'3px 7px', cursor:'pointer', flexShrink:0, lineHeight:1.2, display:'inline-flex', alignItems:'center' }}>↗</button>
                                     </div>
                                   );
                                 })}
@@ -5351,6 +5638,14 @@ Rules: use real, well-known station names that likely exist on RadioBrowser or i
                               {/* Results */}
                               {!wsLoading && wsResults.length > 0 && (
                                 <div style={{ display:'flex', flexDirection:'column', gap:4, marginTop:4 }}>
+                                  {/* ── Tombol tutup hasil ── */}
+                                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:2 }}>
+                                    <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)', fontWeight:600 }}>{wsResults.length} sumber</span>
+                                    <button onClick={() => { setWsResults([]); setWsQuery(''); setUnifiedQuery(''); }}
+                                      style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:999, color:'rgba(255,255,255,0.45)', fontSize:10, fontWeight:700, padding:'2px 9px', cursor:'pointer', display:'flex', alignItems:'center', gap:4, lineHeight:1.4 }}>
+                                      ✕ Tutup
+                                    </button>
+                                  </div>
                                   {wsResults.map((item, idx) => {
                                     // ── Spotify direct embed
                                     if (item.type === 'sp_embed_direct') return (
@@ -5921,9 +6216,11 @@ Rules: use real, well-known station names that likely exist on RadioBrowser or i
                                         const isActive = track.isRadio && track.id === stId;
                                         const srcColor = '#a78bfa';
                                         const sStatus = stationStatus[station.id || station.stationuuid];
+                                        const isNotFound = !!station._notFound;
                                         return (
-                                          <div key={`ai_${station.stationuuid}_${idx}`} onClick={() => playRbStation(station)}
-                                            style={{ display:'flex', alignItems:'center', gap:9, padding:'7px 9px', borderRadius:10, marginBottom:4, background: isActive ? `${srcColor}15` : 'rgba(167,139,250,0.05)', border:`1px solid ${isActive ? srcColor+'55' : sStatus==='fail' ? 'rgba(248,113,113,0.2)' : 'rgba(167,139,250,0.2)'}`, cursor:'pointer' }}>
+                                          <div key={`ai_${station.stationuuid}_${idx}`}
+                                            onClick={() => !isNotFound && playRbStation(station)}
+                                            style={{ display:'flex', alignItems:'center', gap:9, padding:'7px 9px', borderRadius:10, marginBottom:4, background: isActive ? `${srcColor}15` : isNotFound ? 'rgba(255,255,255,0.03)' : 'rgba(167,139,250,0.05)', border:`1px solid ${isActive ? srcColor+'55' : sStatus==='fail' ? 'rgba(248,113,113,0.2)' : isNotFound ? 'rgba(167,139,250,0.1)' : 'rgba(167,139,250,0.2)'}`, cursor: isNotFound ? 'default' : 'pointer', opacity: isNotFound ? 0.55 : 1 }}>
                                             <div style={{ width:32, height:32, borderRadius:7, overflow:'hidden', flexShrink:0, background:'rgba(167,139,250,0.12)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13 }}>
                                               {(station.favicon||station.image) && (station.favicon||station.image).startsWith('http')
                                                 ? <img src={station.favicon||station.image} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{e.target.style.display='none';}} />
@@ -5932,14 +6229,18 @@ Rules: use real, well-known station names that likely exist on RadioBrowser or i
                                             <div style={{ flex:1, minWidth:0 }}>
                                               <div style={{ fontSize:11, fontWeight:700, color: isActive ? srcColor : sStatus==='fail' ? 'rgba(255,255,255,0.4)' : 'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{station.name || station.title}</div>
                                               <div style={{ fontSize:9, color:'rgba(255,255,255,0.3)', display:'flex', gap:5, alignItems:'center' }}>
-                                                <span style={{ color:srcColor, fontWeight:700 }}>✦ AI · RadioBrowser</span>
-                                                {station.country && <span>{station.country}{station.tags ? ' · '+String(station.tags).split(',')[0] : ''}</span>}
+                                                <span style={{ color: isNotFound ? 'rgba(167,139,250,0.5)' : srcColor, fontWeight:700 }}>
+                                                  {isNotFound ? '✦ AI · Saran' : '✦ AI · RadioBrowser'}
+                                                </span>
+                                                {(station._aiGenre || station.tags) && <span>{(station._aiGenre || String(station.tags||'').split(',')[0])}</span>}
+                                                {(station._aiCountry || station.country) && <span>{station._aiCountry || station.country}</span>}
                                                 {sStatus === 'ok' && <span style={{ color:'#4ade80', fontWeight:800, fontSize:8 }}>✓ aktif</span>}
                                                 {sStatus === 'fail' && <span style={{ color:'#f87171', fontWeight:800, fontSize:8 }}>✕ offline</span>}
+                                                {isNotFound && <span style={{ color:'rgba(255,255,255,0.3)', fontSize:8 }}>· cari manual</span>}
                                               </div>
                                             </div>
-                                            <div style={{ width:26, height:26, borderRadius:'50%', background: isActive && playing ? srcColor : sStatus==='fail' ? 'rgba(248,113,113,0.15)' : 'rgba(167,139,250,0.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color: sStatus==='fail' ? '#f87171' : 'white', flexShrink:0 }}>
-                                              {isActive && playing ? '⏸' : sStatus==='fail' ? '!' : '▶'}
+                                            <div style={{ width:26, height:26, borderRadius:'50%', background: isNotFound ? 'rgba(255,255,255,0.05)' : isActive && playing ? srcColor : sStatus==='fail' ? 'rgba(248,113,113,0.15)' : 'rgba(167,139,250,0.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color: isNotFound ? 'rgba(255,255,255,0.2)' : sStatus==='fail' ? '#f87171' : 'white', flexShrink:0 }}>
+                                              {isNotFound ? '?' : isActive && playing ? '⏸' : sStatus==='fail' ? '!' : '▶'}
                                             </div>
                                           </div>
                                         );
