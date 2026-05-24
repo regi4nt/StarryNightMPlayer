@@ -2389,46 +2389,44 @@ Return ONLY valid JSON, no explanation:
         // Mobile Landscape — slim side icon nav (52px) + two-column player
         const sideNavW = 52;
         const mainW = vw - sideNavW;
-        const mainH = vh - HEADER_H_LANDSCAPE; // minus slim header
-        // Left col = ~45% of mainW; ring fills height minus padding
-        const ringColW = Math.round(mainW * 0.45);
-        const ring = Math.max(120, Math.min(mainH - 16, ringColW - 16));
+        const mainH = vh - HEADER_H_LANDSCAPE;
+        // Left col = ~42% of mainW; ring fits height with padding
+        const ringColW = Math.round(mainW * 0.42);
+        const ring = Math.max(110, Math.min(mainH - 12, ringColW - 20));
         setRingSize(ring);
-        // Compact but readable margins
         setLayoutVars({
           playerPad: '4px 10px 4px',
-          trackTitleSize: `clamp(13px,${Math.round((mainW - ringColW) * 0.065)}px,17px)`,
+          trackTitleSize: `clamp(12px,${Math.round((mainW - ringColW) * 0.06)}px,16px)`,
           artistSize: '10px',
           controlsGap: '10px',
-          actionPad: '4px 0',
-          volumeMt: '3px',
+          actionPad: '5px 0',
+          volumeMt: '4px',
           controlsMt: '4px',
-          infoMt: '3px',
+          infoMt: '4px',
         });
       } else {
         // Portrait: full-width stacked
-        // Fixed slots: header(46) + clock+location row(40) + badge(22) + info(h2+p ~48) + controls(56) + volume(34) + actions(48) + bottomNav(measured) + padding/gaps(20)
-        // Note: clock row is now in normal flow (not absolute)
-        const fixed = HEADER_H_NORMAL + 40 + 22 + 48 + 56 + 34 + 48 + bottomNavHRef.current + 20;
-        const byH = vh - fixed;
-        const byW = vw - 32;
-        const ring = Math.max(160, Math.min(300, Math.min(byH, byW)));
+        // Fixed slots (measured realistically):
+        //   header=46, clockRow=38, badge=20, trackInfo=44, controls=60, volume=32, actions=50, bottomNav(measured), gaps=16
+        const fixed = HEADER_H_NORMAL + 38 + 20 + 44 + 60 + 32 + 50 + bottomNavHRef.current + 16;
+        const availH = vh - fixed;
+        const availW = vw - 40;
+        // Ring: fits available space, capped tightly so elements don't overflow
+        const ring = Math.max(140, Math.min(availH, availW, 255));
         setRingSize(ring);
-        // Distribute remaining space tightly
+        // Remaining vertical space after ring — distribute as small uniform gaps
         const spare = Math.max(0, vh - fixed - ring);
-        const u = Math.round(spare / 12);
-        const clampPx = (min, max) => `${Math.max(min, Math.min(max, u))}px`;
-        const vpadTop = Math.max(4, Math.min(10, u));
-        const vpadBot = Math.max(2, Math.min(6, Math.floor(u * 0.5)));
+        const gapUnit = Math.round(spare / 10); // ~10 flex gaps in space-evenly
+        const clampPx = (min, max) => `${Math.max(min, Math.min(max, gapUnit))}px`;
         setLayoutVars({
-          playerPad: `${vpadTop}px 16px ${vpadBot}px`,
-          trackTitleSize: vw >= 390 ? '17px' : '15px',
+          playerPad: `${Math.max(6, Math.min(14, gapUnit))}px 16px ${Math.max(4, Math.min(8, Math.floor(gapUnit * 0.5)))}px`,
+          trackTitleSize: vw >= 390 ? '16px' : '14px',
           artistSize: '11px',
           controlsGap: vw >= 390 ? '14px' : '10px',
-          actionPad: `${clampPx(5, 9)} 0`,
-          volumeMt: clampPx(4, 10),
-          controlsMt: clampPx(5, 12),
-          infoMt: clampPx(4, 10),
+          actionPad: `${clampPx(6, 10)} 0`,
+          volumeMt: clampPx(2, 6),
+          controlsMt: clampPx(2, 6),
+          infoMt: clampPx(2, 6),
         });
       }
     };
@@ -5514,8 +5512,8 @@ Format exactly:
 
           {/* ═══ MOBILE LANDSCAPE — dedicated two-column layout ═══ */}
           {layoutMode === 'mobile-landscape' && (() => {
-            const lsRing = Math.min(ringSize, window.innerHeight - (fullscreen ? 16 : 80));
-            const lsColW = lsRing + 16;
+            const lsRing = Math.min(ringSize, window.innerHeight - (fullscreen ? 8 : 60));
+            const lsColW = lsRing + 20;
             const activeTitle = embedTrack ? (embedTrack.title || track.title) : track.title;
             const activeArtist = embedTrack ? (embedTrack.artist || track.artist) : `${track.artist} — ${track.album}`;
             return (
@@ -5534,9 +5532,9 @@ Format exactly:
                     {nowTime.toLocaleDateString('id-ID',{ weekday:'short', day:'numeric', month:'short' })}
                   </div>
                   {userLocation && (
-                    <div style={{ fontSize:7.5, color:'rgba(255,255,255,0.28)', fontWeight:600, marginTop:1.5, letterSpacing:'0.05em', display:'flex', alignItems:'center', gap:3, flexWrap:'wrap' }}>
-                      {userWeather && <span style={{ display:'flex', alignItems:'center', gap:2, color:'rgba(255,255,255,0.4)' }}>{userWeather.emoji} {userWeather.temp}{userWeather.unit}</span>}
-                      <span style={{ display:'flex', alignItems:'center', gap:2 }}><span style={{ fontSize:7 }}>📍</span>{userLocation}</span>
+                    <div style={{ fontSize:9, color:'rgba(255,255,255,0.45)', fontWeight:600, marginTop:2, letterSpacing:'0.04em', display:'flex', alignItems:'center', gap:3, flexWrap:'wrap' }}>
+                      {userWeather && <span style={{ display:'flex', alignItems:'center', gap:2, color:'rgba(255,255,255,0.6)' }}>{userWeather.emoji} {userWeather.temp}{userWeather.unit}</span>}
+                      <span style={{ display:'flex', alignItems:'center', gap:2 }}><span style={{ fontSize:8 }}>📍</span>{userLocation}</span>
                     </div>
                   )}
                 </div>
@@ -5556,7 +5554,7 @@ Format exactly:
               </div>
 
               {/* ── RIGHT col: title (atas) → controls (tengah) → volume → actions (bawah) ── */}
-              <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', justifyContent:'center', padding:'6px 14px 6px 6px', gap:0, overflow:'hidden' }}>
+              <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', justifyContent:'space-evenly', padding:'6px 14px 6px 6px', gap:0, overflow:'hidden' }}>
 
                 {/* ── Judul & badge — atas, centered ── */}
                 <div style={{ display:'flex', flexDirection:'column', alignItems:'center', marginBottom:6, minWidth:0, width:'100%' }}>
@@ -5630,12 +5628,12 @@ Format exactly:
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: fullscreen ? 'space-evenly' : (layoutMode === 'mobile-portrait' ? 'space-between' : (layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait') ? 'center' : 'flex-start'),
+            justifyContent: fullscreen ? 'space-evenly' : (layoutMode === 'mobile-portrait' ? 'flex-start' : (layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait') ? 'center' : 'flex-start'),
             padding: fullscreen ? '8px 24px 10px' : layoutVars.playerPad,
             position: 'relative',
             boxSizing: 'border-box',
             overflow: 'hidden',
-            gap: 0,
+            gap: layoutMode === 'mobile-portrait' && !fullscreen ? 'clamp(4px, 1.2vh, 10px)' : 0,
           }}>
 
             {/* ── JAM — pojok kiri atas area player (desktop only) */}
@@ -5762,7 +5760,7 @@ Format exactly:
             )}
 
             {/* Main controls: Shuffle | Prev | Play | Next | Repeat */}
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:layoutVars.controlsGap, marginTop: (fullscreen && (layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait')) ? layoutVars.controlsMt : fullscreen ? 0 : layoutMode === 'mobile-portrait' ? 0 : layoutVars.controlsMt, width:'100%', maxWidth: fullscreen ? '100%' : layoutMode === 'mobile-landscape' ? undefined : 340 }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:layoutVars.controlsGap, marginTop: layoutMode === 'mobile-portrait' && !fullscreen ? 0 : (fullscreen && (layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait')) ? layoutVars.controlsMt : fullscreen ? 0 : layoutVars.controlsMt, width:'100%', maxWidth: fullscreen ? '100%' : layoutMode === 'mobile-landscape' ? undefined : 340 }}>
               {!track.isRadio && <button onClick={()=>{ if(embedTrack?.type==='youtube'){ setShuffle(s=>{ const next=!s; if(next) setRepeat('off'); else ytShufflePlayedRef.current=null; return next; }); } else if(track._wsSource && wsQueueRef.current.length > 0){ setShuffle(s=>{ const next=!s; if(next){ setRepeat('off'); wsShuffle(); } return next; }); } else { setShuffle(s=>{ const next=!s; if(next) setRepeat("off"); return next; }); } }} style={{ ...btn, color:shuffle?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', position:'relative', padding:'clamp(5px,1.2vw,8px)' }}>
                 <Shuffle size={18}/>
                 {shuffle&&<div style={{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:embedTrack?.type==='youtube'?'#ff4444':track.color }}/>}
@@ -5779,14 +5777,14 @@ Format exactly:
             </div>
 
             {/* ── Volume row */}
-            <div style={{ display:'flex', alignItems:'center', gap:10, marginTop: (fullscreen && (layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait')) ? layoutVars.volumeMt : fullscreen ? 0 : layoutMode === 'mobile-portrait' ? 0 : layoutVars.volumeMt, width:'100%', maxWidth: fullscreen ? '100%' : layoutMode === 'mobile-landscape' ? '100%' : 340, padding:'4px 2px' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginTop: layoutMode === 'mobile-portrait' && !fullscreen ? 0 : (fullscreen && (layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait')) ? layoutVars.volumeMt : fullscreen ? 0 : layoutVars.volumeMt, width:'100%', maxWidth: fullscreen ? '100%' : layoutMode === 'mobile-landscape' ? '100%' : 340, padding:'4px 2px' }}>
               <button onClick={()=>setMuted(m=>!m)} style={{ ...btn, color:muted?'#ef4444':'rgba(255,255,255,0.38)', padding:4, flexShrink:0 }}>{muted?<VolumeX size={16}/>:<Volume2 size={16}/>}</button>
               <input type="range" min="0" max="1" step="0.01" value={muted?0:volume} onChange={e=>{setVolume(+e.target.value);setMuted(false)}} style={{ flex:1, accentColor:embedTrack?.type==='youtube'?'#ff4444':track.color, height:3, cursor:'pointer' }}/>
               <span style={{ fontSize:10, color:'rgba(255,255,255,0.28)', fontWeight:700, minWidth:28, textAlign:'right', fontFamily:'monospace', flexShrink:0 }}>{muted?'0':Math.round(volume*100)}%</span>
             </div>
 
             {/* ── Action buttons row */}
-            <div style={{ display:'flex', alignItems:'center', flexWrap: layoutMode === 'mobile-portrait' ? 'wrap' : 'nowrap', gap:4, marginTop: (fullscreen && (layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait')) ? layoutVars.volumeMt : fullscreen ? 0 : layoutMode === 'mobile-portrait' ? 0 : layoutVars.volumeMt, width:'100%', maxWidth: (fullscreen || layoutMode === 'mobile-landscape') ? '100%' : 340, justifyContent:'center' }}>
+            <div style={{ display:'flex', alignItems:'center', flexWrap: layoutMode === 'mobile-portrait' ? 'wrap' : 'nowrap', gap:4, marginTop: layoutMode === 'mobile-portrait' && !fullscreen ? 0 : (fullscreen && (layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait')) ? layoutVars.volumeMt : fullscreen ? 0 : layoutVars.volumeMt, marginBottom: layoutMode === 'mobile-portrait' && !fullscreen ? 4 : 0, width:'100%', maxWidth: (fullscreen || layoutMode === 'mobile-landscape') ? '100%' : 340, justifyContent:'center' }}>
               {/* Like */}
               {embedTrack?.type==='youtube'
                 ? (() => {
