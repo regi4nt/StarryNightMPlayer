@@ -1752,7 +1752,7 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
 
   // ── AI
   const [aiSubView, setAiSubView] = useState('chat'); // 'chat' | 'lyrics' | 'foryou'
-  const aiSwipeTouchRef = useRef({ x: 0, y: 0 }); // for swipe navigation between sub-tabs
+
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   // ── Personalisasi state
@@ -2028,20 +2028,40 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
   // ── PWA Install prompt
   const [pwaPrompt, setPwaPrompt] = useState(null);
   const [pwaInstalled, setPwaInstalled] = useState(false);
+  const [pwaBannerDismissed, setPwaBannerDismissed] = useState(() => {
+    try { return localStorage.getItem('pwa_banner_dismissed') === '1'; } catch { return false; }
+  });
+  const [pwaBannerVisible, setPwaBannerVisible] = useState(false);
 
   useEffect(() => {
-    const handler = e => { e.preventDefault(); setPwaPrompt(e); };
+    const handler = e => {
+      e.preventDefault();
+      setPwaPrompt(e);
+      setTimeout(() => setPwaBannerVisible(true), 3000);
+    };
     window.addEventListener('beforeinstallprompt', handler);
-    window.addEventListener('appinstalled', () => { setPwaInstalled(true); setPwaPrompt(null); });
-    // Cek apakah sudah diinstall (standalone mode)
+    window.addEventListener('appinstalled', () => { setPwaInstalled(true); setPwaPrompt(null); setPwaBannerVisible(false); });
     if (window.matchMedia('(display-mode: standalone)').matches) setPwaInstalled(true);
+    // Handle shortcut URLs: ?tab=stream / ?tab=library / ?tab=search
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    if (tabParam) {
+      const tabMap = { stream: 'stream', library: 'library', search: 'search' };
+      if (tabMap[tabParam]) setTimeout(() => setTab(tabMap[tabParam]), 500);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
   const installPwa = async () => {
     if (!pwaPrompt) return;
     pwaPrompt.prompt();
     const { outcome } = await pwaPrompt.userChoice;
-    if (outcome === 'accepted') { setPwaInstalled(true); setPwaPrompt(null); }
+    if (outcome === 'accepted') { setPwaInstalled(true); setPwaPrompt(null); setPwaBannerVisible(false); }
+  };
+  const dismissPwaBanner = () => {
+    setPwaBannerVisible(false);
+    setPwaBannerDismissed(true);
+    try { localStorage.setItem('pwa_banner_dismissed', '1'); } catch {}
   };
 
   // ── Online / Offline detection
@@ -2341,6 +2361,10 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
     a.volume = muted ? 0 : volume;
     // Lite: preload none (hemat bandwidth). Pro: metadata (baca durasi tanpa full buffer)
     a.preload = isLite ? 'none' : 'metadata';
+    // Mobile: izinkan playback di background / lock screen
+    a.setAttribute('playsinline', '');
+    a.setAttribute('webkit-playsinline', '');
+    a.setAttribute('x-webkit-airplay', 'allow');
     if (!track.isRadio) {
       a.crossOrigin = 'anonymous';
     }
@@ -2482,7 +2506,57 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
   // ── Sync playingRef
   useEffect(() => { playingRef.current = playing; }, [playing]);
 
-  // ── Play/pause
+  // ── Media Session API — lock screen controls & background playback on mobile
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+    const activeTrack = embedTrack || track;
+    const title  = activeTrack?.title  || 'Starry Night MPlayer';
+    const artist = activeTrack?.artist || '';
+    const album  = activeTrack?.album  || (track.isRadio ? 'Live Radio' : '');
+    const cover  = globalCover || getCover(track) || '/icon-512.png';
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title, artist, album,
+      artwork: [
+        { src: cover, sizes: '512x512', type: 'image/png' },
+        { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      ],
+    });
+    navigator.mediaSession.setActionHandler('play',           () => { setPlaying(true);  });
+    navigator.mediaSession.setActionHandler('pause',          () => { setPlaying(false); });
+    navigator.mediaSession.setActionHandler('stop',           () => { setPlaying(false); });
+    navigator.mediaSession.setActionHandler('previoustrack',  () => { if (track.isRadio) goPrevRadio(); else if (embedTrack?.type === 'youtube') ytPrev(); else goPrev(); });
+    navigator.mediaSession.setActionHandler('nexttrack',      () => { if (track.isRadio) goNextRadio(); else if (embedTrack?.type === 'youtube') ytNext(); else goNext(); });
+    if (!track.isRadio && !embedTrack) {
+      navigator.mediaSession.setActionHandler('seekbackward', (d) => {
+        const a = audioRef.current; if (!a) return;
+        a.currentTime = Math.max(0, a.currentTime - (d?.seekOffset ?? 10));
+      });
+      navigator.mediaSession.setActionHandler('seekforward',  (d) => {
+        const a = audioRef.current; if (!a) return;
+        a.currentTime = Math.min(a.duration || 0, a.currentTime + (d?.seekOffset ?? 10));
+      });
+    } else {
+      try { navigator.mediaSession.setActionHandler('seekbackward', null); } catch {}
+      try { navigator.mediaSession.setActionHandler('seekforward',  null); } catch {}
+    }
+    return () => {
+      try { navigator.mediaSession.setActionHandler('play',          null); } catch {}
+      try { navigator.mediaSession.setActionHandler('pause',         null); } catch {}
+      try { navigator.mediaSession.setActionHandler('stop',          null); } catch {}
+      try { navigator.mediaSession.setActionHandler('previoustrack', null); } catch {}
+      try { navigator.mediaSession.setActionHandler('nexttrack',     null); } catch {}
+      try { navigator.mediaSession.setActionHandler('seekbackward',  null); } catch {}
+      try { navigator.mediaSession.setActionHandler('seekforward',   null); } catch {}
+    };
+  }, [track, embedTrack, globalCover, playing]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Sync Media Session playback state
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+    navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
+  }, [playing]);
+
+
   useEffect(() => {
     // Control YouTube iframe when embedTrack is active
     if (embedTrack?.type === 'youtube') {
@@ -4838,6 +4912,41 @@ Format exactly:
   return (
     <div className={`${isLite ? 'lite-mode' : 'pro-mode'} layout-${layoutMode}`} style={{ position:'fixed', inset:0, overflow:'hidden', background:'#07071a', color:'#f1f5f9', fontFamily:"'Segoe UI',system-ui,sans-serif", display:'flex', flexDirection:'column', userSelect:'none', WebkitTapHighlightColor:'transparent' }}>
 
+      {/* ══ PWA INSTALL BANNER — floating bottom, appears when installable ══ */}
+      {!pwaInstalled && !pwaBannerDismissed && pwaBannerVisible && pwaPrompt && (
+        <div style={{
+          position:'fixed', bottom: layoutMode.startsWith('mobile') ? 80 : 24,
+          left:'50%', transform:'translateX(-50%)',
+          zIndex:9998, width: layoutMode.startsWith('mobile') ? 'calc(100% - 32px)' : 360,
+          maxWidth:400,
+          background:'linear-gradient(135deg,rgba(15,15,40,0.97),rgba(25,15,55,0.97))',
+          border:'1px solid rgba(99,102,241,0.4)',
+          borderRadius:18, padding:'14px 16px',
+          boxShadow:'0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(99,102,241,0.15)',
+          backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)',
+          display:'flex', alignItems:'center', gap:12,
+          animation:'slideUp 0.35s cubic-bezier(0.34,1.56,0.64,1)',
+        }}>
+          <style>{`@keyframes slideUp{from{opacity:0;transform:translateX(-50%) translateY(24px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}`}</style>
+          {/* Icon */}
+          <div style={{ width:42, height:42, borderRadius:12, background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:20 }}>🌟</div>
+          {/* Text */}
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontSize:13, fontWeight:800, color:'white', lineHeight:1.2 }}>Install Starry Night</div>
+            <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)', marginTop:2 }}>Akses lebih cepat · Pintasan layar utama</div>
+          </div>
+          {/* Buttons */}
+          <div style={{ display:'flex', gap:6, flexShrink:0 }}>
+            <button onClick={dismissPwaBanner} style={{ padding:'6px 10px', borderRadius:8, border:'1px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.45)', fontSize:11, cursor:'pointer', fontWeight:600 }}>
+              Nanti
+            </button>
+            <button onClick={installPwa} style={{ padding:'6px 14px', borderRadius:8, border:'none', background:'linear-gradient(135deg,#6366f1,#a855f7)', color:'white', fontSize:11, cursor:'pointer', fontWeight:800, whiteSpace:'nowrap' }}>
+              📲 Install
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* BG — Pro only */}
       {!isLite && <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, background:`radial-gradient(ellipse at 60% 10%,${track.color}20 0%,transparent 60%)` }}/>}
       {!isLite && <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, overflow:'hidden' }}><div className="stars"/><div className="starsB"/><div className="starsC"/></div>}
@@ -5345,8 +5454,8 @@ Format exactly:
                   )}
                 </div>
 
-                {/* ── Volume bar — full width ── */}
-                <div style={{ display:'flex', alignItems:'center', gap:8, width:'100%', marginBottom:7 }}>
+                {/* ── Volume bar — capped width ── */}
+                <div style={{ display:'flex', alignItems:'center', gap:8, width:'min(100%, 200px)', alignSelf:'center', marginBottom:7 }}>
                   <button onClick={()=>setMuted(m=>!m)} style={{ background:'none', border:'none', cursor:'pointer', color:muted?'#ef4444':'rgba(255,255,255,0.38)', padding:0, flexShrink:0 }}>{muted?<VolumeX size={14}/>:<Volume2 size={14}/>}</button>
                   <input type="range" min="0" max="1" step="0.01" value={muted?0:volume} onChange={e=>{setVolume(+e.target.value);setMuted(false)}} style={{ flex:1, accentColor:embedTrack?.type==='youtube'?'#ff4444':track.color, height:3, cursor:'pointer' }}/>
                   <span style={{ fontSize:10, color:'rgba(255,255,255,0.28)', fontWeight:700, minWidth:28, textAlign:'right', fontFamily:'monospace', flexShrink:0 }}>{muted?'0':Math.round(volume*100)}%</span>
@@ -6362,9 +6471,13 @@ Format exactly:
                                       { label:'💪 Semangat',   act: () => { setRbSelectedTag(null); setRbQuery('semangat'); multiSearch('semangat',null); }, isActive: rbQuery==='semangat', color:'#f59e0b' },
                                       { label:'😢 Galau',      act: () => { setRbSelectedTag(null); setRbQuery('galau'); multiSearch('galau',null); }, isActive: rbQuery==='galau', color:'#3b82f6' },
                                       { label:'🌙 Malam',      act: () => { setRbSelectedTag(null); setRbQuery('malam'); multiSearch('malam',null); }, isActive: rbQuery==='malam', color:'#a78bfa' },
-                                      { label:'● SomaFM',      act: () => { setRbSelectedTag(null); setRbQuery('somafm'); multiSearch('somafm',null); }, isActive: rbQuery==='somafm', color:'#10b981' },
-                                      { label:'● NTS',         act: () => { setRbSelectedTag(null); setRbQuery('nts'); multiSearch('nts',null); }, isActive: rbQuery==='nts', color:'#ff4500' },
-                                      { label:'● Garden',      act: () => { setRbSelectedTag(null); setRbQuery('radio garden'); multiSearch('radio garden',null); }, isActive: rbQuery==='radio garden', color:'#22d3ee' },
+                                      { label:'● SomaFM',         act: () => { setRbSelectedTag(null); setRbQuery('somafm'); multiSearch('somafm',null); }, isActive: rbQuery==='somafm', color:'#10b981' },
+                                      { label:'● NTS',             act: () => { setRbSelectedTag(null); setRbQuery('nts'); multiSearch('nts',null); }, isActive: rbQuery==='nts', color:'#ff4500' },
+                                      { label:'● Garden',          act: () => { setRbSelectedTag(null); setRbQuery('radio garden'); multiSearch('radio garden',null); }, isActive: rbQuery==='radio garden', color:'#22d3ee' },
+                                      { label:'● Shoutcast',       act: () => { setRbSelectedTag(null); setRbQuery('shoutcast'); multiSearch('shoutcast',null); }, isActive: rbQuery==='shoutcast', color:'#e11d48' },
+                                      { label:'● FM Stream',       act: () => { setRbSelectedTag(null); setRbQuery('fmstream'); multiSearch('fmstream',null); }, isActive: rbQuery==='fmstream', color:'#06b6d4' },
+                                      { label:'● RadioBrowser',    act: () => { setRbSelectedTag(null); setRbQuery('radiobrowser'); multiSearch('radiobrowser',null); }, isActive: rbQuery==='radiobrowser', color:'#f59e0b' },
+                                      { label:'● Radio Paradise',  act: () => { setRbSelectedTag(null); setRbQuery('radio paradise'); multiSearch('radio paradise',null); }, isActive: rbQuery==='radio paradise', color:'#8b5cf6' },
                                     ].map((p,i) => (
                                       <button key={i} onClick={p.act} style={{ flexShrink:0, padding:'4px 10px', borderRadius:999, border:`1px solid ${p.isActive ? p.color : 'rgba(255,255,255,0.1)'}`, background:p.isActive ? `${p.color}22` : 'rgba(255,255,255,0.04)', color:p.isActive ? p.color : 'rgba(255,255,255,0.4)', fontSize:10, cursor:'pointer', fontWeight:p.isActive?700:500, transition:'all 0.15s', whiteSpace:'nowrap' }}>
                                         {p.label}
@@ -7378,19 +7491,6 @@ Format exactly:
         {/* ─── AI TAB */}
         {tab==='ai'&&(
           <div style={{ height:'100%', display:'flex', flexDirection:'column' }}
-            onTouchStart={(e) => {
-              aiSwipeTouchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-            }}
-            onTouchEnd={(e) => {
-              const dx = e.changedTouches[0].clientX - aiSwipeTouchRef.current.x;
-              const dy = e.changedTouches[0].clientY - aiSwipeTouchRef.current.y;
-              if (Math.abs(dx) > Math.abs(dy) * 1.5 && Math.abs(dx) > 48) {
-                const subTabs = ['chat', 'foryou', 'lyrics'];
-                const idx = subTabs.indexOf(aiSubView);
-                if (dx < 0 && idx < subTabs.length - 1) setAiSubView(subTabs[idx + 1]);
-                if (dx > 0 && idx > 0) setAiSubView(subTabs[idx - 1]);
-              }
-            }}
           >
 
             {/* ── AI Header: title + status + now playing */}

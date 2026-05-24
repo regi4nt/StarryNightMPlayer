@@ -7,6 +7,8 @@
   "background_color": "#07071a",
   "theme_color": "#07071a",
   "orientation": "portrait",
+  "categories": ["music", "entertainment"],
+  "lang": "id",
   "icons": [
     {
       "src": "/icon-192.png",
@@ -19,6 +21,38 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Radio",
+      "short_name": "Radio",
+      "description": "Buka tab Radio langsung",
+      "url": "/?tab=stream",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Koleksi",
+      "short_name": "Koleksi",
+      "description": "Lihat koleksi & playlist",
+      "url": "/?tab=library",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Cari Musik",
+      "short_name": "Cari",
+      "description": "Cari musik & artis",
+      "url": "/?tab=search",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Starry Night MPlayer — home screen"
     }
   ]
 }

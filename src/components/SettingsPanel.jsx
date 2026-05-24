@@ -701,7 +701,7 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
             </div>
           ) : pwaPrompt ? (
             <button onClick={installPwa} style={{ width:'100%', padding:'12px 0', borderRadius:14, border:'none', background:'linear-gradient(135deg,#6366f1,#a855f7)', color:'white', fontSize:13, fontWeight:800, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
-              <span style={{ fontSize:16 }}>📲</span>{t?.installNow||'Install Now'}
+              <span style={{ fontSize:16 }}>📲</span>{t?.installNow||'Install Sekarang'}
             </button>
           ) : (
             <div style={{ padding:'10px 14px', borderRadius:12, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)' }}>
@@ -720,6 +720,22 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
               </div>
             </div>
           )}
+          {/* Shortcuts info */}
+          <div style={{ marginTop:12, padding:'10px 14px', borderRadius:12, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)' }}>
+            <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginBottom:6 }}>🔗 Pintasan layar utama (setelah install):</div>
+            <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+              {[
+                ['🎙️ Radio', 'Buka tab Radio langsung'],
+                ['🎵 Koleksi', 'Buka koleksi & playlist'],
+                ['🔍 Cari', 'Buka pencarian musik'],
+              ].map(([name, desc]) => (
+                <div key={name} style={{ display:'flex', gap:8, alignItems:'center' }}>
+                  <span style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.55)', minWidth:60 }}>{name}</span>
+                  <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)' }}>{desc}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
       </div>
