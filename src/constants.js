@@ -950,7 +950,11 @@ export function getProviders() {
         { provider:'GitHub', key:k, model:'meta-llama-3.3-70b-instruct', endpoint:'https://models.inference.ai.azure.com/chat/completions', isOpenAI:true, extra:{} },
         { provider:'GitHub', key:k, model:'Phi-4',                       endpoint:'https://models.inference.ai.azure.com/chat/completions', isOpenAI:true, extra:{} },
       ];
-      return []; // no proxy available
+      return [
+        { provider:'GitHub', key:'__proxy__', model:'gpt-4o-mini',                 endpoint:'/api/ai?provider=github', isOpenAI:true, extra:{} },
+        { provider:'GitHub', key:'__proxy__', model:'meta-llama-3.3-70b-instruct', endpoint:'/api/ai?provider=github', isOpenAI:true, extra:{} },
+        { provider:'GitHub', key:'__proxy__', model:'Phi-4',                       endpoint:'/api/ai?provider=github', isOpenAI:true, extra:{} },
+      ];
     })()),
     // SambaNova Cloud — user key only (sn_sn_key); no server proxy
     ...((() => {
@@ -960,7 +964,11 @@ export function getProviders() {
         { provider:'SambaNova', key:k, model:'Qwen2.5-72B-Instruct',        endpoint:'https://api.sambanova.ai/v1/chat/completions', isOpenAI:true, extra:{} },
         { provider:'SambaNova', key:k, model:'DeepSeek-R1',                 endpoint:'https://api.sambanova.ai/v1/chat/completions', isOpenAI:true, extra:{} },
       ];
-      return []; // no proxy available
+      return [
+        { provider:'SambaNova', key:'__proxy__', model:'Meta-Llama-3.3-70B-Instruct', endpoint:'/api/ai?provider=sambanova', isOpenAI:true, extra:{} },
+        { provider:'SambaNova', key:'__proxy__', model:'Qwen2.5-72B-Instruct',        endpoint:'/api/ai?provider=sambanova', isOpenAI:true, extra:{} },
+        { provider:'SambaNova', key:'__proxy__', model:'DeepSeek-R1',                 endpoint:'/api/ai?provider=sambanova', isOpenAI:true, extra:{} },
+      ];
     })()),
     // ── EXTERNAL FALLBACK (no key required — public free endpoints)
     // Digunakan otomatis jika SEMUA provider di atas gagal / sibuk

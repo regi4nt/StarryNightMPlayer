@@ -42,6 +42,8 @@
  *   OPENROUTER_API_KEY
  *   CLOUDFLARE_API_KEY + CLOUDFLARE_ACCOUNT_ID
  *   HUGGINGFACE_API_KEY
+ *   GITHUB_API_KEY
+ *   SAMBANOVA_API_KEY
  *
  * ── Backward compat via vercel.json rewrites ─────────────────
  *   { "source": "/api/anthropic",  "destination": "/api/ai?provider=anthropic" }
@@ -219,6 +221,40 @@ const PROVIDERS = {
     },
     envKeys: ['HUGGINGFACE_API_KEY'],
   },
+
+  // ── GitHub Models (Azure inference endpoint) ─────────────────
+  github: {
+    rateLimit: { max: 20, windowMs: 60_000 },
+    async call(body, env) {
+      return fetch('https://models.inference.ai.azure.com/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.GITHUB_API_KEY}`,
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(30_000),
+      });
+    },
+    envKeys: ['GITHUB_API_KEY'],
+  },
+
+  // ── SambaNova Cloud ──────────────────────────────────────────
+  sambanova: {
+    rateLimit: { max: 20, windowMs: 60_000 },
+    async call(body, env) {
+      return fetch('https://api.sambanova.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.SAMBANOVA_API_KEY}`,
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(30_000),
+      });
+    },
+    envKeys: ['SAMBANOVA_API_KEY'],
+  },
 };
 
 // ══════════════════════════════════════════════════════════════
@@ -287,5 +323,7 @@ export default async function handler(req, res) {
 //    { "source": "/api/deepseek",    "destination": "/api/ai?provider=deepseek" },
 //    { "source": "/api/openrouter",  "destination": "/api/ai?provider=openrouter" },
 //    { "source": "/api/cloudflare",  "destination": "/api/ai?provider=cloudflare" },
-//    { "source": "/api/huggingface", "destination": "/api/ai?provider=huggingface" }
+//    { "source": "/api/huggingface", "destination": "/api/ai?provider=huggingface" },
+//    { "source": "/api/github",      "destination": "/api/ai?provider=github" },
+//    { "source": "/api/sambanova",   "destination": "/api/ai?provider=sambanova" }
 //  ]

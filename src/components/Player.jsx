@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Loader2, Music, Radio } from 'lucide-react';
 import { btn, fmt } from '../constants.js';
 
@@ -48,6 +48,7 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
 
   const svgRef  = useRef(null);
   const dragging = useRef(false);
+  const [isDragging, setIsDragging] = useState(false); // mirrors dragging ref; triggers re-render for transition toggle
 
   const getPct = (clientX, clientY) => {
     const rect = svgRef.current.getBoundingClientRect();
@@ -62,22 +63,22 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
   };
 
   // Mouse events
-  const onMouseDown = e => { if (!onSeek||isRadio||!nearRing(e.clientX,e.clientY)) return; dragging.current=true; onSeek(getPct(e.clientX,e.clientY)); };
+  const onMouseDown = e => { if (!onSeek||isRadio||!nearRing(e.clientX,e.clientY)) return; dragging.current=true; setIsDragging(true); onSeek(getPct(e.clientX,e.clientY)); };
   const onMouseMove = e => { if (!dragging.current||!onSeek) return; onSeek(getPct(e.clientX,e.clientY)); };
-  const onMouseUp   = () => { dragging.current=false; };
+  const onMouseUp   = () => { dragging.current=false; setIsDragging(false); };
 
   // Touch events — need non-passive to call preventDefault (stops page scroll during drag)
   useEffect(() => {
     const svg = svgRef.current; if (!svg) return;
     const tStart = e => {
       const t=e.touches[0]; if (!onSeek||isRadio||!nearRing(t.clientX,t.clientY)) return;
-      dragging.current=true; onSeek(getPct(t.clientX,t.clientY)); e.preventDefault();
+      dragging.current=true; setIsDragging(true); onSeek(getPct(t.clientX,t.clientY)); e.preventDefault();
     };
     const tMove = e => {
       if (!dragging.current||!onSeek) return;
       const t=e.touches[0]; onSeek(getPct(t.clientX,t.clientY)); e.preventDefault();
     };
-    const tEnd = () => { dragging.current=false; };
+    const tEnd = () => { dragging.current=false; setIsDragging(false); };
     svg.addEventListener('touchstart', tStart, { passive:false });
     svg.addEventListener('touchmove',  tMove,  { passive:false });
     svg.addEventListener('touchend',   tEnd);
@@ -172,7 +173,7 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
           <circle className="progress-arc" cx={cx} cy={cy} r={ringR} stroke={color} strokeWidth="4.5" fill="none"
             strokeDasharray={circ} strokeDashoffset={circ-circ*pct} strokeLinecap="round"
             transform={`rotate(-90 ${cx} ${cy})`}
-            style={{ transition: dragging.current?'none':'stroke-dashoffset 0.35s linear', filter:isLite?'none':`drop-shadow(0 0 6px ${color})` }}/>
+            style={{ transition: isDragging?'none':'stroke-dashoffset 0.35s linear', filter:isLite?'none':`drop-shadow(0 0 6px ${color})` }}/>
         )}
         {/* 0:00 tick — hide for radio */}
         {!isRadio && <line x1={cx} y1={cy-ringR-7} x2={cx} y2={cy-ringR+7} stroke="rgba(255,255,255,0.18)" strokeWidth="2.5" strokeLinecap="round"/>}

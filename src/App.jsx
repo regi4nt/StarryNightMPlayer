@@ -39,7 +39,9 @@ import {
 import { PlatformLogo } from './components/PlatformLogo.jsx'; // eager — used in stream tab
 const PlaylistFormView    = lazy(() => import('./components/PlaylistViews.jsx').then(m => ({ default: m.PlaylistFormView })));
 const PlaylistModal       = lazy(() => import('./components/PlaylistViews.jsx').then(m => ({ default: m.PlaylistModal })));
-const PlaylistErrorBoundary = React.lazy(() => import('./components/PlaylistViews.jsx').then(m => ({ default: m.PlaylistErrorBoundary })));
+// Error Boundaries MUST be eagerly imported — React.lazy() can't wrap them because
+// the boundary must be synchronously available when a child throws during render.
+import { PlaylistErrorBoundary } from './components/PlaylistViews.jsx';
 // AppLogo & OrbitalRing are critical player UI — eager import
 import { AppLogo, OrbitalRing } from './components/Player.jsx';
 import { SongRow } from './components/SongRow.jsx'; // eager — used immediately in lists
@@ -2090,11 +2092,12 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
       setPwaPrompt(e);
       setTimeout(() => setPwaBannerVisible(true), 3000);
     };
-    window.addEventListener('beforeinstallprompt', handler);
-    window.addEventListener('appinstalled', () => {
+    const onInstalled = () => {
       setPwaInstalled(true); setPwaPrompt(null); setPwaBannerVisible(false);
       try { localStorage.setItem('pwa_installed', '1'); } catch {}
-    });
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', onInstalled);
     if (window.matchMedia('(display-mode: standalone)').matches
       || window.matchMedia('(display-mode: minimal-ui)').matches
       || window.navigator.standalone === true) {
@@ -2109,7 +2112,10 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
       if (tabMap[tabParam]) setTimeout(() => setTab(tabMap[tabParam]), 500);
       window.history.replaceState({}, '', window.location.pathname);
     }
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener('appinstalled', onInstalled);
+    };
   }, []);
   const installPwa = async () => {
     if (!pwaPrompt) return;
@@ -7632,7 +7638,7 @@ Format exactly:
                   </button>
                 ))}
               </div>
-              
+            </div>{/* end AI Header */}
 
             {/* Chat + Vibe result area OR Lyrics OR For You */}
             {aiSubView==='foryou' ? (
@@ -8380,7 +8386,6 @@ Format exactly:
             </div>
             )}
           </div>
-        </div>
         )}
       </main>
       </div>{/* end flex row wrapper */}

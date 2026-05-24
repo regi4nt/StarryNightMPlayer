@@ -8,28 +8,12 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
+      // manifest: false — the static public/manifest.webmanifest is the single source of
+      // truth. VitePWA would generate dist/manifest.webmanifest, but Vite's public/ copy
+      // runs AFTER plugin output and overwrites it — the generated manifest is silently
+      // discarded. Setting manifest: false avoids the dual-manifest race entirely.
+      manifest: false,
       includeAssets: ['favicon.svg', 'icon-192.png', 'icon-512.png'],
-      manifest: {
-        name: 'Starry Night MPlayer',
-        short_name: 'StarryMPlayer',
-        description: 'Pemutar musik bertema luar angkasa dengan AI, Drive, & EQ',
-        theme_color: '#07071a',
-        background_color: '#07071a',
-        display: 'standalone',
-        orientation: 'any',
-        scope: '/',
-        start_url: '/',
-        icons: [
-          { src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
-          { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
-          { src: 'favicon.svg',  sizes: 'any',     type: 'image/svg+xml' }
-        ],
-        categories: ['music', 'entertainment'],
-        shortcuts: [
-          { name: 'Player', url: '/?tab=player', description: 'Buka player' },
-          { name: 'Stream', url: '/?tab=stream', description: 'Lihat platform streaming' }
-        ]
-      },
       workbox: {
         skipWaiting: true,
         clientsClaim: true,
