@@ -1799,22 +1799,10 @@ Return ONLY valid JSON, no explanation:
 
     if (isPWA && screen?.orientation?.lock) {
       if (fullscreen) {
-        // Baca orientasi saat ini dan simpan, lalu kunci ke sana
-        const currentAngle = screen.orientation?.angle ?? window.orientation ?? 0;
-        let lockType;
-        if (currentAngle === 90 || currentAngle === -90 || currentAngle === 270) {
-          lockType = currentAngle === 270 ? 'landscape-secondary' : 'landscape-primary';
-        } else if (currentAngle === 180) {
-          lockType = 'portrait-secondary';
-        } else {
-          lockType = 'portrait-primary';
-        }
-        orientationBeforeFullscreen.current = lockType;
-        screen.orientation.lock(lockType).catch(() => {
-          // Beberapa perangkat tidak izinkan lock — abaikan error
-        });
+        // Gunakan lockType yang sudah di-capture tepat saat tombol diklik
+        const lockType = orientationBeforeFullscreen.current || 'portrait-primary';
+        screen.orientation.lock(lockType).catch(() => {});
       } else {
-        // Lepas kunci saat keluar fullscreen — biarkan rotasi bebas lagi
         orientationBeforeFullscreen.current = null;
         screen.orientation.unlock();
       }
@@ -5635,7 +5623,17 @@ Format exactly:
                   <button onClick={()=>{ setShowShareMenu(v=>!v); setShowQueue(false); }} style={{ background:'none', border:'none', cursor:'pointer', color:showShareMenu?track.color:'rgba(255,255,255,0.35)', padding:'4px 7px' }}><Share2 size={16}/></button>
                   <button onClick={()=>{ setShowQueue(q=>!q); setShowShareMenu(false); }} style={{ background:'none', border:'none', cursor:'pointer', color:showQueue?track.color:'rgba(255,255,255,0.35)', padding:'4px 7px' }}><ListMusic size={16}/></button>
                   <button onClick={()=>setShowSettings(v=>!v)} style={{ background:showSettings?'rgba(255,255,255,0.08)':'none', borderRadius:8, border:'none', cursor:'pointer', color:sleepTimer?track.color:(showSettings?'rgba(255,255,255,0.7)':'rgba(255,255,255,0.35)'), padding:'4px 7px' }}><Settings size={16}/></button>
-                  <button onClick={()=>setFullscreen(f=>!f)} style={{ background:'none', border:'none', cursor:'pointer', color:fullscreen?track.color:'rgba(255,255,255,0.35)', padding:'4px 7px' }}>{fullscreen?<Minimize2 size={16}/>:<Maximize2 size={16}/>}</button>
+                  <button onClick={()=>{
+                    if (!fullscreen) {
+                      const a = screen?.orientation?.angle ?? window.orientation ?? 0;
+                      let lt = 'portrait-primary';
+                      if (a === 90) lt = 'landscape-primary';
+                      else if (a === 270 || a === -90) lt = 'landscape-secondary';
+                      else if (a === 180) lt = 'portrait-secondary';
+                      orientationBeforeFullscreen.current = lt;
+                    }
+                    setFullscreen(f=>!f);
+                  }} style={{ background:'none', border:'none', cursor:'pointer', color:fullscreen?track.color:'rgba(255,255,255,0.35)', padding:'4px 7px' }}>{fullscreen?<Minimize2 size={16}/>:<Maximize2 size={16}/>}</button>
                   {embedTrack && <button onClick={()=>{ closeEmbed(); setShowSettings(false); }} style={{ background:'none', border:'none', cursor:'pointer', color:'#fca5a5', padding:'4px 7px' }}><X size={16}/></button>}
                   {!embedTrack && track.isRadio && radioStation && <button onClick={()=>{ if(audioRef.current){audioRef.current.pause();audioRef.current.src='';} if(hlsRef.current){hlsRef.current.destroy();hlsRef.current=null;} if(radioReconnectRef.current){clearTimeout(radioReconnectRef.current);radioReconnectRef.current=null;} radioReconnectCount.current=0; setStreamBuffering(false); setPlaying(false); setRadioStation(null); setRadioPlaying(false); setTrack(SONGS[0]); }} style={{ background:'none', border:'none', cursor:'pointer', color:'#fbbf24', padding:'4px 7px' }}><X size={16}/></button>}
                 </div>
@@ -5856,7 +5854,17 @@ Format exactly:
               {/* Settings */}
               <button onClick={()=>setShowSettings(v=>!v)} title={t?.settings||"Settings"} style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:layoutVars.actionPad, borderRadius:12, background: showSettings?'rgba(255,255,255,0.08)':'none', border:'none', color:sleepTimer?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):(showSettings?'rgba(255,255,255,0.7)':'rgba(255,255,255,0.35)') }}><Settings size={16}/></button>
               {/* Fullscreen */}
-              <button onClick={()=>setFullscreen(f=>!f)} title={fullscreen?(t?.exitFullscreenBtn||'Exit Fullscreen'):(t?.fullscreenBtn||'Fullscreen')} style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:layoutVars.actionPad, borderRadius:12, background:'none', border:'none', color:fullscreen?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):'rgba(255,255,255,0.35)' }}>
+              <button onClick={()=>{
+                if (!fullscreen) {
+                  const a = screen?.orientation?.angle ?? window.orientation ?? 0;
+                  let lt = 'portrait-primary';
+                  if (a === 90) lt = 'landscape-primary';
+                  else if (a === 270 || a === -90) lt = 'landscape-secondary';
+                  else if (a === 180) lt = 'portrait-secondary';
+                  orientationBeforeFullscreen.current = lt;
+                }
+                setFullscreen(f=>!f);
+              }} title={fullscreen?(t?.exitFullscreenBtn||'Exit Fullscreen'):(t?.fullscreenBtn||'Fullscreen')} style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:layoutVars.actionPad, borderRadius:12, background:'none', border:'none', color:fullscreen?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):'rgba(255,255,255,0.35)' }}>
                 {fullscreen?<Minimize2 size={16}/>:<Maximize2 size={16}/>}
               </button>
               {/* Tutup embed — hanya muncul saat ada stream aktif */}
