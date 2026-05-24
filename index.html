@@ -121,28 +121,9 @@
       });
 
       // ── Service Worker registration ──
-      // Daftar SW secara eksplisit. VitePWA juga inject registration saat build,
-      // tapi registrasi ganda aman — browser abaikan duplikat scope yang sama.
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function() {
-          navigator.serviceWorker.register('/sw.js', { scope: '/' })
-            .then(function(reg) {
-              console.log('[SW] registered scope:', reg.scope);
-              // Force update jika ada SW baru
-              reg.addEventListener('updatefound', function() {
-                var newWorker = reg.installing;
-                if (newWorker) {
-                  newWorker.addEventListener('statechange', function() {
-                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                      newWorker.postMessage({ type: 'SKIP_WAITING' });
-                    }
-                  });
-                }
-              });
-            })
-            .catch(function(err) { console.warn('[SW] registration failed:', err); });
-        });
-      }
+      // Dihandle sepenuhnya oleh VitePWA (injectRegister: 'auto') saat build.
+      // Registrasi manual dihapus karena public/sw.js sudah dihapus untuk mencegah
+      // race condition yang menimpa output Workbox di dist/sw.js.
 
       // ── Detect standalone mode — sembunyikan elemen browser jika berjalan sebagai PWA ──
       (function() {

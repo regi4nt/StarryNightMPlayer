@@ -13,6 +13,12 @@ export default defineConfig({
       // runs AFTER plugin output and overwrites it — the generated manifest is silently
       // discarded. Setting manifest: false avoids the dual-manifest race entirely.
       manifest: false,
+      // sw.js dulu ada di public/ dan menimpa output Workbox saat build.
+      // File itu sudah dihapus — Workbox kini bebas generate sw.js + workbox-*.js di dist/.
+      devOptions: {
+        enabled: true,       // aktifkan SW di dev mode (pakai Workbox, bukan fallback manual)
+        type: 'module',
+      },
       includeAssets: ['favicon.svg', 'icon-192.png', 'icon-512.png'],
       workbox: {
         skipWaiting: true,
