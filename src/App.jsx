@@ -2085,46 +2085,16 @@ Return ONLY valid JSON, no explanation:
     }
   }, []);
 
-  // ── PWA Install prompt
-  const [pwaPrompt, setPwaPrompt] = useState(null);
-  const [pwaInstalled, setPwaInstalled] = useState(() => {
-    // Deteksi apakah benar-benar berjalan sebagai PWA standalone
-    // (bukan sekadar pintasan web / shortcut Chrome biasa)
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
-      || window.navigator.standalone === true; // iOS Safari PWA
-    if (isStandalone) return true;
-    // Jika berjalan di browser biasa (termasuk pintasan web Chrome),
-    // JANGAN percaya localStorage — reset flag agar install prompt tetap muncul.
-    try { localStorage.removeItem('pwa_installed'); } catch {}
-    return false;
-  });
-  const [pwaBannerDismissed, setPwaBannerDismissed] = useState(() => {
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
-      || window.navigator.standalone === true;
-    if (isStandalone) return true; // Di PWA standalone, banner tidak perlu ditampilkan
-    // Di browser/pintasan web: reset dismiss per sesi agar banner bisa muncul kembali
-    try { localStorage.removeItem('pwa_banner_dismissed'); } catch {}
-    return false;
-  });
-  const [pwaBannerVisible, setPwaBannerVisible] = useState(false);
+  // ── PWA Install prompt — biarkan Chrome handle native, jangan intercept
+  const pwaPrompt = null;
+  const pwaInstalled = window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true;
+  const pwaBannerDismissed = true;
+  const pwaBannerVisible = false;
+  const installPwa = () => {};
+  const dismissPwaBanner = () => {};
 
   useEffect(() => {
-    const handler = e => {
-      e.preventDefault();
-      setPwaPrompt(e);
-      setTimeout(() => setPwaBannerVisible(true), 3000);
-    };
-    const onInstalled = () => {
-      setPwaInstalled(true); setPwaPrompt(null); setPwaBannerVisible(false);
-      try { localStorage.setItem('pwa_installed', '1'); } catch {}
-    };
-    window.addEventListener('beforeinstallprompt', handler);
-    window.addEventListener('appinstalled', onInstalled);
-    if (window.matchMedia('(display-mode: standalone)').matches
-      || window.navigator.standalone === true) {
-      setPwaInstalled(true);
-      try { localStorage.setItem('pwa_installed', '1'); } catch {}
-    }
     // Handle shortcut URLs: ?tab=stream / ?tab=playlist / ?tab=ai
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam = urlParams.get('tab');
@@ -2133,29 +2103,7 @@ Return ONLY valid JSON, no explanation:
       if (tabMap[tabParam]) setTimeout(() => setTab(tabMap[tabParam]), 500);
       window.history.replaceState({}, '', window.location.pathname);
     }
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handler);
-      window.removeEventListener('appinstalled', onInstalled);
-    };
   }, []);
-  const installPwa = async () => {
-    if (!pwaPrompt) return;
-    pwaPrompt.prompt();
-    const { outcome } = await pwaPrompt.userChoice;
-    if (outcome === 'accepted') { setPwaInstalled(true); setPwaPrompt(null); setPwaBannerVisible(false); }
-  };
-  const dismissPwaBanner = () => {
-    setPwaBannerVisible(false);
-    setPwaBannerDismissed(true);
-    // Hanya simpan dismiss permanen jika user benar-benar sudah dalam PWA standalone
-    // (bukan pintasan web biasa di Chrome), agar sesi browser berikutnya masih bisa
-    // menawarkan install PWA kembali.
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
-      || window.navigator.standalone === true;
-    if (isStandalone) {
-      try { localStorage.setItem('pwa_banner_dismissed', '1'); } catch {}
-    }
-  };
 
   // ── Online / Offline detection
   useEffect(() => {
