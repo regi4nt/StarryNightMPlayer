@@ -996,21 +996,45 @@ export default function App() {
     // videoId yang tidak ada atau sudah dihapus sehingga hasil jadi ngawur.
     // Sekarang AI diminta menyarankan query pencarian yang lebih baik, lalu hasil
     // digunakan untuk re-search via Invidious (source nyata, bukan imajinasi LLM).
-    const prompt = `Suggest 3 better YouTube search queries to find music for: "${query}".
-Return ONLY a JSON array of strings, no explanation:
-["query1", "query2", "query3"]
-Rules: each query should be specific enough to find the right song/artist. Include artist name if known.`;
-    const systemPrompt = 'You are a music search assistant. Return only a JSON array of 3 search query strings. No extra text.';
+    //
+    // FIX v2 — keyword ngawur: prompt sebelumnya terlalu bebas sehingga AI bisa mengubah
+    // total intent query (mis. translate ke English, ganti artis, ganti judul).
+    // Sekarang:
+    //  1. Query asli WAJIB masuk sebagai elemen pertama array.
+    //  2. AI hanya boleh menambah/memperjelas (append kata kunci), TIDAK boleh mengganti.
+    //  3. Prompt bilingual (EN+ID) agar AI tidak salah paham query berbahasa Indonesia.
+    //  4. Fallback: jika AI gagal parse, gunakan query asli langsung agar tetap ada hasil.
+    const prompt = `You are a YouTube music search assistant. The user searched for: "${query}"
+
+Return a JSON array of EXACTLY 3 search query strings to find this music on YouTube.
+STRICT RULES:
+1. Element [0] MUST be the user's original query unchanged: "${query}"
+2. Elements [1] and [2] may refine the query by APPENDING words only (e.g. add "official audio", "official video", "lyrics", artist name if obvious, or song title if recognizable). Do NOT replace, translate, or rewrite the original query.
+3. Keep the same language as the original query (if Indonesian, stay Indonesian; if English, stay English).
+4. Never suggest a completely different song or artist.
+
+Return ONLY valid JSON, no explanation:
+["${query}", "refined query 2", "refined query 3"]`;
+    const systemPrompt = 'You are a YouTube music search assistant. Return ONLY a JSON array of exactly 3 strings. No markdown, no explanation, no extra text.';
 
     const extractQueries = (text) => {
       try {
         const clean = text.replace(/```json|```/g, '').trim();
-        const arr = JSON.parse(clean);
+        // Kadang AI membungkus dalam objek — coba ambil array pertama yang ditemukan
+        const jsonMatch = clean.match(/\[[\s\S]*?\]/);
+        const arr = JSON.parse(jsonMatch ? jsonMatch[0] : clean);
         if (Array.isArray(arr) && arr.length > 0) {
-          return arr.filter(q => typeof q === 'string' && q.trim().length > 0).slice(0, 3);
+          const filtered = arr.filter(q => typeof q === 'string' && q.trim().length > 0);
+          if (filtered.length === 0) return [query]; // fallback ke query asli
+          // Pastikan query asli selalu ada di posisi pertama
+          const withOriginal = filtered[0].trim().toLowerCase() === query.trim().toLowerCase()
+            ? filtered
+            : [query, ...filtered.filter(q => q.trim().toLowerCase() !== query.trim().toLowerCase())];
+          return withOriginal.slice(0, 3);
         }
       } catch {}
-      return null;
+      // Jika AI gagal total, gunakan query asli agar search tetap berjalan
+      return [query];
     };
 
     const searchWithQueries = async (queries) => {
@@ -1078,7 +1102,10 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
       });
       if (!res.ok) return null;
       const data = await res.json();
-      const text = data.text || data.result || data.content || '';
+      // Anthropic returns data.content as array of blocks; others return data.text/result/content as string
+      const text = typeof data.content === 'string' ? data.content
+        : Array.isArray(data.content) ? data.content.filter(b => b.type === 'text').map(b => b.text).join('') 
+        : data.text || data.result || '';
       const queries = extractQueries(text);
       if (queries) {
         const items = await searchWithQueries(queries);
@@ -1816,6 +1843,7 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
   });
   const [input, setInput]       = useState('');
   const [chatLoading, setCL]    = useState(false);
+  const [chatAutoPlay, setChatAutoPlay] = useState(null); // index message yg sedang auto-fetch & play
   const [activeModelLabel, setActiveModelLabel] = useState('');
   const [vibeInput, setVibeInput] = useState('');
   const [vibeLoading, setVL]    = useState(false);
@@ -4734,15 +4762,35 @@ Format exactly:
     const msg=input; setInput(''); setMessages(p=>[...p,{from:'user',text:msg}]); setCL(true);
     const r = await askAIRace(
       msg,
-      `You are Starry AI — a warm, fun, music-aware chat companion. Be relaxed, friendly, a bit playful. Reply briefly and naturally (max 120 words). Chat about anything: music, feelings, daily life, trivia, motivation, or just hang out. Context: the user is currently listening to "${embedTrack ? (embedTrack.title || track.title) : track.title}" by ${embedTrack ? (embedTrack.artist || track.artist) : track.artist}${track.mood ? ' (mood: ' + track.mood + ')' : ''}. SMART RECOMMENDATION RULES: (1) If user mentions a mood, feeling, activity, or time of day (sad, chill, semangat, fokus, pagi, tidur, workout, dll) — proactively recommend ONE fitting song [YT:] or radio station [RADIO:] whichever suits best. (2) If user asks for song/artist suggestion — use [YT: TITLE - ARTIST]. (3) If user asks about radio or live stream — use [RADIO: STATION NAME]. (4) If user mentions an artist — suggest a similar artist song with [YT:]. (5) General chat with no music context — no tag. Add the tag on a new line at the very end. ONE tag max per response. Format exactly: [YT: SONG - ARTIST] or [RADIO: STATION NAME].`,
+      `You are Starry AI — a warm, fun, music-aware chat companion. Be relaxed, friendly, a bit playful. Reply briefly and naturally (max 120 words). Chat about anything: music, feelings, daily life, trivia, motivation, or just hang out. Context: the user is currently listening to "${embedTrack ? (embedTrack.title || track.title) : track.title}" by ${embedTrack ? (embedTrack.artist || track.artist) : track.artist}${track.mood ? ' (mood: ' + track.mood + ')' : ''}. MUSIC RECOMMENDATION RULES: If the user asks for a song or music recommendation, mention the song and artist naturally in your reply. At the very end of your response, on a new line, write EXACTLY one of these machine-readable tags (hidden from user): For a song: ##YT:TITLE|ARTIST## — For a radio/genre search: ##RADIO:KEYWORD## — Rules: use ## delimiters, pipe | between title and artist, no quotes, no extra words. Example endings: ##YT:Shape of You|Ed Sheeran## or ##RADIO:jazz lofi##. Only add a tag when recommending music. General chat = no tag.`,
       historySnap
     );
-    // Parse action tag from AI response
-    const ytTagMatch = r.match(/\[YT:\s*([^\]]+)\]/i);
-    const radioTagMatch = r.match(/\[RADIO:\s*([^\]]+)\]/i);
-    const cleanAiText = r.replace(/\[(YT|RADIO):[^\]]+\]/gi, '').trim();
-    const aiAction = ytTagMatch ? { type: 'yt', query: ytTagMatch[1].trim() } : radioTagMatch ? { type: 'radio', query: radioTagMatch[1].trim() } : null;
-    setMessages(p=>[...p,{from:'ai',text:cleanAiText,action:aiAction}]);
+
+    // ── Parse hidden machine tags (stripped before display) ──────────────────
+    const ytTagMatch    = r.match(/##YT:([^#]+)##/i);
+    const radioTagMatch = r.match(/##RADIO:([^#]+)##/i);
+    const cleanAiText   = r.replace(/##(YT|RADIO):[^#]+##/gi, '').trim();
+
+    // Parse TITLE|ARTIST from YT tag
+    const parseYtTag = (raw) => {
+      if (!raw) return null;
+      const s = raw.trim().replace(/^["'\u201c\u201d]+|["'\u201c\u201d]+$/g, '').trim();
+      const pipeIdx = s.indexOf('|');
+      if (pipeIdx !== -1) return { title: s.slice(0, pipeIdx).trim(), artist: s.slice(pipeIdx + 1).trim() };
+      const dashIdx = s.lastIndexOf(' - ');
+      if (dashIdx !== -1) return { title: s.slice(0, dashIdx).trim(), artist: s.slice(dashIdx + 3).trim() };
+      return { title: s, artist: '' };
+    };
+    const parsedYt = ytTagMatch ? parseYtTag(ytTagMatch[1]) : null;
+
+    // ── Simpan action ke message agar tombol bisa pakai data ini ────────────
+    const aiAction = parsedYt
+      ? { type: 'yt', title: parsedYt.title, artist: parsedYt.artist }
+      : radioTagMatch
+      ? { type: 'radio', query: radioTagMatch[1].trim() }
+      : null;
+
+    setMessages(p => [...p, { from: 'ai', text: cleanAiText, action: aiAction }]);
     setActiveModelLabel(activeModel());
     setCL(false);
   };
@@ -8279,74 +8327,44 @@ Format exactly:
                   </div>
                 )}
                 {messages.map((m,i)=>{
-                  // Use action tag from AI response (set in sendChat), fallback to pattern detection
-                  let songRec = null;
-                  let radioRec = null;
-                  if (m.from==='ai') {
-                    if (m.action?.type === 'yt') {
-                      // Parse "TITLE - ARTIST" from the tag query
-                      const parts = m.action.query.split(/\s*-\s*/);
-                      songRec = parts.length >= 2
-                        ? { title: parts.slice(0, -1).join(' - '), artist: parts[parts.length - 1] }
-                        : { title: m.action.query, artist: '' };
-                    } else if (m.action?.type === 'radio') {
-                      radioRec = { name: m.action.query };
-                    } else {
-                      // Fallback pattern detection for older messages without action tag
-                      const patterns = [
-                        /[\u201c\u201d]([^\u201c\u201d]+)[\u201c\u201d]\s*[-\u2013]\s*([^\n,.(]+)/,
-                        /[\u201c\u201d]([^\u201c\u201d]+)[\u201c\u201d]\s+by\s+([^\n,.(]+)/i,
-                        /^([^-\n]+)\s+-\s+([^\n]+)$/m,
-                      ];
-                      for (const pat of patterns) {
-                        const match = m.text.match(pat);
-                        if (match) {
-                          songRec = { title: match[1].trim(), artist: match[2].trim() };
-                          break;
-                        }
-                      }
-                    }
-                  }
+                  const act = m.action;
                   return (
                   <div key={i} style={{ display:'flex', justifyContent:m.from==='user'?'flex-end':'flex-start' }}>
                     {m.from==='ai'&&<div style={{ width:22, height:22, borderRadius:7, flexShrink:0, background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center', marginRight:6, marginTop:2 }}><Bot size={11} style={{ color:'white' }}/></div>}
                     <div style={{ maxWidth:'78%' }}>
                       <div style={{ padding:'9px 13px', fontSize:13, lineHeight:1.55, borderRadius:m.from==='user'?'16px 16px 4px 16px':'4px 16px 16px 16px', background:m.from==='user'?track.color:'rgba(255,255,255,0.07)', border:m.from==='user'?'none':'1px solid rgba(255,255,255,0.1)', color:'white' }}>{m.text}</div>
-                      {songRec && (
+                      {act?.type === 'yt' && (
                         <button
-                          onClick={async ()=>{
-                            // 1. Cari di library dulu
-                            const allS = [...builtinSongs, ...customSongs, ...ytSongs];
-                            const found = allS.find(s =>
-                              s.title.toLowerCase().includes(songRec.title.toLowerCase()) ||
-                              songRec.title.toLowerCase().includes(s.title.toLowerCase())
-                            );
-                            if (found) { play(found); setTab('player'); return; }
-                            // 2. Search YouTube
+                          onClick={()=>{
+                            const baseQ = act.artist ? `${act.title} ${act.artist}` : act.title;
+                            const hasMusicKw = /official|audio|video|mv|lyric|cover|remix|live/i.test(baseQ);
+                            const ytQ = (!hasMusicKw && baseQ.length < 50) ? `${baseQ} official audio` : baseQ;
                             const ytPlatformId = 'ytmusic';
-                            const query = songRec.artist ? `${songRec.title} ${songRec.artist}` : songRec.title;
-                            setYtQuery(p=>({...p,[ytPlatformId]:query}));
+                            setYtQuery(p=>({...p,[ytPlatformId]:ytQ}));
                             setUnifiedPlatform('ytmusic');
-                            setUnifiedQuery(query);
+                            setUnifiedQuery(ytQ);
                             setTab('stream');
-                            setTimeout(()=>{
-                              searchYouTube(ytPlatformId, query);
-                              setTimeout(()=>{ ytMusicSectionRef.current?.scrollIntoView({ behavior:'smooth', block:'start' }); }, 300);
-                            }, 120);
+                            setTimeout(()=>{ searchYouTube(ytPlatformId, ytQ); }, 120);
                           }}
-                          style={{ marginTop:6, display:'flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:999, border:`1px solid ${track.color}50`, background:`${track.color}18`, color:track.color, fontSize:11, fontWeight:700, cursor:'pointer' }}>
-                          <Search size={11}/> {t?.searchYouTube||'Search on YouTube'}: {songRec.title}
+                          style={{ marginTop:6, display:'flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:999, border:`1px solid ${track.color}50`, background:`${track.color}18`, color:track.color, fontSize:11, fontWeight:700, cursor:'pointer', maxWidth:'100%', overflow:'hidden' }}>
+                          <Search size={11} style={{ flexShrink:0 }}/>
+                          <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                            {act.title}{act.artist ? ` — ${act.artist}` : ''}
+                          </span>
                         </button>
                       )}
-                      {radioRec && (
+                      {act?.type === 'radio' && (
                         <button
                           onClick={()=>{
                             setUnifiedPlatform('radio');
                             setTab('stream');
-                            setTimeout(()=>{ setRbMode('search'); setRbQuery(radioRec.name); rbSearch(radioRec.name, null); }, 300);
+                            setTimeout(()=>{ setRbMode('search'); setRbQuery(act.query); rbSearch(act.query, null); multiSearch(act.query, null); }, 300);
                           }}
-                          style={{ marginTop:6, display:'flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:999, border:'1px solid rgba(251,146,60,0.5)', background:'rgba(251,146,60,0.12)', color:'#fb923c', fontSize:11, fontWeight:700, cursor:'pointer' }}>
-                          <Radio size={11}/> {t?.searchRadio||'Cari Radio'}: {radioRec.name}
+                          style={{ marginTop:6, display:'flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:999, border:'1px solid rgba(251,146,60,0.5)', background:'rgba(251,146,60,0.12)', color:'#fb923c', fontSize:11, fontWeight:700, cursor:'pointer', maxWidth:'100%', overflow:'hidden' }}>
+                          <Radio size={11} style={{ flexShrink:0 }}/>
+                          <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                            {act.query}
+                          </span>
                         </button>
                       )}
                     </div>
