@@ -2407,12 +2407,12 @@ Return ONLY valid JSON, no explanation:
         });
       } else {
         // Portrait: full-width stacked
-        // Measured fixed slots: header (HEADER_H_NORMAL), clock~24, badge~18, info~40,
-        //   controls~52, volume~30, actions~44, bottomNav (measured), gaps~16
-        const fixed = HEADER_H_NORMAL + 24 + 18 + 40 + 52 + 30 + 44 + bottomNavHRef.current + 16;
+        // Fixed slots: header(46) + clock+location row(40) + badge(22) + info(h2+p ~48) + controls(56) + volume(34) + actions(48) + bottomNav(measured) + padding/gaps(20)
+        // Note: clock row is now in normal flow (not absolute)
+        const fixed = HEADER_H_NORMAL + 40 + 22 + 48 + 56 + 34 + 48 + bottomNavHRef.current + 20;
         const byH = vh - fixed;
         const byW = vw - 32;
-        const ring = Math.max(160, Math.min(280, Math.min(byH, byW)));
+        const ring = Math.max(160, Math.min(300, Math.min(byH, byW)));
         setRingSize(ring);
         // Distribute remaining space tightly
         const spare = Math.max(0, vh - fixed - ring);
@@ -5249,7 +5249,7 @@ Format exactly:
         </div>
       )}
 
-      <main style={{ flex:1, overflow:'hidden', position:'relative' }}>
+      <main style={{ flex:1, overflow:'hidden', position:'relative', display:'flex', flexDirection:'column' }}>
 
 
 
@@ -5260,7 +5260,7 @@ Format exactly:
 
         {/* ─── PLAYER TAB */}
         {tab==='player'&&(
-          <div className="scrollbar-hide" style={{ height:'100%', overflowY: (fullscreen || layoutMode === 'mobile-landscape') ? 'hidden' : 'auto', position:'relative' }}>
+          <div className="scrollbar-hide" style={{ flex:1, height:'100%', overflowY:'hidden', position:'relative' }}>
 
           {/* ── QUEUE PANEL — inline dalam player, bukan full layar */}
           {showQueue && (
@@ -5625,8 +5625,8 @@ Format exactly:
           {/* ═══ PORTRAIT + DESKTOP layout ═══ */}
           {layoutMode !== 'mobile-landscape' && (
           <div style={{
-            minHeight: fullscreen ? '100%' : (layoutMode === 'mobile-portrait' ? '100%' : (layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait') ? '100%' : undefined),
-            height: fullscreen ? '100%' : undefined,
+            minHeight: '100%',
+            height: '100%',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -5659,29 +5659,43 @@ Format exactly:
 
             {/* floating action button moved to root level */}
 
-            {/* ── Mobile: jam kiri atas + ring tengah | Desktop: ring tengah saja */}
+            {/* ── Mobile: jam + lokasi/cuaca di atas ring, lalu ring tengah | Desktop: ring tengah saja */}
             {layoutMode === 'mobile-portrait' ? (
-              <div style={{ position:'relative', width:'100%', flexShrink:0, display:'flex', justifyContent:'center', alignItems:'center' }}>
-                {/* Jam mobile — pojok kiri, tidak overlap ring — hide on landscape (clock is in header) */}
-                {layoutMode === 'mobile-portrait' && (
-                <div style={{ position:'absolute', left:0, top:6, userSelect:'none' }}>
-                  <div style={{ display:'inline-block', fontSize:17, fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', backgroundClip:'text', WebkitTextFillColor:'transparent', color:'transparent' }}>
-                    {nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false })}
-                  </div>
-                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', fontWeight:600, marginTop:3, letterSpacing:'0.04em', textTransform:'uppercase', whiteSpace:'nowrap' }}>
-                    {nowTime.toLocaleDateString('id-ID',{ weekday:'short', day:'numeric', month:'short' })}
-                  </div>
-                  {userLocation && (
-                    <div style={{ fontSize:8, color:'rgba(255,255,255,0.28)', fontWeight:600, marginTop:2, letterSpacing:'0.04em', display:'flex', alignItems:'center', gap:4, whiteSpace:'nowrap', flexWrap:'wrap' }}>
-                      {userWeather && <span style={{ display:'flex', alignItems:'center', gap:2, color:'rgba(255,255,255,0.45)' }}>{userWeather.emoji} {userWeather.temp}{userWeather.unit}</span>}
-                      <span style={{ display:'flex', alignItems:'center', gap:2 }}><span style={{ fontSize:8 }}>📍</span>{userLocation}</span>
+              <div style={{ width:'100%', flexShrink:0, display:'flex', flexDirection:'column', alignItems:'center', gap:0 }}>
+                {/* Baris atas: jam kiri + lokasi/cuaca kanan — normal flow, tidak absolute */}
+                <div style={{ width:'100%', display:'flex', alignItems:'flex-start', justifyContent:'space-between', paddingBottom:4, userSelect:'none' }}>
+                  {/* Jam */}
+                  <div>
+                    <div style={{ display:'inline-block', fontSize:17, fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', backgroundClip:'text', WebkitTextFillColor:'transparent', color:'transparent' }}>
+                      {nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false })}
                     </div>
-                  )}
+                    <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', fontWeight:600, marginTop:2, letterSpacing:'0.04em', textTransform:'uppercase', whiteSpace:'nowrap' }}>
+                      {nowTime.toLocaleDateString('id-ID',{ weekday:'short', day:'numeric', month:'short' })}
+                    </div>
+                  </div>
+                  {/* Lokasi + cuaca — sisi kanan, selalu tampil */}
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:2 }}>
+                    {userWeather && (
+                      <div style={{ display:'flex', alignItems:'center', gap:4, fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.75)' }}>
+                        <span>{userWeather.emoji}</span>
+                        <span>{userWeather.temp}{userWeather.unit}</span>
+                      </div>
+                    )}
+                    {userLocation ? (
+                      <div style={{ display:'flex', alignItems:'center', gap:3, fontSize:9.5, fontWeight:600, color:'rgba(255,255,255,0.5)', maxWidth:120, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                        <span>📍</span><span>{userLocation}</span>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize:9, color:'rgba(255,255,255,0.2)', fontWeight:500 }}>📍 —</div>
+                    )}
+                  </div>
                 </div>
-                )}
+                {/* Ring */}
+                <div style={{ position:'relative', display:'flex', justifyContent:'center', alignItems:'center' }}>
 
                 <OrbitalRing size={ringSize} pct={embedTrack?.type==='youtube'?(ytDuration>0?ytProgress/ytDuration:0):track.isRadio?0:pct} color={embedTrack?.type==='youtube'?'#ff4444':track.color} progress={embedTrack?.type==='youtube'?ytProgress:progress} duration={embedTrack?.type==='youtube'?ytDuration:track.isRadio?0:duration} isPlaying={playing} cover={globalCover||((!globalCover&&embedTrack?.type==='youtube')?embedTrack.thumbnail:null)||getCover(track)} title={embedTrack?.type==='youtube'?embedTrack.title:track.title} onSeek={embedTrack?.type==='youtube'?seekYt:track.isRadio?null:seekByPct} isLite={isLite} isRadio={!embedTrack&&track.isRadio} downloadProg={driveDownProg} drivePhase={drivePhase} ytDownloading={embedTrack?.type==='youtube'&&ytDownloadingIds.has(embedTrack.videoId)} ytDlProg={embedTrack?.type==='youtube'?(ytDownloadProg[embedTrack.videoId]||0):0}/>
-              </div>
+                </div>{/* end ring wrapper */}
+              </div>{/* end portrait column */}
             ) : (
               <OrbitalRing size={ringSize} pct={embedTrack?.type==='youtube'?(ytDuration>0?ytProgress/ytDuration:0):track.isRadio?0:pct} color={embedTrack?.type==='youtube'?'#ff4444':track.color} progress={embedTrack?.type==='youtube'?ytProgress:progress} duration={embedTrack?.type==='youtube'?ytDuration:track.isRadio?0:duration} isPlaying={playing} cover={globalCover||((!globalCover&&embedTrack?.type==='youtube')?embedTrack.thumbnail:null)||getCover(track)} title={embedTrack?.type==='youtube'?embedTrack.title:track.title} onSeek={embedTrack?.type==='youtube'?seekYt:track.isRadio?null:seekByPct} isLite={isLite} isRadio={!embedTrack&&track.isRadio} downloadProg={driveDownProg} drivePhase={drivePhase} ytDownloading={embedTrack?.type==='youtube'&&ytDownloadingIds.has(embedTrack.videoId)} ytDlProg={embedTrack?.type==='youtube'?(ytDownloadProg[embedTrack.videoId]||0):0}/>
             )}

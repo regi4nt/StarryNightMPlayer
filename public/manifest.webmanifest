@@ -9,7 +9,10 @@
   "background_color": "#07071a",
   "theme_color": "#07071a",
   "orientation": "any",
-  "categories": ["music", "entertainment"],
+  "categories": [
+    "music",
+    "entertainment"
+  ],
   "lang": "id",
   "icons": [
     {
@@ -49,21 +52,36 @@
       "short_name": "Radio",
       "description": "Buka tab Radio langsung",
       "url": "/?tab=stream",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "Koleksi",
       "short_name": "Koleksi",
       "description": "Lihat koleksi & playlist",
       "url": "/?tab=playlist",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "AI & Lirik",
       "short_name": "AI",
       "description": "Buka tab AI & lirik",
       "url": "/?tab=ai",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ],
   "screenshots": [
@@ -72,7 +90,8 @@
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Starry Night MPlayer — home screen"
+      "label": "Starry Night MPlayer"
     }
-  ]
+  ],
+  "prefer_related_applications": false
 }
