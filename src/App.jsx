@@ -2091,21 +2091,15 @@ Return ONLY valid JSON, no explanation:
     // Deteksi apakah benar-benar berjalan sebagai PWA standalone
     // (bukan sekadar pintasan web / shortcut Chrome biasa)
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches
-      || window.matchMedia('(display-mode: minimal-ui)').matches
       || window.navigator.standalone === true; // iOS Safari PWA
     if (isStandalone) return true;
     // Jika berjalan di browser biasa (termasuk pintasan web Chrome),
     // JANGAN percaya localStorage — reset flag agar install prompt tetap muncul.
-    // Pintasan web Chrome membuka URL di tab browser biasa, bukan standalone mode,
-    // sehingga display-mode selalu 'browser' dan beforeinstallprompt tetap bisa terpicu.
     try { localStorage.removeItem('pwa_installed'); } catch {}
     return false;
   });
   const [pwaBannerDismissed, setPwaBannerDismissed] = useState(() => {
-    // Hanya honor dismiss flag jika ini sesi baru di browser (bukan standalone),
-    // agar setiap kali buka via pintasan web, banner install tetap bisa terpicu.
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches
-      || window.matchMedia('(display-mode: minimal-ui)').matches
       || window.navigator.standalone === true;
     if (isStandalone) return true; // Di PWA standalone, banner tidak perlu ditampilkan
     // Di browser/pintasan web: reset dismiss per sesi agar banner bisa muncul kembali
@@ -2127,7 +2121,6 @@ Return ONLY valid JSON, no explanation:
     window.addEventListener('beforeinstallprompt', handler);
     window.addEventListener('appinstalled', onInstalled);
     if (window.matchMedia('(display-mode: standalone)').matches
-      || window.matchMedia('(display-mode: minimal-ui)').matches
       || window.navigator.standalone === true) {
       setPwaInstalled(true);
       try { localStorage.setItem('pwa_installed', '1'); } catch {}
@@ -2158,7 +2151,6 @@ Return ONLY valid JSON, no explanation:
     // (bukan pintasan web biasa di Chrome), agar sesi browser berikutnya masih bisa
     // menawarkan install PWA kembali.
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches
-      || window.matchMedia('(display-mode: minimal-ui)').matches
       || window.navigator.standalone === true;
     if (isStandalone) {
       try { localStorage.setItem('pwa_banner_dismissed', '1'); } catch {}
