@@ -3,17 +3,44 @@
   <head>
     <meta charset="UTF-8" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com https://cdn.jsdelivr.net; script-src-elem 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://accounts.google.com; style-src-elem 'self' 'unsafe-inline' https://accounts.google.com; img-src 'self' data: https: blob:; media-src 'self' https: http: blob:; connect-src 'self' https: http:; font-src 'self' data:; worker-src 'self' blob:; frame-src https://open.spotify.com https://www.youtube.com https://www.deezer.com https://w.soundcloud.com https://bandcamp.com; form-action 'self' https:;" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
+    <!-- ── Viewport & Favicon ── -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="description" content="Starry Night MPlayer — Pemutar musik AI dengan tema luar angkasa" />
+
+    <!-- ── PWA: Web App Manifest ── -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- ── PWA: Android / Chrome ── -->
     <meta name="theme-color" content="#07071a" />
     <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="description" content="Starry Night MPlayer — Pemutar musik AI dengan tema luar angkasa" />
+
+    <!-- ── PWA: iOS Safari (WAJIB untuk standalone di iPhone/iPad) ── -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="StarryMPlayer" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png" />
+
+    <!-- ── iOS Splash Screens (agar tidak dibuka di browser saat launch) ── -->
+    <!-- Portrait splash — ukuran umum iPhone -->
+    <link rel="apple-touch-startup-image"
+      media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+      href="/icon-512.png" />
+    <link rel="apple-touch-startup-image"
+      media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+      href="/icon-512.png" />
+    <link rel="apple-touch-startup-image"
+      media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+      href="/icon-512.png" />
+    <link rel="apple-touch-startup-image"
+      media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+      href="/icon-512.png" />
+    <!-- Generic fallback splash -->
+    <link rel="apple-touch-startup-image" href="/icon-512.png" />
+
     <style>
       /* Inline splash while app loads — matches starry night web design */
       #splash {
@@ -24,16 +51,18 @@
       }
       #splash.hide{opacity:0;pointer-events:none;}
     </style>
-    <!-- Resource hints untuk load lebih cepat -->
+
+    <!-- Resource hints -->
     <link rel="preconnect" href="https://www.googleapis.com" crossorigin/>
     <link rel="preconnect" href="https://i.scdn.co" crossorigin/>
     <link rel="preconnect" href="https://i.ytimg.com" crossorigin/>
     <link rel="dns-prefetch" href="https://accounts.google.com"/>
     <link rel="dns-prefetch" href="https://api.lyrics.ovh"/>
+
     <title>Starry Night MPlayer</title>
   </head>
   <body style="background:#07071a;margin:0;padding:0;overflow:hidden;">
-    <!-- PWA Splash Screen (matches starry web design) -->
+    <!-- PWA Splash Screen -->
     <div id="splash">
       <svg width="72" height="72" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
         <defs>
@@ -78,8 +107,6 @@
       }
       window.addEventListener('DOMContentLoaded', function() {
         var root = document.getElementById('root');
-
-        // Primary: observe React mount
         var obs = new MutationObserver(function() {
           if (root && root.children.length > 0) {
             setTimeout(hideSplash, 300);
@@ -87,26 +114,46 @@
           }
         });
         obs.observe(root, { childList: true });
-
-        // Fallback 1: jika React sudah mount tapi observer kelewatan
         setTimeout(function() {
           if (root && root.children.length > 0) { obs.disconnect(); hideSplash(); }
         }, 1500);
-
-        // Fallback 2: paksa hilang setelah 5 detik apapun yang terjadi
         setTimeout(function() { obs.disconnect(); hideSplash(); }, 5000);
       });
 
-      // ── Service Worker registration (explicit fallback agar standalone PWA bisa install) ──
-      // VitePWA inject SW registration saat build, tapi kita tambah manual agar tidak
-      // bergantung pada timing inject. Double-register aman — browser ignore duplikat.
+      // ── Service Worker registration ──
+      // Daftar SW secara eksplisit. VitePWA juga inject registration saat build,
+      // tapi registrasi ganda aman — browser abaikan duplikat scope yang sama.
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function() {
           navigator.serviceWorker.register('/sw.js', { scope: '/' })
-            .then(function(reg) { console.log('[SW] registered, scope:', reg.scope); })
+            .then(function(reg) {
+              console.log('[SW] registered scope:', reg.scope);
+              // Force update jika ada SW baru
+              reg.addEventListener('updatefound', function() {
+                var newWorker = reg.installing;
+                if (newWorker) {
+                  newWorker.addEventListener('statechange', function() {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                      newWorker.postMessage({ type: 'SKIP_WAITING' });
+                    }
+                  });
+                }
+              });
+            })
             .catch(function(err) { console.warn('[SW] registration failed:', err); });
         });
       }
+
+      // ── Detect standalone mode — sembunyikan elemen browser jika berjalan sebagai PWA ──
+      (function() {
+        var isStandalone =
+          window.navigator.standalone === true ||
+          window.matchMedia('(display-mode: standalone)').matches ||
+          window.matchMedia('(display-mode: fullscreen)').matches;
+        if (isStandalone) {
+          document.documentElement.classList.add('pwa-standalone');
+        }
+      })();
     </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>

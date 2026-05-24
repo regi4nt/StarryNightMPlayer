@@ -1,10 +1,9 @@
-// Starry Night MPlayer — Service Worker
-// File ini adalah fallback minimal. Saat `npm run build`, VitePWA/Workbox akan
-// overwrite file ini dengan versi Workbox yang lebih lengkap (caching, offline, dll).
-// File ini cukup untuk memenuhi syarat PWA installable (standalone, bukan shortcut).
+// Starry Night MPlayer — Service Worker (fallback / dev mode)
+// Saat `npm run build`, VitePWA/Workbox overwrite file ini dengan versi Workbox lengkap.
+// File ini dipakai di dev mode atau sebagai fallback minimal.
 
-const CACHE = 'starry-v1';
-const SHELL = ['/', '/index.html', '/manifest.webmanifest'];
+const CACHE = 'starry-v2';
+const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/favicon.svg'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
@@ -20,16 +19,20 @@ self.addEventListener('activate', (e) => {
   );
 });
 
+// Handle SKIP_WAITING pesan dari index.html
+self.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
+});
+
 self.addEventListener('fetch', (e) => {
-  // Passthrough untuk API calls — jangan cache request ke /api/
+  if (e.request.method !== 'GET') return;
   if (e.request.url.includes('/api/')) return;
 
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
       return fetch(e.request).then(res => {
-        // Cache GET responses sukses untuk aset statis
-        if (e.request.method === 'GET' && res.status === 200) {
+        if (res.status === 200) {
           const url = new URL(e.request.url);
           const isStatic = /\.(js|css|png|svg|ico|woff2|webmanifest)$/.test(url.pathname);
           if (isStatic) {
