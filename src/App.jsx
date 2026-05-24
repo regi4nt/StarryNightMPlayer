@@ -1783,9 +1783,43 @@ Return ONLY valid JSON, no explanation:
   const [showSettings, setShowSettings] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const fullscreenRef = useRef(false);
+  // Simpan orientasi sebelum masuk fullscreen agar bisa dikunci ke posisi itu
+  const orientationBeforeFullscreen = useRef(null);
   useEffect(() => {
     fullscreenRef.current = fullscreen;
     window.dispatchEvent(new Event('resize')); // re-trigger layout calc
+
+    // ── Orientation lock saat fullscreen di PWA ──────────────────────────
+    // Kunci ke orientasi TERAKHIR sebelum masuk fullscreen (bukan selalu portrait)
+    const isPWA =
+      window.navigator.standalone === true ||
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.matchMedia('(display-mode: window-controls-overlay)').matches ||
+      window.matchMedia('(display-mode: fullscreen)').matches;
+
+    if (isPWA && screen?.orientation?.lock) {
+      if (fullscreen) {
+        // Baca orientasi saat ini dan simpan, lalu kunci ke sana
+        const currentAngle = screen.orientation?.angle ?? window.orientation ?? 0;
+        let lockType;
+        if (currentAngle === 90 || currentAngle === -90 || currentAngle === 270) {
+          lockType = currentAngle === 270 ? 'landscape-secondary' : 'landscape-primary';
+        } else if (currentAngle === 180) {
+          lockType = 'portrait-secondary';
+        } else {
+          lockType = 'portrait-primary';
+        }
+        orientationBeforeFullscreen.current = lockType;
+        screen.orientation.lock(lockType).catch(() => {
+          // Beberapa perangkat tidak izinkan lock — abaikan error
+        });
+      } else {
+        // Lepas kunci saat keluar fullscreen — biarkan rotasi bebas lagi
+        orientationBeforeFullscreen.current = null;
+        screen.orientation.unlock();
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────
   }, [fullscreen]);
 
   // ── Queue / search
