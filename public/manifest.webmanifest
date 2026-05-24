@@ -6,7 +6,7 @@
   "display": "standalone",
   "background_color": "#07071a",
   "theme_color": "#07071a",
-  "orientation": "portrait",
+  "orientation": "any",
   "categories": ["music", "entertainment"],
   "lang": "id",
   "icons": [
@@ -35,14 +35,14 @@
       "name": "Koleksi",
       "short_name": "Koleksi",
       "description": "Lihat koleksi & playlist",
-      "url": "/?tab=library",
+      "url": "/?tab=playlist",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Cari Musik",
-      "short_name": "Cari",
-      "description": "Cari musik & artis",
-      "url": "/?tab=search",
+      "name": "AI & Lirik",
+      "short_name": "AI",
+      "description": "Buka tab AI & lirik",
+      "url": "/?tab=ai",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
   ],

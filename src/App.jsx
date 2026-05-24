@@ -54,6 +54,12 @@ const Spinner = () => (
 );
 const wrap = (node) => <Suspense fallback={<Spinner />}>{node}</Suspense>;
 
+// ── Layout constants — single source of truth, used in both calc() and JSX render
+const SIDEBAR_W_LANDSCAPE = 196;  // desktop-landscape sidebar width
+const SIDEBAR_W_PORTRAIT  = 160;  // desktop-portrait sidebar width
+const HEADER_H_NORMAL     = 46;   // header height (all modes except mobile-landscape)
+const HEADER_H_LANDSCAPE  = 34;   // header height for mobile-landscape (slimmer padding)
+
 export default function App() {
   // ── Mode: Lite (ringan + hemat data) vs Pro (penuh)
   // Lite otomatis mengaktifkan semua penghematan: cover, buffer, prefetch, AI, animasi
@@ -1498,7 +1504,7 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
   }, [ytDuration]);
 
   // ── YouTube queue navigation
-  const ytNext = useCallback(() => {
+  const ytNext = useCallback(({ auto = false } = {}) => {
     const q = ytQueueRef.current;
     if (repeatRef.current === 'one') {
       // Ulangi video yang sama: seekTo 0 lalu play
@@ -1557,6 +1563,12 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
         playYouTubeRef.current(q[0], q, 0);
         return;
       }
+      // Di ujung queue, repeat=off: stop (auto) atau wrap ke awal (manual)
+      setPlaying(false);
+      return;
+    }
+    // auto=true + repeat=off + shuffle=off → tidak lanjut ke video berikutnya
+    if (auto && repeatRef.current === 'off' && !shuffleRef.current) {
       setPlaying(false);
       return;
     }
@@ -1893,12 +1905,30 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
   const goNextRef     = useRef(null); // avoids stale closure in onEnd
   const ytNextRef     = useRef(null); // avoids stale closure in YT onStateChange
   const wsNextRef     = useRef(null); // avoids stale closure in ws queue auto-advance
+  const bottomNavRef  = useRef(null);  // ref to mobile portrait bottom nav for height measurement
+  const bottomNavHRef = useRef(68);    // actual measured height of bottom nav (default 68px)
 
   // ── Keep refs in sync
   useEffect(() => { shuffleRef.current  = shuffle;   }, [shuffle]);
   useEffect(() => { repeatRef.current   = repeat;    }, [repeat]);
   useEffect(() => { tokenRef.current    = accessToken; }, [accessToken]);
   useEffect(() => { isLiteRef.current   = isLite;    }, [isLite]);
+
+  // ── Measure actual bottom nav height so portrait ring calc is always accurate
+  useEffect(() => {
+    const el = bottomNavRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(entries => {
+      const h = entries[0]?.borderBoxSize?.[0]?.blockSize ?? el.offsetHeight;
+      if (h > 0 && h !== bottomNavHRef.current) {
+        bottomNavHRef.current = h;
+        // Re-trigger layout calc so ring size updates immediately
+        window.dispatchEvent(new Event('resize'));
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   useEffect(() => { spPlayingRef.current = spPlaying; }, [spPlaying]);
 
   // ── Jam live — sinkron ke batas detik agar tidak drift
@@ -2027,9 +2057,30 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
 
   // ── PWA Install prompt
   const [pwaPrompt, setPwaPrompt] = useState(null);
-  const [pwaInstalled, setPwaInstalled] = useState(false);
+  const [pwaInstalled, setPwaInstalled] = useState(() => {
+    // Deteksi apakah benar-benar berjalan sebagai PWA standalone
+    // (bukan sekadar pintasan web / shortcut Chrome biasa)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+      || window.matchMedia('(display-mode: minimal-ui)').matches
+      || window.navigator.standalone === true; // iOS Safari PWA
+    if (isStandalone) return true;
+    // Jika berjalan di browser biasa (termasuk pintasan web Chrome),
+    // JANGAN percaya localStorage — reset flag agar install prompt tetap muncul.
+    // Pintasan web Chrome membuka URL di tab browser biasa, bukan standalone mode,
+    // sehingga display-mode selalu 'browser' dan beforeinstallprompt tetap bisa terpicu.
+    try { localStorage.removeItem('pwa_installed'); } catch {}
+    return false;
+  });
   const [pwaBannerDismissed, setPwaBannerDismissed] = useState(() => {
-    try { return localStorage.getItem('pwa_banner_dismissed') === '1'; } catch { return false; }
+    // Hanya honor dismiss flag jika ini sesi baru di browser (bukan standalone),
+    // agar setiap kali buka via pintasan web, banner install tetap bisa terpicu.
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+      || window.matchMedia('(display-mode: minimal-ui)').matches
+      || window.navigator.standalone === true;
+    if (isStandalone) return true; // Di PWA standalone, banner tidak perlu ditampilkan
+    // Di browser/pintasan web: reset dismiss per sesi agar banner bisa muncul kembali
+    try { localStorage.removeItem('pwa_banner_dismissed'); } catch {}
+    return false;
   });
   const [pwaBannerVisible, setPwaBannerVisible] = useState(false);
 
@@ -2040,13 +2091,21 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
       setTimeout(() => setPwaBannerVisible(true), 3000);
     };
     window.addEventListener('beforeinstallprompt', handler);
-    window.addEventListener('appinstalled', () => { setPwaInstalled(true); setPwaPrompt(null); setPwaBannerVisible(false); });
-    if (window.matchMedia('(display-mode: standalone)').matches) setPwaInstalled(true);
-    // Handle shortcut URLs: ?tab=stream / ?tab=library / ?tab=search
+    window.addEventListener('appinstalled', () => {
+      setPwaInstalled(true); setPwaPrompt(null); setPwaBannerVisible(false);
+      try { localStorage.setItem('pwa_installed', '1'); } catch {}
+    });
+    if (window.matchMedia('(display-mode: standalone)').matches
+      || window.matchMedia('(display-mode: minimal-ui)').matches
+      || window.navigator.standalone === true) {
+      setPwaInstalled(true);
+      try { localStorage.setItem('pwa_installed', '1'); } catch {}
+    }
+    // Handle shortcut URLs: ?tab=stream / ?tab=playlist / ?tab=ai
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam = urlParams.get('tab');
     if (tabParam) {
-      const tabMap = { stream: 'stream', library: 'library', search: 'search' };
+      const tabMap = { stream: 'stream', playlist: 'playlist', ai: 'ai', library: 'playlist', search: 'ai' };
       if (tabMap[tabParam]) setTimeout(() => setTab(tabMap[tabParam]), 500);
       window.history.replaceState({}, '', window.location.pathname);
     }
@@ -2061,7 +2120,15 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
   const dismissPwaBanner = () => {
     setPwaBannerVisible(false);
     setPwaBannerDismissed(true);
-    try { localStorage.setItem('pwa_banner_dismissed', '1'); } catch {}
+    // Hanya simpan dismiss permanen jika user benar-benar sudah dalam PWA standalone
+    // (bukan pintasan web biasa di Chrome), agar sesi browser berikutnya masih bisa
+    // menawarkan install PWA kembali.
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+      || window.matchMedia('(display-mode: minimal-ui)').matches
+      || window.navigator.standalone === true;
+    if (isStandalone) {
+      try { localStorage.setItem('pwa_banner_dismissed', '1'); } catch {}
+    }
   };
 
   // ── Online / Offline detection
@@ -2248,47 +2315,47 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
 
       if (mode === 'desktop-landscape') {
         // Desktop Landscape — wide sidebar + centered ring
-        const sidebarW = 196;
+        const sidebarW = SIDEBAR_W_LANDSCAPE;
         const mainW = vw - sidebarW;
-        const mainH = vh - 50;
+        const mainH = vh - HEADER_H_NORMAL;
         const reservedH = 270;
         const byH = mainH - reservedH;
         const byW = mainW - 80;
         const ring = Math.max(180, Math.min(320, Math.min(byH, byW)));
         setRingSize(ring);
-        const vpad = Math.max(8, Math.round((mainH - ring - reservedH) / 2));
+        // Fixed small padding — vertical centering handled by justifyContent:'center' on container
         setLayoutVars({
-          playerPad: `${vpad}px 24px`,
+          playerPad: '16px 24px',
           trackTitleSize: `clamp(16px,${Math.round(mainW * 0.04)}px,28px)`,
           artistSize: '12px', controlsGap: '14px', actionPad: '9px 0',
-          volumeMt: `${Math.max(8, Math.min(16, Math.round(vpad * 0.6)))}px`,
-          controlsMt: `${Math.max(10, Math.min(20, Math.round(vpad * 0.8)))}px`,
-          infoMt: `${Math.max(8, Math.min(16, Math.round(vpad * 0.6)))}px`,
+          volumeMt: '12px',
+          controlsMt: '14px',
+          infoMt: '12px',
         });
       } else if (mode === 'desktop-portrait') {
         // Desktop Portrait — narrower sidebar, taller player
-        const sidebarW = 160;
+        const sidebarW = SIDEBAR_W_PORTRAIT;
         const mainW = vw - sidebarW;
-        const mainH = vh - 50;
+        const mainH = vh - HEADER_H_NORMAL;
         const reservedH = 260;
         const byH = mainH - reservedH;
         const byW = mainW - 60;
         const ring = Math.max(160, Math.min(300, Math.min(byH, byW)));
         setRingSize(ring);
-        const vpad = Math.max(6, Math.round((mainH - ring - reservedH) / 2));
+        // Fixed small padding — vertical centering handled by justifyContent:'center' on container
         setLayoutVars({
-          playerPad: `${vpad}px 20px`,
+          playerPad: '12px 20px',
           trackTitleSize: `clamp(14px,${Math.round(mainW * 0.04)}px,24px)`,
           artistSize: '11px', controlsGap: '12px', actionPad: '8px 0',
-          volumeMt: `${Math.max(6, Math.min(14, Math.round(vpad * 0.6)))}px`,
-          controlsMt: `${Math.max(8, Math.min(18, Math.round(vpad * 0.8)))}px`,
-          infoMt: `${Math.max(6, Math.min(14, Math.round(vpad * 0.6)))}px`,
+          volumeMt: '10px',
+          controlsMt: '12px',
+          infoMt: '10px',
         });
       } else if (mode === 'mobile-landscape') {
         // Mobile Landscape — slim side icon nav (52px) + two-column player
         const sideNavW = 52;
         const mainW = vw - sideNavW;
-        const mainH = vh - 40; // minus slim header
+        const mainH = vh - HEADER_H_LANDSCAPE; // minus slim header
         // Left col = ~45% of mainW; ring fills height minus padding
         const ringColW = Math.round(mainW * 0.45);
         const ring = Math.max(120, Math.min(mainH - 16, ringColW - 16));
@@ -2306,9 +2373,9 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
         });
       } else {
         // Portrait: full-width stacked
-        // Measured fixed slots: header~46, clock~24, badge~18, info~40,
-        //   controls~52, volume~30, actions~44, bottomNav~68, gaps~16
-        const fixed = 46 + 24 + 18 + 40 + 52 + 30 + 44 + 68 + 16;
+        // Measured fixed slots: header (HEADER_H_NORMAL), clock~24, badge~18, info~40,
+        //   controls~52, volume~30, actions~44, bottomNav (measured), gaps~16
+        const fixed = HEADER_H_NORMAL + 24 + 18 + 40 + 52 + 30 + 44 + bottomNavHRef.current + 16;
         const byH = vh - fixed;
         const byW = vw - 32;
         const ring = Math.max(160, Math.min(280, Math.min(byH, byW)));
@@ -2336,7 +2403,10 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
     return () => window.removeEventListener('resize', calc);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Audio init
+  // ── Audio init + events (DIGABUNG dalam satu useEffect agar tidak race condition)
+  // Bug sebelumnya: dua useEffect terpisah ([track.src] dan [track]) bisa menyebabkan
+  // event listener (timeupdate, loadedmetadata, durationchange) attach ke Audio lama
+  // sebelum instance baru dibuat — akibatnya duration tidak terbaca dan seek tidak berfungsi.
   useEffect(() => {
     const prev = audioRef.current;
     // Jika elemen audio yang sama sudah punya src ini, langsung return
@@ -2369,32 +2439,9 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
       a.crossOrigin = 'anonymous';
     }
     audioRef.current = a;
-    const isHlsSrc = track.src.includes('.m3u8') || track.src.includes('/hls/') || track.src.includes('chunklist');
-    if (track.isRadio && isHlsSrc) {
-      // HLS.js untuk stream .m3u8 (Chrome & Firefox tidak support native HLS)
-      setStreamBuffering(true);
-      attachHls(a, track.src, () => {
-        setStreamBuffering(false);
-        if (wasPlaying) {
-          a.play().catch(e => { console.warn('autoplay blocked:', e); setPlaying(false); });
-        }
-      });
-    } else {
-      a.src = track.src; // set src SETELAH crossOrigin agar berlaku sejak request pertama
-      if (wasPlaying) {
-        a.play().catch(e => { console.warn('autoplay blocked:', e); setPlaying(false); });
-      }
-    }
-    return () => {
-      a.pause(); a.src = '';
-      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
-    };
-  }, [track.src]); // eslint-disable-line react-hooks/exhaustive-deps
-  // ── Audio events
-  useEffect(() => {
-    const a = audioRef.current; if (!a) return;
-    // Lite: throttle ke 2 detik sekali — hemat CPU render loop
-    // Pro: throttle ke 1 detik — CSS transition 0.35s mengisi gap, tetap terlihat smooth
+
+    // ── Attach event listeners langsung setelah Audio dibuat (bukan di useEffect terpisah)
+    // ── sehingga tidak ada jeda di mana React effects bisa membaca audioRef yang sudah stale
     let lastTimeSaved = 0;
     const onTime = () => {
       const now = a.currentTime;
@@ -2407,40 +2454,51 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
       if (isFinite(a.duration) && a.duration > 0) { setDuration(a.duration); return true; }
       return false;
     };
-    const onMeta  = () => trySetDur();
+    const onMeta      = () => trySetDur();
     const onDurChange = () => trySetDur();
-    const onEnd   = () => {
-      if (repeatRef.current === 'one') { a.currentTime = 0; a.play().catch(()=>{}); return; }
+    const onEnd = () => {
+      if (repeatRef.current === 'one') {
+        // Setelah 'ended', browser menempatkan audio dalam state paused dengan readyState bisa turun.
+        // Hanya currentTime=0 + play() sering gagal atau tidak fire 'ended' lagi di ulang berikutnya.
+        // Fix: gunakan load() untuk reset internal state audio browser, lalu seek & play dari canplay.
+        const savedSrc = a.src;
+        a.load(); // reset pipeline audio (src tidak berubah, hanya state internal direset)
+        const doPlay = () => {
+          a.currentTime = 0;
+          a.play().catch(e => { console.warn('repeat-one play error:', e); setPlaying(false); });
+        };
+        if (a.readyState >= 3) { // HAVE_FUTURE_DATA — sudah bisa langsung play
+          doPlay();
+        } else {
+          a.addEventListener('canplay', doPlay, { once: true });
+        }
+        return;
+      }
       if (repeatRef.current === 'all' || shuffleRef.current) {
-        // Repeat all atau shuffle → lanjut ke lagu berikutnya
-        if (goNextRef.current) goNextRef.current();
+        if (goNextRef.current) goNextRef.current({ auto: true });
       } else {
-        // repeat=off → hanya lanjut jika shuffle aktif, otherwise berhenti
+        // Tidak ada repeat/shuffle — lagu berhenti dan posisi kembali ke awal
+        // agar user bisa menekan play lagi dari awal tanpa seek manual
         setPlaying(false);
+        setProgress(0);
+        a.currentTime = 0;
       }
     };
-    // Error / stall — pastikan loading state tidak terjebak selamanya
     const onError = () => {
       const err = a.error;
-      // Auto-reconnect untuk stream radio
       if (track.isRadio) {
         console.warn('[Radio] Stream error, scheduling reconnect. code:', err?.code);
         scheduleRadioReconnect(track);
         return;
       }
-      // MediaSource / network error saat streaming Drive — coba reload
       if (track.isDrive && track.driveId && err && (err.code === 2 || err.code === 4)) {
-        // MEDIA_ERR_NETWORK (2) atau MEDIA_ERR_SRC_NOT_SUPPORTED (4)
-        // Bisa terjadi saat MediaSource stream putus atau token expired di tengah jalan
         const tok = tokenRef.current;
         if (tok) {
           const savedPos = a.currentTime;
           console.warn('[Drive] Audio error, retrying from', savedPos, 'err:', err.code);
-          // Hapus cache in-memory agar re-fetch
           for (const [k, v] of _blobCache) {
             if (k.startsWith(track.driveId + ':')) { URL.revokeObjectURL(v); _blobCache.delete(k); }
           }
-          // Re-trigger play dari posisi yang sama via token refresh
           silentRefreshToken().catch(() => tok).then(newTok => {
             const fn = isLite ? driveStreamLite : driveStreamBlob;
             return fn(track.driveId, newTok, audioRef);
@@ -2458,31 +2516,46 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
     };
     const onStall = () => {
       if (track.isRadio) {
-        // Untuk radio: jangan a.load() (akan reset stream dari awal)
-        // Cukup schedule reconnect jika benar-benar macet
-        if (a.readyState < 2 && !a.paused) {
-          scheduleRadioReconnect(track);
-        }
+        if (a.readyState < 2 && !a.paused) scheduleRadioReconnect(track);
         return;
       }
-      // Stall bisa terjadi saat buffer habis di Lite mode — coba resume
       if (a.readyState < 3 && !a.paused) {
         a.load();
         const pos = a.currentTime;
         a.addEventListener('canplay', () => { a.currentTime = pos; a.play().catch(()=>{}); }, { once: true });
       }
     };
-    // Buffering indicator untuk stream radio
-    const onWaiting = () => { if (track.isRadio) setStreamBuffering(true); };
-    const onPlaying = () => { if (track.isRadio) { setStreamBuffering(false); radioReconnectCount.current = 0; if (radioReconnectRef.current) { clearTimeout(radioReconnectRef.current); radioReconnectRef.current = null; } } };
-    a.addEventListener('timeupdate', onTime);
+    const onWaiting  = () => { if (track.isRadio) setStreamBuffering(true); };
+    const onPlaying2 = () => { if (track.isRadio) { setStreamBuffering(false); radioReconnectCount.current = 0; if (radioReconnectRef.current) { clearTimeout(radioReconnectRef.current); radioReconnectRef.current = null; } } };
+    a.addEventListener('timeupdate',     onTime);
     a.addEventListener('loadedmetadata', onMeta);
     a.addEventListener('durationchange', onDurChange);
-    a.addEventListener('ended', onEnd);
-    a.addEventListener('error', onError);
-    a.addEventListener('stalled', onStall);
-    a.addEventListener('waiting', onWaiting);
-    a.addEventListener('playing', onPlaying);
+    a.addEventListener('ended',          onEnd);
+    a.addEventListener('error',          onError);
+    a.addEventListener('stalled',        onStall);
+    a.addEventListener('waiting',        onWaiting);
+    a.addEventListener('playing',        onPlaying2);
+
+    // Reset progress & duration untuk lagu baru
+    setProgress(0);
+    setDuration(0);
+
+    const isHlsSrc = track.src.includes('.m3u8') || track.src.includes('/hls/') || track.src.includes('chunklist');
+    if (track.isRadio && isHlsSrc) {
+      setStreamBuffering(true);
+      attachHls(a, track.src, () => {
+        setStreamBuffering(false);
+        if (wasPlaying) {
+          a.play().catch(e => { console.warn('autoplay blocked:', e); setPlaying(false); });
+        }
+      });
+    } else {
+      a.src = track.src; // set src SETELAH crossOrigin agar berlaku sejak request pertama
+      if (wasPlaying) {
+        a.play().catch(e => { console.warn('autoplay blocked:', e); setPlaying(false); });
+      }
+    }
+
     // Immediate check — metadata may already be loaded (blob URL / fast network)
     trySetDur();
     // Polling fallback: VBR MP3 may report Infinity initially, then settle later
@@ -2490,18 +2563,21 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
     const durPoll = setInterval(() => {
       if (trySetDur() || ++pollCount > 20) clearInterval(durPoll);
     }, 500);
+
     return () => {
-      a.removeEventListener('timeupdate', onTime);
+      a.removeEventListener('timeupdate',     onTime);
       a.removeEventListener('loadedmetadata', onMeta);
       a.removeEventListener('durationchange', onDurChange);
-      a.removeEventListener('ended', onEnd);
-      a.removeEventListener('error', onError);
-      a.removeEventListener('stalled', onStall);
-      a.removeEventListener('waiting', onWaiting);
-      a.removeEventListener('playing', onPlaying);
+      a.removeEventListener('ended',          onEnd);
+      a.removeEventListener('error',          onError);
+      a.removeEventListener('stalled',        onStall);
+      a.removeEventListener('waiting',        onWaiting);
+      a.removeEventListener('playing',        onPlaying2);
       clearInterval(durPoll);
+      a.pause(); a.src = '';
+      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
     };
-  }, [track]); // only re-attach when track changes (not customSongs)
+  }, [track.src]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Sync playingRef
   useEffect(() => { playingRef.current = playing; }, [playing]);
@@ -2624,7 +2700,7 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
           if (data.info === 0) {
             // Video ended → auto next; do NOT set playing=false here
             // (ytNext will handle play state itself)
-            if (!ytEndedFiredRef.current) { ytEndedFiredRef.current = true; setTimeout(() => { if (ytNextRef.current) ytNextRef.current(); }, 300); }
+            if (!ytEndedFiredRef.current) { ytEndedFiredRef.current = true; setTimeout(() => { if (ytNextRef.current) ytNextRef.current({ auto: true }); }, 300); }
           } else if (data.info === 1) {
             if (!playingRef.current) setPlaying(true);
           } else if (data.info === 2) {
@@ -2636,7 +2712,7 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
         // YT error codes: 2=bad param, 5=HTML5 error, 100=not found, 101/150=embedding disabled
         if (data.event === 'onError') {
           console.warn('[YT] iframe error code:', data.info, '— skip ke lagu berikutnya');
-          if (!ytEndedFiredRef.current) { ytEndedFiredRef.current = true; setTimeout(() => { if (ytNextRef.current) ytNextRef.current(); }, 500); }
+          if (!ytEndedFiredRef.current) { ytEndedFiredRef.current = true; setTimeout(() => { if (ytNextRef.current) ytNextRef.current({ auto: true }); }, 500); }
         }
       } catch(_) {}
     };
@@ -2653,7 +2729,7 @@ Rules: each query should be specific enough to find the right song/artist. Inclu
         const remaining = ytDurationRef.current - ytProgressRef.current;
         if (remaining <= 1.5 && playingRef.current) {
           ytEndedFiredRef.current = true;
-          setTimeout(() => { if (ytNextRef.current) ytNextRef.current(); }, 400);
+          setTimeout(() => { if (ytNextRef.current) ytNextRef.current({ auto: true }); }, 400);
         }
       }
     }, 800);
@@ -4246,7 +4322,7 @@ Format exactly:
   // ── NEXT / PREV
   const activePlRef = useRef(null); // kept in sync below
 
-  const goNext = useCallback(() => {
+  const goNext = useCallback(({ auto = false } = {}) => {
     // ── WS queue: advance within web-search audio queue
     if (track._wsSource && wsQueueRef.current.length > 0) {
       const nextIdx = wsQueueIdxRef.current + 1;
@@ -4256,6 +4332,10 @@ Format exactly:
       } else if (repeatRef.current === 'all') {
         wsQueueIdxRef.current = 0;
         playWsTrack(wsQueueRef.current[0], wsQueueRef.current, 0);
+      } else if (!auto) {
+        // Manual next saat di ujung queue tanpa repeat → wrap ke awal
+        wsQueueIdxRef.current = 0;
+        playWsTrack(wsQueueRef.current[0], wsQueueRef.current, 0);
       }
       return;
     }
@@ -4263,11 +4343,19 @@ Format exactly:
     const songs = activePlRef.current && activePlRef.current.length > 0
       ? activePlRef.current
       : [...builtinSongs, ...customSongs, ...ytSongs];
-    if (repeatRef.current==='one') { if(audioRef.current){audioRef.current.currentTime=0;audioRef.current.play().catch(()=>{});} return; }
+    if (repeatRef.current==='one') {
+      const a = audioRef.current; if (!a) return;
+      a.load();
+      const doPlay = () => { a.currentTime = 0; a.play().catch(()=>{}); };
+      if (a.readyState >= 3) { doPlay(); } else { a.addEventListener('canplay', doPlay, { once: true }); }
+      return;
+    }
     if (shuffleRef.current) {
       const others = songs.filter(s=>s.id!==track.id);
       if (others.length) play(others[Math.floor(Math.random()*others.length)]);
     } else {
+      // auto=true (lagu selesai otomatis) + repeat=off + shuffle=off → berhenti, tidak lanjut
+      if (auto && repeatRef.current === 'off') return;
       const i = songs.findIndex(s=>s.id===track.id);
       const next = songs[(i+1)%songs.length];
       if (next) play(next);
@@ -4952,7 +5040,7 @@ Format exactly:
       {!isLite && <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, overflow:'hidden' }}><div className="stars"/><div className="starsB"/><div className="starsC"/></div>}
 
       {/* ══ HEADER */}
-      {!fullscreen && <header style={{ position: 'sticky', top: 0, zIndex:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'space-between', padding: layoutMode === 'mobile-landscape' ? '5px 14px' : '9px 14px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: isLite ? 'rgba(7,7,26,0.98)' : 'rgba(7,7,26,0.85)', ...(isLite ? {} : { backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }) }}>
+      {!fullscreen && <header style={{ position: 'sticky', top: 0, zIndex:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'space-between', minHeight: layoutMode === 'mobile-landscape' ? HEADER_H_LANDSCAPE : HEADER_H_NORMAL, padding: layoutMode === 'mobile-landscape' ? '5px 14px' : '9px 14px', boxSizing:'border-box', borderBottom: '1px solid rgba(255,255,255,0.08)', background: isLite ? 'rgba(7,7,26,0.98)' : 'rgba(7,7,26,0.85)', ...(isLite ? {} : { backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }) }}>
         <div style={{ display:'flex', alignItems:'center', gap:9 }}>
           <div onClick={() => window.location.reload()} title="Reload halaman" style={{ display:'flex', alignItems:'center', gap:9, cursor:'pointer' }}>
             <AppLogo size={layoutMode === 'mobile-landscape' ? 24 : 30}/>
@@ -5065,7 +5153,7 @@ Format exactly:
 
       {/* Desktop left sidebar nav */}
       {(layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait') && !fullscreen && (
-        <div style={{ width: layoutMode === 'desktop-portrait' ? 160 : 196, flexShrink:0, borderRight:'1px solid rgba(255,255,255,0.07)', background:'rgba(0,0,0,0.18)', display:'flex', flexDirection:'column', padding: layoutMode === 'desktop-portrait' ? '8px 6px 12px' : '10px 8px 16px', gap:3 }}>
+        <div style={{ width: layoutMode === 'desktop-portrait' ? SIDEBAR_W_PORTRAIT : SIDEBAR_W_LANDSCAPE, flexShrink:0, borderRight:'1px solid rgba(255,255,255,0.07)', background:'rgba(0,0,0,0.18)', display:'flex', flexDirection:'column', padding: layoutMode === 'desktop-portrait' ? '8px 6px 12px' : '10px 8px 16px', gap:3 }}>
           {/* Player nav item — always at top */}
           <button onClick={()=>setTab('player')} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:12, border:'none', cursor:'pointer', background:tab==='player'?`${track.color}20`:'transparent', color:tab==='player'?track.color:'rgba(255,255,255,0.4)', textAlign:'left', width:'100%', fontSize:13, fontWeight:tab==='player'?700:500 }}>
             <Compass size={17}/><span>Player</span>
@@ -5483,12 +5571,12 @@ Format exactly:
           {/* ═══ PORTRAIT + DESKTOP layout ═══ */}
           {layoutMode !== 'mobile-landscape' && (
           <div style={{
-            minHeight: fullscreen ? '100%' : undefined,
+            minHeight: fullscreen ? '100%' : (layoutMode === 'mobile-portrait' ? '100%' : (layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait') ? '100%' : undefined),
             height: fullscreen ? '100%' : undefined,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: fullscreen ? 'space-evenly' : 'flex-start',
+            justifyContent: fullscreen ? 'space-evenly' : (layoutMode === 'mobile-portrait' ? 'space-between' : (layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait') ? 'center' : 'flex-start'),
             padding: fullscreen ? '8px 24px 10px' : layoutVars.playerPad,
             position: 'relative',
             boxSizing: 'border-box',
@@ -5547,7 +5635,7 @@ Format exactly:
             {/* Track info */}
             <div style={{
               textAlign: 'center',
-              marginTop: (fullscreen && (layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait')) ? layoutVars.infoMt : fullscreen ? 0 : layoutMode === 'mobile-landscape' ? 0 : layoutVars.infoMt,
+              marginTop: (fullscreen && (layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait')) ? layoutVars.infoMt : fullscreen ? 0 : layoutMode === 'mobile-landscape' ? 0 : layoutMode === 'mobile-portrait' ? 0 : layoutVars.infoMt,
               width: '100%',
               maxWidth: fullscreen ? 520 : layoutMode === 'mobile-landscape' ? undefined : 340,
               padding: layoutMode === 'mobile-landscape' ? '0 6px' : '0 2px',
@@ -5606,7 +5694,7 @@ Format exactly:
             )}
 
             {/* Main controls: Shuffle | Prev | Play | Next | Repeat */}
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:layoutVars.controlsGap, marginTop: (fullscreen && (layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait')) ? layoutVars.controlsMt : fullscreen ? 0 : layoutVars.controlsMt, width:'100%', maxWidth: fullscreen ? '100%' : layoutMode === 'mobile-landscape' ? undefined : 340 }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:layoutVars.controlsGap, marginTop: (fullscreen && (layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait')) ? layoutVars.controlsMt : fullscreen ? 0 : layoutMode === 'mobile-portrait' ? 0 : layoutVars.controlsMt, width:'100%', maxWidth: fullscreen ? '100%' : layoutMode === 'mobile-landscape' ? undefined : 340 }}>
               {!track.isRadio && <button onClick={()=>{ if(embedTrack?.type==='youtube'){ setShuffle(s=>{ const next=!s; if(next) setRepeat('off'); else ytShufflePlayedRef.current=null; return next; }); } else if(track._wsSource && wsQueueRef.current.length > 0){ setShuffle(s=>{ const next=!s; if(next){ setRepeat('off'); wsShuffle(); } return next; }); } else { setShuffle(s=>{ const next=!s; if(next) setRepeat("off"); return next; }); } }} style={{ ...btn, color:shuffle?(embedTrack?.type==='youtube'?'#ff4444':track.color):'rgba(255,255,255,0.3)', position:'relative', padding:'clamp(5px,1.2vw,8px)' }}>
                 <Shuffle size={18}/>
                 {shuffle&&<div style={{ position:'absolute', bottom:3, left:'50%', transform:'translateX(-50%)', width:3, height:3, borderRadius:'50%', background:embedTrack?.type==='youtube'?'#ff4444':track.color }}/>}
@@ -5623,14 +5711,14 @@ Format exactly:
             </div>
 
             {/* ── Volume row */}
-            <div style={{ display:'flex', alignItems:'center', gap:10, marginTop: (fullscreen && (layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait')) ? layoutVars.volumeMt : fullscreen ? 0 : layoutVars.volumeMt, width:'100%', maxWidth: fullscreen ? '100%' : layoutMode === 'mobile-landscape' ? '100%' : 340, padding:'4px 2px' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginTop: (fullscreen && (layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait')) ? layoutVars.volumeMt : fullscreen ? 0 : layoutMode === 'mobile-portrait' ? 0 : layoutVars.volumeMt, width:'100%', maxWidth: fullscreen ? '100%' : layoutMode === 'mobile-landscape' ? '100%' : 340, padding:'4px 2px' }}>
               <button onClick={()=>setMuted(m=>!m)} style={{ ...btn, color:muted?'#ef4444':'rgba(255,255,255,0.38)', padding:4, flexShrink:0 }}>{muted?<VolumeX size={16}/>:<Volume2 size={16}/>}</button>
               <input type="range" min="0" max="1" step="0.01" value={muted?0:volume} onChange={e=>{setVolume(+e.target.value);setMuted(false)}} style={{ flex:1, accentColor:embedTrack?.type==='youtube'?'#ff4444':track.color, height:3, cursor:'pointer' }}/>
               <span style={{ fontSize:10, color:'rgba(255,255,255,0.28)', fontWeight:700, minWidth:28, textAlign:'right', fontFamily:'monospace', flexShrink:0 }}>{muted?'0':Math.round(volume*100)}%</span>
             </div>
 
             {/* ── Action buttons row */}
-            <div style={{ display:'flex', alignItems:'center', flexWrap: layoutMode === 'mobile-portrait' ? 'wrap' : 'nowrap', gap:4, marginTop: (fullscreen && (layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait')) ? layoutVars.volumeMt : fullscreen ? 0 : layoutVars.volumeMt, width:'100%', maxWidth: (fullscreen || layoutMode === 'mobile-landscape') ? '100%' : 340, justifyContent:'center' }}>
+            <div style={{ display:'flex', alignItems:'center', flexWrap: layoutMode === 'mobile-portrait' ? 'wrap' : 'nowrap', gap:4, marginTop: (fullscreen && (layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait')) ? layoutVars.volumeMt : fullscreen ? 0 : layoutMode === 'mobile-portrait' ? 0 : layoutVars.volumeMt, width:'100%', maxWidth: (fullscreen || layoutMode === 'mobile-landscape') ? '100%' : 340, justifyContent:'center' }}>
               {/* Like */}
               {embedTrack?.type==='youtube'
                 ? (() => {
@@ -6466,14 +6554,14 @@ Format exactly:
                                       { label:'🌍 World',      act: () => { setRbSelectedTag('world'); setRbQuery(''); rbSearch('','world'); multiSearch('','world'); }, isActive: rbSelectedTag==='world', color:'#f97316' },
                                       { label:'🕌 Religi',     act: () => { setRbSelectedTag('islamic'); setRbQuery(''); rbSearch('','islamic'); multiSearch('','islamic'); }, isActive: rbSelectedTag==='islamic', color:'#10b981' },
                                       { label:'🥁 Dangdut',    act: () => { setRbSelectedTag('dangdut'); setRbQuery(''); rbSearch('','dangdut'); multiSearch('','dangdut'); }, isActive: rbSelectedTag==='dangdut', color:'#f97316' },
-                                      { label:'😴 Tidur',      act: () => { setRbSelectedTag(null); setRbQuery('tidur'); multiSearch('tidur',null); }, isActive: rbQuery==='tidur', color:'#8b5cf6' },
-                                      { label:'🧘 Fokus',      act: () => { setRbSelectedTag(null); setRbQuery('fokus'); multiSearch('fokus',null); }, isActive: rbQuery==='fokus', color:'#06b6d4' },
-                                      { label:'💪 Semangat',   act: () => { setRbSelectedTag(null); setRbQuery('semangat'); multiSearch('semangat',null); }, isActive: rbQuery==='semangat', color:'#f59e0b' },
-                                      { label:'😢 Galau',      act: () => { setRbSelectedTag(null); setRbQuery('galau'); multiSearch('galau',null); }, isActive: rbQuery==='galau', color:'#3b82f6' },
-                                      { label:'🌙 Malam',      act: () => { setRbSelectedTag(null); setRbQuery('malam'); multiSearch('malam',null); }, isActive: rbQuery==='malam', color:'#a78bfa' },
+                                      { label:'😴 Tidur',      act: () => { setRbSelectedTag(null); setRbQuery('tidur'); setRbResults([]); multiSearch('tidur',null); }, isActive: rbQuery==='tidur', color:'#8b5cf6' },
+                                      { label:'🧘 Fokus',      act: () => { setRbSelectedTag(null); setRbQuery('fokus'); setRbResults([]); multiSearch('fokus',null); }, isActive: rbQuery==='fokus', color:'#06b6d4' },
+                                      { label:'💪 Semangat',   act: () => { setRbSelectedTag(null); setRbQuery('semangat'); setRbResults([]); multiSearch('semangat',null); }, isActive: rbQuery==='semangat', color:'#f59e0b' },
+                                      { label:'😢 Galau',      act: () => { setRbSelectedTag(null); setRbQuery('galau'); setRbResults([]); multiSearch('galau',null); }, isActive: rbQuery==='galau', color:'#3b82f6' },
+                                      { label:'🌙 Malam',      act: () => { setRbSelectedTag(null); setRbQuery('malam'); setRbResults([]); multiSearch('malam',null); }, isActive: rbQuery==='malam', color:'#a78bfa' },
                                       { label:'● SomaFM',         act: () => { setRbSelectedTag(null); setRbQuery('somafm'); multiSearch('somafm',null); }, isActive: rbQuery==='somafm', color:'#10b981' },
                                       { label:'● NTS',             act: () => { setRbSelectedTag(null); setRbQuery('nts'); multiSearch('nts',null); }, isActive: rbQuery==='nts', color:'#ff4500' },
-                                      { label:'● Garden',          act: () => { setRbSelectedTag(null); setRbQuery('radio garden'); multiSearch('radio garden',null); }, isActive: rbQuery==='radio garden', color:'#22d3ee' },
+                                      { label:'● Radio Garden',    act: () => { setRbSelectedTag(null); setRbQuery('radio garden'); multiSearch('radio garden',null); }, isActive: rbQuery==='radio garden', color:'#22d3ee' },
                                       { label:'● Shoutcast',       act: () => { setRbSelectedTag(null); setRbQuery('shoutcast'); multiSearch('shoutcast',null); }, isActive: rbQuery==='shoutcast', color:'#e11d48' },
                                       { label:'● FM Stream',       act: () => { setRbSelectedTag(null); setRbQuery('fmstream'); multiSearch('fmstream',null); }, isActive: rbQuery==='fmstream', color:'#06b6d4' },
                                       { label:'● RadioBrowser',    act: () => { setRbSelectedTag(null); setRbQuery('radiobrowser'); multiSearch('radiobrowser',null); }, isActive: rbQuery==='radiobrowser', color:'#f59e0b' },
@@ -6500,12 +6588,34 @@ Format exactly:
                                   )}
                                   {/* Combined Results — multiResults first, then rbResults */}
                                   {!rbLoading && !multiLoading && (multiResults.length > 0 || rbResults.length > 0) && (() => {
-                                    // Merge: multiResults first (SomaFM, Icecast, NTS), then RadioBrowser results, deduped
+                                    // Tentukan apakah pill source-specific aktif
+                                    const SOURCE_PILL_QUERIES = ['somafm','nts','radio garden','shoutcast','fmstream','radiobrowser','radio paradise'];
+                                    const activeSourcePill = SOURCE_PILL_QUERIES.includes(rbQuery);
+                                    // Map query ke sourceLabel yang sesuai
+                                    const SOURCE_LABEL_MAP = {
+                                      'somafm': 'SomaFM',
+                                      'nts': 'NTS Radio',
+                                      'radio garden': 'Radio Garden',
+                                      'shoutcast': 'Shoutcast',
+                                      'fmstream': 'FM Stream',
+                                      'radiobrowser': 'RadioBrowser',
+                                      'radio paradise': 'Radio Paradise',
+                                    };
+                                    const activeSourceLabel = activeSourcePill ? SOURCE_LABEL_MAP[rbQuery] : null;
+                                    // Merge: multiResults first, then RadioBrowser (hanya jika bukan source-specific pill)
                                     const multiIds = new Set(multiResults.map(s => s.id));
-                                    const rbExtra = rbResults.filter(s => !multiIds.has(`soma_${s.stationuuid}`) && !multiIds.has(s.stationuuid));
+                                    const rbExtra = activeSourceLabel === 'RadioBrowser'
+                                      ? rbResults.map(s => ({ ...s, sourceLabel: 'RadioBrowser' }))
+                                      : activeSourcePill
+                                        ? [] // Jangan campur RadioBrowser jika pill source lain aktif
+                                        : rbResults.filter(s => !multiIds.has(`soma_${s.stationuuid}`) && !multiIds.has(s.stationuuid)).map(s => ({ ...s, sourceLabel: 'RadioBrowser' }));
+                                    // Filter multiResults jika source-specific pill aktif (bukan RadioBrowser)
+                                    const filteredMulti = (activeSourceLabel && activeSourceLabel !== 'RadioBrowser')
+                                      ? multiResults.filter(s => s.sourceLabel === activeSourceLabel)
+                                      : multiResults;
                                     const allResults = [
-                                      ...multiResults,
-                                      ...rbExtra.map(s => ({ ...s, sourceLabel: 'RadioBrowser' })),
+                                      ...filteredMulti,
+                                      ...rbExtra,
                                     ];
                                     return (
                                       <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
@@ -6980,7 +7090,7 @@ Format exactly:
                                                   <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', display:'flex', alignItems:'center', gap:4 }}>
                                                     <span>{station.city}</span>
                                                     {station.genre && <span style={{ color:'rgba(255,255,255,0.25)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:80 }}>{station.genre}</span>}
-                                                    <span style={{ color:'#22d3ee', fontWeight:700 }}>● Garden</span>
+                                                    <span style={{ color:'#22d3ee', fontWeight:700 }}>● Radio Garden</span>
                                                     {sStatus === 'testing' && (
                                                       <span style={{ display:'inline-flex', alignItems:'center', gap:2, color:'#fbbf24' }}>
                                                         <span style={{ width:5, height:5, borderRadius:'50%', border:'1.5px solid #fbbf24', borderTopColor:'transparent', display:'inline-block', animation:'spin 0.8s linear infinite' }}/>
@@ -7522,13 +7632,7 @@ Format exactly:
                   </button>
                 ))}
               </div>
-              {/* Swipe dot indicator */}
-              <div style={{ display:'flex', justifyContent:'center', alignItems:'center', gap:5, padding:'6px 0 2px' }}>
-                {['chat','foryou','lyrics'].map(id=>(
-                  <div key={id} style={{ width: aiSubView===id ? 16 : 5, height:5, borderRadius:999, background: aiSubView===id ? track.color : 'rgba(255,255,255,0.18)', transition:'width 0.25s ease, background 0.25s ease' }}/>
-                ))}
-              </div>
-            </div>
+              
 
             {/* Chat + Vibe result area OR Lyrics OR For You */}
             {aiSubView==='foryou' ? (
@@ -8282,7 +8386,7 @@ Format exactly:
 
       {/* ══ BOTTOM NAV — Mobile Portrait only */}
       {layoutMode === 'mobile-portrait' && !fullscreen && (
-        <div style={{ position:'relative', zIndex:10, flexShrink:0, display:'flex', flexDirection:'column', background:'rgba(7,7,26,0.97)', ...(isLite ? {} : { backdropFilter:'blur(20px)' }), borderTop:'1px solid rgba(255,255,255,0.08)' }}>
+        <div ref={bottomNavRef} style={{ position:'relative', zIndex:10, flexShrink:0, display:'flex', flexDirection:'column', background:'rgba(7,7,26,0.97)', ...(isLite ? {} : { backdropFilter:'blur(20px)' }), borderTop:'1px solid rgba(255,255,255,0.08)' }}>
 
           {/* Mini Now-Playing Bar — visible when NOT on player tab */}
           {tab !== 'player' && (
