@@ -2096,11 +2096,62 @@ Return ONLY valid JSON, no explanation:
 
   useEffect(() => {
     // Handle shortcut URLs: ?tab=stream / ?tab=playlist / ?tab=ai
+    // AND protocol_handlers intents:
+    //   web+starry://<anything>      → ?intent=<encoded-url>   (general deep link)
+    //   web+starryplay://<query>     → ?play=<encoded-query>   (langsung cari & putar)
+    //   web+starryradio://<station>  → ?tab=stream&station=<id> (buka radio ke stasiun tertentu)
     const urlParams = new URLSearchParams(window.location.search);
-    const tabParam = urlParams.get('tab');
+
+    const tabParam     = urlParams.get('tab');
+    const intentParam  = urlParams.get('intent');   // web+starry://
+    const playParam    = urlParams.get('play');     // web+starryplay://
+    const stationParam = urlParams.get('station');  // web+starryradio://
+
+    const tabMap = { stream: 'stream', playlist: 'playlist', ai: 'ai', library: 'playlist', search: 'ai' };
+
+    // ── ?tab= (shortcuts & web+starryradio) ──
     if (tabParam) {
-      const tabMap = { stream: 'stream', playlist: 'playlist', ai: 'ai', library: 'playlist', search: 'ai' };
       if (tabMap[tabParam]) setTimeout(() => setTab(tabMap[tabParam]), 500);
+    }
+
+    // ── web+starryradio://<stationId> → buka tab stream & pilih stasiun ──
+    if (stationParam) {
+      const decoded = decodeURIComponent(stationParam);
+      setTimeout(() => {
+        setTab('stream');
+        const found = (window.__RADIO_STATIONS__ || []).find(
+          s => s.id === decoded || s.name?.toLowerCase().includes(decoded.toLowerCase())
+        );
+        if (found) setRadioStation(found);
+      }, 600);
+    }
+
+    // ── web+starryplay://<query> → set search query di tab AI/search ──
+    if (playParam) {
+      const query = decodeURIComponent(playParam);
+      setTimeout(() => {
+        setUnifiedQuery(query);
+        setTab('ai');
+      }, 500);
+    }
+
+    // ── web+starry://<intent> → general intent routing ──
+    if (intentParam) {
+      try {
+        const decoded = decodeURIComponent(intentParam);
+        // Format: "play:<query>" | "tab:<tabname>" | "radio:<stationId>"
+        const [action, ...rest] = decoded.split(':');
+        const value = rest.join(':').trim();
+        setTimeout(() => {
+          if (action === 'play' && value) { setUnifiedQuery(value); setTab('ai'); }
+          else if (action === 'tab'  && tabMap[value]) setTab(tabMap[value]);
+          else if (action === 'radio') setTab('stream');
+        }, 500);
+      } catch { /* URL malformed, abaikan */ }
+    }
+
+    // Bersihkan query string dari URL bar setelah diproses
+    if (tabParam || intentParam || playParam || stationParam) {
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);

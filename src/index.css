@@ -107,3 +107,96 @@ input[type='range']::-webkit-slider-thumb {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
 }
+
+/* ── Window Controls Overlay (WCO) ─────────────────────────────────────── */
+/* WCO env variables are zero when WCO is inactive (standalone / browser).  */
+/* They become non-zero only when the browser grants the overlay.            */
+
+:root {
+  --wco-top:    env(titlebar-area-y,    0px);
+  --wco-left:   env(titlebar-area-x,    0px);
+  --wco-width:  env(titlebar-area-width,  100%);
+  --wco-height: env(titlebar-area-height, 0px);
+}
+
+/* The draggable title-bar region — sits inside the WCO area */
+#wco-titlebar {
+  position: fixed;
+  top:    var(--wco-top);
+  left:   var(--wco-left);
+  width:  var(--wco-width);
+  height: var(--wco-height);
+  z-index: 9000;
+
+  /* Draggable — lets the user drag the window from this strip */
+  -webkit-app-region: drag;
+  app-region: drag;
+
+  /* Visual: semi-transparent starry night gradient */
+  background: linear-gradient(
+    90deg,
+    rgba(7, 7, 26, 0.92) 0%,
+    rgba(15, 10, 40, 0.92) 50%,
+    rgba(7, 7, 26, 0.92) 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(96, 165, 250, 0.12);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+/* App name text inside the title bar */
+#wco-titlebar .wco-label {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  background: linear-gradient(90deg, #60a5fa, #c084fc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+  user-select: none;
+}
+
+/* Tiny star icon next to the label */
+#wco-titlebar .wco-icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.85;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+  flex-shrink: 0;
+}
+
+/* Shimmer line at the bottom edge of the title bar */
+#wco-titlebar::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #60a5fa 30%, #c084fc 70%, transparent);
+  opacity: 0.4;
+  animation: wco-shimmer 4s ease-in-out infinite;
+}
+
+@keyframes wco-shimmer {
+  0%, 100% { opacity: 0.2; transform: scaleX(0.7); }
+  50%       { opacity: 0.6; transform: scaleX(1);   }
+}
+
+/* Push app content below the title bar when WCO is active */
+@media (display-mode: window-controls-overlay) {
+  html, body, #root {
+    padding-top: var(--wco-height);
+  }
+}

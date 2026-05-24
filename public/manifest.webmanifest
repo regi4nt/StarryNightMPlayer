@@ -6,6 +6,7 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
   "background_color": "#07071a",
   "theme_color": "#07071a",
   "orientation": "any",
@@ -76,5 +77,19 @@
       "icons": [{ "src": "/icon-192-maskable.png", "sizes": "192x192", "type": "image/png" }]
     }
   ],
-  "prefer_related_applications": false
+  "prefer_related_applications": false,
+  "protocol_handlers": [
+    {
+      "protocol": "web+starry",
+      "url": "/?intent=%s"
+    },
+    {
+      "protocol": "web+starryplay",
+      "url": "/?play=%s"
+    },
+    {
+      "protocol": "web+starryradio",
+      "url": "/?tab=stream&station=%s"
+    }
+  ]
 }
