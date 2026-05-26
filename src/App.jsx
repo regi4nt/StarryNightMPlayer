@@ -2363,6 +2363,30 @@ Return ONLY valid JSON, no explanation:
     try { localStorage.setItem('sn_cached_drive_ids', JSON.stringify([...cachedDriveIds])); } catch {}
   }, [cachedDriveIds]);
 
+  // ── Validasi cachedDriveIds saat startup: hapus ID yang blobnya hilang atau tidak 100% penuh
+  useEffect(() => {
+    if (cachedDriveIds.size === 0) return;
+    (async () => {
+      const invalidIds = [];
+      for (const driveId of cachedDriveIds) {
+        try {
+          const blob = await cacheGet(driveId);
+          if (!blob) { invalidIds.push(driveId); continue; }
+          const { isFull } = checkCachedBlob(driveId, blob);
+          if (!isFull) invalidIds.push(driveId);
+        } catch { invalidIds.push(driveId); }
+      }
+      if (invalidIds.length > 0) {
+        setCachedDriveIds(prev => {
+          const next = new Set(prev);
+          invalidIds.forEach(id => next.delete(id));
+          return next;
+        });
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // hanya sekali saat mount
+
   // ── Sync cachedYtIds ke localStorage
   useEffect(() => {
     try { localStorage.setItem('sn_cached_yt_ids', JSON.stringify([...cachedYtIds])); } catch {}
@@ -5718,7 +5742,7 @@ Format exactly:
       {!isLite && <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, overflow:'hidden' }}><div className="stars"/><div className="starsB"/><div className="starsC"/></div>}
 
       {/* ══ HEADER */}
-      {!fullscreen && <header style={{ position: 'sticky', top: 0, zIndex:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'space-between', minHeight: layoutMode === 'mobile-landscape' ? HEADER_H_LANDSCAPE : HEADER_H_NORMAL, padding: layoutMode === 'mobile-landscape' ? '5px 14px' : '9px 14px', boxSizing:'border-box', borderBottom: '1px solid rgba(255,255,255,0.08)', background: isLite ? 'rgba(7,7,26,0.98)' : 'rgba(7,7,26,0.85)', ...(isLite ? {} : { backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }) }}>
+      {!fullscreen && <header style={{ position: 'sticky', top: 0, zIndex:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'space-between', minHeight: layoutMode === 'mobile-landscape' ? HEADER_H_LANDSCAPE : HEADER_H_NORMAL, padding: layoutMode === 'mobile-landscape' ? '5px 14px' : '9px 14px', boxSizing:'border-box', borderBottom: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.18)' }}>
         <div style={{ display:'flex', alignItems:'center', gap:9 }}>
           <div onClick={() => window.location.reload()} title="Reload halaman" style={{ display:'flex', alignItems:'center', gap:9, cursor:'pointer' }}>
             <AppLogo size={layoutMode === 'mobile-landscape' ? 24 : 30}/>
@@ -8101,7 +8125,7 @@ Format exactly:
                 const songs = filteredCustom;
                 return (
                   <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
-                    <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0, position:'sticky', top:0, zIndex:5, background:'rgba(7,7,26,0.97)', ...(isLite ? {} : { backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }) }}>
+                    <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0, position:'sticky', top:0, zIndex:5, background:'rgba(0,0,0,0.18)' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                         <button onClick={()=>{ setActivePl(null); setPlView('list'); }} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.5)', padding:4, display:'flex' }}>
                           <ChevronLeft size={20}/>
@@ -8183,7 +8207,7 @@ Format exactly:
                 const songs = history.slice(1);
                 return (
                   <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
-                    <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0, position:'sticky', top:0, zIndex:5, background:'rgba(7,7,26,0.97)', ...(isLite ? {} : { backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }) }}>
+                    <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0, position:'sticky', top:0, zIndex:5, background:'rgba(0,0,0,0.18)' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                         <button onClick={()=>{ setActivePl(null); setPlView('list'); }} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.5)', padding:4, display:'flex' }}>
                           <ChevronLeft size={20}/>
@@ -8230,7 +8254,7 @@ Format exactly:
                 const songs = filteredSongs;
                 return (
                   <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
-                    <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0, position:'sticky', top:0, zIndex:5, background:'rgba(7,7,26,0.97)', ...(isLite ? {} : { backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }) }}>
+                    <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0, position:'sticky', top:0, zIndex:5, background:'rgba(0,0,0,0.18)' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                         <button onClick={()=>{ setActivePl(null); setPlView('list'); }} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.5)', padding:4, display:'flex' }}>
                           <ChevronLeft size={20}/>
@@ -8251,7 +8275,7 @@ Format exactly:
                       </div>
                     </div>
                     <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'10px 16px 16px', display:'flex', flexDirection:'column', gap:5 }}>
-                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={play} isDrive={s.isDrive} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite} t={t}
+                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={play} isDrive={s.isDrive} isCached={s.driveId ? cachedDriveIds.has(s.driveId) : false} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite} t={t}
                       onRemove={id=>{ setLiked(l=>{const n={...l};delete n[id];return n;}); setFavSongs(p=>p.filter(s=>s.id!==id)); setCustomSongs(p=>p.filter(s=>s.id!==id)); setYtSongs(p=>p.filter(s=>s.id!==id)); setPlaylists(p=>p.map(pl=>({...pl,songIds:pl.songIds.filter(sid=>sid!==id)}))); }}
                       onDownload={async(s)=>{ if(s.isDrive&&s.driveId&&tokenRef.current){ await downloadToDevice(`https://www.googleapis.com/drive/v3/files/${s.driveId}?alt=media&acknowledgeAbuse=true`,`${s.title} - ${s.artist}.mp3`,{Authorization:`Bearer ${tokenRef.current}`}); } else if(s.src){ const raw=s.src.split('?')[0]; const ext=raw.includes('.')?raw.split('.').pop():'mp3'; await downloadToDevice(s.src,`${s.title} - ${s.artist}.${ext}`); } }}
                     />)}
@@ -8266,7 +8290,7 @@ Format exactly:
               return (
                 <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
                   {/* Header */}
-                  <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0, position:'sticky', top:0, zIndex:5, background:'rgba(7,7,26,0.97)', ...(isLite ? {} : { backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }) }}>
+                  <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0, position:'sticky', top:0, zIndex:5, background:'rgba(0,0,0,0.18)' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                       <button onClick={()=>setPlView('list')} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.5)', padding:4, display:'flex' }}>
                         <ChevronLeft size={20}/>
@@ -8314,6 +8338,10 @@ Format exactly:
                             <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:14, marginRight:4 }}>
                               {[12,6,10].map((h,j)=><div key={j} style={{ width:2.5, height:h, background:s.color, borderRadius:1, animation:`bounce 1.4s ease-in-out ${j*0.25}s infinite` }}/>)}
                             </div>
+                          )}
+                          {/* ── Badge Offline */}
+                          {s.driveId && cachedDriveIds.has(s.driveId) && (
+                            <span style={{ flexShrink:0, fontSize:9, fontWeight:800, color:'#4ade80', background:'rgba(74,222,128,0.12)', padding:'1px 5px', borderRadius:999 }}>✓ Offline</span>
                           )}
                           {/* ── Unduh ke perangkat (custom playlist, tidak tampil untuk radio) */}
                           {!s.isRadio&&<button title="Unduh ke perangkat"
@@ -9322,7 +9350,7 @@ Format exactly:
 
       {/* ══ BOTTOM NAV — Mobile Portrait only */}
       {layoutMode === 'mobile-portrait' && !fullscreen && (
-        <div ref={bottomNavRef} style={{ position:'relative', zIndex:10, flexShrink:0, display:'flex', flexDirection:'column', background:'rgba(7,7,26,0.97)', ...(isLite ? {} : { backdropFilter:'blur(20px)' }), borderTop:'1px solid rgba(255,255,255,0.08)' }}>
+        <div ref={bottomNavRef} style={{ position:'relative', zIndex:10, flexShrink:0, display:'flex', flexDirection:'column', background:'rgba(0,0,0,0.18)', borderTop:'1px solid rgba(255,255,255,0.08)' }}>
 
           {/* Mini Now-Playing Bar — visible when NOT on player tab */}
           {tab !== 'player' && (
@@ -9479,14 +9507,14 @@ Format exactly:
 
         /* ══ LAYOUT MODE — Mobile Portrait ══ */
         .layout-mobile-portrait header {
-          background: rgba(7,7,26,0.95);
-          backdrop-filter: blur(12px);
+          background: rgba(0,0,0,0.18);
+          
         }
 
         /* ══ LAYOUT MODE — Mobile Landscape ══ */
         .layout-mobile-landscape header {
-          background: linear-gradient(90deg, rgba(7,7,26,0.98) 0%, rgba(15,10,40,0.95) 100%);
-          backdrop-filter: blur(16px);
+          background: rgba(0,0,0,0.18);
+          
           border-bottom-color: rgba(255,255,255,0.05);
         }
         /* In mobile-landscape: player inner layout is row, ring left, controls right */
@@ -9496,8 +9524,8 @@ Format exactly:
 
         /* ══ LAYOUT MODE — Desktop Portrait ══ */
         .layout-desktop-portrait header {
-          background: rgba(5,5,20,0.9);
-          backdrop-filter: blur(20px);
+          background: rgba(0,0,0,0.18);
+          
           border-bottom: 1px solid rgba(255,255,255,0.05);
         }
         /* Desktop portrait sidebar gets a subtle gradient separator */
@@ -9507,8 +9535,8 @@ Format exactly:
 
         /* ══ LAYOUT MODE — Desktop Landscape ══ */
         .layout-desktop-landscape header {
-          background: rgba(4,4,18,0.88);
-          backdrop-filter: blur(24px);
+          background: rgba(0,0,0,0.18);
+          
           border-bottom: 1px solid rgba(99,102,241,0.12);
           box-shadow: 0 1px 0 rgba(99,102,241,0.06);
         }
@@ -9527,7 +9555,7 @@ Format exactly:
           .lite-mode input[type=range]::-moz-range-thumb{box-shadow:none!important}
           .lite-mode input[type=range]::-ms-thumb{box-shadow:none!important}
           /* Matikan backdrop-filter dari layout-mode header rules */
-          .lite-mode header{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:rgba(7,7,26,0.98)!important}
+          .lite-mode header{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:rgba(0,0,0,0.18)!important}
           /* Matikan box-shadow glow dekoratif di tombol */
           .lite-mode button{box-shadow:none!important}
           /* Matikan filter drop-shadow di SVG orbital ring */
