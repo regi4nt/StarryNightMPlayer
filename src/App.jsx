@@ -1801,7 +1801,7 @@ Return ONLY valid JSON, no explanation:
   // ── Settings panel
   const [showSettings, setShowSettings] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
-  const [coverSpin, setCoverSpin] = useState(() => localStorage.getItem('sn_cover_spin') === 'true');
+  const [coverSpin, setCoverSpin] = useState(() => localStorage.getItem('sn_cover_spin') !== 'false');
   const fullscreenRef = useRef(false);
   // Simpan orientasi sebelum masuk fullscreen agar bisa dikunci ke posisi itu
   const orientationBeforeFullscreen = useRef(null);
@@ -6201,7 +6201,8 @@ Format exactly:
                   isLite={isLite} isRadio={!embedTrack&&track.isRadio}
                   downloadProg={driveDownProg} drivePhase={drivePhase}
                   ytDownloading={embedTrack?.type==='youtube'&&ytDownloadingIds.has(embedTrack.videoId)}
-                  ytDlProg={embedTrack?.type==='youtube'?(ytDownloadProg[embedTrack.videoId]||0):0}/>
+                  ytDlProg={embedTrack?.type==='youtube'?(ytDownloadProg[embedTrack.videoId]||0):0}
+                  coverSpin={coverSpin}/>
               </div>
 
               {/* ── RIGHT col: title (atas) → controls (tengah) → volume → actions (bawah) ── */}
@@ -6351,11 +6352,11 @@ Format exactly:
                 {/* Ring */}
                 <div style={{ position:'relative', display:'flex', justifyContent:'center', alignItems:'center' }}>
 
-                <OrbitalRing size={ringSize} pct={embedTrack?.type==='youtube'?(ytDuration>0?ytProgress/ytDuration:0):track.isRadio?0:pct} color={embedTrack?.type==='youtube'?'#ff4444':track.color} progress={embedTrack?.type==='youtube'?ytProgress:progress} duration={embedTrack?.type==='youtube'?ytDuration:track.isRadio?0:duration} isPlaying={playing} cover={globalCover||((!globalCover&&embedTrack?.type==='youtube')?embedTrack.thumbnail:null)||getCover(track)} title={embedTrack?.type==='youtube'?embedTrack.title:track.title} onSeek={embedTrack?.type==='youtube'?seekYt:track.isRadio?null:seekByPct} isLite={isLite} isRadio={!embedTrack&&track.isRadio} downloadProg={driveDownProg} drivePhase={drivePhase} ytDownloading={embedTrack?.type==='youtube'&&ytDownloadingIds.has(embedTrack.videoId)} ytDlProg={embedTrack?.type==='youtube'?(ytDownloadProg[embedTrack.videoId]||0):0}/>
+                <OrbitalRing size={ringSize} pct={embedTrack?.type==='youtube'?(ytDuration>0?ytProgress/ytDuration:0):track.isRadio?0:pct} color={embedTrack?.type==='youtube'?'#ff4444':track.color} progress={embedTrack?.type==='youtube'?ytProgress:progress} duration={embedTrack?.type==='youtube'?ytDuration:track.isRadio?0:duration} isPlaying={playing} cover={globalCover||((!globalCover&&embedTrack?.type==='youtube')?embedTrack.thumbnail:null)||getCover(track)} title={embedTrack?.type==='youtube'?embedTrack.title:track.title} onSeek={embedTrack?.type==='youtube'?seekYt:track.isRadio?null:seekByPct} isLite={isLite} isRadio={!embedTrack&&track.isRadio} downloadProg={driveDownProg} drivePhase={drivePhase} ytDownloading={embedTrack?.type==='youtube'&&ytDownloadingIds.has(embedTrack.videoId)} ytDlProg={embedTrack?.type==='youtube'?(ytDownloadProg[embedTrack.videoId]||0):0} coverSpin={coverSpin}/>
                 </div>
               </div>
             ) : (
-              <OrbitalRing size={ringSize} pct={embedTrack?.type==='youtube'?(ytDuration>0?ytProgress/ytDuration:0):track.isRadio?0:pct} color={embedTrack?.type==='youtube'?'#ff4444':track.color} progress={embedTrack?.type==='youtube'?ytProgress:progress} duration={embedTrack?.type==='youtube'?ytDuration:track.isRadio?0:duration} isPlaying={playing} cover={globalCover||((!globalCover&&embedTrack?.type==='youtube')?embedTrack.thumbnail:null)||getCover(track)} title={embedTrack?.type==='youtube'?embedTrack.title:track.title} onSeek={embedTrack?.type==='youtube'?seekYt:track.isRadio?null:seekByPct} isLite={isLite} isRadio={!embedTrack&&track.isRadio} downloadProg={driveDownProg} drivePhase={drivePhase} ytDownloading={embedTrack?.type==='youtube'&&ytDownloadingIds.has(embedTrack.videoId)} ytDlProg={embedTrack?.type==='youtube'?(ytDownloadProg[embedTrack.videoId]||0):0}/>
+              <OrbitalRing size={ringSize} pct={embedTrack?.type==='youtube'?(ytDuration>0?ytProgress/ytDuration:0):track.isRadio?0:pct} color={embedTrack?.type==='youtube'?'#ff4444':track.color} progress={embedTrack?.type==='youtube'?ytProgress:progress} duration={embedTrack?.type==='youtube'?ytDuration:track.isRadio?0:duration} isPlaying={playing} cover={globalCover||((!globalCover&&embedTrack?.type==='youtube')?embedTrack.thumbnail:null)||getCover(track)} title={embedTrack?.type==='youtube'?embedTrack.title:track.title} onSeek={embedTrack?.type==='youtube'?seekYt:track.isRadio?null:seekByPct} isLite={isLite} isRadio={!embedTrack&&track.isRadio} downloadProg={driveDownProg} drivePhase={drivePhase} ytDownloading={embedTrack?.type==='youtube'&&ytDownloadingIds.has(embedTrack.videoId)} ytDlProg={embedTrack?.type==='youtube'?(ytDownloadProg[embedTrack.videoId]||0):0} coverSpin={coverSpin}/>
             )}
 
             {/* Track info */}
