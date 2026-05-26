@@ -8334,11 +8334,13 @@ Format exactly:
                             <Download size={14}/>
                           </button>}
                           <button title={t?.deleteBtn||'Hapus'} onClick={e=>{ e.stopPropagation();
-                            setLiked(l=>{const n={...l};delete n[s.id];return n;});
-                            setFavSongs(p=>p.filter(x=>x.id!==s.id));
-                            setCustomSongs(p=>p.filter(x=>x.id!==s.id));
-                            setYtSongs(p=>p.filter(x=>x.id!==s.id));
-                            setPlaylists(p=>p.map(pl=>({...pl,songIds:pl.songIds.filter(id=>id!==s.id)})));
+                            // Hanya hapus dari playlist ini saja, bukan dari semua playlist
+                            setPlaylists(p=>p.map(pl2=>pl2.id===pl.id?{...pl2,songIds:pl2.songIds.filter(id=>id!==s.id)}:pl2));
+                            // Jika ini playlist Favorit (pl_fav), update juga liked state
+                            if (pl.id === 'pl_fav') {
+                              setLiked(l=>{const n={...l};delete n[s.id];return n;});
+                              setFavSongs(p=>p.filter(x=>x.id!==s.id));
+                            }
                           }} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(239,68,68,0.5)', padding:'4px 6px', display:'flex', borderRadius:6, flexShrink:0, transition:'color 0.2s' }}>
                             <Trash2 size={14}/>
                           </button>
@@ -8480,9 +8482,7 @@ Format exactly:
                           { id:'sleep',     icon:'😴', label:'Tidur',    color:'#8b5cf6' },
                           { id:'metime',    icon:'🌧️', label:'Me time',  color:'#64748b' },
                           { id:'party',     icon:'🎉', label:'Hepi',     color:'#f59e0b' },
-                          { id:'pagi',      icon:'🌅', label:'Pagi',     color:'#f97316' },
-                          { id:'siang',     icon:'☀️', label:'Siang',    color:'#eab308' },
-                          { id:'malam',     icon:'🌙', label:'Malam',    color:'#a78bfa' },
+
                         ].map(m => {
                           const selected = personaPrefs.moods.includes(m.id);
                           return (
