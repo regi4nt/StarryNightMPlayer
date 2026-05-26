@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { CheckCircle, Cloud, Download, Loader2, Music, Trash2, Heart } from 'lucide-react';
 import { btn, downloadToDevice } from '../constants.js';
 
-function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDrive, isCached, onRemove, playlists, addToPlaylist, isLite, t, onDownload }) {
+function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDrive, isCached, onRemove, playlists, addToPlaylist, isLite, t, onDownload, editMode }) {
   const isActive = track.id === s.id;
   const [dlState, setDlState] = React.useState('idle'); // idle | loading | done | error
 
@@ -54,7 +54,7 @@ function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDri
         )}
 
         {/* ── Tombol unduh ke perangkat (tidak tampil untuk radio) */}
-        {!s.isRadio&&<button onClick={handleDownload} title={dlState==='done'?'Berhasil diunduh!':dlState==='error'?'Gagal, coba lagi':'Unduh ke perangkat'}
+        {!s.isRadio&&editMode&&<button onClick={handleDownload} title={dlState==='done'?'Berhasil diunduh!':dlState==='error'?'Gagal, coba lagi':'Unduh ke perangkat'}
           style={{ ...btn, color:dlColor, padding:6, transition:'color 0.2s' }}>
           {dlState==='loading'
             ? <Loader2 size={14} style={{ animation:'spin 0.8s linear infinite' }}/>

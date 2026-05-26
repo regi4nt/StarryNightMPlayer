@@ -1976,6 +1976,8 @@ Return ONLY valid JSON, no explanation:
   const [editingPl, setEditingPl]         = useState(null);
   const [plView, setPlView]               = useState('list'); // 'list' | 'detail' | 'form'
   const [mySongsEditMode, setMySongsEditMode] = useState(false);
+  const [allSongsEditMode, setAllSongsEditMode] = useState(false);
+  const [plSongsEditMode, setPlSongsEditMode] = useState(false);
 
   // ── Responsive
   const [ringSize, setRingSize] = useState(260);
@@ -5596,6 +5598,9 @@ Format exactly:
   // ── Sync activePlRef agar goNext/goPrev selalu pakai konteks playlist aktif
   useEffect(() => { activePlRef.current = activePlSongs; }, [activePlSongs]);
 
+  // ── Reset edit modes when switching playlists
+  useEffect(() => { setPlSongsEditMode(false); setAllSongsEditMode(false); }, [activePl]);
+
 
   // ── Global keyboard shortcuts
   useEffect(() => {
@@ -8195,7 +8200,7 @@ Format exactly:
                           setLiked(l=>{ const n={...l}; delete n[id]; return n; });
                           setFavSongs(p=>p.filter(s=>s.id!==id));
                           if(activePlRef.current) activePlRef.current=activePlRef.current.filter(s=>s.id!==id);
-                        } : null} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite} t={t}
+                        } : null} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite} t={t} editMode={mySongsEditMode}
                         onDownload={async(s)=>{ if(s.driveId&&tokenRef.current){ await downloadToDevice(`https://www.googleapis.com/drive/v3/files/${s.driveId}?alt=media&acknowledgeAbuse=true`,`${s.title} - ${s.artist}.mp3`,{Authorization:`Bearer ${tokenRef.current}`}); } else if(s.src){ const raw=s.src.split('?')[0]; const ext=raw.includes('.')?raw.split('.').pop():'mp3'; await downloadToDevice(s.src,`${s.title} - ${s.artist}.${ext}`); } }}
                       />)}
                     </div>
@@ -8267,6 +8272,12 @@ Format exactly:
                           <div style={{ fontWeight:800, fontSize:15 }}>{t?.allSongs||'All Songs'}</div>
                           <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:1 }}>{songs.length} {t?.songsCount||'songs'}</div>
                         </div>
+                        <button
+                          onClick={()=>setAllSongsEditMode(v=>!v)}
+                          style={{ background: allSongsEditMode ? 'rgba(248,113,113,0.15)' : 'rgba(255,255,255,0.06)', border: allSongsEditMode ? '1px solid rgba(248,113,113,0.4)' : '1px solid rgba(255,255,255,0.12)', cursor:'pointer', color: allSongsEditMode ? '#f87171' : 'rgba(255,255,255,0.55)', fontSize:12, padding:'5px 10px', borderRadius:8, fontWeight:700, display:'flex', alignItems:'center', gap:5, transition:'all 0.2s' }}
+                        >
+                          <PenLine size={12}/> {allSongsEditMode ? (lang==='id'?'Selesai':'Done') : (t?.editBtn||'Edit')}
+                        </button>
                         {songs.length>0&&(
                           <button onClick={()=>{ activePlRef.current=songs; play(songs[0]); setTab('player'); }}
                             style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:10, border:'none', background:'#a78bfa', color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}>
@@ -8277,7 +8288,8 @@ Format exactly:
                     </div>
                     <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'10px 16px 16px', display:'flex', flexDirection:'column', gap:5 }}>
                       {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={play} isDrive={s.isDrive} isCached={s.driveId ? cachedDriveIds.has(s.driveId) : false} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite} t={t}
-                      onRemove={id=>{ setLiked(l=>{const n={...l};delete n[id];return n;}); setFavSongs(p=>p.filter(s=>s.id!==id)); setCustomSongs(p=>p.filter(s=>s.id!==id)); setYtSongs(p=>p.filter(s=>s.id!==id)); setPlaylists(p=>p.map(pl=>({...pl,songIds:pl.songIds.filter(sid=>sid!==id)}))); }}
+                      onRemove={allSongsEditMode ? id=>{ setLiked(l=>{const n={...l};delete n[id];return n;}); setFavSongs(p=>p.filter(s=>s.id!==id)); setCustomSongs(p=>p.filter(s=>s.id!==id)); setYtSongs(p=>p.filter(s=>s.id!==id)); setPlaylists(p=>p.map(pl=>({...pl,songIds:pl.songIds.filter(sid=>sid!==id)}))); } : null}
+                      editMode={allSongsEditMode}
                       onDownload={async(s)=>{ if(s.isDrive&&s.driveId&&tokenRef.current){ await downloadToDevice(`https://www.googleapis.com/drive/v3/files/${s.driveId}?alt=media&acknowledgeAbuse=true`,`${s.title} - ${s.artist}.mp3`,{Authorization:`Bearer ${tokenRef.current}`}); } else if(s.src){ const raw=s.src.split('?')[0]; const ext=raw.includes('.')?raw.split('.').pop():'mp3'; await downloadToDevice(s.src,`${s.title} - ${s.artist}.${ext}`); } }}
                     />)}
                     </div>
@@ -8303,6 +8315,12 @@ Format exactly:
                       <button onClick={()=>{ setEditingPl(pl); setPlView('form'); }}
                         style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:8, color:'rgba(255,255,255,0.55)', fontSize:11, fontWeight:700, padding:'5px 10px', cursor:'pointer', display:'flex', alignItems:'center', gap:4, flexShrink:0 }}>
                         <PenLine size={12}/>{t?.editBtn||'Edit'}
+                      </button>
+                      <button
+                        onClick={()=>setPlSongsEditMode(v=>!v)}
+                        style={{ background: plSongsEditMode ? 'rgba(248,113,113,0.15)' : 'rgba(255,255,255,0.06)', border: plSongsEditMode ? '1px solid rgba(248,113,113,0.4)' : '1px solid rgba(255,255,255,0.12)', cursor:'pointer', color: plSongsEditMode ? '#f87171' : 'rgba(255,255,255,0.55)', fontSize:11, padding:'5px 10px', borderRadius:8, fontWeight:700, display:'flex', alignItems:'center', gap:4, flexShrink:0, transition:'all 0.2s' }}
+                      >
+                        <Trash2 size={12}/> {plSongsEditMode ? (lang==='id'?'Selesai':'Done') : (lang==='id'?'Hapus':'Delete')}
                       </button>
                       {songs.length>0&&(
                         <button onClick={()=>{ activePlRef.current=songs; play(songs[0]); setTab('player'); }}
@@ -8345,7 +8363,7 @@ Format exactly:
                             <span style={{ flexShrink:0, fontSize:9, fontWeight:800, color:'#4ade80', background:'rgba(74,222,128,0.12)', padding:'1px 5px', borderRadius:999 }}>✓ Offline</span>
                           )}
                           {/* ── Unduh ke perangkat (custom playlist, tidak tampil untuk radio) */}
-                          {!s.isRadio&&<button title="Unduh ke perangkat"
+                          {!s.isRadio&&plSongsEditMode&&<button title="Unduh ke perangkat"
                             onClick={async e=>{ e.stopPropagation();
                               const btn2=e.currentTarget; btn2.disabled=true;
                               const origColor=btn2.style.color; btn2.style.color='#a78bfa';
@@ -8370,7 +8388,7 @@ Format exactly:
                               setLiked(l=>{const n={...l};delete n[s.id];return n;});
                               setFavSongs(p=>p.filter(x=>x.id!==s.id));
                             }
-                          }} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(239,68,68,0.5)', padding:'4px 6px', display:'flex', borderRadius:6, flexShrink:0, transition:'color 0.2s' }}>
+                          }} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(239,68,68,0.5)', padding:'4px 6px', display: plSongsEditMode ? 'flex' : 'none', borderRadius:6, flexShrink:0, transition:'color 0.2s' }}>
                             <Trash2 size={14}/>
                           </button>
 
