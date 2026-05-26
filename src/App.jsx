@@ -2068,12 +2068,8 @@ Return ONLY valid JSON, no explanation:
           const rawProv = addr.state || addr.province || '';
           const prov = rawProv.replace(/^(provinsi|province of|daerah istimewa|dki|daerah khusus ibukota)\s*/i, '').trim();
 
-          // Format: "Kabupaten, Provinsi, Negara"
-          // Hilangkan bagian yang kosong atau duplikat
-          const parts = [kab, prov, countryName].filter((v, i, arr) =>
-            v && arr.indexOf(v) === i && v.toLowerCase() !== arr[i - 1]?.toLowerCase()
-          );
-          const displayLoc = parts.join(', ');
+          // Format: hanya kota/kabupaten (level paling terpusat)
+          const displayLoc = kab;
           if (displayLoc) {
             setUserLocation(displayLoc);
             setUserLocationCountry(country);
@@ -5445,7 +5441,7 @@ Format exactly:
   // ── Google
   const handleGoogleLogin = useCallback(() => {
     if (!window.google) return setDriveError('Google API belum siap, coba lagi.');
-    if (GOOGLE_CLIENT_ID.includes('GANTI_DENGAN')) return setDriveError('⚙️ Isi GOOGLE_CLIENT_ID di App.jsx terlebih dahulu!');
+    if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes('GANTI_DENGAN')) return setDriveError('⚙️ Set GOOGLE_CLIENT_ID di environment variable terlebih dahulu!');
     const client = window.google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID, scope: GOOGLE_SCOPES,
       callback: async resp => {
@@ -6250,10 +6246,10 @@ Format exactly:
             {/* ── Mobile: jam + lokasi/cuaca di atas ring, lalu ring tengah | Desktop: ring tengah saja */}
             {layoutMode === 'mobile-portrait' ? (
               <div style={{ width:'100%', flexShrink:0, display:'flex', flexDirection:'column', alignItems:'center', gap:0 }}>
-                {/* Baris atas: jam kiri + lokasi/cuaca kanan — normal flow, tidak absolute */}
-                <div style={{ width:'100%', display:'flex', alignItems:'flex-start', justifyContent:'space-between', paddingBottom:4, userSelect:'none' }}>
+                {/* Baris atas: jam + lokasi/cuaca terpusat */}
+                <div style={{ width:'100%', display:'flex', flexDirection:'column', alignItems:'center', paddingBottom:4, userSelect:'none', gap:2 }}>
                   {/* Jam */}
-                  <div>
+                  <div style={{ textAlign:'center' }}>
                     <div style={{ display:'inline-block', fontSize:17, fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', backgroundClip:'text', WebkitTextFillColor:'transparent', color:'transparent' }}>
                       {nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false })}
                     </div>
@@ -6261,20 +6257,19 @@ Format exactly:
                       {nowTime.toLocaleDateString('id-ID',{ weekday:'short', day:'numeric', month:'short' })}
                     </div>
                   </div>
-                  {/* Lokasi + cuaca — sisi kanan, selalu tampil */}
-                  <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:2 }}>
+                  {/* Lokasi + cuaca — terpusat, tepat di bawah jam */}
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, flexWrap:'wrap' }}>
                     {userWeather && (
-                      <div style={{ display:'flex', alignItems:'center', gap:4, fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.75)' }}>
-                        <span>{userWeather.emoji}</span>
-                        <span>{userWeather.temp}{userWeather.unit}</span>
-                      </div>
+                      <span style={{ display:'flex', alignItems:'center', gap:3, fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.7)' }}>
+                        {userWeather.emoji} {userWeather.temp}{userWeather.unit}
+                      </span>
                     )}
                     {userLocation ? (
-                      <div style={{ display:'flex', alignItems:'center', gap:3, fontSize:9.5, fontWeight:600, color:'rgba(255,255,255,0.5)', maxWidth:120, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                      <span style={{ display:'flex', alignItems:'center', gap:2, fontSize:9.5, fontWeight:600, color:'rgba(255,255,255,0.5)', maxWidth:160, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                         <span>📍</span><span>{userLocation}</span>
-                      </div>
+                      </span>
                     ) : (
-                      <div style={{ fontSize:9, color:'rgba(255,255,255,0.2)', fontWeight:500 }}>📍 —</div>
+                      <span style={{ fontSize:9, color:'rgba(255,255,255,0.2)', fontWeight:500 }}>📍 —</span>
                     )}
                   </div>
                 </div>
