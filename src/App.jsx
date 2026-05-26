@@ -9420,6 +9420,7 @@ Format exactly:
         t={t}
         prefillName={plPrefillName}
         prefillSongIds={plPrefillIds}
+        panelMode={true}
       /></Suspense>}
 
       {/* ── Modal: Tambah ke Playlist yang Ada ── */}

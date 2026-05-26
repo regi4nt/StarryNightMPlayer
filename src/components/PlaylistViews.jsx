@@ -157,7 +157,7 @@ function PlaylistFormView({ editingPl, allSongs, lang, isLite, t, setPlaylists, 
 // ═══════════════════════════════════════════════════════
 //  PLAYLIST MODAL - Create / Edit
 // ═══════════════════════════════════════════════════════
-function PlaylistModal({ onClose, onSave, allSongs, existing, isLite, t, prefillName, prefillSongIds }) {
+function PlaylistModal({ onClose, onSave, allSongs, existing, isLite, t, prefillName, prefillSongIds, panelMode }) {
   const isEdit = !!existing;
   const [name, setName] = useState(existing?.name || prefillName || '');
   const [selected, setSelected] = useState(new Set(existing?.songIds || prefillSongIds || []));
@@ -168,6 +168,73 @@ function PlaylistModal({ onClose, onSave, allSongs, existing, isLite, t, prefill
     return n;
   });
 
+  // panelMode = true → full panel seperti Antrean/Bagikan (position fixed, inset 0, full height)
+  if (panelMode) {
+    return (
+      <div style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(0,0,0,0.55)', display:'flex', alignItems:'stretch' }} onClick={e=>e.target===e.currentTarget&&onClose()}>
+        <div style={{ width:'100%', height:'100%', display:'flex', flexDirection:'column', background:'#0d0d24', border:'none', borderRadius:0 }}>
+          {/* Header */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 18px 12px', borderBottom:'1px solid rgba(255,255,255,0.07)', flexShrink:0 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:9 }}>
+              <div style={{ width:30, height:30, borderRadius:9, background:'linear-gradient(135deg,rgba(99,102,241,0.35),rgba(168,85,247,0.25))', border:'1px solid rgba(99,102,241,0.4)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                {isEdit ? <PenLine size={14} style={{color:'#a78bfa'}}/> : <ListPlus size={14} style={{color:'#a78bfa'}}/>}
+              </div>
+              <div>
+                <div style={{ fontWeight:800, fontSize:14 }}>{isEdit ? t?.editPlaylist||'Edit Playlist' : t?.newPlaylist||'Buat Playlist Baru'}</div>
+                <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{selected.size} {t?.songsSelected||'lagu dipilih'}</div>
+              </div>
+            </div>
+            <button onClick={onClose} style={{ width:30, height:30, borderRadius:999, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.7)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, fontWeight:700 }}>×</button>
+          </div>
+
+          {/* Scrollable content */}
+          <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'14px 18px 20px' }}>
+            {/* Name */}
+            <div style={{ marginBottom:14 }}>
+              <label style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.4)', textTransform:'uppercase', letterSpacing:'0.1em' }}>Playlist Name</label>
+              <input value={name} onChange={e=>setName(e.target.value)} placeholder={t?.playlistNamePlaceholder||"Nama playlist kamu..."}
+                style={{ width:'100%', marginTop:6, background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:10, padding:'10px 12px', fontSize:13, color:'white', outline:'none', boxSizing:'border-box' }}/>
+            </div>
+
+            {/* Song picker */}
+            <div style={{ marginBottom:14 }}>
+              <label style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.4)', textTransform:'uppercase', letterSpacing:'0.1em' }}>{t?.selectSongs||'Pilih Lagu'}</label>
+              <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:3 }}>
+                {allSongs.map(s => {
+                  const on = selected.has(s.id);
+                  return (
+                    <div key={s.id} onClick={()=>toggle(s.id)} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:12, cursor:'pointer', background:on?s.bg:'rgba(255,255,255,0.03)', border:`1px solid ${on?s.color+'50':'rgba(255,255,255,0.08)'}` }}>
+                      {isLite
+                        ? <div style={{ width:34, height:34, borderRadius:8, background:s.bg||'rgba(255,255,255,0.07)', flexShrink:0 }}/>
+                        : <img src={s.cover} loading="lazy" decoding="async" style={{ width:34, height:34, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>}
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontWeight:700, fontSize:13, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:on?'white':'rgba(255,255,255,0.8)' }}>{s.title}</div>
+                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>{s.artist}</div>
+                      </div>
+                      <div style={{ width:20, height:20, borderRadius:'50%', border:`2px solid ${on?s.color:'rgba(255,255,255,0.2)'}`, background:on?s.color:'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                        {on && <CheckCircle size={12} style={{color:'white'}}/>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Footer buttons */}
+          <div style={{ display:'flex', gap:10, padding:'12px 18px 16px', borderTop:'1px solid rgba(255,255,255,0.07)', flexShrink:0 }}>
+            <button onClick={onClose} style={{ flex:1, padding:'12px 0', borderRadius:14, border:'1px solid rgba(255,255,255,0.12)', background:'transparent', color:'rgba(255,255,255,0.6)', fontSize:13, fontWeight:700, cursor:'pointer' }}>{t?.cancelBtn||'Batal'}</button>
+            <button onClick={()=>{ if(!name.trim()) return alert('Isi nama playlist!'); onSave({ name:name.trim(), songIds:[...selected] }); }}
+              style={{ flex:2, padding:'12px 0', borderRadius:14, border:'none', background:'linear-gradient(135deg,#6366f1,#a855f7)', color:'white', fontSize:13, fontWeight:800, cursor:'pointer' }}>
+              {isEdit ? t?.saveChanges||'Simpan' : t?.createPlaylistBtn||'Buat Playlist'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Default mode: bottom sheet (fixed, dari bawah)
   return (
     <div style={{ position:'fixed', inset:0, zIndex:100, background:'rgba(0,0,0,0.75)', ...(isLite ? {} : { backdropFilter:'blur(8px)' }), display:'flex', alignItems:'flex-end' }} onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div style={{ width:'100%', maxHeight:'92dvh', overflowY:'auto', background:'#0f0f2a', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'24px 24px 0 0', padding:'20px 20px 32px' }}>
