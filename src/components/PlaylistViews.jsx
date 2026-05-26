@@ -168,10 +168,10 @@ function PlaylistModal({ onClose, onSave, allSongs, existing, isLite, t, prefill
     return n;
   });
 
-  // panelMode = true → full panel seperti Antrean/Bagikan (position fixed, inset 0, full height)
+  // panelMode = true → full panel seperti Antrean/Bagikan (position absolute, inset 0, full height)
   if (panelMode) {
     return (
-      <div style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(0,0,0,0.55)', display:'flex', alignItems:'stretch' }} onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div style={{ position:'absolute', inset:0, zIndex:200, background:'rgba(0,0,0,0.55)', display:'flex', alignItems:'stretch' }} onClick={e=>e.target===e.currentTarget&&onClose()}>
         <div style={{ width:'100%', height:'100%', display:'flex', flexDirection:'column', background:'#0d0d24', border:'none', borderRadius:0 }}>
           {/* Header */}
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 18px 12px', borderBottom:'1px solid rgba(255,255,255,0.07)', flexShrink:0 }}>
