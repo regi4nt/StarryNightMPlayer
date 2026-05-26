@@ -8443,7 +8443,7 @@ Format exactly:
                       <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
                         {[
                           { id:'id',  icon:'🇮🇩', label:'Indonesia', sub:'Lokal' },
-                          { id:'en',  icon:'🌍', label:'Interna-sional', sub:'Global' },
+                          { id:'en',  icon:'🌍', label:'Internasional', sub:'Global' },
                           { id:'mix', icon:'🎲', label:'Campur', sub:'Keduanya' },
                         ].map(l => (
                           <button key={l.id} onClick={()=>setPersonaPrefs(p=>({ ...p, lang: l.id }))}

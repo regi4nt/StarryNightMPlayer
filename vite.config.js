@@ -1,8 +1,10 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '') // load semua env var (tanpa filter prefix)
+  return {
   plugins: [
     react(),
     VitePWA({
@@ -99,5 +101,10 @@ export default defineConfig({
       }
     },
     assetsInlineLimit: 4096,
+  },
+  define: {
+    // Expose env vars tanpa VITE_ prefix ke client-side via import.meta.env
+    'import.meta.env.GOOGLE_CLIENT_ID': JSON.stringify(env.GOOGLE_CLIENT_ID || ''),
+  },
   }
 })
