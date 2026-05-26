@@ -9357,48 +9357,59 @@ Format exactly:
             panelMode={true}
           /></Suspense>}
 
-          {/* ── Tambah ke Playlist Modal — inline dalam AI panel, sama seperti queue/share */}
+          {/* ── Tambah ke Playlist Modal — full panel, seragam dengan Buat Playlist Baru */}
           {showAddToModal&&(
-            <div style={{ position:'absolute', inset:0, zIndex:200, background:'rgba(0,0,0,0.75)', backdropFilter:'blur(8px)', display:'flex', alignItems:'flex-end' }} onClick={e=>e.target===e.currentTarget&&setShowAddToModal(false)}>
-              <div style={{ width:'100%', maxHeight:'70%', overflowY:'auto', background:'#0f0f2a', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'24px 24px 0 0', padding:'20px 20px 32px' }}>
-                <div style={{ width:36, height:4, borderRadius:999, background:'rgba(255,255,255,0.15)', margin:'0 auto 18px' }}/>
-                <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:18 }}>
-                  <div style={{ width:36, height:36, borderRadius:10, background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>
-                    📋
+            <div style={{ position:'absolute', inset:0, zIndex:200, background:'rgba(0,0,0,0.55)', display:'flex', alignItems:'stretch' }} onClick={e=>e.target===e.currentTarget&&setShowAddToModal(false)}>
+              <div style={{ width:'100%', height:'100%', display:'flex', flexDirection:'column', background:'#0d0d24', border:'none', borderRadius:0 }}>
+                {/* Header */}
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 18px 12px', borderBottom:'1px solid rgba(255,255,255,0.07)', flexShrink:0 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:9 }}>
+                    <div style={{ width:30, height:30, borderRadius:9, background:'linear-gradient(135deg,rgba(99,102,241,0.35),rgba(168,85,247,0.25))', border:'1px solid rgba(99,102,241,0.4)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <ListPlus size={14} style={{color:'#a78bfa'}}/>
+                    </div>
+                    <div>
+                      <div style={{ fontWeight:800, fontSize:14, color:'white' }}>Tambah ke Playlist</div>
+                      <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{addToSongIds.length} lagu akan ditambahkan</div>
+                    </div>
                   </div>
-                  <div>
-                    <div style={{ fontWeight:800, fontSize:15, color:'white' }}>Tambah ke Playlist</div>
-                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)' }}>{addToSongIds.length} lagu akan ditambahkan</div>
-                  </div>
-                  <button onClick={()=>setShowAddToModal(false)} style={{ marginLeft:'auto', background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.4)', fontSize:20 }}>✕</button>
+                  <button onClick={()=>setShowAddToModal(false)} style={{ width:30, height:30, borderRadius:999, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.7)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, fontWeight:700 }}>×</button>
                 </div>
-                {playlists.filter(pl=>pl.id!=='pl_fav').length === 0 ? (
-                  <div style={{ textAlign:'center', padding:'24px 0', color:'rgba(255,255,255,0.35)', fontSize:13 }}>
-                    Belum ada playlist. Buat playlist baru dulu.
+
+                {/* Scrollable content */}
+                <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'14px 18px 20px' }}>
+                  <div style={{ marginBottom:14 }}>
+                    <label style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.4)', textTransform:'uppercase', letterSpacing:'0.1em' }}>Pilih Playlist</label>
+                    {playlists.filter(pl=>pl.id!=='pl_fav').length === 0 ? (
+                      <div style={{ textAlign:'center', padding:'32px 0', color:'rgba(255,255,255,0.35)', fontSize:13 }}>
+                        Belum ada playlist. Buat playlist baru dulu.
+                      </div>
+                    ) : (
+                      <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:3 }}>
+                        {playlists.filter(pl=>pl.id!=='pl_fav').map(pl => (
+                          <button key={pl.id} onClick={()=>{
+                            addToSongIds.forEach(sid => addToPlaylist(pl.id, sid));
+                            setShowAddToModal(false);
+                          }}
+                            style={{ display:'flex', alignItems:'center', gap:12, padding:'9px 12px', borderRadius:12, border:'1px solid rgba(255,255,255,0.08)', background:'rgba(255,255,255,0.03)', cursor:'pointer', textAlign:'left', color:'white' }}
+                            onMouseEnter={e=>e.currentTarget.style.background='rgba(99,102,241,0.15)'}
+                            onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.03)'}>
+                            <div style={{ width:34, height:34, borderRadius:8, background:'linear-gradient(135deg,rgba(99,102,241,0.3),rgba(168,85,247,0.2))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, flexShrink:0 }}>🎵</div>
+                            <div style={{ flex:1, minWidth:0 }}>
+                              <div style={{ fontWeight:700, fontSize:13, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'rgba(255,255,255,0.8)' }}>{pl.name}</div>
+                              <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>{pl.songIds.length} lagu</div>
+                            </div>
+                            <div style={{ fontSize:12, color:'rgba(99,102,241,0.8)', fontWeight:700, flexShrink:0 }}>+ Tambah</div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                    {playlists.filter(pl=>pl.id!=='pl_fav').map(pl => (
-                      <button key={pl.id} onClick={()=>{
-                        addToSongIds.forEach(sid => addToPlaylist(pl.id, sid));
-                        setShowAddToModal(false);
-                      }}
-                        style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', borderRadius:14, border:'1px solid rgba(255,255,255,0.08)', background:'rgba(255,255,255,0.04)', cursor:'pointer', textAlign:'left', color:'white' }}
-                        onMouseEnter={e=>e.currentTarget.style.background='rgba(99,102,241,0.15)'}
-                        onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
-                        <div style={{ width:36, height:36, borderRadius:10, background:'linear-gradient(135deg,rgba(99,102,241,0.3),rgba(168,85,247,0.2))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, flexShrow:0 }}>🎵</div>
-                        <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ fontWeight:700, fontSize:13, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{pl.name}</div>
-                          <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)' }}>{pl.songIds.length} lagu</div>
-                        </div>
-                        <div style={{ fontSize:12, color:'rgba(99,102,241,0.8)', fontWeight:700 }}>+ Tambah</div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <button onClick={()=>setShowAddToModal(false)} style={{ width:'100%', marginTop:16, padding:'12px 0', borderRadius:14, border:'1px solid rgba(255,255,255,0.12)', background:'transparent', color:'rgba(255,255,255,0.5)', fontSize:13, fontWeight:700, cursor:'pointer' }}>
-                  Batal
-                </button>
+                </div>
+
+                {/* Footer */}
+                <div style={{ display:'flex', gap:10, padding:'12px 18px 16px', borderTop:'1px solid rgba(255,255,255,0.07)', flexShrink:0 }}>
+                  <button onClick={()=>setShowAddToModal(false)} style={{ flex:1, padding:'12px 0', borderRadius:14, border:'1px solid rgba(255,255,255,0.12)', background:'transparent', color:'rgba(255,255,255,0.6)', fontSize:13, fontWeight:700, cursor:'pointer' }}>Batal</button>
+                </div>
               </div>
             </div>
           )}
