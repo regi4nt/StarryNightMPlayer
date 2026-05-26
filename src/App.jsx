@@ -1871,6 +1871,11 @@ Return ONLY valid JSON, no explanation:
   const [vibeLoading, setVL]    = useState(false);
   const [chatMode, setChatMode]   = useState('chat'); // 'chat' | 'mood'
 
+  // ── Shazam-like audio recognition ─────────────────────────────
+  const [shazamListening, setShazamListening] = useState(false); // sedang merekam
+  const [shazamLoading, setShazamLoading]     = useState(false); // mengirim ke API
+  const shazamMediaRef = useRef(null); // MediaRecorder instance
+
   // ── Google Drive — restore session from localStorage if token still valid
   const [googleUser, setGoogleUser]     = useState(() => {
     try { return JSON.parse(localStorage.getItem('sn_google_user') || 'null'); } catch { return null; }
@@ -4805,6 +4810,104 @@ Format exactly:
     setActiveModelLabel(activeModel());
     setCL(false);
   };
+  // ── Shazam: rekam audio → kenali lagu ────────────────────────────────────
+  const startShazam = async () => {
+    if (shazamListening || shazamLoading) return;
+
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      setMessages(p => [...p, {
+        from: 'ai',
+        text: '🎙️ Tidak bisa mengakses mikrofon. Pastikan kamu mengizinkan akses mikrofon di browser ya!',
+      }]);
+      return;
+    }
+
+    // Pilih format yang didukung browser
+    const mimeType = ['audio/webm', 'audio/ogg', 'audio/mp4'].find(m => MediaRecorder.isTypeSupported(m)) || 'audio/webm';
+    const ext = mimeType.includes('webm') ? 'webm' : mimeType.includes('ogg') ? 'ogg' : 'mp4';
+
+    const recorder = new MediaRecorder(stream, { mimeType });
+    shazamMediaRef.current = recorder;
+    const chunks = [];
+    recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+
+    setShazamListening(true);
+    setMessages(p => [...p, { from: 'user', text: '🎙️ Mendengarkan musik…' }]);
+
+    recorder.start();
+
+    // Rekam selama 8 detik
+    await new Promise(resolve => setTimeout(resolve, 8000));
+
+    recorder.stop();
+    stream.getTracks().forEach(t => t.stop());
+    setShazamListening(false);
+    setShazamLoading(true);
+
+    // Tunggu recorder benar-benar selesai
+    await new Promise(resolve => { recorder.onstop = resolve; });
+
+    const blob = new Blob(chunks, { type: mimeType });
+
+    // Konversi ke base64
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+    try {
+      const resp = await fetch('/api/shazam', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ audio: base64, format: ext }),
+      });
+      const data = await resp.json();
+
+      if (data.success) {
+        const { title, artist, album, source, extra } = data;
+        const genres   = extra?.genres || [];
+        const genreStr = genres.length ? ` · Genre: ${genres.slice(0,2).join(', ')}` : '';
+        const albumStr = album ? ` · Album: ${album}` : '';
+        const srcStr   = source ? ` via ${source}` : '';
+
+        setMessages(p => [...p, {
+          from:   'ai',
+          text:   `🎵 Ketemu! Ini lagunya:\n\n**${title}** — ${artist}${albumStr}${genreStr}\n\n_Dikenali${srcStr}_\n\nMau aku putarkan lagu ini? 🎶`,
+          action: { type: 'yt', title, artist },
+        }]);
+      } else {
+        // Tidak dikenali
+        setMessages(p => [...p, {
+          from: 'ai',
+          text: '😕 Hmm, aku tidak bisa mengenali lagu ini. Pastikan musik cukup keras dan tidak terlalu berisik ya. Coba lagi?',
+        }]);
+      }
+    } catch {
+      setMessages(p => [...p, {
+        from: 'ai',
+        text: '⚠️ Koneksi ke server pengenal lagu gagal. Coba lagi nanti.',
+      }]);
+    }
+
+    setShazamLoading(false);
+    shazamMediaRef.current = null;
+  };
+
+  // Batalkan rekaman jika sedang berlangsung
+  const cancelShazam = () => {
+    if (shazamMediaRef.current) {
+      try { shazamMediaRef.current.stop(); } catch {}
+      shazamMediaRef.current = null;
+    }
+    setShazamListening(false);
+    setShazamLoading(false);
+  };
+
   const searchVibe = async () => {
     if (!vibeInput.trim()||vibeLoading) return;
     if (isLite) { setVibeInput(t?.liteVibeDisabled||'⚡ Lite Mode active — Vibe Search disabled'); return; }
@@ -8426,6 +8529,31 @@ Format exactly:
             {/* Input area — only in chat view */}
             {aiSubView==='chat'&&(
             <div style={{ padding:'8px 16px 14px', flexShrink:0, borderTop:'1px solid rgba(255,255,255,0.06)' }}>
+              {/* ── Shazam listening indicator ── */}
+              {(shazamListening || shazamLoading) && (
+                <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8, padding:'8px 12px', borderRadius:12, background:'rgba(255,255,255,0.06)', border:`1px solid ${track.color}44` }}>
+                  <div style={{ display:'flex', gap:3, alignItems:'flex-end', height:18 }}>
+                    {[0,1,2,3].map(i => (
+                      <div key={i} style={{
+                        width:3, borderRadius:2,
+                        background: shazamListening ? track.color : 'rgba(255,255,255,0.4)',
+                        height: shazamListening ? undefined : 8,
+                        minHeight: 4,
+                        animation: shazamListening ? `shazamBar 0.9s ease-in-out ${i*0.15}s infinite alternate` : 'none',
+                      }}/>
+                    ))}
+                  </div>
+                  <span style={{ fontSize:12, color:'rgba(255,255,255,0.7)', flex:1 }}>
+                    {shazamListening ? '🎙️ Mendengarkan musik… (8 detik)' : '🔍 Mengenali lagu…'}
+                  </span>
+                  {shazamListening && (
+                    <button onClick={cancelShazam} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.5)', cursor:'pointer', padding:2, display:'flex', alignItems:'center' }}>
+                      <X size={13}/>
+                    </button>
+                  )}
+                  {shazamLoading && <Loader2 size={13} style={{ color:track.color, animation:'spin 1s linear infinite', flexShrink:0 }}/>}
+                </div>
+              )}
               <div style={{ display:'flex', gap:8 }}>
                 <input
                   value={vibeInput && !vibeInput.startsWith('✨') ? vibeInput : input}
@@ -8440,10 +8568,28 @@ Format exactly:
                     {vibeLoading ? <Loader2 size={15} style={{ animation:'spin 1s linear infinite' }}/> : <span style={{fontSize:15}}>🔮</span>}
                   </button>
                 ) : (
-                  <button onClick={sendChat} disabled={chatLoading||!input.trim()}
-                    style={{ width:40, height:40, borderRadius:12, border:'none', background:input.trim()?track.color:'rgba(255,255,255,0.1)', color:'white', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity:chatLoading?0.5:1, flexShrink:0 }}>
-                    {chatLoading ? <Loader2 size={15} style={{ animation:'spin 1s linear infinite' }}/> : <Send size={15}/>}
-                  </button>
+                  <>
+                    {/* ── Shazam mic button — tampil saat input kosong ── */}
+                    {!input.trim() && !shazamListening && !shazamLoading && (
+                      <button
+                        onClick={startShazam}
+                        title="Kenali lagu dari suara (Shazam)"
+                        style={{
+                          width:40, height:40, borderRadius:12, border:`1px solid ${track.color}55`,
+                          background:`${track.color}18`, color:track.color,
+                          cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
+                          flexShrink:0, transition:'all 0.2s',
+                        }}
+                      >
+                        <Mic2 size={16}/>
+                      </button>
+                    )}
+                    {/* ── Chat send button ── */}
+                    <button onClick={sendChat} disabled={chatLoading||!input.trim()}
+                      style={{ width:40, height:40, borderRadius:12, border:'none', background:input.trim()?track.color:'rgba(255,255,255,0.1)', color:'white', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity:chatLoading?0.5:1, flexShrink:0 }}>
+                      {chatLoading ? <Loader2 size={15} style={{ animation:'spin 1s linear infinite' }}/> : <Send size={15}/>}
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -8547,6 +8693,7 @@ Format exactly:
         @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
         @keyframes shareSlideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
 
+        @keyframes shazamBar{from{height:4px}to{height:18px}}
         @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.6;transform:scale(0.9)}}
         @keyframes pulse-ring{0%{transform:scale(0.6);opacity:0.8}100%{transform:scale(1.3);opacity:0}}
         @keyframes twinkle{0%,100%{opacity:0.9}50%{opacity:0.35}}
