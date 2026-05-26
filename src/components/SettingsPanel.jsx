@@ -154,9 +154,14 @@ function CacheManager({ lang }) {
             const driveCache = await caches.open('sn-drive-v1');
             const driveKeys = await driveCache.keys();
             driveCount = driveKeys.length;
+            // Gunakan Content-Length header (cepat di mobile, tidak perlu download blob penuh)
             for (const req of driveKeys) {
               const res = await driveCache.match(req);
-              if (res) { const blob = await res.blob(); totalBytes += blob.size; }
+              if (res) {
+                const cl = res.headers.get('content-length');
+                if (cl) totalBytes += parseInt(cl, 10);
+                else { try { const b = await res.blob(); totalBytes += b.size; } catch(e) {} }
+              }
             }
           } catch(e) {}
           try {
@@ -165,15 +170,27 @@ function CacheManager({ lang }) {
             ytCount = ytKeys.length;
             for (const req of ytKeys) {
               const res = await ytCache.match(req);
-              if (res) { const blob = await res.blob(); totalBytes += blob.size; }
+              if (res) {
+                const cl = res.headers.get('content-length');
+                if (cl) totalBytes += parseInt(cl, 10);
+                else { try { const b = await res.blob(); totalBytes += b.size; } catch(e) {} }
+              }
             }
           } catch(e) {}
         }
+        // Hitung localStorage keys sn_ (YT & Drive cached IDs)
+        let lsCount = 0;
+        try {
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && k.startsWith('sn_')) lsCount++;
+          }
+        } catch(e) {}
         // Hitung jumlah cookie aktif
         const cookieCount = document.cookie ? document.cookie.split(';').filter(c => c.trim()).length : 0;
-        setCacheInfo({ driveCount, ytCount, totalMB: (totalBytes / 1024 / 1024).toFixed(1), cookieCount });
+        setCacheInfo({ driveCount, ytCount, totalMB: (totalBytes / 1024 / 1024).toFixed(1), cookieCount, lsCount });
       } catch(e) {
-        setCacheInfo({ driveCount: 0, ytCount: 0, totalMB: '0.0', cookieCount: 0 });
+        setCacheInfo({ driveCount: 0, ytCount: 0, totalMB: '0.0', cookieCount: 0, lsCount: 0 });
       }
     }
     loadCacheInfo();
@@ -182,17 +199,28 @@ function CacheManager({ lang }) {
   const handleClearCache = async () => {
     setClearing(true);
     try {
+      // 1. Hapus Cache API (audio drive & YouTube)
       if ('caches' in window) {
         try { await caches.delete('sn-drive-v1'); } catch(e) {}
         try { await caches.delete('sn-yt-v1'); } catch(e) {}
       }
+      // 2. Hapus in-memory blob cache
       try {
         if (window._snBlobCacheRef) {
           for (const v of window._snBlobCacheRef.values()) URL.revokeObjectURL(v);
           window._snBlobCacheRef.clear();
         }
       } catch(e) {}
-      // Hapus semua cookie untuk domain ini
+      // 3. Hapus localStorage keys milik StarryNight (prefix sn_)
+      try {
+        const snKeys = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith('sn_')) snKeys.push(k);
+        }
+        snKeys.forEach(k => { try { localStorage.removeItem(k); } catch(e) {} });
+      } catch(e) {}
+      // 4. Hapus semua cookie untuk domain ini
       try {
         const cookies = document.cookie.split(';');
         const hostname = window.location.hostname;
@@ -229,7 +257,7 @@ function CacheManager({ lang }) {
     setClearing(false);
   };
 
-  const hasCache = cacheInfo && (cacheInfo.driveCount > 0 || cacheInfo.ytCount > 0 || cacheInfo.cookieCount > 0);
+  const hasCache = cacheInfo && (cacheInfo.driveCount > 0 || cacheInfo.ytCount > 0 || cacheInfo.cookieCount > 0 || cacheInfo.lsCount > 0);
 
   return (
     <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
@@ -263,6 +291,11 @@ function CacheManager({ lang }) {
               {cacheInfo.cookieCount > 0 && (
                 <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>
                   🍪 Cookie: <span style={{ color:'rgba(255,255,255,0.75)', fontWeight:600 }}>{cacheInfo.cookieCount} {lang==='id' ? 'item' : 'items'}</span>
+                </div>
+              )}
+              {cacheInfo.lsCount > 0 && (
+                <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>
+                  💾 Storage: <span style={{ color:'rgba(255,255,255,0.75)', fontWeight:600 }}>{cacheInfo.lsCount} {lang==='id' ? 'entri' : 'entries'}</span>
                 </div>
               )}
               {!hasCache && (

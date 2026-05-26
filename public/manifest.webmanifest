@@ -9,7 +9,7 @@
   "display_override": ["window-controls-overlay", "standalone"],
   "background_color": "#07071a",
   "theme_color": "#07071a",
-  "orientation": "any",
+  "orientation": "portrait",
   "categories": ["music", "entertainment"],
   "lang": "id",
   "icons": [

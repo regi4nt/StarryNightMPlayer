@@ -9,7 +9,7 @@ import {
   ChevronRight, SlidersHorizontal, History,
   Search, Mic2, Trash2, ListPlus, FolderOpen,
   PenLine, ChevronLeft, Radio, Maximize2, Minimize2,
-  Download, Share2, Wand2, Copy, Check, Star, RotateCw
+  Download, Share2, Wand2, Copy, Check, Star
 } from 'lucide-react';
 
 // ── Split modules ────────────────────────────────────────
@@ -78,25 +78,6 @@ export default function App() {
   const dataSaver = isLite; // alias untuk backward compat semua referensi lama
   const toggleDataSaver = toggleMode; // backward compat
 
-  // ── Rotate device: kunci/lepas orientasi layar secara manual
-  const handleRotateDevice = async () => {
-    if (!screen?.orientation) return;
-    if (orientationLocked) {
-      screen.orientation.unlock();
-      setOrientationLocked(false);
-    } else {
-      // Kunci ke landscape jika portrait, atau portrait jika landscape
-      const isCurrentlyPortrait = window.innerHeight > window.innerWidth;
-      const lockTarget = isCurrentlyPortrait ? 'landscape-primary' : 'portrait-primary';
-      try {
-        await screen.orientation.lock(lockTarget);
-        setOrientationLocked(true);
-      } catch (e) {
-        // Tidak didukung / tidak ada permission — abaikan
-      }
-    }
-  };
-
   // ── Language: 'id' (Indonesia) | 'en' (English)
   const [lang, setLang] = useState(() => localStorage.getItem('sn_lang') || 'id');
   const toggleLang = () => setLang(v => { const n = v === 'id' ? 'en' : 'id'; localStorage.setItem('sn_lang', n); return n; });
@@ -140,6 +121,7 @@ export default function App() {
   const ytDurationRef   = useRef(0);   // mirror of ytDuration for use in intervals
   const playYouTubeRef  = useRef(null); // always-fresh ref to playYouTube
   const ytEndedFiredRef = useRef(false); // prevent double-fire of ytNext on video end
+  const ytRepeatSeekingRef = useRef(false); // true selama seekTo(0) untuk repeat-one (blokir ended palsu)
   const [ytSongs, setYtSongs]         = useState(() => {
     try { return JSON.parse(localStorage.getItem('sn_yt_songs') || '[]'); } catch { return []; }
   }); // YT tracks saved to playlist/liked
@@ -1566,27 +1548,35 @@ Return ONLY valid JSON, no explanation:
     const q = ytQueueRef.current;
     if (repeatRef.current === 'one') {
       // Ulangi video yang sama: seekTo 0 lalu play
-      // setPlaying(true) dulu agar playingRef sync sebelum iframe event masuk
+      // Set flag seeking agar onStateChange(0) yang terpicu seekTo tidak dianggap ended baru
+      ytRepeatSeekingRef.current = true;
+      // Reset ytEndedFiredRef setelah flag seeking aktif, agar putaran berikutnya bisa terdeteksi
+      ytEndedFiredRef.current = false;
       setPlaying(true);
       try {
         ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'command', func:'seekTo', args:[0, true] }), '*');
         setTimeout(() => {
           try { ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'command', func:'playVideo', args:'' }), '*'); } catch(_) {}
-        }, 150);
-      } catch(_) {}
+          // Pastikan flag seeking selalu direset meski playVideo tidak terpanggil
+          ytRepeatSeekingRef.current = false;
+        }, 300);
+      } catch(_) { ytRepeatSeekingRef.current = false; }
       return;
     }
     // Single video (queue kosong atau 1 item) — repeat all → restart; shuffle → restart
     if (!q.length || q.length === 1) {
       if (repeatRef.current === 'all' || shuffleRef.current) {
-        // setPlaying(true) dulu agar state sync sebelum iframe event masuk
+        // Set flag seeking agar ended palsu dari seekTo tidak trigger ytNext lagi
+        ytRepeatSeekingRef.current = true;
+        ytEndedFiredRef.current = false;
         setPlaying(true);
         try {
           ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'command', func:'seekTo', args:[0, true] }), '*');
           setTimeout(() => {
             try { ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'command', func:'playVideo', args:'' }), '*'); } catch(_) {}
-          }, 150);
-        } catch(_) {}
+            ytRepeatSeekingRef.current = false;
+          }, 300);
+        } catch(_) { ytRepeatSeekingRef.current = false; }
       } else {
         setPlaying(false);
       }
@@ -1812,10 +1802,12 @@ Return ONLY valid JSON, no explanation:
   const [showSettings, setShowSettings] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [coverSpin, setCoverSpin] = useState(() => localStorage.getItem('sn_cover_spin') === 'true');
-  const [orientationLocked, setOrientationLocked] = useState(false);
   const fullscreenRef = useRef(false);
   // Simpan orientasi sebelum masuk fullscreen agar bisa dikunci ke posisi itu
   const orientationBeforeFullscreen = useRef(null);
+
+
+
   useEffect(() => {
     fullscreenRef.current = fullscreen;
     window.dispatchEvent(new Event('resize')); // re-trigger layout calc
@@ -1835,7 +1827,8 @@ Return ONLY valid JSON, no explanation:
         screen.orientation.lock(lockType).catch(() => {});
       } else {
         orientationBeforeFullscreen.current = null;
-        screen.orientation.unlock();
+        // Kunci kembali ke portrait saat keluar fullscreen (bukan unlock total)
+        screen.orientation.lock('portrait').catch(() => {});
       }
     }
     // ─────────────────────────────────────────────────────────────────────
@@ -2906,6 +2899,8 @@ Return ONLY valid JSON, no explanation:
           if (data.info === 0) {
             // Video ended → auto next; do NOT set playing=false here
             // (ytNext will handle play state itself)
+            // Abaikan ended palsu saat sedang seekTo(0) untuk repeat-one
+            if (ytRepeatSeekingRef.current) { ytRepeatSeekingRef.current = false; return; }
             if (!ytEndedFiredRef.current) { ytEndedFiredRef.current = true; setTimeout(() => { if (ytNextRef.current) ytNextRef.current({ auto: true }); }, 300); }
           } else if (data.info === 1) {
             if (!playingRef.current) setPlaying(true);
@@ -5183,18 +5178,25 @@ Format exactly:
     // Coba 1: tangkap audio sistem (tab/app lain) via getDisplayMedia
     // Didukung di Chrome/Edge desktop. Akan muncul dialog pilih tab/window/screen.
     // Firefox dan Safari belum mendukung audio track dari getDisplayMedia.
-    const supportsDisplayAudio = typeof navigator.mediaDevices?.getDisplayMedia === 'function';
+    // Mobile (phone) tidak mendukung getDisplayMedia — langsung skip ke mikrofon.
+    const supportsDisplayAudio =
+      typeof navigator.mediaDevices?.getDisplayMedia === 'function' && !isPhoneDevice();
 
     if (supportsDisplayAudio) {
       try {
+        // Chrome/Edge mengharuskan video:true pada getDisplayMedia.
+        // Video track langsung dihentikan setelah dapat — kita hanya butuh audio.
         const displayStream = await navigator.mediaDevices.getDisplayMedia({
-          video: false,          // tidak perlu video, hanya audio
+          video: true,
           audio: {
             echoCancellation: false,
             noiseSuppression: false,
             sampleRate: 44100,
           },
         });
+
+        // Hentikan video track segera (tidak dibutuhkan, hemat resource)
+        displayStream.getVideoTracks().forEach(t => t.stop());
 
         // getDisplayMedia sukses tapi belum tentu mengandung audio track
         // (user bisa saja memilih tab tanpa "Share tab audio" dicentang)
@@ -5401,13 +5403,11 @@ Format exactly:
   }, []);
 
   const updatePlaylist = useCallback(({ name, songIds }) => {
-    // Jika yang diedit adalah ❤️ Favorit, sinkronkan liked state untuk lagu yang dihapus
-    if (editingPl?.id === 'pl_fav') {
-      const removedIds = (editingPl.songIds || []).filter(id => !songIds.includes(id));
-      if (removedIds.length > 0) {
-        setLiked(l => { const n = { ...l }; removedIds.forEach(id => { delete n[id]; }); return n; });
-        setFavSongs(p => p.filter(s => songIds.includes(s.id)));
-      }
+    const removedIds = (editingPl?.songIds || []).filter(id => !songIds.includes(id));
+    if (removedIds.length > 0) {
+      // Sinkronkan liked & favSongs untuk lagu yang dihapus
+      setLiked(l => { const n = { ...l }; removedIds.forEach(id => { delete n[id]; }); return n; });
+      setFavSongs(p => p.filter(s => !removedIds.includes(s.id)));
     }
     setPlaylists(p => p.map(pl => pl.id===editingPl.id ? { ...pl, name, songIds } : pl));
     setShowPlModal(false);
@@ -5470,18 +5470,10 @@ Format exactly:
   }, []);
 
   const removeFromPlaylist = useCallback((plId, songId) => {
-    setPlaylists(p => {
-      const updated = p.map(pl => pl.id===plId
-        ? { ...pl, songIds: pl.songIds.filter(id=>id!==songId) } : pl);
-      if (plId === 'pl_fav') {
-        // Hapus tanda fav saja — jangan hapus dari customSongs/ytSongs
-        // agar lagu tetap muncul di "Semua Lagu"
-        setLiked(l => { const n = { ...l }; delete n[songId]; return n; });
-        setFavSongs(p => p.filter(s => s.id !== songId));
-        return updated;
-      }
-      return updated;
-    });
+    // Hapus dari playlist ini; allSongs otomatis menyesuaikan berdasarkan keberadaan di playlist
+    setLiked(l => { const n = { ...l }; delete n[songId]; return n; });
+    setFavSongs(p => p.filter(s => s.id !== songId));
+    setPlaylists(p => p.map(pl => ({ ...pl, songIds: pl.songIds.filter(id => id !== songId) })));
   }, []);
 
   // ── Google
@@ -5546,11 +5538,23 @@ Format exactly:
   const pct = duration>0?progress/duration:0;
 
   // ── All songs (combined from all sources)
-  // Deduplikasi allSongs berdasarkan id — favSongs bisa overlap dengan builtinSongs
+  // Lagu tampil di "Semua Lagu" hanya jika ada di: customSongs, favSongs, ytSongs,
+  // atau minimal satu playlist (pl_fav / custom playlist). builtinSongs hanya tampil
+  // jika ada di salah satu playlist.
   const allSongs = (() => {
     const seen = new Set();
+    // Kumpulkan semua songId yang ada di playlist manapun
+    const inPlaylist = new Set(playlists.flatMap(pl => pl.songIds));
+    // customSongs & favSongs & ytSongs selalu tampil (user punya lagu tsb)
+    const userOwnedIds = new Set([
+      ...customSongs.map(s => s.id),
+      ...favSongs.map(s => s.id),
+      ...ytSongs.map(s => s.id),
+    ]);
     return [...builtinSongs, ...customSongs, ...ytSongs, ...favSongs].filter(s => {
       if (!s.id || seen.has(s.id)) return false;
+      // Tampilkan jika: user punya lagu ini ATAU ada di playlist manapun
+      if (!userOwnedIds.has(s.id) && !inPlaylist.has(s.id)) return false;
       seen.add(s.id); return true;
     });
   })();
@@ -5735,14 +5739,7 @@ Format exactly:
             {isLite ? <Zap size={9}/> : <Sparkles size={9}/>}
             {isLite ? 'Lite ⚡' : 'Pro'}
           </button>
-          {/* Rotate device — hanya di mobile */}
-          {(layoutMode === 'mobile-portrait' || layoutMode === 'mobile-landscape') && screen?.orientation && (
-            <button onClick={handleRotateDevice}
-              title={orientationLocked ? 'Lepas kunci rotasi' : (layoutMode === 'mobile-portrait' ? 'Putar ke landscape' : 'Putar ke portrait')}
-              style={{ display:'flex', alignItems:'center', justifyContent:'center', width:28, height:28, borderRadius:999, border:`1px solid ${orientationLocked ? 'rgba(99,102,241,0.5)' : 'rgba(255,255,255,0.13)'}`, background: orientationLocked ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.05)', cursor:'pointer', color: orientationLocked ? '#a5b4fc' : 'rgba(255,255,255,0.4)', padding:0, flexShrink:0 }}>
-              <RotateCw size={12} style={{ transform: layoutMode === 'mobile-landscape' ? 'rotate(90deg)' : 'none', transition:'transform 0.3s' }}/>
-            </button>
-          )}
+
           {/* Sleep timer badge */}
           {sleepTimer&&(
             <div style={{ display:'flex', alignItems:'center', gap:4, padding:'4px 8px', borderRadius:999, background:'rgba(245,158,11,0.15)', border:'1px solid rgba(245,158,11,0.3)' }}>
@@ -8255,6 +8252,7 @@ Format exactly:
                     </div>
                     <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'10px 16px 16px', display:'flex', flexDirection:'column', gap:5 }}>
                       {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={play} isDrive={s.isDrive} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite} t={t}
+                      onRemove={id=>{ setLiked(l=>{const n={...l};delete n[id];return n;}); setFavSongs(p=>p.filter(s=>s.id!==id)); setCustomSongs(p=>p.filter(s=>s.id!==id)); setYtSongs(p=>p.filter(s=>s.id!==id)); setPlaylists(p=>p.map(pl=>({...pl,songIds:pl.songIds.filter(sid=>sid!==id)}))); }}
                       onDownload={async(s)=>{ if(s.isDrive&&s.driveId&&tokenRef.current){ await downloadToDevice(`https://www.googleapis.com/drive/v3/files/${s.driveId}?alt=media&acknowledgeAbuse=true`,`${s.title} - ${s.artist}.mp3`,{Authorization:`Bearer ${tokenRef.current}`}); } else if(s.src){ const raw=s.src.split('?')[0]; const ext=raw.includes('.')?raw.split('.').pop():'mp3'; await downloadToDevice(s.src,`${s.title} - ${s.artist}.${ext}`); } }}
                     />)}
                     </div>
@@ -8335,6 +8333,15 @@ Format exactly:
                             style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.2)', padding:'4px 6px', display:'flex', borderRadius:6, flexShrink:0, transition:'color 0.2s' }}>
                             <Download size={14}/>
                           </button>}
+                          <button title={t?.deleteBtn||'Hapus'} onClick={e=>{ e.stopPropagation();
+                            setLiked(l=>{const n={...l};delete n[s.id];return n;});
+                            setFavSongs(p=>p.filter(x=>x.id!==s.id));
+                            setCustomSongs(p=>p.filter(x=>x.id!==s.id));
+                            setYtSongs(p=>p.filter(x=>x.id!==s.id));
+                            setPlaylists(p=>p.map(pl=>({...pl,songIds:pl.songIds.filter(id=>id!==s.id)})));
+                          }} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(239,68,68,0.5)', padding:'4px 6px', display:'flex', borderRadius:6, flexShrink:0, transition:'color 0.2s' }}>
+                            <Trash2 size={14}/>
+                          </button>
 
                         </div>
                       );
@@ -9260,7 +9267,7 @@ Format exactly:
                   <span style={{ fontSize:12, color:'rgba(255,255,255,0.7)', flex:1 }}>
                     {shazamListening ? (shazamSourceRef.current === 'audio device' ? '🖥️ Mendengarkan audio device… (8 detik)' : '🎙️ Mendengarkan musik… (8 detik)') : '🔍 Mengenali lagu…'}
                   </span>
-                  {shazamListening && (
+                  {(shazamListening || shazamLoading) && (
                     <button onClick={cancelShazam} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.5)', cursor:'pointer', padding:2, display:'flex', alignItems:'center' }}>
                       <X size={13}/>
                     </button>
