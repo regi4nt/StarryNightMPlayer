@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { CheckCircle, ChevronLeft, ListPlus, Music, PenLine, Search, Trash2, X } from 'lucide-react';
 
-function PlaylistFormView({ editingPl, allSongs, lang, isLite, t, setPlaylists, setEditingPl, setPlView, deletePlaylist }) {
+function PlaylistFormView({ editingPl, allSongs, lang, isLite, t, setPlaylists, setEditingPl, setPlView, deletePlaylist, onSave }) {
   const isEdit = !!editingPl;
   const [formName, setFormName] = useState(editingPl?.name || '');
   const [formSelected, setFormSelected] = useState(() => new Set(editingPl?.songIds || []));
@@ -16,6 +16,12 @@ function PlaylistFormView({ editingPl, allSongs, lang, isLite, t, setPlaylists, 
   });
   const handleSave = () => {
     if (!formName.trim()) { alert(lang === 'id' ? 'Isi nama playlist!' : 'Enter playlist name!'); return; }
+    // Gunakan onSave callback jika tersedia (agar liked state sinkron saat hapus dari ❤️ Favorit)
+    if (onSave) {
+      onSave({ name: formName.trim(), songIds: [...formSelected] });
+      setPlView('list');
+      return;
+    }
     if (isEdit) {
       setPlaylists(p => p.map(pl => pl.id === editingPl.id ? { ...pl, name: formName.trim(), songIds: [...formSelected] } : pl));
       setEditingPl(null);

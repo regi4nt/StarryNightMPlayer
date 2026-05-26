@@ -9,7 +9,7 @@ import {
   ChevronRight, SlidersHorizontal, History,
   Search, Mic2, Trash2, ListPlus, FolderOpen,
   PenLine, ChevronLeft, Radio, Maximize2, Minimize2,
-  Download, Share2, Wand2, Copy, Check, Star
+  Download, Share2, Wand2, Copy, Check, Star, RotateCw
 } from 'lucide-react';
 
 // ── Split modules ────────────────────────────────────────
@@ -77,6 +77,25 @@ export default function App() {
   });
   const dataSaver = isLite; // alias untuk backward compat semua referensi lama
   const toggleDataSaver = toggleMode; // backward compat
+
+  // ── Rotate device: kunci/lepas orientasi layar secara manual
+  const handleRotateDevice = async () => {
+    if (!screen?.orientation) return;
+    if (orientationLocked) {
+      screen.orientation.unlock();
+      setOrientationLocked(false);
+    } else {
+      // Kunci ke landscape jika portrait, atau portrait jika landscape
+      const isCurrentlyPortrait = window.innerHeight > window.innerWidth;
+      const lockTarget = isCurrentlyPortrait ? 'landscape-primary' : 'portrait-primary';
+      try {
+        await screen.orientation.lock(lockTarget);
+        setOrientationLocked(true);
+      } catch (e) {
+        // Tidak didukung / tidak ada permission — abaikan
+      }
+    }
+  };
 
   // ── Language: 'id' (Indonesia) | 'en' (English)
   const [lang, setLang] = useState(() => localStorage.getItem('sn_lang') || 'id');
@@ -1792,6 +1811,8 @@ Return ONLY valid JSON, no explanation:
   // ── Settings panel
   const [showSettings, setShowSettings] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
+  const [coverSpin, setCoverSpin] = useState(() => localStorage.getItem('sn_cover_spin') === 'true');
+  const [orientationLocked, setOrientationLocked] = useState(false);
   const fullscreenRef = useRef(false);
   // Simpan orientasi sebelum masuk fullscreen agar bisa dikunci ke posisi itu
   const orientationBeforeFullscreen = useRef(null);
@@ -2039,9 +2060,16 @@ Return ONLY valid JSON, no explanation:
   // ── Geolocation: ambil lokasi user sekali, simpan ke localStorage
   useEffect(() => {
     if (!navigator.geolocation) return;
+    // Hapus cache lama yang mungkin menyimpan format lama (kecamatan/provinsi/negara)
+    // Deteksi: jika ada koma → format lama → paksa re-fetch
+    const cachedLoc = localStorage.getItem('sn_user_location') || '';
+    if (cachedLoc.includes(',')) {
+      localStorage.removeItem('sn_user_location');
+      localStorage.removeItem('sn_location_ts');
+    }
     const locTs = parseInt(localStorage.getItem('sn_location_ts') || '0', 10);
     const weatherTs = parseInt(localStorage.getItem('sn_weather_ts') || '0', 10);
-    const locFresh = userLocation && Date.now() - locTs < 24 * 60 * 60 * 1000;
+    const locFresh = userLocation && !userLocation.includes(',') && Date.now() - locTs < 24 * 60 * 60 * 1000;
     const weatherFresh = userWeather && Date.now() - weatherTs < 30 * 60 * 1000; // 30 menit
     if (locFresh && weatherFresh) return;
 
@@ -2058,18 +2086,30 @@ Return ONLY valid JSON, no explanation:
           const data = await res.json();
           const addr = data?.address || {};
           const country = addr.country_code?.toUpperCase() || 'ID';
-          const countryName = addr.country || '';
 
-          // Level: negara > provinsi > kabupaten/kota
-          // Tidak pakai kecamatan, desa, suburb, dst.
-          const rawKab = addr.city || addr.town || addr.county || addr.state_district || '';
-          const kab = rawKab.replace(/^(kabupaten|kota|city of|regency of)\s+/i, '').trim();
+          // Nominatim Indonesia mapping:
+          //   addr.county       = Kabupaten/Kota  ← SELALU ini dulu
+          //   addr.city         = kota besar saja (Surabaya, Jakarta, dll)
+          //   addr.town/village = BISA kecamatan/desa — JANGAN dipakai
+          //   addr.state        = Provinsi — fallback terakhir jika semua kosong
+          const rawKab = addr.county || addr.city || addr.state_district || '';
+          const kab = rawKab
+            .replace(/^(kabupaten|kota|city of|regency of|kab\.)\s+/i, '')
+            .trim();
 
+          // Fallback ke provinsi
           const rawProv = addr.state || addr.province || '';
-          const prov = rawProv.replace(/^(provinsi|province of|daerah istimewa|dki|daerah khusus ibukota)\s*/i, '').trim();
+          const prov = rawProv
+            .replace(/^(provinsi|province of|daerah istimewa|dki|daerah khusus ibukota)\s*/i, '')
+            .trim();
 
-          // Format: hanya kota/kabupaten (level paling terpusat)
-          const displayLoc = kab;
+          // Fallback ke negara
+          const countryName = (addr.country || '').trim();
+
+          // Fallback ke koordinat
+          const coords = `${lat.toFixed(2)}°, ${lon.toFixed(2)}°`;
+
+          const displayLoc = kab || prov || countryName || coords;
           if (displayLoc) {
             setUserLocation(displayLoc);
             setUserLocationCountry(country);
@@ -2560,7 +2600,13 @@ Return ONLY valid JSON, no explanation:
     };
     calc();
     window.addEventListener('resize', calc);
-    return () => window.removeEventListener('resize', calc);
+    // Reset lock state jika orientasi berubah natural (user putar fisik tanpa tombol)
+    const handleOrientationChange = () => { setOrientationLocked(false); };
+    screen?.orientation?.addEventListener?.('change', handleOrientationChange);
+    return () => {
+      window.removeEventListener('resize', calc);
+      screen?.orientation?.removeEventListener?.('change', handleOrientationChange);
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Audio init + events (DIGABUNG dalam satu useEffect agar tidak race condition)
@@ -5359,7 +5405,7 @@ Format exactly:
     if (editingPl?.id === 'pl_fav') {
       const removedIds = (editingPl.songIds || []).filter(id => !songIds.includes(id));
       if (removedIds.length > 0) {
-        setLiked(l => { const n = { ...l }; removedIds.forEach(id => { n[id] = false; }); return n; });
+        setLiked(l => { const n = { ...l }; removedIds.forEach(id => { delete n[id]; }); return n; });
         setFavSongs(p => p.filter(s => songIds.includes(s.id)));
       }
     }
@@ -5689,6 +5735,14 @@ Format exactly:
             {isLite ? <Zap size={9}/> : <Sparkles size={9}/>}
             {isLite ? 'Lite ⚡' : 'Pro'}
           </button>
+          {/* Rotate device — hanya di mobile */}
+          {(layoutMode === 'mobile-portrait' || layoutMode === 'mobile-landscape') && screen?.orientation && (
+            <button onClick={handleRotateDevice}
+              title={orientationLocked ? 'Lepas kunci rotasi' : (layoutMode === 'mobile-portrait' ? 'Putar ke landscape' : 'Putar ke portrait')}
+              style={{ display:'flex', alignItems:'center', justifyContent:'center', width:28, height:28, borderRadius:999, border:`1px solid ${orientationLocked ? 'rgba(99,102,241,0.5)' : 'rgba(255,255,255,0.13)'}`, background: orientationLocked ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.05)', cursor:'pointer', color: orientationLocked ? '#a5b4fc' : 'rgba(255,255,255,0.4)', padding:0, flexShrink:0 }}>
+              <RotateCw size={12} style={{ transform: layoutMode === 'mobile-landscape' ? 'rotate(90deg)' : 'none', transition:'transform 0.3s' }}/>
+            </button>
+          )}
           {/* Sleep timer badge */}
           {sleepTimer&&(
             <div style={{ display:'flex', alignItems:'center', gap:4, padding:'4px 8px', borderRadius:999, background:'rgba(245,158,11,0.15)', border:'1px solid rgba(245,158,11,0.3)' }}>
@@ -6246,10 +6300,10 @@ Format exactly:
             {/* ── Mobile: jam + lokasi/cuaca di atas ring, lalu ring tengah | Desktop: ring tengah saja */}
             {layoutMode === 'mobile-portrait' ? (
               <div style={{ width:'100%', flexShrink:0, display:'flex', flexDirection:'column', alignItems:'center', gap:0 }}>
-                {/* Baris atas: jam + lokasi/cuaca terpusat */}
-                <div style={{ width:'100%', display:'flex', flexDirection:'column', alignItems:'center', paddingBottom:4, userSelect:'none', gap:2 }}>
-                  {/* Jam */}
-                  <div style={{ textAlign:'center' }}>
+                {/* Baris atas: jam kiri, lokasi/cuaca kanan */}
+                <div style={{ width:'100%', display:'flex', flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingBottom:4, userSelect:'none' }}>
+                  {/* Jam — kiri */}
+                  <div>
                     <div style={{ display:'inline-block', fontSize:17, fontWeight:900, fontFamily:'monospace', letterSpacing:'-0.04em', lineHeight:1, background:`linear-gradient(120deg,#ffffff 60%,${track.color})`, WebkitBackgroundClip:'text', backgroundClip:'text', WebkitTextFillColor:'transparent', color:'transparent' }}>
                       {nowTime.toLocaleTimeString('id-ID',{ hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false })}
                     </div>
@@ -6257,8 +6311,8 @@ Format exactly:
                       {nowTime.toLocaleDateString('id-ID',{ weekday:'short', day:'numeric', month:'short' })}
                     </div>
                   </div>
-                  {/* Lokasi + cuaca — terpusat, tepat di bawah jam */}
-                  <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, flexWrap:'wrap' }}>
+                  {/* Lokasi + cuaca — kanan */}
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:2 }}>
                     {userWeather && (
                       <span style={{ display:'flex', alignItems:'center', gap:3, fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.7)' }}>
                         {userWeather.emoji} {userWeather.temp}{userWeather.unit}
@@ -7888,7 +7942,7 @@ Format exactly:
                               <span style={{ fontWeight:700, fontSize:13, color:'white' }}>{t?.allSongs||'All Songs'}</span>
                               <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:999, background:'rgba(99,102,241,0.25)', color:'#a78bfa' }}>LOCAL</span>
                             </div>
-                            <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{allSongs.filter(s=>new Set(playlists.flatMap(pl=>pl.songIds)).has(s.id)).length} {t?.songsAvailable||'lagu tersedia'}</div>
+                            <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{allSongs.length} {t?.songsAvailable||'lagu tersedia'}</div>
                           </div>
                           <ChevronRight size={15} style={{color:'rgba(255,255,255,0.25)'}}/>
                         </div>
@@ -8035,6 +8089,7 @@ Format exactly:
                     setEditingPl={setEditingPl}
                     setPlView={setPlView}
                     deletePlaylist={deletePlaylist}
+                    onSave={editingPl ? updatePlaylist : createPlaylist}
                   /></Suspense>
                 </div>
               </div>
@@ -8174,8 +8229,8 @@ Format exactly:
 
               // ── Special: Semua Lagu
               if (activePl === 'all_songs') {
-                const allPlaylistSongIds = new Set(playlists.flatMap(pl => pl.songIds));
-                const songs = filteredSongs.filter(s => allPlaylistSongIds.has(s.id));
+                // Tampilkan semua lagu — bukan hanya yang ada di playlist lain
+                const songs = filteredSongs;
                 return (
                   <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
                     <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0, position:'sticky', top:0, zIndex:5, background:'rgba(7,7,26,0.97)', ...(isLite ? {} : { backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }) }}>

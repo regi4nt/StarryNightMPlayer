@@ -38,7 +38,7 @@ function AppLogo({ size = 32 }) {
 // ═══════════════════════════════════════════════════════
 //  ORBITAL RING  — tap OR drag to seek
 // ═══════════════════════════════════════════════════════
-function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, title, onSeek, isLite, isRadio, downloadProg, isDownloading, drivePhase, ytDownloading, ytDlProg }) {
+function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, title, onSeek, isLite, isRadio, downloadProg, isDownloading, drivePhase, ytDownloading, ytDlProg, coverSpin }) {
   const cx=size/2, cy=size/2, artR=size/2-36, ringR=artR+18, circ=2*Math.PI*ringR;
   const deg=pct*360-90, rad=deg*Math.PI/180;
   const dotX=cx+Math.cos(rad)*ringR, dotY=cy+Math.sin(rad)*ringR;
@@ -88,7 +88,7 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
   return (
     <div style={{ position:'relative', width:size, height:size, flexShrink:0 }}>
       {/* Album art */}
-      <div style={{ position:'absolute', top:cy-artR, left:cx-artR, width:artR*2, height:artR*2, borderRadius:'50%', overflow:'hidden', border:`3px solid ${isRadio?color+'60':'rgba(255,255,255,0.13)'}`, boxShadow:isLite?'none':`0 0 40px -8px ${color}90`, animation:(!isLite && isPlaying && !isRadio)?'spin20 20s linear infinite':'none', zIndex:2 }}>
+      <div style={{ position:'absolute', top:cy-artR, left:cx-artR, width:artR*2, height:artR*2, borderRadius:'50%', overflow:'hidden', border:`3px solid ${isRadio?color+'60':'rgba(255,255,255,0.13)'}`, boxShadow:isLite?'none':`0 0 40px -8px ${color}90`, animation:(!isLite && coverSpin && !isRadio)?'spin20 20s linear infinite':'none', zIndex:2 }}>
         {isRadio
           ? <div style={{ width:'100%', height:'100%', background:`linear-gradient(135deg,${color}30,${color}18)`, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:6, position:'relative' }}>
               <Radio size={artR*0.45} color={color}/>
