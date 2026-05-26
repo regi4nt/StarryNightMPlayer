@@ -7,6 +7,7 @@
  *
  * Usage:
  *   GET /api/radio-proxy?url=http://stream.example.com/radio
+ *   GET /api/radio-proxy?url=http://stream.example.com/radio&dns=1.1.1.1
  *
  * Keamanan:
  * - Hanya izinkan URL http:// (https:// tidak perlu proxy)
@@ -15,6 +16,7 @@
  */
 
 import { applyRateLimit } from './_lib/rateLimit.js';
+import dns from 'dns';
 
 export const config = {
   runtime: 'nodejs',
@@ -52,6 +54,29 @@ function isAllowed(urlStr) {
   }
 }
 
+/**
+ * Resolve hostname menggunakan DNS-over-TCP dengan custom resolver.
+ * Hanya dipanggil jika parameter ?dns= tersedia.
+ * Menggunakan Node.js dns.Resolver agar tidak mengubah DNS global proses.
+ */
+async function resolveWithCustomDns(hostname, dnsServer) {
+  if (!dnsServer) return null;
+  // Validasi: hanya izinkan IP address sebagai DNS server (cegah SSRF)
+  if (!/^[\d.]+$/.test(dnsServer) && !/^[0-9a-f:]+$/i.test(dnsServer)) return null;
+  return new Promise((resolve) => {
+    try {
+      const resolver = new dns.Resolver({ timeout: 3000 });
+      resolver.setServers([dnsServer]);
+      resolver.resolve4(hostname, (err, addresses) => {
+        if (err || !addresses || !addresses.length) { resolve(null); return; }
+        resolve(addresses[0]);
+      });
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -62,7 +87,7 @@ export default async function handler(req, res) {
 
   if (await applyRateLimit(req, res, { max: 60, windowMs: 60_000, key: 'radio-proxy' })) return;
 
-  const { url } = req.query;
+  const { url, dns: customDns } = req.query;
   if (!url) return res.status(400).json({ error: 'Missing ?url= parameter' });
 
   // Hanya proxy http:// — https:// tidak perlu
@@ -88,7 +113,22 @@ export default async function handler(req, res) {
       headers['Range'] = req.headers['range'];
     }
 
-    const upstream = await fetch(url, {
+    // ── Custom DNS: resolve hostname dengan DNS server kustom lalu sambung via IP
+    // Ini memungkinkan bypass DNS blocking oleh ISP pada stream HTTP.
+    let fetchUrl = url;
+    if (customDns) {
+      const parsedUrl = new URL(url);
+      const resolvedIp = await resolveWithCustomDns(parsedUrl.hostname, customDns);
+      if (resolvedIp) {
+        // Ganti hostname dengan IP hasil resolusi custom DNS
+        // Tambah Host header agar virtual hosting di server tujuan tetap berfungsi
+        headers['Host'] = parsedUrl.hostname;
+        parsedUrl.hostname = resolvedIp;
+        fetchUrl = parsedUrl.toString();
+      }
+    }
+
+    const upstream = await fetch(fetchUrl, {
       headers,
       signal: AbortSignal.timeout(10_000),
     });

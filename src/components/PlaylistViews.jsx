@@ -151,10 +151,10 @@ function PlaylistFormView({ editingPl, allSongs, lang, isLite, t, setPlaylists, 
 // ═══════════════════════════════════════════════════════
 //  PLAYLIST MODAL - Create / Edit
 // ═══════════════════════════════════════════════════════
-function PlaylistModal({ onClose, onSave, allSongs, existing, isLite, t }) {
+function PlaylistModal({ onClose, onSave, allSongs, existing, isLite, t, prefillName, prefillSongIds }) {
   const isEdit = !!existing;
-  const [name, setName] = useState(existing?.name || '');
-  const [selected, setSelected] = useState(new Set(existing?.songIds || []));
+  const [name, setName] = useState(existing?.name || prefillName || '');
+  const [selected, setSelected] = useState(new Set(existing?.songIds || prefillSongIds || []));
 
   const toggle = id => setSelected(s => {
     const n = new Set(s);

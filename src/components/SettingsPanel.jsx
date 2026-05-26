@@ -169,9 +169,11 @@ function CacheManager({ lang }) {
             }
           } catch(e) {}
         }
-        setCacheInfo({ driveCount, ytCount, totalMB: (totalBytes / 1024 / 1024).toFixed(1) });
+        // Hitung jumlah cookie aktif
+        const cookieCount = document.cookie ? document.cookie.split(';').filter(c => c.trim()).length : 0;
+        setCacheInfo({ driveCount, ytCount, totalMB: (totalBytes / 1024 / 1024).toFixed(1), cookieCount });
       } catch(e) {
-        setCacheInfo({ driveCount: 0, ytCount: 0, totalMB: '0.0' });
+        setCacheInfo({ driveCount: 0, ytCount: 0, totalMB: '0.0', cookieCount: 0 });
       }
     }
     loadCacheInfo();
@@ -190,6 +192,36 @@ function CacheManager({ lang }) {
           window._snBlobCacheRef.clear();
         }
       } catch(e) {}
+      // Hapus semua cookie untuk domain ini
+      try {
+        const cookies = document.cookie.split(';');
+        const hostname = window.location.hostname;
+        const domainParts = hostname.split('.');
+        // Coba hapus dengan berbagai kombinasi domain (termasuk subdomain)
+        const domains = [
+          hostname,
+          ...domainParts.slice(1).map((_, i) => '.' + domainParts.slice(i + 1).join('.')).filter(d => d.length > 1),
+          ''
+        ];
+        const paths = ['/', '/api', ''];
+        for (const cookie of cookies) {
+          const name = cookie.split('=')[0].trim();
+          if (!name) continue;
+          for (const domain of domains) {
+            for (const path of paths) {
+              const domainAttr = domain ? `;domain=${domain}` : '';
+              document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=${path}${domainAttr}`;
+            }
+          }
+        }
+        // Coba juga via cookieStore API (Chrome 87+) untuk cookie HttpOnly sekalipun dapat dihapus
+        if (window.cookieStore) {
+          try {
+            const all = await window.cookieStore.getAll();
+            await Promise.allSettled(all.map(c => window.cookieStore.delete({ name: c.name, path: c.path || '/' })));
+          } catch(e) {}
+        }
+      } catch(e) {}
       setCleared(c => !c);
       setClearDone(true);
       setTimeout(() => setClearDone(false), 2500);
@@ -197,16 +229,16 @@ function CacheManager({ lang }) {
     setClearing(false);
   };
 
-  const hasCache = cacheInfo && (cacheInfo.driveCount > 0 || cacheInfo.ytCount > 0);
+  const hasCache = cacheInfo && (cacheInfo.driveCount > 0 || cacheInfo.ytCount > 0 || cacheInfo.cookieCount > 0);
 
   return (
     <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
         <span style={{ fontSize:16 }}>🗑️</span>
         <div>
-          <div style={{ fontWeight:800, fontSize:14 }}>{lang==='id' ? 'Hapus Cache' : 'Clear Cache'}</div>
+          <div style={{ fontWeight:800, fontSize:14 }}>{lang==='id' ? 'Hapus Cache & Cookie' : 'Clear Cache & Cookies'}</div>
           <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>
-            {lang==='id' ? 'Bebaskan storage dari audio yang tersimpan' : 'Free up storage from saved audio'}
+            {lang==='id' ? 'Bebaskan storage dari audio & cookie tersimpan' : 'Free up storage from saved audio & cookies'}
           </div>
         </div>
       </div>
@@ -228,9 +260,14 @@ function CacheManager({ lang }) {
                   ▶️ YouTube: <span style={{ color:'rgba(255,255,255,0.75)', fontWeight:600 }}>{cacheInfo.ytCount} {lang==='id' ? 'lagu' : 'songs'}</span>
                 </div>
               )}
+              {cacheInfo.cookieCount > 0 && (
+                <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>
+                  🍪 Cookie: <span style={{ color:'rgba(255,255,255,0.75)', fontWeight:600 }}>{cacheInfo.cookieCount} {lang==='id' ? 'item' : 'items'}</span>
+                </div>
+              )}
               {!hasCache && (
                 <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)' }}>
-                  {lang==='id' ? 'Tidak ada cache tersimpan' : 'No cache stored'}
+                  {lang==='id' ? 'Tidak ada cache atau cookie tersimpan' : 'No cache or cookies stored'}
                 </div>
               )}
             </div>
@@ -258,8 +295,8 @@ function CacheManager({ lang }) {
             {clearing
               ? (lang==='id' ? 'Menghapus...' : 'Clearing...')
               : clearDone
-                ? (lang==='id' ? 'Cache Dihapus!' : 'Cache Cleared!')
-                : (lang==='id' ? 'Hapus Semua Cache' : 'Clear All Cache')}
+                ? (lang==='id' ? 'Cache & Cookie Dihapus!' : 'Cache & Cookies Cleared!')
+                : (lang==='id' ? 'Hapus Semua Cache & Cookie' : 'Clear All Cache & Cookies')}
           </button>
         </div>
       )}

@@ -753,7 +753,7 @@ export const builtinSongs = [];
 // ═══════════════════════════════════════════════════════
 //  GOOGLE DRIVE
 // ═══════════════════════════════════════════════════════
-export const GOOGLE_CLIENT_ID = '1028346781018-vbeafem60jrt8ctu1k1q07pfk41ejlnn.apps.googleusercontent.com';
+export const GOOGLE_CLIENT_ID = import.meta.env.GOOGLE_CLIENT_ID;
 export const GOOGLE_SCOPES    = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly profile email';
 export const DRIVE_FOLDER     = 'Starry Night Music';
 export const SONG_COLORS = [
@@ -803,10 +803,12 @@ export const INVIDIOUS_INSTANCES = [
 // Browser tidak bisa fetch http:// dari halaman https:// (Mixed Content).
 // Fungsi ini otomatis wrap URL http:// ke /api/radio-proxy?url=...
 // URL https:// dikembalikan apa adanya.
-export function radioUrl(url) {
+export function radioUrl(url, customDns = '') {
   if (!url) return url;
   if (url.startsWith('http://')) {
-    return `/api/radio-proxy?url=${encodeURIComponent(url)}`;
+    const params = new URLSearchParams({ url });
+    if (customDns) params.set('dns', customDns);
+    return `/api/radio-proxy?${params.toString()}`;
   }
   return url;
 }
@@ -1874,6 +1876,95 @@ export async function drivePrefetch(driveId, token) {
   if (!driveId || !token || _blobCache.has(`${driveId}:${token.slice(-12)}`)) return;
   try { await driveStreamBlob(driveId, token); } catch { /* silent fail */ }
 }
+// ── Playlist Cloud Sync ─────────────────────────────────────────────────────
+// Simpan/load sn_playlists.json di folder "Starry Night Music" di Google Drive.
+
+const PLAYLIST_FILENAME = 'sn_playlists.json';
+
+async function driveSearchPlaylistFile(token, folderId) {
+  const q = encodeURIComponent(`name='${PLAYLIST_FILENAME}' and '${folderId}' in parents and trashed=false`);
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,modifiedTime)&pageSize=1`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!res.ok) throw new Error(`Drive search error ${res.status}`);
+  const data = await res.json();
+  return data.files && data.files.length > 0 ? data.files[0] : null;
+}
+
+/** Simpan array playlists ke Drive. Buat file baru jika belum ada, update jika sudah ada. */
+export async function driveSavePlaylists(token, playlists) {
+  const folderId = await driveEnsureFolder(token);
+  const existing = await driveSearchPlaylistFile(token, folderId);
+  const content = JSON.stringify({ version: 1, savedAt: new Date().toISOString(), playlists });
+  const blob = new Blob([content], { type: 'application/json' });
+  const form = new FormData();
+
+  if (existing) {
+    // Update file yang ada (PATCH)
+    form.append('metadata', new Blob([JSON.stringify({})], { type: 'application/json' }));
+    form.append('file', blob);
+    const res = await fetch(
+      `https://www.googleapis.com/upload/drive/v3/files/${existing.id}?uploadType=multipart`,
+      { method: 'PATCH', headers: { Authorization: `Bearer ${token}` }, body: form }
+    );
+    if (!res.ok) throw new Error(`Playlist save failed ${res.status}`);
+    return await res.json();
+  } else {
+    // Buat file baru (POST)
+    form.append('metadata', new Blob([JSON.stringify({
+      name: PLAYLIST_FILENAME,
+      parents: [folderId],
+      mimeType: 'application/json',
+    })], { type: 'application/json' }));
+    form.append('file', blob);
+    const res = await fetch(
+      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+      { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form }
+    );
+    if (!res.ok) throw new Error(`Playlist create failed ${res.status}`);
+    return await res.json();
+  }
+}
+
+/** Load playlists dari Drive. Return null jika file tidak ditemukan. */
+export async function driveLoadPlaylists(token) {
+  // Cari di folder Starry Night Music dulu
+  let fileId = null;
+  try {
+    const folderId = await driveGetFolderId(token);
+    if (folderId) {
+      const file = await driveSearchPlaylistFile(token, folderId);
+      if (file) fileId = file.id;
+    }
+  } catch {}
+
+  // Fallback: cari di seluruh Drive yang accessible
+  if (!fileId) {
+    try {
+      const q = encodeURIComponent(`name='${PLAYLIST_FILENAME}' and trashed=false`);
+      const res = await fetch(
+        `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&pageSize=1`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (data.files && data.files.length > 0) fileId = data.files[0].id;
+      }
+    } catch {}
+  }
+
+  if (!fileId) return null; // Belum pernah sync
+
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!res.ok) throw new Error(`Playlist load failed ${res.status}`);
+  const data = await res.json();
+  return Array.isArray(data.playlists) ? data.playlists : null;
+}
+
 export async function driveUploadSong(file, meta, token) {
   const folderId=await driveEnsureFolder(token), ci=randItem(SONG_COLORS), cover=randItem(COVERS);
   const metadata={ name:file.name, parents:[folderId], appProperties:{ title:meta.title||file.name.replace(/\.[^/.]+$/,''), artist:meta.artist||'Unknown', album:meta.album||'My Songs', cover, color:ci.color, bg:ci.bg } };

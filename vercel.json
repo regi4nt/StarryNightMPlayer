@@ -101,6 +101,10 @@
       "destination": "/api/ai?provider=sambanova"
     },
     {
+      "source": "/api/radio",
+      "destination": "/api/radio"
+    },
+    {
       "source": "/api/:path*",
       "destination": "/api/:path*"
     },

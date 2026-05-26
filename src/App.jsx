@@ -33,6 +33,7 @@ import {
   searchSpotify, searchSoundCloud,
   downloadYtAudio, downloadToDevice,
   cacheGet, driveStreamBlob, driveStreamLite, driveDownloadBlob, driveUploadSong,
+  driveSavePlaylists, driveLoadPlaylists,
 } from './constants.js';
 
 // ── Lazy-loaded components ────────────────────────────────
@@ -83,6 +84,8 @@ export default function App() {
   const t = T[lang] || T.id;
 
   const [customDns, setCustomDns] = useState(() => localStorage.getItem('sn_custom_dns') || '');
+  const customDnsRef = useRef(customDns);
+  useEffect(() => { customDnsRef.current = customDns; }, [customDns]);
   // ── User API keys (localStorage persisted)
   const [userSpId,     setUserSpId]     = useState(() => localStorage.getItem('sn_sp_id')    ||'');
   const [userSpSecret, setUserSpSecret] = useState(() => localStorage.getItem('sn_sp_secret')||'');
@@ -1427,6 +1430,10 @@ Return ONLY valid JSON, no explanation:
       if (queue) { const queueChanged = queue !== ytQueueRef.current; ytQueueRef.current = queue; ytQueueIdxRef.current = queueIdx ?? queue.findIndex(v=>(v.videoId||v.url?.includes(videoId))===videoId); if (queueChanged) ytShufflePlayedRef.current = null; }
       setEmbedMinimized(false);
       if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
+      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
+      if (radioReconnectRef.current) { clearTimeout(radioReconnectRef.current); radioReconnectRef.current = null; }
+      radioReconnectCount.current = 0;
+      setStreamBuffering(false);
       setRadioStation(null);
       setRadioPlaying(false);
       setPlaying(true);
@@ -1454,6 +1461,9 @@ Return ONLY valid JSON, no explanation:
     if (incomingMode !== 'embed') {
       setScWidget({});
     }
+    // Stop Spotify preview — selalu hentikan saat beralih ke sumber lain
+    if (spPreviewRef.current) { spPreviewRef.current.pause(); spPreviewRef.current = null; }
+    setSpPlaying(false);
     // Stop audio jika sedang radio dan incoming bukan radio
     if (incomingMode !== 'radio' && track?.isRadio) {
       if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
@@ -1760,7 +1770,7 @@ Return ONLY valid JSON, no explanation:
   // ── New playback features
   const [shuffle, setShuffle] = useState(() => localStorage.getItem('sn_shuffle') === 'true');
   const [repeat, setRepeat]   = useState(() => localStorage.getItem('sn_repeat') || 'off');
-  const [history, setHistory]   = useState([]);
+  const [history, setHistory]   = useState(() => { try { return JSON.parse(localStorage.getItem('sn_history') || '[]'); } catch { return []; } });
 
   // ── Sleep timer
   const [sleepTimer, setSleepTimer]   = useState(null);
@@ -1831,6 +1841,12 @@ Return ONLY valid JSON, no explanation:
   const [personaLoading, setPL] = useState(false);
   const [popularRecs, setPopularRecs] = useState(null);
   const [popularLoading, setPopularLoading] = useState(false);
+  // ── Other: Playlist Generator ──────────────────────────────────────────
+  const [otherInnerTab, setOtherInnerTab] = useState('pref'); // 'pref' | 'popular'
+  const [prefPlaylist, setPrefPlaylist] = useState(null);
+  const [prefPlaylistLoading, setPrefPlaylistLoading] = useState(false);
+  const [popularPlaylist, setPopularPlaylist] = useState(null);
+  const [popularPlaylistLoading, setPopularPlaylistLoading] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
 
   // ── AI
@@ -1878,7 +1894,17 @@ Return ONLY valid JSON, no explanation:
 
   // ── Google Drive — restore session from localStorage if token still valid
   const [googleUser, setGoogleUser]     = useState(() => {
-    try { return JSON.parse(localStorage.getItem('sn_google_user') || 'null'); } catch { return null; }
+    try {
+      const user = JSON.parse(localStorage.getItem('sn_google_user') || 'null');
+      // Jangan restore profil kalau token sudah expired / tidak ada
+      const saved = JSON.parse(localStorage.getItem('sn_google_token') || 'null');
+      const tokenValid = saved && saved.expiry > Date.now();
+      if (!tokenValid) {
+        localStorage.removeItem('sn_google_user'); // bersihkan data user lama
+        return null;
+      }
+      return user;
+    } catch { return null; }
   });
   const [accessToken, setAccessToken]   = useState(() => {
     try {
@@ -1922,8 +1948,17 @@ Return ONLY valid JSON, no explanation:
       { id:'pl_chill', name:'🌙 Chill Night', songIds:[], locked:false },
     ];
   });
+  // ── Playlist Cloud Sync state
+  const [plSyncStatus, setPlSyncStatus]   = useState('idle'); // 'idle'|'syncing'|'synced'|'error'
+  const [plSyncError, setPlSyncError]     = useState('');
+  const [plSyncedAt, setPlSyncedAt]       = useState(null);   // timestamp terakhir sync berhasil
+  const plSyncTimerRef                    = useRef(null);
   const [activePl, setActivePl]           = useState(null); // null = all songs, else playlist id
   const [showPlModal, setShowPlModal]     = useState(false);
+  const [plPrefillName, setPlPrefillName] = useState('');
+  const [plPrefillIds, setPlPrefillIds]   = useState([]);
+  const [showAddToModal, setShowAddToModal] = useState(false); // modal "tambah ke playlist yang ada"
+  const [addToSongIds, setAddToSongIds]   = useState([]);
   const [editingPl, setEditingPl]         = useState(null);
   const [plView, setPlView]               = useState('list'); // 'list' | 'detail' | 'form'
   const [mySongsEditMode, setMySongsEditMode] = useState(false);
@@ -2021,10 +2056,24 @@ Return ONLY valid JSON, no explanation:
             headers: { 'Accept-Language': 'id,en', 'User-Agent': 'StarryNightMPlayer/1.0' }
           });
           const data = await res.json();
-          const city = data?.address?.city || data?.address?.town || data?.address?.village || data?.address?.county || '';
-          const country = data?.address?.country_code?.toUpperCase() || 'ID';
-          const countryName = data?.address?.country || '';
-          const displayLoc = city ? `${city}${countryName && country !== 'ID' ? ', ' + countryName : ''}` : countryName;
+          const addr = data?.address || {};
+          const country = addr.country_code?.toUpperCase() || 'ID';
+          const countryName = addr.country || '';
+
+          // Level: negara > provinsi > kabupaten/kota
+          // Tidak pakai kecamatan, desa, suburb, dst.
+          const rawKab = addr.city || addr.town || addr.county || addr.state_district || '';
+          const kab = rawKab.replace(/^(kabupaten|kota|city of|regency of)\s+/i, '').trim();
+
+          const rawProv = addr.state || addr.province || '';
+          const prov = rawProv.replace(/^(provinsi|province of|daerah istimewa|dki|daerah khusus ibukota)\s*/i, '').trim();
+
+          // Format: "Kabupaten, Provinsi, Negara"
+          // Hilangkan bagian yang kosong atau duplikat
+          const parts = [kab, prov, countryName].filter((v, i, arr) =>
+            v && arr.indexOf(v) === i && v.toLowerCase() !== arr[i - 1]?.toLowerCase()
+          );
+          const displayLoc = parts.join(', ');
           if (displayLoc) {
             setUserLocation(displayLoc);
             setUserLocationCountry(country);
@@ -2081,8 +2130,36 @@ Return ONLY valid JSON, no explanation:
   useEffect(() => { localStorage.setItem('sn_repeat', repeat); }, [repeat]);
   useEffect(() => { try { localStorage.setItem('sn_liked', JSON.stringify(liked)); } catch {} }, [liked]);
   useEffect(() => { try { localStorage.setItem('sn_playlists', JSON.stringify(playlists)); } catch {} }, [playlists]);
+
+  // ── Auto-sync playlists ke Google Drive (debounce 3 detik setelah perubahan)
+  const syncPlaylistsToCloud = useCallback(async (token, pls, silent = false) => {
+    if (!token) return;
+    if (!silent) setPlSyncStatus('syncing');
+    try {
+      await driveSavePlaylists(token, pls);
+      setPlSyncStatus('synced');
+      setPlSyncedAt(Date.now());
+      setPlSyncError('');
+      setTimeout(() => setPlSyncStatus('idle'), 3000);
+    } catch(e) {
+      setPlSyncStatus('error');
+      setPlSyncError(e.message || 'Sync gagal');
+      setTimeout(() => setPlSyncStatus('idle'), 5000);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!accessToken) return; // hanya sync jika login
+    if (plSyncTimerRef.current) clearTimeout(plSyncTimerRef.current);
+    plSyncTimerRef.current = setTimeout(() => {
+      syncPlaylistsToCloud(accessToken, playlists, true);
+    }, 3000);
+    return () => { if (plSyncTimerRef.current) clearTimeout(plSyncTimerRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playlists, accessToken]);
   useEffect(() => { try { localStorage.setItem('sn_fav_songs', JSON.stringify(favSongs)); } catch {} }, [favSongs]);
   useEffect(() => { try { localStorage.setItem('sn_yt_songs', JSON.stringify(ytSongs)); } catch {} }, [ytSongs]);
+  useEffect(() => { try { localStorage.setItem('sn_history', JSON.stringify(history)); } catch {} }, [history]);
 
   // ── Silent token refresh — dipindah ke sini agar tersedia sebelum useEffect lain
   const silentRefreshToken = useCallback(() => new Promise((resolve, reject) => {
@@ -2112,14 +2189,51 @@ Return ONLY valid JSON, no explanation:
     }
   }, []);
 
-  // ── PWA Install prompt — biarkan Chrome handle native, jangan intercept
-  const pwaPrompt = null;
-  const pwaInstalled = window.matchMedia('(display-mode: standalone)').matches
-    || window.navigator.standalone === true;
-  const pwaBannerDismissed = true;
-  const pwaBannerVisible = false;
-  const installPwa = () => {};
-  const dismissPwaBanner = () => {};
+  // ── PWA Install prompt — capture beforeinstallprompt & wire up install flow
+  const [pwaPrompt, setPwaPrompt] = useState(null);
+  const [pwaInstalled, setPwaInstalled] = useState(
+    () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true
+  );
+  const [pwaBannerDismissed, setPwaBannerDismissed] = useState(
+    () => localStorage.getItem('sn_pwa_dismissed') === '1'
+  );
+  const [pwaBannerVisible, setPwaBannerVisible] = useState(false);
+
+  useEffect(() => {
+    const onBeforeInstall = (e) => {
+      e.preventDefault();
+      setPwaPrompt(e);
+      setPwaBannerVisible(true);
+    };
+    const onAppInstalled = () => {
+      setPwaInstalled(true);
+      setPwaPrompt(null);
+      setPwaBannerVisible(false);
+    };
+    window.addEventListener('beforeinstallprompt', onBeforeInstall);
+    window.addEventListener('appinstalled', onAppInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onBeforeInstall);
+      window.removeEventListener('appinstalled', onAppInstalled);
+    };
+  }, []);
+
+  const installPwa = useCallback(async () => {
+    if (!pwaPrompt) return;
+    pwaPrompt.prompt();
+    const { outcome } = await pwaPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setPwaInstalled(true);
+      setPwaPrompt(null);
+      setPwaBannerVisible(false);
+    }
+  }, [pwaPrompt]);
+
+  const dismissPwaBanner = useCallback(() => {
+    setPwaBannerDismissed(true);
+    setPwaBannerVisible(false);
+    localStorage.setItem('sn_pwa_dismissed', '1');
+  }, []);
 
   useEffect(() => {
     // Handle shortcut URLs: ?tab=stream / ?tab=playlist / ?tab=ai
@@ -2508,16 +2622,16 @@ Return ONLY valid JSON, no explanation:
     const onDurChange = () => trySetDur();
     const onEnd = () => {
       if (repeatRef.current === 'one') {
-        // Setelah 'ended', browser menempatkan audio dalam state paused dengan readyState bisa turun.
-        // Hanya currentTime=0 + play() sering gagal atau tidak fire 'ended' lagi di ulang berikutnya.
-        // Fix: gunakan load() untuk reset internal state audio browser, lalu seek & play dari canplay.
+        // Fix repeat-one: simpan src, reset via load(), set src ulang agar canplay selalu fire.
+        // Tanpa re-assign src, beberapa browser (Chrome/Safari) tidak fire canplay setelah load().
         const savedSrc = a.src;
-        a.load(); // reset pipeline audio (src tidak berubah, hanya state internal direset)
+        a.load();
+        a.src = savedSrc; // pastikan src tidak hilang setelah load()
         const doPlay = () => {
           a.currentTime = 0;
           a.play().catch(e => { console.warn('repeat-one play error:', e); setPlaying(false); });
         };
-        if (a.readyState >= 3) { // HAVE_FUTURE_DATA — sudah bisa langsung play
+        if (a.readyState >= 3) {
           doPlay();
         } else {
           a.addEventListener('canplay', doPlay, { once: true });
@@ -2881,7 +2995,9 @@ Return ONLY valid JSON, no explanation:
       },
     ].filter(s => s.active);
 
-    const ctx = `Kamu adalah kurator audio personal. Preferensi user:\n- Kategori: ${prefs.categories.join(', ') || 'mix'}\n- Mood: ${prefs.moods.join(', ') || 'semua'}\n- Waktu: ${prefs.timeOfDay || 'kapan saja'}\n- Bahasa: ${prefs.lang || 'mix'}`;
+    const MOOD_LABELS = { relax:'Santai', focus:'Fokus', energetic:'Semangat', sleep:'Tidur', metime:'Me Time', party:'Hepi', pagi:'Pagi', siang:'Siang', malam:'Malam', sad:'Galau' };
+    const moodLabels = (prefs.moods||[]).map(m => MOOD_LABELS[m]||m).join(', ') || 'semua';
+    const ctx = `Kamu adalah kurator audio personal. Preferensi user:\n- Kategori: ${prefs.categories.join(', ') || 'mix'}\n- Mood: ${moodLabels}\n- Waktu: ${prefs.timeOfDay || 'kapan saja'}\n- Bahasa: ${prefs.lang || 'mix'}`;
 
     // Try each section against providers with fallback: first pick = round-robin,
     // but if it fails, retry remaining providers in order until one succeeds.
@@ -2963,6 +3079,58 @@ Return ONLY valid JSON, no explanation:
 
   // ── For You: fetch AI popular recs once per session
   const POPULAR_TTL_MS = 60 * 60 * 1000; // 1 jam
+  // ── Generate playlist sesuai preferensi ──────────────────────────────────
+  const generatePrefPlaylist = async () => {
+    if (prefPlaylistLoading) return;
+    setPrefPlaylistLoading(true);
+    setPrefPlaylist(null);
+    try {
+      const prefs = (() => { try { return JSON.parse(localStorage.getItem('sn_persona_prefs') || '{}'); } catch { return personaPrefs; } })();
+      const cats  = prefs.categories?.join(', ') || 'Pop, Electronic';
+      const MOOD_LABELS_PL = { relax:'Santai', focus:'Fokus', energetic:'Semangat', sleep:'Tidur', metime:'Me Time', party:'Hepi', pagi:'Pagi', siang:'Siang', malam:'Malam', sad:'Galau' };
+      const moods = (prefs.moods||[]).map(m => MOOD_LABELS_PL[m]||m).join(', ') || 'Chill, Upbeat';
+      const lang  = prefs.lang || 'mix';
+      const r = await askAIRace(
+        `Buat playlist musik personal berdasarkan preferensi pengguna ini:
+- Genre/kategori: ${cats}
+- Mood favorit: ${moods}
+- Bahasa: ${lang}
+
+Buat 10 lagu yang cocok. Balas HANYA JSON valid tanpa markdown:
+{"playlist":[{"title":"...","artist":"...","reason":"alasan singkat max 8 kata"}]}`,
+        'Kamu adalah kurator musik personal. Buat playlist berdasarkan preferensi. Output hanya JSON valid.'
+      );
+      const clean = r.replace(/\`\`\`json|\`\`\`/g, '').trim();
+      const data  = JSON.parse(clean);
+      if (data.playlist?.length) setPrefPlaylist(data.playlist);
+    } catch (e) {
+      console.warn('[prefPlaylist]', e);
+    }
+    setPrefPlaylistLoading(false);
+  };
+
+  // ── Generate playlist populer saat ini ───────────────────────────────────
+  const generatePopularPlaylist = async () => {
+    if (popularPlaylistLoading) return;
+    setPopularPlaylistLoading(true);
+    setPopularPlaylist(null);
+    try {
+      const r = await askAIRace(
+        `Buat playlist 10 lagu yang sedang paling populer dan trending saat ini secara global maupun lokal Indonesia.
+Sertakan mix genre: pop, hiphop, K-pop, EDM, dll.
+Balas HANYA JSON valid tanpa markdown:
+{"playlist":[{"title":"...","artist":"...","reason":"alasan singkat max 8 kata"}]}`,
+        'Kamu adalah kurator musik trending. Buat playlist lagu-lagu terpopuler saat ini. Output hanya JSON valid.'
+      );
+      const clean = r.replace(/\`\`\`json|\`\`\`/g, '').trim();
+      const data  = JSON.parse(clean);
+      if (data.playlist?.length) setPopularPlaylist(data.playlist);
+    } catch (e) {
+      console.warn('[popularPlaylist]', e);
+    }
+    setPopularPlaylistLoading(false);
+  };
+
   const fetchPopularRecs = useCallback(async () => {
     if (popularLoading) return;
     if (!hasKey()) return;
@@ -3021,6 +3189,9 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
   // ── Sleep timer cleanup
   useEffect(() => () => { if (sleepIntervalRef.current) clearInterval(sleepIntervalRef.current); }, []);
 
+  // ── Web search abort cleanup on unmount (prevent state update on unmounted component)
+  useEffect(() => () => { if (wsAbortRef.current) wsAbortRef.current.abort(); }, []);
+
   // ── Auto-switch ke Player saat SC embed / Spotify embed mulai play
   useEffect(() => {
     const handleEmbedPlay = (ev) => {
@@ -3051,7 +3222,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       if (remaining <= 0) {
         clearInterval(sleepIntervalRef.current);
         setSleepTimer(null);
-        // ── Hentikan semua sumber audio: lokal/Drive + YouTube + Spotify + SoundCloud
+        // ── Hentikan semua sumber audio: lokal/Drive + YouTube + Spotify + SoundCloud + Radio
         setPlaying(false);
         // YouTube embed
         if (ytIframeRef.current) {
@@ -3063,6 +3234,11 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
         setSpPlaying(false);
         // SoundCloud embed — tutup widget agar iframe berhenti autoplay
         setScWidget({});
+        // Radio — batalkan reconnect timer agar radio tidak restart otomatis
+        if (radioReconnectRef.current) { clearTimeout(radioReconnectRef.current); radioReconnectRef.current = null; }
+        radioReconnectCount.current = 0;
+        setRadioStation(null);
+        setRadioPlaying(false);
       }
     }, 1000);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -3084,7 +3260,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     const testOne = (station) => new Promise(resolve => {
       const ctrl = new AbortController();
       const tid = setTimeout(() => { ctrl.abort(); resolve({ id: station.id, ok: false }); }, 7000);
-      fetch(radioUrl(station.url), { method: 'GET', mode: 'no-cors', signal: ctrl.signal })
+      fetch(radioUrl(station.url, customDnsRef.current), { method: 'GET', mode: 'no-cors', signal: ctrl.signal })
         .then(() => { clearTimeout(tid); resolve({ id: station.id, ok: true }); })
         .catch(e => {
           clearTimeout(tid);
@@ -3164,15 +3340,16 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     rock:       ['rock', 'alternative', 'indie', 'metal', 'punk', 'grunge'],
     jazz:       ['jazz', 'blues', 'soul', 'bossa', 'swing'],
     classical:  ['classical', 'orchestra', 'opera', 'baroque', 'chamber'],
-    electronic: ['electronic', 'edm', 'techno', 'house', 'trance', 'dance', 'idm', 'chill', 'downtempo', 'drone'],
+    electronic: ['electronic', 'edm', 'techno', 'house', 'trance', 'dance', 'idm', 'downtempo', 'drone', 'beats'],
     ambient:    ['ambient', 'chillout', 'space music', 'atmospheric', 'new age'],
-    lounge:     ['lounge', 'smooth', 'easy listening', 'cafe', 'bossa nova', 'chill lounge'],
+    lounge:     ['lounge', 'smooth', 'easy listening', 'cafe', 'bossa nova', 'chill lounge', 'chill'],
     hiphop:     ['hip-hop', 'hip hop', 'rap', 'r&b', 'rnb', 'trap'],
     reggae:     ['reggae', 'dub', 'ska', 'dancehall'],
     folk:       ['folk', 'country', 'americana', 'bluegrass', 'singer-songwriter'],
     news:       ['news', 'talk', 'info', 'noticias', 'nachrichten', 'berita', 'informasi'],
     world:      ['world', 'latin', 'afrobeat', 'bossa', 'samba', 'flamenco', 'asian', 'bollywood'],
     dangdut:    ['dangdut', 'koplo', 'campursari', 'tarling', 'orkes melayu'],
+    lofi:       ['lofi', 'lo-fi', 'chillhop', 'lofi hip hop', 'lo fi'],
     islamic:    ['islamic', 'islam', 'religi', 'quran', 'nasyid', 'muslim', 'religious', 'islami'],
   };
 
@@ -3184,15 +3361,18 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     tidur:'ambient', sleep:'ambient', sleepy:'ambient', bobo:'ambient',
     meditasi:'ambient', meditation:'ambient', focus:'ambient', fokus:'ambient', konsentrasi:'ambient',
     study:'ambient', belajar:'ambient', kerja:'ambient', working:'ambient',
+    // Mood me time (relaks sendiri)
+    metime:'lounge', 'me time':'lounge', sendiri:'lounge', solo:'lounge', alone:'lounge',
     // Mood semangat / energik
     semangat:'electronic', energik:'electronic', energy:'electronic', workout:'electronic',
     olahraga:'electronic', gym:'electronic', lari:'electronic', running:'electronic',
     party:'electronic', pesta:'electronic', dance:'electronic', dansa:'electronic', dugem:'electronic',
+    hepi:'pop', happy:'pop', gembira:'pop',
     // Mood sedih / galau
     sedih:'jazz', galau:'jazz', mellow:'jazz', melankolis:'jazz', sad:'jazz', lonely:'jazz',
     sendu:'jazz', haru:'jazz', nostalgia:'jazz', nostalgic:'jazz',
     // Mood bahagia / ceria
-    bahagia:'pop', ceria:'pop', happy:'pop', gembira:'pop', senang:'pop', fun:'pop',
+    bahagia:'pop', ceria:'pop', senang:'pop', fun:'pop',
     pagi:'pop', morning:'pop', siang:'pop', afternoon:'pop',
     // Mood romantis
     romantis:'lounge', romantic:'lounge', love:'lounge', cinta:'lounge', date:'lounge',
@@ -3477,8 +3657,10 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
 
   // ── 4. NTS Radio (100+ channels, indie/underground, gratis)
   const NTS_STREAMS = [
-    { id:'nts1', name:'NTS 1', desc:'Eclectic music, conversation and culture from around the world.', url:'https://stream-relay-geo.ntslive.net/stream', genre:'Eclectic', color:'#ff4500' },
-    { id:'nts2', name:'NTS 2', desc:'A second continuous stream of music and culture.', url:'https://stream-relay-geo.ntslive.net/stream2', genre:'Eclectic', color:'#ff6500' },
+    { id:'nts1', name:'NTS 1', desc:'Eclectic music, conversation and culture from around the world.', url:'https://stream-relay-geo.ntslive.net/stream',  genre:'Eclectic', color:'#ff4500' },
+    { id:'nts2', name:'NTS 2', desc:'A second continuous stream of music and culture.',               url:'https://stream-relay-geo.ntslive.net/stream2', genre:'Eclectic', color:'#ff6500' },
+    { id:'nts_lofi',  name:'NTS Lo-Fi',    desc:'Chilled lo-fi beats and downtempo sounds.',    url:'https://stream-relay-geo.ntslive.net/stream',  genre:'Lo-Fi',   color:'#22d3ee' },
+    { id:'nts_hiphop',name:'NTS Hip-Hop',  desc:'Hip-hop, rap and r&b from around the world.',  url:'https://stream-relay-geo.ntslive.net/stream2', genre:'Hip-Hop', color:'#f59e0b' },
   ];
 
   // ── 5. Icecast Directory (dir.xiph.org) — via CORS proxy approach
@@ -3500,6 +3682,18 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     { id:'ice_laut_reggae', name:'Reggae Radio', desc:'Reggae & Dub 24/7', url:'https://stream.laut.fm/reggae', genre:'Reggae', country:'DE', color:'#16a34a' },
     { id:'ice_laut_classical', name:'Classical Radio', desc:'Classical music 24/7', url:'https://stream.laut.fm/classical', genre:'Classical', country:'DE', color:'#a16207' },
     { id:'ice_laut_hiphop', name:'Hip-Hop Radio', desc:'Hip-Hop & Rap 24/7', url:'https://stream.laut.fm/hiphop', genre:'Hip-Hop', country:'DE', color:'#dc2626' },
+    { id:'ice_laut_world', name:'World Music Radio', desc:'Global world & folk music 24/7', url:'https://stream.laut.fm/world', genre:'World', country:'DE', color:'#f97316' },
+    { id:'ice_laut_lofi', name:'Lo-Fi Beats Radio', desc:'Lo-Fi hip-hop & chill beats', url:'https://stream.laut.fm/lofi', genre:'Lo-Fi', country:'DE', color:'#8b5cf6' },
+    { id:'ice_laut_folk', name:'Folk Radio', desc:'Folk & Americana 24/7', url:'https://stream.laut.fm/folk', genre:'Folk', country:'DE', color:'#a16207' },
+    { id:'ice_laut_religi', name:'Islamic Radio', desc:'Murottal Al-Quran & nasyid 24/7', url:'https://stream.laut.fm/religious', genre:'Islamic', country:'ID', color:'#10b981' },
+    { id:'ice_laut_dangdut', name:'Dangdut Radio', desc:'Dangdut & koplo Indonesia 24/7', url:'https://stream.laut.fm/dangdut', genre:'Dangdut', country:'ID', color:'#f97316' },
+    { id:'ice_soma_poptron', name:'SomaFM PopTron', desc:'Electropop & indie pop 24/7', url:'https://ice1.somafm.com/poptron-128-mp3', genre:'Pop', country:'US', color:'#3b82f6' },
+    { id:'ice_lofi_cafe',    name:'Lo-Fi Café',           desc:'Chilled lo-fi hip hop beats 24/7',              url:'https://ice6.somafm.com/lush-128-mp3',                       genre:'Lo-Fi',   country:'US', color:'#22d3ee' },
+    { id:'ice_chillhop',     name:'Chillhop Radio',       desc:'Chillhop & lo-fi beats around the clock',       url:'https://streams.ilovemusic.de/iloveradio17.mp3',             genre:'Lo-Fi',   country:'DE', color:'#06b6d4' },
+    { id:'ice_soma_cliqhop', name:'SomaFM Cliqhop IDM',   desc:'Blips, blops & lo-fi electronic wonders',       url:'https://ice1.somafm.com/cliqhop-128-mp3',                   genre:'Lo-Fi',   country:'US', color:'#22d3ee' },
+    { id:'ice_hiphop_radio', name:'Hip-Hop Radio (Laut)',  desc:'Hip-hop & rap hits 24/7',                       url:'https://stream.laut.fm/hiphop',                             genre:'Hip-Hop', country:'DE', color:'#f59e0b' },
+    { id:'ice_illstreet',    name:'SomaFM Ill Street Blues',desc:'Hip-hop, soul & gritty r&b',                  url:'https://ice1.somafm.com/illstreet-128-mp3',                 genre:'Hip-Hop', country:'US', color:'#f97316' },
+    { id:'ice_rnb',          name:'R&B Radio (Laut)',      desc:'R&b, soul & smooth jams 24/7',                  url:'https://stream.laut.fm/rnb',                                genre:'Hip-Hop', country:'DE', color:'#ec4899' },
   ];
 
   // ── Radio Paradise (curated, high-fidelity, no ads, listener-funded)
@@ -3508,6 +3702,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     { id:'rp_mellow', name:'Radio Paradise Mellow Mix', desc:'Chill, ambient, acoustic — relaxed and soothing', url:'https://stream.radioparadise.com/mellow-128', genre:'Ambient', country:'US', color:'#06b6d4', image:'https://www.radioparadise.com/graphics/rp_320x320.png' },
     { id:'rp_rock', name:'Radio Paradise Rock Mix', desc:'Deep cuts and classic rock, hand-picked', url:'https://stream.radioparadise.com/rock-128', genre:'Rock', country:'US', color:'#ef4444', image:'https://www.radioparadise.com/graphics/rp_320x320.png' },
     { id:'rp_global', name:'Radio Paradise Global Mix', desc:'World music, jazz, folk, and global rhythms', url:'https://stream.radioparadise.com/global-128', genre:'World', country:'US', color:'#f59e0b', image:'https://www.radioparadise.com/graphics/rp_320x320.png' },
+    { id:'rp_eclectic2', name:'Radio Paradise Eclectic Plus', desc:'Pop, rock, world — handpicked no ads', url:'https://stream.radioparadise.com/mp3-128', genre:'Pop', country:'US', color:'#a78bfa', image:'https://www.radioparadise.com/graphics/rp_320x320.png' },
   ];
 
   // ── FM Stream / laut.fm extended (Germany-based, 800+ curated internet stations)
@@ -3524,6 +3719,21 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     { id:'fm_smooth', name:'Smooth Jazz (laut.fm)', desc:'Smooth Jazz 24/7', url:'https://stream.laut.fm/smoothjazz', genre:'Jazz', country:'DE', color:'#5b21b6', sourceLabel:'FM Stream' },
     { id:'fm_piano', name:'Piano Radio (laut.fm)', desc:'Solo piano & instrumental', url:'https://stream.laut.fm/piano', genre:'Classical', country:'DE', color:'#a16207', sourceLabel:'FM Stream' },
     { id:'fm_hits', name:'Top Hits Radio (laut.fm)', desc:'Current Top Hits 24/7', url:'https://stream.laut.fm/tophits', genre:'Pop', country:'DE', color:'#3b82f6', sourceLabel:'FM Stream' },
+    { id:'fm_hiphop', name:'Hip-Hop Radio (laut.fm)', desc:'Hip-Hop & Rap 24/7', url:'https://stream.laut.fm/hiphop', genre:'Hip-Hop', country:'DE', color:'#dc2626', sourceLabel:'FM Stream' },
+    { id:'fm_jazz', name:'Jazz Radio (laut.fm)', desc:'Jazz 24/7', url:'https://stream.laut.fm/jazz', genre:'Jazz', country:'DE', color:'#7c3aed', sourceLabel:'FM Stream' },
+    { id:'fm_rock', name:'Rock Radio (laut.fm)', desc:'Rock 24/7', url:'https://stream.laut.fm/rock', genre:'Rock', country:'DE', color:'#ef4444', sourceLabel:'FM Stream' },
+    { id:'fm_classical', name:'Classical Radio (laut.fm)', desc:'Classical music 24/7', url:'https://stream.laut.fm/classical', genre:'Classical', country:'DE', color:'#a16207', sourceLabel:'FM Stream' },
+    { id:'fm_world', name:'World Music Radio (laut.fm)', desc:'Global world music 24/7', url:'https://stream.laut.fm/world', genre:'World', country:'DE', color:'#f97316', sourceLabel:'FM Stream' },
+    { id:'fm_reggae', name:'Reggae Radio (laut.fm)', desc:'Reggae & Dub 24/7', url:'https://stream.laut.fm/reggae', genre:'Reggae', country:'DE', color:'#16a34a', sourceLabel:'FM Stream' },
+    { id:'fm_ambient', name:'Ambient Radio (laut.fm)', desc:'Ambient & Chillout 24/7', url:'https://stream.laut.fm/ambient', genre:'Ambient', country:'DE', color:'#6366f1', sourceLabel:'FM Stream' },
+    { id:'fm_lofi', name:'Lo-Fi Radio (laut.fm)', desc:'Lo-Fi hip-hop beats & chill', url:'https://stream.laut.fm/lofi', genre:'Lo-Fi', country:'DE', color:'#8b5cf6', sourceLabel:'FM Stream' },
+    { id:'fm_religi', name:'Religi Radio Indonesia', desc:'Musik religi Islami & nasyid 24/7', url:'https://stream.laut.fm/religious', genre:'Islamic', country:'ID', color:'#10b981', sourceLabel:'FM Stream' },
+    { id:'fm_dangdut', name:'Dangdut Radio (laut.fm)', desc:'Dangdut & koplo Indonesia 24/7', url:'https://stream.laut.fm/dangdut', genre:'Dangdut', country:'ID', color:'#f97316', sourceLabel:'FM Stream' },
+    { id:'fm_lofi',       name:'Lo-Fi Radio (laut.fm)',    desc:'Lo-fi beats & chillhop 24/7',           url:'https://stream.laut.fm/lofi',        genre:'Lo-Fi',   country:'DE', color:'#22d3ee', sourceLabel:'FM Stream' },
+    { id:'fm_chillhop',   name:'Chillhop FM (laut.fm)',    desc:'Chillhop & downtempo grooves',          url:'https://stream.laut.fm/chillhop',     genre:'Lo-Fi',   country:'DE', color:'#06b6d4', sourceLabel:'FM Stream' },
+    { id:'fm_hiphop',     name:'Hip-Hop Radio (laut.fm)',  desc:'Hip-hop, rap & trap 24/7',              url:'https://stream.laut.fm/hiphop',       genre:'Hip-Hop', country:'DE', color:'#f59e0b', sourceLabel:'FM Stream' },
+    { id:'fm_rnb',        name:'R&B Radio (laut.fm)',      desc:'R&b & soul hits around the clock',      url:'https://stream.laut.fm/rnb',          genre:'Hip-Hop', country:'DE', color:'#ec4899', sourceLabel:'FM Stream' },
+    { id:'fm_rap',        name:'Rap Radio (laut.fm)',      desc:'Rap & urban beats 24/7',                url:'https://stream.laut.fm/rap',          genre:'Hip-Hop', country:'DE', color:'#f97316', sourceLabel:'FM Stream' },
   ];
 
   // ── Shoutcast curated popular stations (global, community-based)
@@ -3546,6 +3756,23 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     { id:'sc_wfmu', name:'WFMU Free Music Archive', desc:'Freeform radio from Jersey City NJ', url:'https://stream.wfmu.org/freeform/high/128kbps.mp3', genre:'Eclectic', country:'US', color:'#4b5563', sourceLabel:'Shoutcast' },
     { id:'sc_bbc_6music', name:'BBC Radio 6 Music', desc:'Alternative & indie from BBC', url:'https://stream.live.vc.bbcmedia.co.uk/bbc_6music', genre:'Indie', country:'GB', color:'#e11d48', sourceLabel:'Shoutcast' },
     { id:'sc_fip_fr', name:'FIP Radio France', desc:'Eclectic mix of world music & jazz', url:'https://icecast.radiofrance.fr/fip-midfi.mp3', genre:'World', country:'FR', color:'#3b82f6', sourceLabel:'Shoutcast' },
+    { id:'sc_lofi_girl', name:'Lofi Girl Radio', desc:'Lo-Fi hip-hop beats to relax/study to', url:'https://stream.laut.fm/lofi', genre:'Lo-Fi', country:'FR', color:'#8b5cf6', sourceLabel:'Shoutcast' },
+    { id:'sc_jazz_24', name:'Jazz24', desc:'Commercial-free jazz 24/7 — listener-supported', url:'https://live.amperwave.net/direct/ppm-jazz24aac-ibc1', genre:'Jazz', country:'US', color:'#7c3aed', sourceLabel:'Shoutcast' },
+    { id:'sc_soma_pop', name:'SomaFM PopTron', desc:'Electropop & indie electronic pop', url:'https://ice1.somafm.com/poptron-128-mp3', genre:'Pop', country:'US', color:'#3b82f6', sourceLabel:'Shoutcast' },
+    { id:'sc_soma_folk', name:'SomaFM Folk Forward', desc:'Indie folk, roots, Americana', url:'https://ice1.somafm.com/folkfwd-128-mp3', genre:'Folk', country:'US', color:'#a16207', sourceLabel:'Shoutcast' },
+    { id:'sc_soma_cliqhop', name:'SomaFM Cliqhop IDM', desc:'IDM & electronic blips 24/7', url:'https://ice1.somafm.com/cliqhop-128-mp3', genre:'Electronic', country:'US', color:'#06b6d4', sourceLabel:'Shoutcast' },
+    { id:'sc_soma_indie', name:'SomaFM Indie Pop Rocks', desc:'Indie pop & alternative 24/7', url:'https://ice1.somafm.com/indiepop-128-mp3', genre:'Indie', country:'US', color:'#10b981', sourceLabel:'Shoutcast' },
+    { id:'sc_soma_world', name:'SomaFM DEF CON Radio', desc:'Electronic & world beats', url:'https://ice1.somafm.com/defcon-128-mp3', genre:'World', country:'US', color:'#f59e0b', sourceLabel:'Shoutcast' },
+    { id:'sc_religi_id', name:'Radio Rodja 756 AM', desc:'Radio Islam Indonesia — murottal & kajian', url:'https://stream.radiorodja.com/rodja', genre:'Islamic', country:'ID', color:'#10b981', sourceLabel:'Shoutcast' },
+    { id:'sc_religi2_id', name:'Radio Nurul Iman', desc:'Siaran Islam 24/7 Indonesia', url:'https://stream.laut.fm/islamicmusic', genre:'Islamic', country:'ID', color:'#059669', sourceLabel:'Shoutcast' },
+    { id:'sc_dangdut_id', name:'Dangdut Mania Radio', desc:'Dangdut & koplo hits Indonesia 24/7', url:'https://stream.laut.fm/dangdut', genre:'Dangdut', country:'ID', color:'#f97316', sourceLabel:'Shoutcast' },
+    { id:'sc_lofi_hip',   name:'Lofi Hip Hop Radio',      desc:'24/7 lo-fi hip hop beats to relax/study', url:'https://streams.ilovemusic.de/iloveradio17.mp3',        genre:'Lo-Fi',   country:'DE', color:'#22d3ee', sourceLabel:'Shoutcast' },
+    { id:'sc_chillhop2',  name:'Chillhop Music',          desc:'Chillhop & lo-fi grooves nonstop',        url:'https://stream.laut.fm/chillhop',                      genre:'Lo-Fi',   country:'DE', color:'#06b6d4', sourceLabel:'Shoutcast' },
+    { id:'sc_lofi_beats', name:'Lo-Fi Beats 24/7',        desc:'Smooth lo-fi beats all day long',         url:'https://ice1.somafm.com/cliqhop-128-mp3',              genre:'Lo-Fi',   country:'US', color:'#a78bfa', sourceLabel:'Shoutcast' },
+    { id:'sc_hiphop2',    name:'Hip-Hop Nation',          desc:'Hip-hop & rap hits worldwide',            url:'https://stream.laut.fm/hiphop',                        genre:'Hip-Hop', country:'US', color:'#f59e0b', sourceLabel:'Shoutcast' },
+    { id:'sc_trap',       name:'Trap Nation Radio',       desc:'Trap, drill & urban beats 24/7',          url:'https://stream.laut.fm/rap',                           genre:'Hip-Hop', country:'US', color:'#ef4444', sourceLabel:'Shoutcast' },
+    { id:'sc_rnb2',       name:'R&B Soul Station',        desc:'Classic & contemporary r&b soul',         url:'https://stream.laut.fm/rnb',                           genre:'Hip-Hop', country:'US', color:'#ec4899', sourceLabel:'Shoutcast' },
+    { id:'sc_illstreet2', name:'SomaFM Ill Street Blues', desc:'Grittier hip-hop, soul & r&b',            url:'https://ice1.somafm.com/illstreet-128-mp3',            genre:'Hip-Hop', country:'US', color:'#f97316', sourceLabel:'Shoutcast' },
   ];
 
   // ── Peta keyword genre → bucket
@@ -3576,7 +3803,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
 
     const ntsRelevant = ['electronic', 'world', 'hiphop', 'folk', 'pop', 'rock'];
     const nts = ntsRelevant.includes(bucket)
-      ? NTS_STREAMS.map(s => ({ ...s, sourceLabel: 'NTS', stationuuid: s.id }))
+      ? NTS_STREAMS.map(s => ({ ...s, sourceLabel: 'NTS Radio', stationuuid: s.id }))
       : [];
 
     const radioParadise = RADIO_PARADISE_CHANNELS
@@ -3669,6 +3896,8 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       radioReconnectCount.current += 1;
       const a = audioRef.current;
       if (!a || !trackObj.isRadio) return;
+      // Jangan restart jika user sudah pause manual (playing state false)
+      if (!playingRef.current) return;
       const src = trackObj.src;
       if (src.includes('.m3u8')) {
         attachHls(a, src, () => { a.play().catch(() => {}); });
@@ -3685,7 +3914,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
 
   // ── Universal play function for any external radio station
   const playRbStation = (station) => {
-    const streamUrl = radioUrl(station.url_resolved || station.url);
+    const streamUrl = radioUrl(station.url_resolved || station.url, customDnsRef.current);
     stopAllMedia('radio');
     const stationColor = station.color || '#f59e0b';
     const radioTrackObj = {
@@ -3796,21 +4025,90 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
           }
           srcResults = somaData.filter(ch => !sq || ch.title?.toLowerCase().includes(sq) || ch.genre?.toLowerCase().includes(sq) || ch.description?.toLowerCase().includes(sq))
             .map(ch => ({ id:`soma_${ch.id}`, name:ch.title, url:ch.plls?.[0]?.url||`https://ice1.somafm.com/${ch.id}-128-mp3`, country:'US', tags:ch.genre, favicon:ch.image, sourceLabel:'SomaFM', color:'#10b981', description:ch.description }));
+          // If SomaFM API returned nothing (CORS fail), augment via RadioBrowser
+          if (srcResults.length < 5) {
+            const rbAug = await fetch(`${base}/json/stations/search?name=somafm&limit=40&hidebroken=true&order=votes&reverse=true`).then(r=>r.json()).catch(()=>[]);
+            rbAug.filter(s=>s.url_resolved||s.url).slice(0, 30).forEach(s => srcResults.push({ ...s, sourceLabel:'SomaFM', color:'#10b981' }));
+          }
         } else if (src === 'NTS') {
-          srcResults = NTS_STREAMS.filter(s => !sq || s.name.toLowerCase().includes(sq) || s.genre?.toLowerCase().includes(sq))
-            .map(s => ({ ...s, sourceLabel:'NTS Radio', country:'UK' }));
+          // Fetch langsung dari NTS Live API via Vercel proxy (/api/nts)
+          try {
+            const ntsData = await fetch(`/api/radio?source=nts&limit=200`).then(r=>r.json()).catch(()=>null);
+            const shows = ntsData?.results || [];
+            const mapped = shows
+              .filter(show => !sq ||
+                (show.name||'').toLowerCase().includes(sq) ||
+                (show.description||'').toLowerCase().includes(sq) ||
+                (show.genres||[]).some(g=>(g.value||g).toLowerCase().includes(sq))
+              )
+              .map(show => {
+                const streamEp = show.episodes?.find(ep => ep.embeds?.audio?.url);
+                const streamUrl = streamEp?.embeds?.audio?.url || null;
+                const genres = (show.genres||[]).map(g=>g.value||g).join(', ');
+                return {
+                  id:          `nts_show_${show.slug||show.id}`,
+                  name:        show.name,
+                  url:         streamUrl,
+                  genre:       genres,
+                  description: show.description || '',
+                  favicon:     show.media?.background_large?.url || show.media?.thumbnail?.url || '',
+                  country:     'UK',
+                  sourceLabel: 'NTS Radio',
+                  color:       '#ff4500',
+                  stationuuid: `nts_show_${show.slug||show.id}`,
+                };
+              })
+              .filter(s => s.url);
+            if (mapped.length > 0) srcResults = mapped;
+          } catch {}
+          // Fallback ke NTS_STREAMS hardcode jika API gagal
+          if (srcResults.length === 0) {
+            srcResults = NTS_STREAMS.filter(s => !sq || s.name.toLowerCase().includes(sq) || s.genre?.toLowerCase().includes(sq))
+              .map(s => ({ ...s, sourceLabel:'NTS Radio', country:'UK', stationuuid:s.id }));
+          }
         } else if (src === 'Radio Paradise') {
+          // Radio Paradise hanya punya 4 channel resmi, tidak ada API publik lain
           srcResults = RADIO_PARADISE_CHANNELS.filter(s => !sq || s.name.toLowerCase().includes(sq) || s.genre?.toLowerCase().includes(sq))
             .map(s => ({ ...s, sourceLabel:'Radio Paradise', stationuuid:s.id, favicon:s.image }));
         } else if (src === 'Icecast') {
-          srcResults = ICECAST_CURATED.filter(s => !sq || s.name.toLowerCase().includes(sq) || s.genre?.toLowerCase().includes(sq))
-            .map(s => ({ ...s, sourceLabel:'Icecast' }));
+          // Fetch dari Icecast Yellow Pages (dir.xiph.org) via Vercel serverless proxy
+          try {
+            const iceUrl = sq ? `/api/radio?source=icecast&search=${encodeURIComponent(sq)}&limit=100` : '/api/radio?source=icecast&limit=100';
+            const iceData = await fetch(iceUrl).then(r=>r.json()).catch(()=>null);
+            const mapped = (iceData?.stations || []).filter(s => s.url);
+            if (mapped.length > 0) srcResults = mapped;
+          } catch {}
+          // Fallback ke curated list jika proxy gagal
+          if (srcResults.length === 0) {
+            srcResults = ICECAST_CURATED.filter(s => !sq || s.name.toLowerCase().includes(sq) || s.genre?.toLowerCase().includes(sq))
+              .map(s => ({ ...s, sourceLabel:'Icecast', stationuuid:s.id }));
+          }
         } else if (src === 'Shoutcast') {
-          srcResults = SHOUTCAST_CURATED.filter(s => !sq || s.name.toLowerCase().includes(sq) || s.genre?.toLowerCase().includes(sq))
-            .map(s => ({ ...s, stationuuid:s.id }));
+          // SHOUTcast tidak punya open API — gunakan laut.fm (800+ stasiun internet)
+          try {
+            const lautUrl = sq ? `/api/radio?source=lautfm&search=${encodeURIComponent(sq)}&per_page=80` : '/api/radio?source=lautfm&per_page=80';
+            const lautData = await fetch(lautUrl).then(r=>r.json()).catch(()=>null);
+            const mapped = (lautData?.stations || []).filter(s => s.url)
+              .map(s => ({ ...s, sourceLabel:'Shoutcast', color:'#e11d48', stationuuid:s.id }));
+            if (mapped.length > 0) srcResults = mapped;
+          } catch {}
+          if (srcResults.length === 0) {
+            srcResults = SHOUTCAST_CURATED.filter(s => !sq || s.name.toLowerCase().includes(sq) || s.genre?.toLowerCase().includes(sq))
+              .map(s => ({ ...s, stationuuid:s.id }));
+          }
         } else if (src === 'FM Stream') {
-          srcResults = FMSTREAM_CURATED.filter(s => !sq || s.name.toLowerCase().includes(sq) || s.genre?.toLowerCase().includes(sq))
-            .map(s => ({ ...s, stationuuid:s.id }));
+          // Fetch dari laut.fm API (800+ stasiun)
+          try {
+            const lautUrl = sq ? `/api/radio?source=lautfm&genre=${encodeURIComponent(sq)}&per_page=80` : '/api/radio?source=lautfm&per_page=80';
+            const lautData = await fetch(lautUrl).then(r=>r.json()).catch(()=>null);
+            const mapped = (lautData?.stations || []).filter(s => s.url)
+              .map(s => ({ ...s, sourceLabel:'FM Stream', color:'#06b6d4', stationuuid:s.id }));
+            if (mapped.length > 0) srcResults = mapped;
+          } catch {}
+          if (srcResults.length === 0) {
+            srcResults = FMSTREAM_CURATED.filter(s => !sq || s.name.toLowerCase().includes(sq) || s.genre?.toLowerCase().includes(sq))
+              .map(s => ({ ...s, stationuuid:s.id }));
+          }
         } else if (src === 'RadioBrowser') {
           const url = sq
             ? `${base}/json/stations/search?name=${encodeURIComponent(sq)}&limit=40&hidebroken=true&order=votes&reverse=true`
@@ -3929,7 +4227,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     }).slice(0, 6).map(s => ({ ...s, sourceLabel: 'Icecast', stationuuid: null }));
     results.push(...iceMatched);
     // NTS — include when genre is relevant or no genre filter
-    const ntsGenreBuckets = ['electronic', 'world', 'hiphop', 'folk', 'pop', 'rock'];
+    const ntsGenreBuckets = ['electronic', 'world', 'hiphop', 'folk', 'pop', 'rock', 'ambient', 'lounge', 'jazz', 'lofi', 'reggae'];
     const ntsOk = !genreKeywords || (bucket && ntsGenreBuckets.includes(bucket));
     if (ntsOk) {
       const ntsMatched = NTS_STREAMS.filter(s =>
@@ -4146,6 +4444,19 @@ Format exactly:
 
   // ── PLAY
   const play = useCallback(async (t) => {
+    // ── Handle AI-generated songs: navigate to YT search instead of playing empty src
+    if (t._aiGenerated) {
+      const q = t._searchQuery || `${t.title} ${t.artist}`;
+      setUnifiedPlatform('ytmusic');
+      setUnifiedQuery(q);
+      setYtQuery(p => ({ ...p, ytmusic: q }));
+      setTab('stream');
+      setTimeout(() => {
+        searchYouTube('ytmusic', q);
+        ytMusicSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 300);
+      return;
+    }
     // ── Handle fav tracks from SC / Spotify / Radio
     if (t.type === 'soundcloud') {
       stopAllMedia('embed');
@@ -4395,7 +4706,9 @@ Format exactly:
       : [...builtinSongs, ...customSongs, ...ytSongs];
     if (repeatRef.current==='one') {
       const a = audioRef.current; if (!a) return;
+      const savedSrc = a.src;
       a.load();
+      a.src = savedSrc; // re-assign agar canplay selalu fire
       const doPlay = () => { a.currentTime = 0; a.play().catch(()=>{}); };
       if (a.readyState >= 3) { doPlay(); } else { a.addEventListener('canplay', doPlay, { once: true }); }
       return;
@@ -4440,11 +4753,16 @@ Format exactly:
   // ── SEEK
   const seekByPct = useCallback((p) => {
     const a = audioRef.current; if (!a) return;
-    const dur = (isFinite(a.duration) && a.duration > 0) ? a.duration : duration;
+    // Selalu ambil duration langsung dari audio element — hindari stale closure
+    // (terjadi saat shuffle ganti lagu: duration state belum update tapi seek sudah dipanggil)
+    const dur = (isFinite(a.duration) && a.duration > 0)
+      ? a.duration
+      : (isFinite(duration) && duration > 0 ? duration : 0);
     if (!dur) return;
-    a.currentTime = p * dur;
-    setProgress(p * dur);
-    if (dur > 0 && dur !== duration) setDuration(dur);
+    const t = p * dur;
+    a.currentTime = t;
+    setProgress(t);
+    if (dur !== duration) setDuration(dur);
   }, [duration]);
 
   // ── RADIO NEXT / PREV (navigate within same genre)
@@ -4811,18 +5129,62 @@ Format exactly:
     setCL(false);
   };
   // ── Shazam: rekam audio → kenali lagu ────────────────────────────────────
+  const shazamCancelledRef = useRef(false); // flag untuk abort flow saat cancel
+  const shazamSourceRef = useRef('mikrofon');    // 'mikrofon' | 'audio device'
+
   const startShazam = async () => {
     if (shazamListening || shazamLoading) return;
 
     let stream;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      setMessages(p => [...p, {
-        from: 'ai',
-        text: '🎙️ Tidak bisa mengakses mikrofon. Pastikan kamu mengizinkan akses mikrofon di browser ya!',
-      }]);
-      return;
+    let sourceLabel = 'mikrofon'; // untuk pesan UI
+
+    // Coba 1: tangkap audio sistem (tab/app lain) via getDisplayMedia
+    // Didukung di Chrome/Edge desktop. Akan muncul dialog pilih tab/window/screen.
+    // Firefox dan Safari belum mendukung audio track dari getDisplayMedia.
+    const supportsDisplayAudio = typeof navigator.mediaDevices?.getDisplayMedia === 'function';
+
+    if (supportsDisplayAudio) {
+      try {
+        const displayStream = await navigator.mediaDevices.getDisplayMedia({
+          video: false,          // tidak perlu video, hanya audio
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            sampleRate: 44100,
+          },
+        });
+
+        // getDisplayMedia sukses tapi belum tentu mengandung audio track
+        // (user bisa saja memilih tab tanpa "Share tab audio" dicentang)
+        const audioTracks = displayStream.getAudioTracks();
+        if (audioTracks.length > 0) {
+          stream = displayStream;
+          sourceLabel = 'audio device';
+        } else {
+          // Tidak ada audio track → hentikan stream kosong, lanjut ke fallback mikrofon
+          displayStream.getTracks().forEach(t => t.stop());
+        }
+      } catch (err) {
+        // User tekan Cancel di dialog → jangan lanjut sama sekali
+        if (err.name === 'NotAllowedError' || err.name === 'AbortError') {
+          return;
+        }
+        // Error lain (NotSupportedError, dll) → lanjut ke fallback mikrofon
+      }
+    }
+
+    // Coba 2: fallback ke mikrofon jika system audio tidak tersedia/gagal
+    if (!stream) {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        sourceLabel = 'mikrofon';
+      } catch {
+        setMessages(p => [...p, {
+          from: 'ai',
+          text: '🎙️ Tidak bisa mengakses mikrofon. Pastikan kamu mengizinkan akses mikrofon di browser ya!',
+        }]);
+        return;
+      }
     }
 
     // Pilih format yang didukung browser
@@ -4831,24 +5193,42 @@ Format exactly:
 
     const recorder = new MediaRecorder(stream, { mimeType });
     shazamMediaRef.current = recorder;
+    shazamCancelledRef.current = false; // reset flag cancel
+    shazamSourceRef.current = sourceLabel;   // simpan sumber untuk UI
     const chunks = [];
     recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
 
+    // FIX Bug 1: pasang onstop SEBELUM recorder.stop() dipanggil,
+    // agar tidak ada race condition di browser yang fire onstop secara synchronous.
+    const stoppedPromise = new Promise(resolve => { recorder.onstop = resolve; });
+
     setShazamListening(true);
-    setMessages(p => [...p, { from: 'user', text: '🎙️ Mendengarkan musik…' }]);
+    setMessages(p => [...p, { from: 'user', text: sourceLabel === 'audio device' ? '🖥️ Mendengarkan audio device…' : '🎙️ Mendengarkan musik…' }]);
 
     recorder.start();
 
     // Rekam selama 8 detik
     await new Promise(resolve => setTimeout(resolve, 8000));
 
-    recorder.stop();
+    // Hentikan stream mikrofon (FIX Bug 2: juga dilakukan di sini, bukan hanya di cancel)
     stream.getTracks().forEach(t => t.stop());
+    if (recorder.state !== 'inactive') recorder.stop();
     setShazamListening(false);
+
+    // Cek apakah user sudah cancel selama 8 detik merekam (FIX Bug 3)
+    if (shazamCancelledRef.current) return;
+
     setShazamLoading(true);
 
-    // Tunggu recorder benar-benar selesai
-    await new Promise(resolve => { recorder.onstop = resolve; });
+    // Tunggu recorder benar-benar selesai (promise sudah disiapkan sebelum stop)
+    await stoppedPromise;
+
+    // Cek cancel sekali lagi setelah onstop (FIX Bug 3)
+    if (shazamCancelledRef.current) {
+      setShazamLoading(false);
+      shazamMediaRef.current = null;
+      return;
+    }
 
     const blob = new Blob(chunks, { type: mimeType });
 
@@ -4860,6 +5240,13 @@ Format exactly:
       reader.readAsDataURL(blob);
     });
 
+    // Cek cancel sekali lagi sebelum kirim ke API (FIX Bug 3)
+    if (shazamCancelledRef.current) {
+      setShazamLoading(false);
+      shazamMediaRef.current = null;
+      return;
+    }
+
     try {
       const resp = await fetch('/api/shazam', {
         method:  'POST',
@@ -4867,6 +5254,8 @@ Format exactly:
         body:    JSON.stringify({ audio: base64, format: ext }),
       });
       const data = await resp.json();
+
+      if (shazamCancelledRef.current) return; // cancel saat fetch berlangsung
 
       if (data.success) {
         const { title, artist, album, source, extra } = data;
@@ -4888,10 +5277,12 @@ Format exactly:
         }]);
       }
     } catch {
-      setMessages(p => [...p, {
-        from: 'ai',
-        text: '⚠️ Koneksi ke server pengenal lagu gagal. Coba lagi nanti.',
-      }]);
+      if (!shazamCancelledRef.current) {
+        setMessages(p => [...p, {
+          from: 'ai',
+          text: '⚠️ Koneksi ke server pengenal lagu gagal. Coba lagi nanti.',
+        }]);
+      }
     }
 
     setShazamLoading(false);
@@ -4900,8 +5291,17 @@ Format exactly:
 
   // Batalkan rekaman jika sedang berlangsung
   const cancelShazam = () => {
+    shazamCancelledRef.current = true; // FIX Bug 3: tandai flow sebagai dibatalkan
     if (shazamMediaRef.current) {
-      try { shazamMediaRef.current.stop(); } catch {}
+      try {
+        // FIX Bug 2: hentikan semua track mikrofon agar indikator browser mati
+        if (shazamMediaRef.current.stream) {
+          shazamMediaRef.current.stream.getTracks().forEach(t => t.stop());
+        }
+        if (shazamMediaRef.current.state !== 'inactive') {
+          shazamMediaRef.current.stop();
+        }
+      } catch {}
       shazamMediaRef.current = null;
     }
     setShazamListening(false);
@@ -4979,6 +5379,49 @@ Format exactly:
     if (activePl===id) setActivePl(null);
   }, [activePl]);
 
+  // ── Buka modal simpan playlist dari AI generator ─────────────────────────
+  // Playlist AI tidak punya songId di library — lagu perlu ditambah ke library dulu via YT search
+  // Untuk sekarang: buka PlaylistModal (buat baru) atau AddToModal (tambah ke existing)
+  // dengan nama dan daftar query lagu sudah ter-isi sebagai metadata virtual
+  const openSaveAIPlaylist = useCallback((playlistItems, suggestedName) => {
+    // Simpan lagu AI sebagai ytSongs virtual dengan id deterministik
+    const newSongIds = playlistItems.map(m => {
+      const vid = 'ai_' + (m.title + '_' + m.artist).replace(/[^a-z0-9]/gi, '_').toLowerCase().slice(0, 40);
+      setYtSongs(prev => {
+        if (prev.find(s => s.id === vid)) return prev;
+        return [{
+          id: vid, title: m.title, artist: m.artist, album: '',
+          cover: `https://ui-avatars.com/api/?name=${encodeURIComponent(m.title)}&background=6366f1&color=fff&size=200`,
+          src: null, color: '#6366f1', bg: 'rgba(99,102,241,0.15)', mood: m.reason || '',
+          _aiGenerated: true, _searchQuery: `${m.title} ${m.artist}`,
+        }, ...prev];
+      });
+      return vid;
+    });
+    setPlPrefillName(suggestedName);
+    setPlPrefillIds(newSongIds);
+    setEditingPl(null);
+    setShowPlModal(true);
+  }, []);
+
+  const openAddToExistingPlaylist = useCallback((playlistItems) => {
+    const newSongIds = playlistItems.map(m => {
+      const vid = 'ai_' + (m.title + '_' + m.artist).replace(/[^a-z0-9]/gi, '_').toLowerCase().slice(0, 40);
+      setYtSongs(prev => {
+        if (prev.find(s => s.id === vid)) return prev;
+        return [{
+          id: vid, title: m.title, artist: m.artist, album: '',
+          cover: `https://ui-avatars.com/api/?name=${encodeURIComponent(m.title)}&background=6366f1&color=fff&size=200`,
+          src: null, color: '#6366f1', bg: 'rgba(99,102,241,0.15)', mood: m.reason || '',
+          _aiGenerated: true, _searchQuery: `${m.title} ${m.artist}`,
+        }, ...prev];
+      });
+      return vid;
+    });
+    setAddToSongIds(newSongIds);
+    setShowAddToModal(true);
+  }, []);
+
   const addToPlaylist = useCallback((plId, songId) => {
     setPlaylists(p => p.map(pl => pl.id===plId && !pl.songIds.includes(songId)
       ? { ...pl, songIds:[...pl.songIds, songId] } : pl));
@@ -4989,13 +5432,11 @@ Format exactly:
       const updated = p.map(pl => pl.id===plId
         ? { ...pl, songIds: pl.songIds.filter(id=>id!==songId) } : pl);
       if (plId === 'pl_fav') {
-        // Hapus tanda fav dan dari semua koleksi + playlist lain
+        // Hapus tanda fav saja — jangan hapus dari customSongs/ytSongs
+        // agar lagu tetap muncul di "Semua Lagu"
         setLiked(l => { const n = { ...l }; delete n[songId]; return n; });
         setFavSongs(p => p.filter(s => s.id !== songId));
-        setCustomSongs(p => p.filter(s => s.id !== songId));
-        setYtSongs(p => p.filter(s => s.id !== songId));
-        // Hapus dari semua playlist lain juga
-        return updated.map(pl => ({ ...pl, songIds: pl.songIds.filter(id => id !== songId) }));
+        return updated;
       }
       return updated;
     });
@@ -5015,6 +5456,29 @@ Format exactly:
           const u=await (await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{ headers:{ Authorization:`Bearer ${tok}` } })).json();
           setGoogleUser(u); localStorage.setItem('sn_google_user', JSON.stringify(u));
         } catch(e) { setDriveError('Gagal ambil info user: '+e.message); }
+        // Load playlists dari cloud lalu merge dengan lokal
+        try {
+          const cloudPls = await driveLoadPlaylists(tok);
+          if (cloudPls && Array.isArray(cloudPls)) {
+            setPlaylists(local => {
+              // Merge: gabungkan playlist lokal dan cloud, cloud menang untuk data non-locked
+              const merged = [...local];
+              for (const cp of cloudPls) {
+                const idx = merged.findIndex(p => p.id === cp.id);
+                if (idx >= 0) {
+                  // Merge songIds: gabungkan tanpa duplikat
+                  if (!merged[idx].locked) {
+                    const combined = [...new Set([...merged[idx].songIds, ...cp.songIds])];
+                    merged[idx] = { ...cp, songIds: combined };
+                  }
+                } else {
+                  merged.push(cp);
+                }
+              }
+              return merged;
+            });
+          }
+        } catch {}
         // Gunakan loadDriveSongs agar error handling konsisten
         await loadDriveSongs(tok, true);
       }
@@ -5428,7 +5892,7 @@ Format exactly:
                               artist: station.city + ' · Live Radio',
                               album: 'Live Radio',
                               cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
-                              src: radioUrl(station.url),
+                              src: radioUrl(station.url, customDns),
                               color: stationColor,
                               bg: `rgba(245,158,11,0.15)`,
                               mood: 'live, radio',
@@ -6657,7 +7121,7 @@ Format exactly:
                               artist: station.city + ' · Live Radio',
                               album: 'Live Radio',
                               cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
-                              src: radioUrl(station.url),
+                              src: radioUrl(station.url, customDns),
                               color: stationColor,
                               bg: `rgba(245,158,11,0.15)`,
                               mood: 'live, radio',
@@ -6745,24 +7209,27 @@ Format exactly:
                                   <div className="scrollbar-hide" style={{ display:'flex', gap:5, overflowX:'auto', marginBottom:10, paddingBottom:2 }}>
                                     {[
                                       { label:'🔥 Top',        act: () => { setRbSelectedTag(null); setRbQuery(''); rbSearch('',null); multiSearch('',null); }, isActive: rbSelectedTag===null&&!rbQuery, color:'#f59e0b' },
-                                      { label:'🎵 Pop',        act: () => { setRbSelectedTag('pop'); setRbQuery(''); rbSearch('','pop'); multiSearch('','pop'); }, isActive: rbSelectedTag==='pop', color:'#3b82f6' },
-                                      { label:'🎸 Rock',       act: () => { setRbSelectedTag('rock'); setRbQuery(''); rbSearch('','rock'); multiSearch('','rock'); }, isActive: rbSelectedTag==='rock', color:'#ef4444' },
-                                      { label:'🎷 Jazz',       act: () => { setRbSelectedTag('jazz'); setRbQuery(''); rbSearch('','jazz'); multiSearch('','jazz'); }, isActive: rbSelectedTag==='jazz', color:'#7c3aed' },
                                       { label:'⚡ Electronic', act: () => { setRbSelectedTag('electronic'); setRbQuery(''); rbSearch('','electronic'); multiSearch('','electronic'); }, isActive: rbSelectedTag==='electronic', color:'#06b6d4' },
                                       { label:'🎤 Hip-Hop',    act: () => { setRbSelectedTag('hip-hop'); setRbQuery(''); rbSearch('','hip-hop'); multiSearch('','hip-hop'); }, isActive: rbSelectedTag==='hip-hop', color:'#f59e0b' },
-                                      { label:'🏡 Ambient',    act: () => { setRbSelectedTag('ambient'); setRbQuery(''); rbSearch('','ambient'); multiSearch('','ambient'); }, isActive: rbSelectedTag==='ambient', color:'#8b5cf6' },
                                       { label:'🎧 Lounge',     act: () => { setRbSelectedTag('lounge'); setRbQuery(''); rbSearch('','lounge'); multiSearch('','lounge'); }, isActive: rbSelectedTag==='lounge', color:'#ec4899' },
-                                      { label:'🌊 Lo-Fi',      act: () => { setRbSelectedTag('lofi'); setRbQuery(''); rbSearch('','lofi'); multiSearch('','lofi'); }, isActive: rbSelectedTag==='lofi', color:'#22d3ee' },
+                                      { label:'🏡 Ambient',    act: () => { setRbSelectedTag('ambient'); setRbQuery(''); rbSearch('','ambient'); multiSearch('','ambient'); }, isActive: rbSelectedTag==='ambient', color:'#8b5cf6' },
+                                      { label:'🎷 Jazz',       act: () => { setRbSelectedTag('jazz'); setRbQuery(''); rbSearch('','jazz'); multiSearch('','jazz'); }, isActive: rbSelectedTag==='jazz', color:'#7c3aed' },
                                       { label:'🌍 World',      act: () => { setRbSelectedTag('world'); setRbQuery(''); rbSearch('','world'); multiSearch('','world'); }, isActive: rbSelectedTag==='world', color:'#f97316' },
-                                      { label:'🕌 Religi',     act: () => { setRbSelectedTag('islamic'); setRbQuery(''); rbSearch('','islamic'); multiSearch('','islamic'); }, isActive: rbSelectedTag==='islamic', color:'#10b981' },
-                                      { label:'🥁 Dangdut',    act: () => { setRbSelectedTag('dangdut'); setRbQuery(''); rbSearch('','dangdut'); multiSearch('','dangdut'); }, isActive: rbSelectedTag==='dangdut', color:'#f97316' },
-                                      { label:'😴 Tidur',      act: () => { setRbSelectedTag(null); setRbQuery('tidur'); setRbResults([]); multiSearch('tidur',null); }, isActive: rbQuery==='tidur', color:'#8b5cf6' },
-                                      { label:'🧘 Fokus',      act: () => { setRbSelectedTag(null); setRbQuery('fokus'); setRbResults([]); multiSearch('fokus',null); }, isActive: rbQuery==='fokus', color:'#06b6d4' },
-                                      { label:'💪 Semangat',   act: () => { setRbSelectedTag(null); setRbQuery('semangat'); setRbResults([]); multiSearch('semangat',null); }, isActive: rbQuery==='semangat', color:'#f59e0b' },
-                                      { label:'😢 Galau',      act: () => { setRbSelectedTag(null); setRbQuery('galau'); setRbResults([]); multiSearch('galau',null); }, isActive: rbQuery==='galau', color:'#3b82f6' },
-                                      { label:'🌙 Malam',      act: () => { setRbSelectedTag(null); setRbQuery('malam'); setRbResults([]); multiSearch('malam',null); }, isActive: rbQuery==='malam', color:'#a78bfa' },
+                                      { label:'🎸 Rock',       act: () => { setRbSelectedTag('rock'); setRbQuery(''); rbSearch('','rock'); multiSearch('','rock'); }, isActive: rbSelectedTag==='rock', color:'#ef4444' },
+                                      { label:'🎵 Pop',        act: () => { setRbSelectedTag('pop'); setRbQuery(''); rbSearch('','pop'); multiSearch('','pop'); }, isActive: rbSelectedTag==='pop', color:'#3b82f6' },
+                                      { label:'🌊 Lo-Fi',      act: () => { setRbSelectedTag('lofi'); setRbQuery(''); rbSearch('','lofi'); multiSearch('','lofi'); }, isActive: rbSelectedTag==='lofi', color:'#22d3ee' },
+                                      { label:'😌 Santai',     act: () => { setRbSelectedTag(null); setRbQuery('santai'); setRbResults([]); rbSearch('santai',null); multiSearch('santai',null); }, isActive: rbQuery==='santai', color:'#6366f1' },
+                                      { label:'🎯 Fokus',      act: () => { setRbSelectedTag(null); setRbQuery('fokus'); setRbResults([]); rbSearch('fokus',null); multiSearch('fokus',null); }, isActive: rbQuery==='fokus', color:'#06b6d4' },
+                                      { label:'💪 Semangat',   act: () => { setRbSelectedTag(null); setRbQuery('semangat'); setRbResults([]); rbSearch('semangat',null); multiSearch('semangat',null); }, isActive: rbQuery==='semangat', color:'#f59e0b' },
+                                      { label:'😴 Tidur',      act: () => { setRbSelectedTag(null); setRbQuery('tidur'); setRbResults([]); rbSearch('tidur',null); multiSearch('tidur',null); }, isActive: rbQuery==='tidur', color:'#8b5cf6' },
+                                      { label:'🌧️ Me Time',    act: () => { setRbSelectedTag(null); setRbQuery('metime'); setRbResults([]); rbSearch('metime',null); multiSearch('metime',null); }, isActive: rbQuery==='metime', color:'#64748b' },
+                                      { label:'🎉 Hepi',       act: () => { setRbSelectedTag(null); setRbQuery('hepi'); setRbResults([]); rbSearch('hepi',null); multiSearch('hepi',null); }, isActive: rbQuery==='hepi', color:'#f59e0b' },
+                                      { label:'🌅 Pagi',       act: () => { setRbSelectedTag(null); setRbQuery('pagi'); setRbResults([]); rbSearch('pagi',null); multiSearch('pagi',null); }, isActive: rbQuery==='pagi', color:'#f97316' },
+                                      { label:'☀️ Siang',      act: () => { setRbSelectedTag(null); setRbQuery('siang'); setRbResults([]); rbSearch('siang',null); multiSearch('siang',null); }, isActive: rbQuery==='siang', color:'#eab308' },
+                                      { label:'🌙 Malam',      act: () => { setRbSelectedTag(null); setRbQuery('malam'); setRbResults([]); rbSearch('malam',null); multiSearch('malam',null); }, isActive: rbQuery==='malam', color:'#a78bfa' },
                                       { label:'● SomaFM',         act: () => { setRbSelectedTag(null); setRbQuery('somafm'); multiSearch('somafm',null); }, isActive: rbQuery==='somafm', color:'#10b981' },
                                       { label:'● NTS',             act: () => { setRbSelectedTag(null); setRbQuery('nts'); multiSearch('nts',null); }, isActive: rbQuery==='nts', color:'#ff4500' },
+                                      { label:'● Icecast',         act: () => { setRbSelectedTag(null); setRbQuery('icecast'); multiSearch('icecast',null); }, isActive: rbQuery==='icecast', color:'#6366f1' },
                                       { label:'● Radio Garden',    act: () => { setRbSelectedTag(null); setRbQuery('radio garden'); multiSearch('radio garden',null); }, isActive: rbQuery==='radio garden', color:'#22d3ee' },
                                       { label:'● Shoutcast',       act: () => { setRbSelectedTag(null); setRbQuery('shoutcast'); multiSearch('shoutcast',null); }, isActive: rbQuery==='shoutcast', color:'#e11d48' },
                                       { label:'● FM Stream',       act: () => { setRbSelectedTag(null); setRbQuery('fmstream'); multiSearch('fmstream',null); }, isActive: rbQuery==='fmstream', color:'#06b6d4' },
@@ -6791,12 +7258,13 @@ Format exactly:
                                   {/* Combined Results — multiResults first, then rbResults */}
                                   {!rbLoading && !multiLoading && (multiResults.length > 0 || rbResults.length > 0) && (() => {
                                     // Tentukan apakah pill source-specific aktif
-                                    const SOURCE_PILL_QUERIES = ['somafm','nts','radio garden','shoutcast','fmstream','radiobrowser','radio paradise'];
+                                    const SOURCE_PILL_QUERIES = ['somafm','nts','icecast','radio garden','shoutcast','fmstream','radiobrowser','radio paradise'];
                                     const activeSourcePill = SOURCE_PILL_QUERIES.includes(rbQuery);
                                     // Map query ke sourceLabel yang sesuai
                                     const SOURCE_LABEL_MAP = {
                                       'somafm': 'SomaFM',
                                       'nts': 'NTS Radio',
+                                      'icecast': 'Icecast',
                                       'radio garden': 'Radio Garden',
                                       'shoutcast': 'Shoutcast',
                                       'fmstream': 'FM Stream',
@@ -7081,7 +7549,7 @@ Format exactly:
                                                       artist: station.city + ' · Live Radio',
                                                       album: 'Live Radio',
                                                       cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
-                                                      src: radioUrl(station.url),
+                                                      src: radioUrl(station.url, customDns),
                                                       color: stationColor,
                                                       bg: `rgba(245,158,11,0.15)`,
                                                       mood: 'live, radio',
@@ -7147,7 +7615,7 @@ Format exactly:
                                               artist: station.city + ' · Live Radio',
                                               album: 'Live Radio',
                                               cover: station.favicon || 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
-                                              src: radioUrl(station.url),
+                                              src: radioUrl(station.url, customDns),
                                               color: stationColor,
                                               bg: `rgba(245,158,11,0.15)`,
                                               mood: 'live, radio',
@@ -7266,7 +7734,7 @@ Format exactly:
                                                     artist: station.city + ' · Radio Garden',
                                                     album: 'Live Radio',
                                                     cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
-                                                    src: radioUrl(station.url),
+                                                    src: radioUrl(station.url, customDns),
                                                     color: stationColor,
                                                     bg: 'rgba(34,211,238,0.12)',
                                                     mood: 'live, radio',
@@ -7378,6 +7846,29 @@ Format exactly:
                         <LogIn size={13}/>{t?.loginForSongs||'Google Drive'}
                       </button>
                     )}
+                    {/* ── Cloud Sync Button (hanya tampil jika login) */}
+                    {googleUser && (() => {
+                      const syncIdle    = plSyncStatus === 'idle';
+                      const syncSyncing = plSyncStatus === 'syncing';
+                      const syncDone    = plSyncStatus === 'synced';
+                      const syncError   = plSyncStatus === 'error';
+                      const syncColor   = syncError ? '#fca5a5' : syncDone ? '#6ee7b7' : '#93c5fd';
+                      const syncBg      = syncError ? 'rgba(239,68,68,0.12)' : syncDone ? 'rgba(16,185,129,0.1)' : 'rgba(59,130,246,0.1)';
+                      const syncBorder  = syncError ? 'rgba(239,68,68,0.35)' : syncDone ? 'rgba(16,185,129,0.3)' : 'rgba(59,130,246,0.25)';
+                      const syncLabel   = syncSyncing ? '⬆️ Sync...' : syncDone ? '✅ Tersimpan' : syncError ? '⚠️ Gagal' : '☁️ Sync';
+                      const syncTitle   = syncError ? plSyncError : plSyncedAt ? `Terakhir sync: ${new Date(plSyncedAt).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}` : 'Simpan playlist ke Google Drive';
+                      return (
+                        <button
+                          onClick={()=>{ if(!syncSyncing) syncPlaylistsToCloud(accessToken, playlists); }}
+                          disabled={syncSyncing}
+                          title={syncTitle}
+                          style={{ flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', gap:5, padding:'8px 12px', borderRadius:10, border:`1.5px solid ${syncBorder}`, background:syncBg, color:syncColor, fontSize:11, fontWeight:700, cursor:syncSyncing?'default':'pointer', whiteSpace:'nowrap', transition:'all 0.25s' }}
+                          onMouseEnter={e=>{ if(!syncSyncing) e.currentTarget.style.opacity='0.8'; }}
+                          onMouseLeave={e=>{ e.currentTarget.style.opacity='1'; }}>
+                          {syncLabel}
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -7402,7 +7893,7 @@ Format exactly:
                               <span style={{ fontWeight:700, fontSize:13, color:'white' }}>{t?.allSongs||'All Songs'}</span>
                               <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:999, background:'rgba(99,102,241,0.25)', color:'#a78bfa' }}>LOCAL</span>
                             </div>
-                            <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{allSongs.length} {t?.songsAvailable||'lagu tersedia'}</div>
+                            <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{allSongs.filter(s=>new Set(playlists.flatMap(pl=>pl.songIds)).has(s.id)).length} {t?.songsAvailable||'lagu tersedia'}</div>
                           </div>
                           <ChevronRight size={15} style={{color:'rgba(255,255,255,0.25)'}}/>
                         </div>
@@ -7620,7 +8111,13 @@ Format exactly:
                           )}
                         </div>
                       )}
-                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={play} isDrive isCached={cachedDriveIds.has(s.driveId)} onRemove={mySongsEditMode ? id=>{
+                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={play} isDrive isCached={cachedDriveIds.has(s.driveId)} onRemove={mySongsEditMode ? async id=>{
+                          const song = customSongs.find(x=>x.id===id);
+                          if (song?.driveId && tokenRef.current) {
+                            try {
+                              await fetch(`https://www.googleapis.com/drive/v3/files/${song.driveId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${tokenRef.current}` } });
+                            } catch(e) { console.error('Drive delete failed:', e); }
+                          }
                           setCustomSongs(p=>p.filter(x=>x.id!==id));
                           setPlaylists(p=>p.map(pl=>({ ...pl, songIds: pl.songIds.filter(sid=>sid!==id) })));
                           setLiked(l=>{ const n={...l}; delete n[id]; return n; });
@@ -7682,7 +8179,8 @@ Format exactly:
 
               // ── Special: Semua Lagu
               if (activePl === 'all_songs') {
-                const songs = filteredSongs;
+                const allPlaylistSongIds = new Set(playlists.flatMap(pl => pl.songIds));
+                const songs = filteredSongs.filter(s => allPlaylistSongIds.has(s.id));
                 return (
                   <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
                     <div style={{ padding:'12px 16px 10px', borderBottom:'1px solid rgba(255,255,255,0.08)', flexShrink:0, position:'sticky', top:0, zIndex:5, background:'rgba(7,7,26,0.97)', ...(isLite ? {} : { backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }) }}>
@@ -7919,12 +8417,15 @@ Format exactly:
                       </div>
                       <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
                         {[
-                          { id:'relax',     icon:'😌', label:'Santai', color:'#6366f1' },
-                          { id:'focus',     icon:'🎯', label:'Fokus', color:'#3b82f6' },
+                          { id:'relax',     icon:'😌', label:'Santai',   color:'#6366f1' },
+                          { id:'focus',     icon:'🎯', label:'Fokus',    color:'#3b82f6' },
                           { id:'energetic', icon:'🔥', label:'Semangat', color:'#ef4444' },
-                          { id:'sleep',     icon:'😴', label:'Tidur', color:'#8b5cf6' },
-                          { id:'sad',       icon:'🌧️', label:'Me time', color:'#64748b' },
-                          { id:'party',     icon:'🎉', label:'Hepi', color:'#f59e0b' },
+                          { id:'sleep',     icon:'😴', label:'Tidur',    color:'#8b5cf6' },
+                          { id:'metime',    icon:'🌧️', label:'Me time',  color:'#64748b' },
+                          { id:'party',     icon:'🎉', label:'Hepi',     color:'#f59e0b' },
+                          { id:'pagi',      icon:'🌅', label:'Pagi',     color:'#f97316' },
+                          { id:'siang',     icon:'☀️', label:'Siang',    color:'#eab308' },
+                          { id:'malam',     icon:'🌙', label:'Malam',    color:'#a78bfa' },
                         ].map(m => {
                           const selected = personaPrefs.moods.includes(m.id);
                           return (
@@ -8344,6 +8845,164 @@ Format exactly:
                           )}
                         </div>
 
+                        {/* ── OTHER: Pembuat Playlist ── */}
+                        <div style={{ marginTop:0 }}>
+                          <div style={{ padding:'14px 16px 12px', display:'flex', alignItems:'center', justifyContent:'space-between', borderTop:'1px solid rgba(255,255,255,0.05)' }}>
+                            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                              <div style={{ width:30, height:30, borderRadius:10, background:'linear-gradient(135deg,rgba(99,102,241,0.3),rgba(168,85,247,0.2))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14 }}>✨</div>
+                              <div>
+                                <div style={{ fontSize:13, fontWeight:800, color:'white', letterSpacing:'-0.01em' }}>Other</div>
+                                <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>Buat playlist dengan AI</div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Inner tab: Preferensi | Populer */}
+                          <div style={{ display:'flex', gap:0, margin:'0 16px 14px', background:'rgba(255,255,255,0.05)', borderRadius:12, padding:3 }}>
+                            {[
+                              { id:'pref',    label:'🎯 Sesuai Preferensi' },
+                              { id:'popular', label:'🔥 Populer Sekarang'  },
+                            ].map(({ id, label }) => (
+                              <button key={id} onClick={() => setOtherInnerTab(id)}
+                                style={{ flex:1, padding:'7px 0', borderRadius:10, border:'none', fontSize:11, fontWeight:700, cursor:'pointer', transition:'all 0.18s',
+                                  background: otherInnerTab === id ? track.color : 'transparent',
+                                  color:      otherInnerTab === id ? 'white' : 'rgba(255,255,255,0.4)',
+                                }}>
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* ── Tab: Sesuai Preferensi ── */}
+                          {otherInnerTab === 'pref' && (
+                            <div style={{ padding:'0 16px 16px' }}>
+                              {!prefPlaylist && !prefPlaylistLoading && (
+                                <div style={{ textAlign:'center', paddingTop:16, paddingBottom:8 }}>
+                                  <div style={{ fontSize:12, color:'rgba(255,255,255,0.35)', marginBottom:14, lineHeight:1.6 }}>
+                                    AI akan membuat 10 lagu berdasarkan genre, mood,<br/>dan preferensi bahasa kamu.
+                                  </div>
+                                  <button onClick={generatePrefPlaylist}
+                                    style={{ padding:'9px 22px', borderRadius:999, border:'none', background:`linear-gradient(135deg,${track.color},#a855f7)`, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:7 }}>
+                                    <Sparkles size={13}/> Generate Playlist
+                                  </button>
+                                </div>
+                              )}
+                              {prefPlaylistLoading && (
+                                <div style={{ textAlign:'center', padding:'20px 0', color:'rgba(255,255,255,0.4)', fontSize:12, display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                                  <Loader2 size={14} style={{ animation:'spin 1s linear infinite', color:track.color }}/> Starry AI sedang menyusun playlist…
+                                </div>
+                              )}
+                              {prefPlaylist && !prefPlaylistLoading && (
+                                <>
+                                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+                                    <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.1em' }}>
+                                      🎯 Playlist Personalmu ({prefPlaylist.length} lagu)
+                                    </div>
+                                    <button onClick={generatePrefPlaylist} style={{ background:'none', border:'none', color:track.color, fontSize:11, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:4 }}>
+                                      <Sparkles size={11}/> Refresh
+                                    </button>
+                                  </div>
+                                  <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                                    {prefPlaylist.map((m, i) => (
+                                      <div key={i}
+                                        onClick={() => { const q = `${m.title} ${m.artist}`; setUnifiedPlatform('ytmusic'); setUnifiedQuery(q); setYtQuery(p=>({...p, ytmusic:q})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic', q); ytMusicSectionRef.current?.scrollIntoView({ behavior:'smooth', block:'start' }); }, 300); }}
+                                        style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:`1px solid ${track.color}18`, cursor:'pointer', transition:'background 0.15s' }}
+                                        onMouseEnter={e=>e.currentTarget.style.background=`${track.color}14`}
+                                        onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
+                                        <div style={{ width:28, height:28, borderRadius:8, background:`${track.color}25`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800, color:track.color, flexShrink:0 }}>
+                                          {i+1}
+                                        </div>
+                                        <div style={{ flex:1, minWidth:0 }}>
+                                          <div style={{ fontSize:12, fontWeight:700, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.title}</div>
+                                          <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.artist}</div>
+                                          {m.reason && <div style={{ fontSize:9.5, color:`${track.color}90`, marginTop:2 }}>{m.reason}</div>}
+                                        </div>
+                                        <div style={{ fontSize:16, flexShrink:0 }}>▶</div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  {/* Tombol simpan */}
+                                  <div style={{ display:'flex', gap:8, marginTop:14 }}>
+                                    <button onClick={() => openSaveAIPlaylist(prefPlaylist, '🎯 Playlist Preferensiku')}
+                                      style={{ flex:1, padding:'10px 0', borderRadius:12, border:'none', background:`linear-gradient(135deg,${track.color},#a855f7)`, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                                      <ListPlus size={14}/> Playlist Baru
+                                    </button>
+                                    <button onClick={() => openAddToExistingPlaylist(prefPlaylist)}
+                                      style={{ flex:1, padding:'10px 0', borderRadius:12, border:`1px solid ${track.color}50`, background:`${track.color}15`, color:track.color, fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                                      <ListPlus size={14}/> Tambah ke Playlist
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          )}
+
+                          {/* ── Tab: Populer Sekarang ── */}
+                          {otherInnerTab === 'popular' && (
+                            <div style={{ padding:'0 16px 16px' }}>
+                              {!popularPlaylist && !popularPlaylistLoading && (
+                                <div style={{ textAlign:'center', paddingTop:16, paddingBottom:8 }}>
+                                  <div style={{ fontSize:12, color:'rgba(255,255,255,0.35)', marginBottom:14, lineHeight:1.6 }}>
+                                    AI akan membuat 10 lagu yang sedang trending<br/>secara global dan lokal Indonesia.
+                                  </div>
+                                  <button onClick={generatePopularPlaylist}
+                                    style={{ padding:'9px 22px', borderRadius:999, border:'none', background:'linear-gradient(135deg,#ef4444,#f59e0b)', color:'white', fontSize:12, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:7 }}>
+                                    🔥 Generate Playlist
+                                  </button>
+                                </div>
+                              )}
+                              {popularPlaylistLoading && (
+                                <div style={{ textAlign:'center', padding:'20px 0', color:'rgba(255,255,255,0.4)', fontSize:12, display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                                  <Loader2 size={14} style={{ animation:'spin 1s linear infinite', color:'#ef4444' }}/> Starry AI sedang kurasi playlist populer…
+                                </div>
+                              )}
+                              {popularPlaylist && !popularPlaylistLoading && (
+                                <>
+                                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+                                    <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.1em' }}>
+                                      🔥 Trending Sekarang ({popularPlaylist.length} lagu)
+                                    </div>
+                                    <button onClick={generatePopularPlaylist} style={{ background:'none', border:'none', color:'#f59e0b', fontSize:11, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:4 }}>
+                                      <Sparkles size={11}/> Refresh
+                                    </button>
+                                  </div>
+                                  <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                                    {popularPlaylist.map((m, i) => (
+                                      <div key={i}
+                                        onClick={() => { const q = `${m.title} ${m.artist}`; setUnifiedPlatform('ytmusic'); setUnifiedQuery(q); setYtQuery(p=>({...p, ytmusic:q})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic', q); ytMusicSectionRef.current?.scrollIntoView({ behavior:'smooth', block:'start' }); }, 300); }}
+                                        style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(239,68,68,0.18)', cursor:'pointer', transition:'background 0.15s' }}
+                                        onMouseEnter={e=>e.currentTarget.style.background='rgba(239,68,68,0.08)'}
+                                        onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
+                                        <div style={{ width:28, height:28, borderRadius:8, background:'rgba(239,68,68,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800, color:'#f87171', flexShrink:0 }}>
+                                          {i+1}
+                                        </div>
+                                        <div style={{ flex:1, minWidth:0 }}>
+                                          <div style={{ fontSize:12, fontWeight:700, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.title}</div>
+                                          <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.artist}</div>
+                                          {m.reason && <div style={{ fontSize:9.5, color:'#fbbf2490', marginTop:2 }}>{m.reason}</div>}
+                                        </div>
+                                        <div style={{ fontSize:16, flexShrink:0 }}>▶</div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  {/* Tombol simpan */}
+                                  <div style={{ display:'flex', gap:8, marginTop:14 }}>
+                                    <button onClick={() => openSaveAIPlaylist(popularPlaylist, '🔥 Playlist Populer')}
+                                      style={{ flex:1, padding:'10px 0', borderRadius:12, border:'none', background:'linear-gradient(135deg,#ef4444,#f59e0b)', color:'white', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                                      <ListPlus size={14}/> Playlist Baru
+                                    </button>
+                                    <button onClick={() => openAddToExistingPlaylist(popularPlaylist)}
+                                      style={{ flex:1, padding:'10px 0', borderRadius:12, border:'1px solid rgba(239,68,68,0.4)', background:'rgba(239,68,68,0.1)', color:'#f87171', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                                      <ListPlus size={14}/> Tambah ke Playlist
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          )}
+
+                        </div>{/* end Other section */}
+
                   </div>
                 )}
               </div>
@@ -8351,6 +9010,11 @@ Format exactly:
               /* ── LYRICS VIEW inside AI tab */
               <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'16px 20px 24px' }}>
                 <div style={{ display:'flex', justifyContent:'flex-end', gap:8, marginBottom:14 }}>
+                  {lyrics && (
+                    <button onClick={()=>{ setLyrics(''); setLyricsTranslation(''); setLyricsRomanized(''); setLyricsNeedGenerate(false); }} title="Tutup Lirik" style={{ padding:'7px 10px', borderRadius:999, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.07)', color:'rgba(255,255,255,0.5)', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:5, marginRight:'auto' }}>
+                      <X size={13}/> Tutup
+                    </button>
+                  )}
                   {lyrics && !lyrics.startsWith('⚡') && hasNonLatin(lyrics) && !isLite && (
                     <button onClick={lyricsRomanized ? ()=>setLyricsRomanized('') : ()=>romanizeLyrics(lyrics)} disabled={lyricsRomanizing} style={{ padding:'7px 14px', borderRadius:999, border:`1px solid ${track.color}50`, background:`${track.color}18`, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', opacity:lyricsRomanizing?0.6:1, display:'flex', alignItems:'center', gap:6 }}>
                       {lyricsRomanizing ? <><Loader2 size={13} style={{ animation:'spin 1s linear infinite' }}/>Romanisasi…</> : lyricsRomanized ? <>🔤 Sembunyikan</> : <>🔤 Romanisasi</>}
@@ -8544,7 +9208,7 @@ Format exactly:
                     ))}
                   </div>
                   <span style={{ fontSize:12, color:'rgba(255,255,255,0.7)', flex:1 }}>
-                    {shazamListening ? '🎙️ Mendengarkan musik… (8 detik)' : '🔍 Mengenali lagu…'}
+                    {shazamListening ? (shazamSourceRef.current === 'audio device' ? '🖥️ Mendengarkan audio device… (8 detik)' : '🎙️ Mendengarkan musik… (8 detik)') : '🔍 Mengenali lagu…'}
                   </span>
                   {shazamListening && (
                     <button onClick={cancelShazam} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.5)', cursor:'pointer', padding:2, display:'flex', alignItems:'center' }}>
@@ -8665,11 +9329,59 @@ Format exactly:
       {showPlModal&&<Suspense fallback={null}><PlaylistModal
         allSongs={allSongs}
         existing={editingPl}
-        onClose={()=>{ setShowPlModal(false); setEditingPl(null); }}
+        onClose={()=>{ setShowPlModal(false); setEditingPl(null); setPlPrefillName(''); setPlPrefillIds([]); }}
         onSave={editingPl ? updatePlaylist : createPlaylist}
         isLite={isLite}
         t={t}
+        prefillName={plPrefillName}
+        prefillSongIds={plPrefillIds}
       /></Suspense>}
+
+      {/* ── Modal: Tambah ke Playlist yang Ada ── */}
+      {showAddToModal&&(
+        <div style={{ position:'fixed', inset:0, zIndex:100, background:'rgba(0,0,0,0.75)', backdropFilter:'blur(8px)', display:'flex', alignItems:'flex-end' }} onClick={e=>e.target===e.currentTarget&&setShowAddToModal(false)}>
+          <div style={{ width:'100%', maxHeight:'70dvh', overflowY:'auto', background:'#0f0f2a', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'24px 24px 0 0', padding:'20px 20px 32px' }}>
+            <div style={{ width:36, height:4, borderRadius:999, background:'rgba(255,255,255,0.15)', margin:'0 auto 18px' }}/>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:18 }}>
+              <div style={{ width:36, height:36, borderRadius:10, background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>
+                📋
+              </div>
+              <div>
+                <div style={{ fontWeight:800, fontSize:15, color:'white' }}>Tambah ke Playlist</div>
+                <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)' }}>{addToSongIds.length} lagu akan ditambahkan</div>
+              </div>
+              <button onClick={()=>setShowAddToModal(false)} style={{ marginLeft:'auto', background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.4)', fontSize:20 }}>✕</button>
+            </div>
+            {playlists.filter(pl=>pl.id!=='pl_fav').length === 0 ? (
+              <div style={{ textAlign:'center', padding:'24px 0', color:'rgba(255,255,255,0.35)', fontSize:13 }}>
+                Belum ada playlist. Buat playlist baru dulu.
+              </div>
+            ) : (
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                {playlists.filter(pl=>pl.id!=='pl_fav').map(pl => (
+                  <button key={pl.id} onClick={()=>{
+                    addToSongIds.forEach(sid => addToPlaylist(pl.id, sid));
+                    setShowAddToModal(false);
+                  }}
+                    style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', borderRadius:14, border:'1px solid rgba(255,255,255,0.08)', background:'rgba(255,255,255,0.04)', cursor:'pointer', textAlign:'left', color:'white' }}
+                    onMouseEnter={e=>e.currentTarget.style.background='rgba(99,102,241,0.15)'}
+                    onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
+                    <div style={{ width:36, height:36, borderRadius:10, background:'linear-gradient(135deg,rgba(99,102,241,0.3),rgba(168,85,247,0.2))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, flexShrink:0 }}>🎵</div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontWeight:700, fontSize:13, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{pl.name}</div>
+                      <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)' }}>{pl.songIds.length} lagu</div>
+                    </div>
+                    <div style={{ fontSize:12, color:'rgba(99,102,241,0.8)', fontWeight:700 }}>+ Tambah</div>
+                  </button>
+                ))}
+              </div>
+            )}
+            <button onClick={()=>setShowAddToModal(false)} style={{ width:'100%', marginTop:16, padding:'12px 0', borderRadius:14, border:'1px solid rgba(255,255,255,0.12)', background:'transparent', color:'rgba(255,255,255,0.5)', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+              Batal
+            </button>
+          </div>
+        </div>
+      )}
 
       {showUpload&&<Suspense fallback={null}><UploadModal onClose={()=>!uploading&&setShowUpload(false)} onUpload={handleUpload} uploading={uploading} uploadProgress={uploadProgress} color={track.color} isLite={isLite} t={t}/></Suspense>}
 
