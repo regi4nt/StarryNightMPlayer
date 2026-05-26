@@ -88,8 +88,8 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
   return (
     <div style={{ position:'relative', width:size, height:size, flexShrink:0 }}>
       {/* Album art */}
-      <div style={{ position:'absolute', top:cy-artR, left:cx-artR, width:artR*2, height:artR*2, borderRadius:'50%', overflow:'hidden', border:`3px solid ${isRadio?color+'60':'rgba(255,255,255,0.13)'}`, boxShadow:isLite?'none':`0 0 40px -8px ${color}90`, animation:(!isLite && coverSpin && !isRadio)?'spin20 20s linear infinite':'none', zIndex:2 }}>
-        {isRadio
+      <div style={{ position:'absolute', top:cy-artR, left:cx-artR, width:artR*2, height:artR*2, borderRadius:'50%', overflow:'hidden', border:`3px solid ${(isRadio&&!cover)?color+'60':'rgba(255,255,255,0.13)'}`, boxShadow:isLite?'none':`0 0 40px -8px ${color}90`, animation:(!isLite && coverSpin && (!isRadio||!!cover))?'spin20 20s linear infinite':'none', zIndex:2 }}>
+        {(isRadio && !cover)
           ? <div style={{ width:'100%', height:'100%', background:`linear-gradient(135deg,${color}30,${color}18)`, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:6, position:'relative' }}>
               <Radio size={artR*0.45} color={color}/>
               <div style={{ fontSize:artR*0.14, fontWeight:800, color:color, textTransform:'uppercase', letterSpacing:'0.12em' }}>LIVE</div>
