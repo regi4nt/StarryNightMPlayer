@@ -2062,6 +2062,9 @@ Return ONLY valid JSON, no explanation:
   const [otherInnerTab, setOtherInnerTab] = useState('pref'); // 'pref' | 'popular'
   const [prefPlaylist, setPrefPlaylist] = useState(null);
   const [prefPlaylistLoading, setPrefPlaylistLoading] = useState(false);
+  const [forYouQueueLoading, setForYouQueueLoading] = useState(false);
+  const [prefPlaylistQueueLoading, setPrefPlaylistQueueLoading] = useState(false);
+  const [popularPlaylistQueueLoading, setPopularPlaylistQueueLoading] = useState(false);
   const [popularPlaylist, setPopularPlaylist] = useState(null);
   const [popularPlaylistLoading, setPopularPlaylistLoading] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
@@ -2180,6 +2183,7 @@ Return ONLY valid JSON, no explanation:
   const [showPlModal, setShowPlModal]     = useState(false);
   const [plPrefillName, setPlPrefillName] = useState('');
   const [plPrefillIds, setPlPrefillIds]   = useState([]);
+  const [pendingPlayQueueItems, setPendingPlayQueueItems] = useState(null); // lagu AI yang perlu di-play setelah save
   const [showAddToModal, setShowAddToModal] = useState(false); // modal "tambah ke playlist yang ada"
   const [addToSongIds, setAddToSongIds]   = useState([]);
   const [editingPl, setEditingPl]         = useState(null);
@@ -3420,6 +3424,91 @@ Buat 10 lagu yang cocok. Balas HANYA JSON valid tanpa markdown:
     }
     setPrefPlaylistLoading(false);
   };
+
+  // ── For You: Play All — bangun queue dari semua lagu musik rekomendasi ────
+  const playForYouQueue = useCallback(async () => {
+    const musicItems = personaRecs?.music;
+    if (!musicItems?.length || forYouQueueLoading) return;
+    setForYouQueueLoading(true);
+    try {
+      // Cari video pertama yang valid untuk setiap lagu secara paralel (max 5 bersamaan)
+      const BATCH = 5;
+      const results = [];
+      for (let i = 0; i < musicItems.length; i += BATCH) {
+        const batch = musicItems.slice(i, i + BATCH);
+        const batchResults = await Promise.all(batch.map(async (m) => {
+          const q = `${m.title} ${m.artist}`;
+          // Cek cache dulu
+          const cached = ytSearchCacheGet(q + '_video');
+          if (cached?.length) return cached[0];
+          // Coba YT API, fallback ke Piped
+          try {
+            if (isYtApiEnabled()) {
+              const items = await searchViaYouTubeAPI(q, 'video').catch(() => null);
+              if (items?.length) { ytSearchCacheSet(q + '_video', items); return items[0]; }
+            }
+            const piped = await searchViaPiped(q, 'video').catch(() => null);
+            if (piped?.length) { ytSearchCacheSet(q + '_video', piped); return piped[0]; }
+            const inv = await searchViaInvidious(q, 'video').catch(() => null);
+            if (inv?.length) { ytSearchCacheSet(q + '_video', inv); return inv[0]; }
+          } catch(e) { console.warn('[ForYouQueue]', m.title, e?.message); }
+          return null;
+        }));
+        results.push(...batchResults);
+      }
+      const queue = results.filter(Boolean);
+      if (!queue.length) { alert('Tidak ada lagu yang bisa diputar. Coba lagi.'); return; }
+      // Mainkan lagu pertama dengan seluruh queue
+      playYouTube(queue[0], queue, 0);
+      setTab('player');
+    } catch(e) {
+      console.error('[ForYouQueue] error:', e?.message);
+    } finally {
+      setForYouQueueLoading(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [personaRecs, forYouQueueLoading]);
+
+  // ── Helper generik: bangun queue dari array {title, artist} lalu play ────
+  const buildAndPlayQueue = async (songs, setLoading) => {
+    if (!songs?.length || !setLoading) return;
+    setLoading(true);
+    try {
+      const BATCH = 5;
+      const results = [];
+      for (let i = 0; i < songs.length; i += BATCH) {
+        const batch = songs.slice(i, i + BATCH);
+        const batchResults = await Promise.all(batch.map(async (m) => {
+          const q = `${m.title} ${m.artist}`;
+          const cached = ytSearchCacheGet(q + '_video');
+          if (cached?.length) return cached[0];
+          try {
+            if (isYtApiEnabled()) {
+              const items = await searchViaYouTubeAPI(q, 'video').catch(() => null);
+              if (items?.length) { ytSearchCacheSet(q + '_video', items); return items[0]; }
+            }
+            const piped = await searchViaPiped(q, 'video').catch(() => null);
+            if (piped?.length) { ytSearchCacheSet(q + '_video', piped); return piped[0]; }
+            const inv = await searchViaInvidious(q, 'video').catch(() => null);
+            if (inv?.length) { ytSearchCacheSet(q + '_video', inv); return inv[0]; }
+          } catch(e) { console.warn('[buildQueue]', m.title, e?.message); }
+          return null;
+        }));
+        results.push(...batchResults);
+      }
+      const queue = results.filter(Boolean);
+      if (!queue.length) { alert('Tidak ada lagu yang bisa diputar. Coba lagi.'); return; }
+      playYouTube(queue[0], queue, 0);
+      setTab('player');
+    } catch(e) {
+      console.error('[buildAndPlayQueue] error:', e?.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const playPrefPlaylistQueue    = () => buildAndPlayQueue(prefPlaylist,    setPrefPlaylistQueueLoading);
+  const playPopularPlaylistQueue = () => buildAndPlayQueue(popularPlaylist, setPopularPlaylistQueueLoading);
 
   // ── Generate playlist populer saat ini ───────────────────────────────────
   const generatePopularPlaylist = async () => {
@@ -5756,7 +5845,13 @@ Format exactly:
     setShowPlModal(false);
     setEditingPl(null);
     setPlView('list');
-  }, []);
+    // Auto-play sebagai queue jika dibuat dari AI playlist
+    if (pendingPlayQueueItems?.length) {
+      const items = pendingPlayQueueItems;
+      setPendingPlayQueueItems(null);
+      buildAndPlayQueue(items, setPrefPlaylistQueueLoading);
+    }
+  }, [pendingPlayQueueItems]);
 
   const updatePlaylist = useCallback(({ name, songIds }) => {
     const removedIds = (editingPl?.songIds || []).filter(id => !songIds.includes(id));
@@ -5799,6 +5894,7 @@ Format exactly:
     setPlPrefillName(suggestedName);
     setPlPrefillIds(newSongIds);
     setEditingPl(null);
+    setPendingPlayQueueItems(playlistItems); // simpan untuk auto-play setelah save
     setShowPlModal(true);
   }, []);
 
@@ -8766,7 +8862,7 @@ Format exactly:
                         </div>
                       )}
                       <Suspense fallback={null}>
-                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={play} isDrive isCached={cachedDriveIds.has(s.driveId)} embedTrack={embedTrack} onRemove={mySongsEditMode ? async id=>{
+                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={s2=>{ activePlRef.current=songs; play(s2); }} isDrive isCached={cachedDriveIds.has(s.driveId)} embedTrack={embedTrack} onRemove={mySongsEditMode ? async id=>{
                           const song = customSongs.find(x=>x.id===id);
                           if (song?.driveId && tokenRef.current) {
                             try {
@@ -8867,7 +8963,7 @@ Format exactly:
                     </div>
                     <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'10px 16px 16px', display:'flex', flexDirection:'column', gap:5 }}>
                       <Suspense fallback={null}>
-                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={play} isDrive={s.isDrive} isCached={s.driveId ? cachedDriveIds.has(s.driveId) : false} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite} t={t} embedTrack={embedTrack}
+                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={s2=>{ activePlRef.current=songs; play(s2); }} isDrive={s.isDrive} isCached={s.driveId ? cachedDriveIds.has(s.driveId) : false} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite} t={t} embedTrack={embedTrack}
                       onRemove={allSongsEditMode ? id=>{ setLiked(l=>{const n={...l};delete n[id];return n;}); setFavSongs(p=>p.filter(s=>s.id!==id)); setCustomSongs(p=>p.filter(s=>s.id!==id)); setYtSongs(p=>p.filter(s=>s.id!==id)); setPlaylists(p=>p.map(pl=>({...pl,songIds:pl.songIds.filter(sid=>sid!==id)}))); } : null}
                       editMode={allSongsEditMode}
                       onDownload={async(s)=>{ if(s.isDrive&&s.driveId&&tokenRef.current){ await downloadToDevice(`https://www.googleapis.com/drive/v3/files/${s.driveId}?alt=media&acknowledgeAbuse=true`,`${s.title} - ${s.artist}.mp3`,{Authorization:`Bearer ${tokenRef.current}`}); } else if(s.src){ const raw=s.src.split('?')[0]; const ext=raw.includes('.')?raw.split('.').pop():'mp3'; await downloadToDevice(s.src,`${s.title} - ${s.artist}.${ext}`); } }}
@@ -8925,7 +9021,7 @@ Format exactly:
                       const isActive = track.id===s.id;
                       return (
                         <div key={s.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:12, cursor:'pointer', background:isActive?s.bg:'rgba(255,255,255,0.02)', border:`1px solid ${isActive?s.color+'50':'rgba(255,255,255,0.06)'}` }}>
-                          <div onClick={()=>play(s)} style={{ display:'flex', alignItems:'center', gap:10, flex:1, minWidth:0 }}>
+                          <div onClick={()=>{ activePlRef.current = songs; play(s); }} style={{ display:'flex', alignItems:'center', gap:10, flex:1, minWidth:0 }}>
                               {isLite
                               ? <div style={{ width:36, height:36, borderRadius:8, background:s.bg||'rgba(255,255,255,0.07)', flexShrink:0 }}/>
                               : <img src={s.cover} loading="lazy" decoding="async" style={{ width:36, height:36, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>}
@@ -9226,9 +9322,15 @@ Format exactly:
                           )}
                           {/* Action bar */}
                           <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                            {personaRecs?.music?.length > 0 && (
+                              <button onClick={playForYouQueue} disabled={forYouQueueLoading || personaLoading}
+                                style={{ flex:1, padding:'9px 14px', borderRadius:12, border:'none', background:`linear-gradient(135deg,${track.color},#a855f7)`, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, opacity:(forYouQueueLoading||personaLoading)?0.6:1, boxShadow:isLite?'none':`0 4px 16px ${track.color}40` }}>
+                                {forYouQueueLoading ? <><Loader2 size={12} style={{ animation:'spin 1s linear infinite' }}/> Memuat Antrean…</> : <><Play size={12}/> Play All</>}
+                              </button>
+                            )}
                             <button onClick={()=>refreshForYouRef.current?.(true)} disabled={personaLoading}
-                              style={{ flex:1, padding:'9px 14px', borderRadius:12, border:`1px solid ${track.color}40`, background:`${track.color}15`, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, opacity:personaLoading?0.6:1 }}>
-                              {personaLoading ? <><Loader2 size={12} style={{ animation:'spin 1s linear infinite' }}/> Updating…</> : <><Sparkles size={12}/> Refresh Feed</>}
+                              style={{ flex: personaRecs?.music?.length > 0 ? '0 0 auto' : 1, padding:'9px 14px', borderRadius:12, border:`1px solid ${track.color}40`, background:`${track.color}15`, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, opacity:personaLoading?0.6:1 }}>
+                              {personaLoading ? <><Loader2 size={12} style={{ animation:'spin 1s linear infinite' }}/> Updating…</> : <><Sparkles size={12}/> Refresh</>}
                             </button>
                             <button onClick={()=>{ setPersonaStep('onboard'); setPersonaRecs(null); localStorage.removeItem('sn_persona_done'); localStorage.removeItem('sn_persona_recs'); localStorage.removeItem('sn_persona_recs_ts'); }}
                               style={{ padding:'9px 14px', borderRadius:12, border:'1px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.05)', color:'rgba(255,255,255,0.6)', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
@@ -9587,6 +9689,11 @@ Format exactly:
                                       <Sparkles size={11}/> Refresh
                                     </button>
                                   </div>
+                                  {/* Tombol Play All */}
+                                  <button onClick={playPrefPlaylistQueue} disabled={prefPlaylistQueueLoading}
+                                    style={{ width:'100%', marginBottom:12, padding:'11px 0', borderRadius:14, border:'none', background:`linear-gradient(135deg,${track.color},#a855f7)`, color:'white', fontSize:13, fontWeight:800, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, opacity:prefPlaylistQueueLoading?0.65:1, boxShadow:isLite?'none':`0 4px 18px ${track.color}40` }}>
+                                    {prefPlaylistQueueLoading ? <><Loader2 size={14} style={{ animation:'spin 1s linear infinite' }}/> Memuat Antrean…</> : <><Play size={14}/> Play All {prefPlaylist.length} Lagu</>}
+                                  </button>
                                   <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
                                     {prefPlaylist.map((m, i) => (
                                       <div key={i}
@@ -9651,6 +9758,11 @@ Format exactly:
                                       <Sparkles size={11}/> Refresh
                                     </button>
                                   </div>
+                                  {/* Tombol Play All */}
+                                  <button onClick={playPopularPlaylistQueue} disabled={popularPlaylistQueueLoading}
+                                    style={{ width:'100%', marginBottom:12, padding:'11px 0', borderRadius:14, border:'none', background:'linear-gradient(135deg,#ef4444,#f59e0b)', color:'white', fontSize:13, fontWeight:800, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, opacity:popularPlaylistQueueLoading?0.65:1, boxShadow:isLite?'none':'0 4px 18px rgba(239,68,68,0.4)' }}>
+                                    {popularPlaylistQueueLoading ? <><Loader2 size={14} style={{ animation:'spin 1s linear infinite' }}/> Memuat Antrean…</> : <><Play size={14}/> Play All {popularPlaylist.length} Lagu</>}
+                                  </button>
                                   <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
                                     {popularPlaylist.map((m, i) => (
                                       <div key={i}
@@ -9983,7 +10095,7 @@ Format exactly:
           {showPlModal&&<Suspense fallback={null}><PlaylistModal
             allSongs={allSongs}
             existing={editingPl}
-            onClose={()=>{ setShowPlModal(false); setEditingPl(null); setPlPrefillName(''); setPlPrefillIds([]); }}
+            onClose={()=>{ setShowPlModal(false); setEditingPl(null); setPlPrefillName(''); setPlPrefillIds([]); setPendingPlayQueueItems(null); }}
             onSave={editingPl ? updatePlaylist : createPlaylist}
             isLite={isLite}
             t={t}
