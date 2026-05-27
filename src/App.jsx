@@ -1795,6 +1795,8 @@ Return ONLY valid JSON, no explanation:
   const [lyricsGenerating, setLyricsGenerating] = useState(false);
   const [lyricsRomanized, setLyricsRomanized] = useState('');
   const [lyricsRomanizing, setLyricsRomanizing] = useState(false);
+  // ── Synced LRC lines: [{time: seconds, text: string}]
+  const [lrcLines, setLrcLines]       = useState([]);
   // Cache in-memory lirik: key = "title|artist", value = { text, generated }
   const lyricsCacheRef = useRef(new Map());
 
@@ -1949,7 +1951,7 @@ Return ONLY valid JSON, no explanation:
   const coverInputRef = useRef(null);
 
   // Helper: ambil cover aktif (globalCover override semua)
-  const getCover = useCallback((song) => isLite ? (globalCover || '') : (globalCover || song?.cover || ''), [globalCover, isLite]);
+  const getCover = useCallback((song) => isLite ? (globalCover || '') : (globalCover || song?.cover || song?.thumbnail || ''), [globalCover, isLite]);
 
   // ── Playlists
   const [playlists, setPlaylists]         = useState(() => {
@@ -2198,14 +2200,24 @@ Return ONLY valid JSON, no explanation:
       return reject(new Error('Google API tidak tersedia'));
     }
     try {
+      // Baca email user dari localStorage untuk login_hint
+      // login_hint wajib agar GIS bisa silent refresh tanpa popup
+      let hint = '';
+      try {
+        const savedUser = JSON.parse(localStorage.getItem('sn_google_user') || 'null');
+        hint = savedUser?.email || '';
+      } catch {}
       const client = window.google.accounts.oauth2.initTokenClient({
         client_id: GOOGLE_CLIENT_ID, scope: GOOGLE_SCOPES,
         prompt: '',        // no user interaction required
+        hint,              // login_hint: wajib untuk silent refresh agar tidak popup
         callback: resp => {
           if (resp.error) return reject(new Error(resp.error));
           const tok = resp.access_token;
           setAccessToken(tok); tokenRef.current = tok;
-          localStorage.setItem('sn_google_token', JSON.stringify({ token: tok, expiry: Date.now() + 3500 * 1000 }));
+          // Simpan expiry 55 menit (3300 detik) — lebih konservatif dari token lifetime 60 menit
+          // agar proactive refresh 5 menit sebelum expiry punya cukup waktu
+          localStorage.setItem('sn_google_token', JSON.stringify({ token: tok, expiry: Date.now() + 3300 * 1000 }));
           resolve(tok);
         }
       });
@@ -2884,7 +2896,7 @@ Return ONLY valid JSON, no explanation:
     let saved;
     try { saved = JSON.parse(localStorage.getItem('sn_google_token') || 'null'); } catch { return; }
     if (!saved?.expiry) return;
-    const msUntilRefresh = saved.expiry - Date.now() - 5 * 60 * 1000; // 5 min early
+    const msUntilRefresh = saved.expiry - Date.now() - 10 * 60 * 1000; // 10 min early
     if (msUntilRefresh <= 0) {
       silentRefreshToken().catch(() => {}); // already expired, try now
       return;
@@ -2969,7 +2981,7 @@ Return ONLY valid JSON, no explanation:
   // ── Track history + prefetch lagu berikutnya
   useEffect(() => {
     setHistory(prev => { const f=prev.filter(s=>s.id!==track.id); return [track,...f].slice(0,15); });
-    setLyrics(''); setInsight(''); setLyricsRomanized(''); setLyricsRomanizing(false); setLyricsNeedGenerate(false); setLyricsGenerated(false);
+    setLyrics(''); setInsight(''); setLyricsRomanized(''); setLyricsRomanizing(false); setLyricsNeedGenerate(false); setLyricsGenerated(false); setLrcLines([]);
     // Prefetch lagu berikutnya di background
     const allSongs = [...builtinSongs, ...customSongs];
     const idx = allSongs.findIndex(s => s.id === track.id);
@@ -3204,10 +3216,15 @@ Balas HANYA JSON valid tanpa markdown:
     setPopularLoading(true);
     try {
       const locCtx = userLocation ? `Lokasi user: ${userLocation} (kode negara: ${userLocationCountry}).` : 'Lokasi user: Indonesia (kode negara: ID).';
-      const weatherCtx = userWeather ? `Cuaca saat ini: ${userWeather.desc}, ${userWeather.temp}${userWeather.unit}, angin ${userWeather.windkmh} km/h.` : '';
+      const now = new Date();
+      const hour = now.getHours();
+      const timeOfDay = hour < 5 ? 'dini hari' : hour < 11 ? 'pagi' : hour < 15 ? 'siang' : hour < 18 ? 'sore' : hour < 21 ? 'malam' : 'malam larut';
+      const weatherCtx = userWeather
+        ? `Cuaca saat ini: ${userWeather.desc}, ${userWeather.temp}${userWeather.unit}, angin ${userWeather.windkmh} km/h. Waktu: ${timeOfDay}.`
+        : `Waktu: ${timeOfDay}.`;
       const isIndonesia = !userLocationCountry || userLocationCountry === 'ID';
       const localLabel = isIndonesia ? 'Lagu lokal Indonesia' : `Lagu lokal ${userLocation || 'setempat'}`;
-      const prompt = `Kamu adalah kurator musik & audio global. ${locCtx}${weatherCtx ? ' ' + weatherCtx : ''} Berikan daftar konten POPULER & TRENDING saat ini yang relevan dengan lokasi dan suasana cuaca user dalam format JSON. Sesuaikan rekomendasi dengan mood cuaca (misal: hujan → lagu melankolis/santai, cerah → lagu energik/upbeat, badai → lagu dramatis/intens). Sertakan campuran lagu global populer dan lagu lokal sesuai lokasi user.
+      const prompt = `Kamu adalah kurator musik & audio global. ${locCtx} ${weatherCtx} Berikan daftar konten POPULER & TRENDING saat ini yang relevan dengan lokasi dan suasana cuaca user dalam format JSON. WAJIB sesuaikan rekomendasi dengan mood cuaca secara spesifik:\n- Hujan/mendung/berkabut → lagu melankolis, lo-fi, ballad, akustik santai\n- Cerah/panas → lagu energik, upbeat, pop, dance, summer vibes\n- Badai/petir → lagu dramatis, rock, intense, cinematic\n- Berangin/berawan sebagian → lagu indie, mid-tempo, chill\n- Dingin/salju → lagu cozy, jazz, klasik, ambient\nWaktu ${timeOfDay} juga pengaruhi mood (pagi → semangat, siang → aktif, sore → santai, malam → intimate/chill).\nSertakan campuran lagu global populer dan lagu lokal sesuai lokasi user.
 
 Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
 {"trending_music":[{"title":"Judul Lagu 1","artist":"Artis 1","reason":"alasan singkat max 8 kata"},{"title":"Judul Lagu 2","artist":"Artis 2","reason":"alasan singkat max 8 kata"},{"title":"Judul Lagu 3","artist":"Artis 3","reason":"alasan singkat max 8 kata"},{"title":"Judul Lagu 4","artist":"Artis 4","reason":"alasan singkat max 8 kata"},{"title":"Judul Lagu 5","artist":"Artis 5","reason":"alasan singkat max 8 kata"}],"trending_radio":[{"name":"Nama Stasiun 1","genre":"genre","reason":"alasan singkat max 8 kata"},{"name":"Nama Stasiun 2","genre":"genre","reason":"alasan singkat max 8 kata"},{"name":"Nama Stasiun 3","genre":"genre","reason":"alasan singkat max 8 kata"},{"name":"Nama Stasiun 4","genre":"genre","reason":"alasan singkat max 8 kata"},{"name":"Nama Stasiun 5","genre":"genre","reason":"alasan singkat max 8 kata"}],"trending_local":[{"title":"Judul Lokal 1","artist":"Artis Lokal 1","reason":"alasan singkat max 8 kata"},{"title":"Judul Lokal 2","artist":"Artis Lokal 2","reason":"alasan singkat max 8 kata"},{"title":"Judul Lokal 3","artist":"Artis Lokal 3","reason":"alasan singkat max 8 kata"},{"title":"Judul Lokal 4","artist":"Artis Lokal 4","reason":"alasan singkat max 8 kata"},{"title":"Judul Lokal 5","artist":"Artis Lokal 5","reason":"alasan singkat max 8 kata"}]}`;
@@ -3248,6 +3265,14 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aiSubView]);
+
+  // Re-fetch popular recs saat cuaca baru tersedia (invalidate cache agar mood cuaca ter-apply)
+  useEffect(() => {
+    if (!userWeather) return;
+    localStorage.removeItem('sn_popular_recs_ts'); // force stale
+    setPopularRecs(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userWeather?.desc, userWeather?.temp]);
 
   // ── Sleep timer cleanup
   useEffect(() => () => { if (sleepIntervalRef.current) clearInterval(sleepIntervalRef.current); }, []);
@@ -4916,11 +4941,26 @@ Format exactly:
   };
 
   // ── LYRICS
+  // Parse LRC format "[mm:ss.xx] text" → [{time: seconds, text}]
+  const parseLRC = (lrcStr) => {
+    const lines = [];
+    lrcStr.split('\n').forEach(line => {
+      const m = line.match(/^\[(\d+):(\d+\.\d+)\]\s*(.*)/);
+      if (m) {
+        const time = parseInt(m[1], 10) * 60 + parseFloat(m[2]);
+        const text = m[3].trim();
+        if (text) lines.push({ time, text });
+      }
+    });
+    return lines.sort((a, b) => a.time - b.time);
+  };
+
   const getLyrics = async () => {
     setLL(true);
     setLyrics(''); setLyricsNeedGenerate(false); setLyricsGenerated(false);
     setLyricsRomanized('');
     setLyricsRomanizing(false);
+    setLrcLines([]);
 
     // Resolve active track info
     const activeTitle  = embedTrack ? (embedTrack.title  || track.title)  : track.title;
@@ -4942,6 +4982,7 @@ Format exactly:
       setLyrics(cached.text);
       setLyricsGenerated(cached.generated);
       if (cached.modelLabel) setActiveModelLabel(cached.modelLabel);
+      if (cached.lrcLines) setLrcLines(cached.lrcLines);
       setLL(false);
       return;
     }
@@ -4962,12 +5003,18 @@ Format exactly:
       const results = await resp.json();
       if (!Array.isArray(results) || results.length === 0) return null;
       const best = results.find(r =>
-        r.plainLyrics && r.plainLyrics.trim().length > 20 &&
+        (r.plainLyrics || r.syncedLyrics) &&
         (r.trackName?.toLowerCase().includes(cleanTitle.toLowerCase().slice(0,8)) ||
          cleanTitle.toLowerCase().includes((r.trackName||'').toLowerCase().slice(0,8)))
       ) || results.find(r => r.plainLyrics && r.plainLyrics.trim().length > 20);
-      if (best?.plainLyrics && best.plainLyrics.trim().length > 20) return best.plainLyrics.trim();
-      if (best?.syncedLyrics) { const p = stripLRC(best.syncedLyrics); if (p.length > 20) return p; }
+      // Prefer synced lyrics for live caption
+      if (best?.syncedLyrics && best.syncedLyrics.trim().length > 20) {
+        const parsed = parseLRC(best.syncedLyrics);
+        const plain = stripLRC(best.syncedLyrics);
+        const text = plain.length > 20 ? plain.trim() : (best.plainLyrics?.trim() || null);
+        if (text) return { text, lrcLines: parsed };
+      }
+      if (best?.plainLyrics && best.plainLyrics.trim().length > 20) return { text: best.plainLyrics.trim(), lrcLines: [] };
       return null;
     };
 
@@ -5032,13 +5079,17 @@ Format exactly:
 
     // ── Run all database sources + AI recall in parallel; AI generate only as last resort
     try {
-      const [lrclib, ovh, textyl, chartlyrics, aiRecall] = await Promise.all([
+      const [lrclibResult, ovh, textyl, chartlyrics, aiRecall] = await Promise.all([
         fetchLrclib().catch(() => null),
         fetchOvh().catch(() => null),
         fetchTextyl().catch(() => null),
         fetchChartLyrics().catch(() => null),
         fetchAIRecall().catch(() => null),
       ]);
+
+      // lrclib returns {text, lrcLines}; others return plain string
+      const lrclib = lrclibResult?.text || null;
+      const fetchedLrcLines = lrclibResult?.lrcLines || [];
 
       // Prefer database sources (akurat): lrclib > ovh > textyl > chartlyrics > AI recall
       const dbResult = lrclib       ? { text: lrclib,       generated: false }
@@ -5051,8 +5102,9 @@ Format exactly:
         setLyrics(dbResult.text);
         setLyricsGenerated(dbResult.generated);
         setActiveModelLabel(activeModel());
+        if (fetchedLrcLines.length > 0) setLrcLines(fetchedLrcLines);
         // Simpan ke cache agar tidak re-fetch saat lagu sama diminta lagi
-        lyricsCacheRef.current.set(cacheKey, { text: dbResult.text, generated: dbResult.generated, modelLabel: activeModel() });
+        lyricsCacheRef.current.set(cacheKey, { text: dbResult.text, generated: dbResult.generated, modelLabel: activeModel(), lrcLines: fetchedLrcLines });
       } else if (isLite) {
         setLyrics(t?.liteLyricsDisabled||'⚡ Lyrics not found in public database.\n\nLite Mode active — AI lyrics generation is disabled to save data.\n\nEnable Pro Mode to generate lyrics with AI.');
       } else {
@@ -5511,7 +5563,7 @@ Format exactly:
       callback: async resp => {
         if (resp.error) return setDriveError('Login failed: '+resp.error);
         const tok=resp.access_token; setAccessToken(tok); tokenRef.current=tok;
-        localStorage.setItem('sn_google_token', JSON.stringify({ token: tok, expiry: Date.now() + 3500 * 1000 }));
+        localStorage.setItem('sn_google_token', JSON.stringify({ token: tok, expiry: Date.now() + 3300 * 1000 }));
         try {
           const u=await (await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{ headers:{ Authorization:`Bearer ${tok}` } })).json();
           setGoogleUser(u); localStorage.setItem('sn_google_user', JSON.stringify(u));
@@ -5879,7 +5931,10 @@ Format exactly:
                     </div>
                   : isLite
                     ? <div style={{ width:30, height:30, borderRadius:7, background:track.bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Music size={13} color={track.color}/></div>
-                    : <img src={getCover(track)} style={{ width:30, height:30, borderRadius:7, objectFit:'cover', flexShrink:0 }}/>
+                    : (getCover(track)
+                        ? <img src={getCover(track)} style={{ width:30, height:30, borderRadius:7, objectFit:'cover', flexShrink:0 }} onError={e=>{ e.target.onerror=null; e.target.src='/icon-512.png'; }}/>
+                        : <div style={{ width:30, height:30, borderRadius:7, background:track.bg||`${track.color}25`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Music size={13} color={track.color}/></div>
+                      )
               }
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontSize:11, fontWeight:700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'rgba(255,255,255,0.9)' }}>{embedTrack ? embedTrack.title : track.title}</div>
@@ -9113,6 +9168,30 @@ Format exactly:
             ) : aiSubView==='lyrics' ? (
               /* ── LYRICS VIEW inside AI tab */
               <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'16px 20px 24px' }}>
+                {/* ── Live Caption Bar — only shown when synced LRC is available */}
+                {lrcLines.length > 0 && lyrics && !lyrics.startsWith('⚡') && (() => {
+                  const now = embedTrack?.type === 'youtube' ? ytProgress : progress;
+                  // Find current line: last line whose time <= now
+                  let activeIdx = -1;
+                  for (let i = 0; i < lrcLines.length; i++) {
+                    if (lrcLines[i].time <= now) activeIdx = i; else break;
+                  }
+                  const currentLine = activeIdx >= 0 ? lrcLines[activeIdx].text : null;
+                  const nextLine = activeIdx >= 0 && activeIdx + 1 < lrcLines.length ? lrcLines[activeIdx + 1].text : null;
+                  if (!currentLine) return null;
+                  return (
+                    <div style={{ marginBottom: 14, borderRadius: 14, overflow: 'hidden', background: `linear-gradient(135deg, ${track.color}22, ${track.color}10)`, border: `1px solid ${track.color}40`, padding: '12px 16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>
+                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: track.color, animation: 'pulse 1.5s ease-in-out infinite', flexShrink: 0 }}/>
+                        <div style={{ fontSize: 9, fontWeight: 800, color: track.color, textTransform: 'uppercase', letterSpacing: '0.14em' }}>Live Caption</div>
+                      </div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: 'white', lineHeight: 1.5, transition: 'all 0.3s ease' }}>{currentLine}</div>
+                      {nextLine && (
+                        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 5, lineHeight: 1.4 }}>{nextLine}</div>
+                      )}
+                    </div>
+                  );
+                })()}
                 <div style={{ display:'flex', justifyContent:'flex-end', gap:8, marginBottom:14 }}>
                   {lyrics && (
                     <button onClick={()=>{ setLyrics(''); setLyricsTranslation(''); setLyricsRomanized(''); setLyricsNeedGenerate(false); }} title="Tutup Lirik" style={{ padding:'7px 10px', borderRadius:999, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.07)', color:'rgba(255,255,255,0.5)', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:5, marginRight:'auto' }}>
@@ -9170,14 +9249,25 @@ Format exactly:
                   ) : (
                     <>
                     <div style={{ lineHeight:1.9 }}>
-                      {lyrics.split('\n').map((line, i) => {
-                        const isTag = line.startsWith('[') && line.endsWith(']');
-                        return (
-                          <div key={i} style={{ fontSize:isTag?11:15, fontWeight:isTag?800:400, color:isTag?track.color:'rgba(255,255,255,0.9)', marginTop:isTag&&i>0?18:0, marginBottom:isTag?6:0, textTransform:isTag?'uppercase':'none', letterSpacing:isTag?'0.12em':0 }}>
-                            {line || <br/>}
-                          </div>
-                        );
-                      })}
+                      {(() => {
+                        const now = embedTrack?.type === 'youtube' ? ytProgress : progress;
+                        let activeIdx = -1;
+                        if (lrcLines.length > 0) {
+                          for (let i = 0; i < lrcLines.length; i++) {
+                            if (lrcLines[i].time <= now) activeIdx = i; else break;
+                          }
+                        }
+                        const activeText = activeIdx >= 0 ? lrcLines[activeIdx].text : null;
+                        return lyrics.split('\n').map((line, i) => {
+                          const isTag = line.startsWith('[') && line.endsWith(']');
+                          const isActive = !isTag && activeText && line.trim() === activeText.trim() && lrcLines.length > 0;
+                          return (
+                            <div key={i} style={{ fontSize:isTag?11:15, fontWeight:isTag?800:(isActive?700:400), color:isTag?track.color:isActive?'white':'rgba(255,255,255,0.9)', marginTop:isTag&&i>0?18:0, marginBottom:isTag?6:0, textTransform:isTag?'uppercase':'none', letterSpacing:isTag?'0.12em':0, background:isActive?`${track.color}22`:undefined, borderLeft:isActive?`3px solid ${track.color}`:'3px solid transparent', paddingLeft:isActive?9:9, borderRadius:isActive?6:0, transition:'all 0.3s ease' }}>
+                              {line || <br/>}
+                            </div>
+                          );
+                        });
+                      })()}
                     </div>
                     {lyricsTranslation && (
                       <div style={{ marginTop:28, paddingTop:20, borderTop:`1px solid rgba(255,255,255,0.07)` }}>
@@ -9454,7 +9544,10 @@ Format exactly:
                     </div>
                   : isLite
                     ? <div style={{ width:36, height:36, borderRadius:9, background:track.bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Music size={15} color={track.color}/></div>
-                    : <img src={getCover(track)} style={{ width:36, height:36, borderRadius:9, objectFit:'cover', flexShrink:0 }}/>
+                    : (getCover(track)
+                        ? <img src={getCover(track)} style={{ width:36, height:36, borderRadius:9, objectFit:'cover', flexShrink:0 }} onError={e=>{ e.target.onerror=null; e.target.src='/icon-512.png'; }}/>
+                        : <div style={{ width:36, height:36, borderRadius:9, background:track.bg||`${track.color}25`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Music size={15} color={track.color}/></div>
+                      )
               }
               {/* Track info */}
               <div style={{ flex:1, minWidth:0 }}>

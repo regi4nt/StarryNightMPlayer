@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Moon, Music, SlidersHorizontal, Zap, Bot, History, Radio } from 'lucide-react';
+import { Moon, Music, SlidersHorizontal, Zap, Bot, History, Radio, RotateCcw } from 'lucide-react';
 import { SLEEP_OPTIONS, fmtSec } from '../constants.js';
 
 class SettingsErrorBoundary extends React.Component {
@@ -429,6 +429,55 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
               {t?.coverApplied||'Photo applied to all songs · Saved in browser'}
             </div>
           )}
+        </div>
+
+        {/* ── ROTATE DEVICE */}
+        <div style={{ padding:'16px 18px 20px' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+            <span style={{ fontSize:16 }}>📱</span>
+            <div>
+              <div style={{ fontWeight:800, fontSize:14 }}>Rotasi Layar</div>
+              <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>Paksa orientasi layar landscape atau portrait</div>
+            </div>
+          </div>
+          <div style={{ display:'flex', gap:8 }}>
+            <button
+              onClick={() => {
+                if (screen.orientation?.lock) {
+                  screen.orientation.lock('landscape').catch(() => {});
+                } else if (window.screen?.lockOrientation) {
+                  window.screen.lockOrientation('landscape');
+                }
+              }}
+              style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:7, padding:'10px 0', borderRadius:12, border:`1px solid ${color}50`, background:`${color}15`, color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}
+            >
+              <RotateCcw size={13} style={{ transform:'rotate(90deg)' }}/> Landscape
+            </button>
+            <button
+              onClick={() => {
+                if (screen.orientation?.lock) {
+                  screen.orientation.lock('portrait').catch(() => {});
+                } else if (window.screen?.lockOrientation) {
+                  window.screen.lockOrientation('portrait');
+                }
+              }}
+              style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:7, padding:'10px 0', borderRadius:12, border:`1px solid ${color}50`, background:`${color}15`, color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}
+            >
+              <RotateCcw size={13}/> Portrait
+            </button>
+            <button
+              onClick={() => {
+                if (screen.orientation?.unlock) {
+                  screen.orientation.unlock();
+                } else if (window.screen?.unlockOrientation) {
+                  window.screen.unlockOrientation();
+                }
+              }}
+              style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:7, padding:'10px 0', borderRadius:12, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.5)', fontSize:12, fontWeight:700, cursor:'pointer' }}
+            >
+              <RotateCcw size={13}/> Bebas
+            </button>
+          </div>
         </div>
 
         {/* ── DNS SETTINGS */}
