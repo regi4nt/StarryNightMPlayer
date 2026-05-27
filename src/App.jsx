@@ -2114,6 +2114,12 @@ Return ONLY valid JSON, no explanation:
   const [sttListening, setSttListening] = useState(false);
   const sttRef = useRef(null);
   const shazamMediaRef = useRef(null); // MediaRecorder instance
+  // ── Mic menu popup (pilih mode: Shazam vs STT) ─────────────────
+  const [showMicMenu, setShowMicMenu] = useState(false);
+  const micMenuRef = useRef(null);
+  // FIX Bug Race: flag ref untuk mencegah double-start saat async getUserMedia/getDisplayMedia belum selesai
+  // (setState belum ter-commit sehingga guard shazamListening||shazamLoading belum aktif)
+  const shazamStartingRef = useRef(false);
   // FIX Bug #5: simpan stream secara terpisah dari MediaRecorder.
   // MediaRecorder.stream adalah properti spec yang belum diimplementasi di semua browser
   // (Safari hingga v17 tidak mengeksposnya). Dengan menyimpan referensi stream sendiri
@@ -2582,6 +2588,22 @@ Return ONLY valid JSON, no explanation:
     window.addEventListener('offline', goOffline);
     return () => { window.removeEventListener('online', goOnline); window.removeEventListener('offline', goOffline); };
   }, []);
+
+  // ── Tutup mic menu saat klik di luar ───────────────────────────
+  useEffect(() => {
+    if (!showMicMenu) return;
+    const handler = (e) => {
+      if (micMenuRef.current && !micMenuRef.current.contains(e.target)) {
+        setShowMicMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    document.addEventListener('touchstart', handler);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('touchstart', handler);
+    };
+  }, [showMicMenu]);
 
   // ── Restore Drive song metadata from localStorage when offline (no token needed)
   useEffect(() => {
@@ -3245,6 +3267,45 @@ Return ONLY valid JSON, no explanation:
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [track.id, embedTrack?.videoId, aiSubView]);
+
+  // ── Wawasan Kosmik: auto-generate kalimat puitis ke chat setiap ganti lagu ──
+  const cosmicInsightRef = useRef(null);
+  useEffect(() => { cosmicInsightRef.current = { track, embedTrack, lang, isLite, askAIRace, activeModel, userLocation, userWeather }; });
+  useEffect(() => {
+    const ctx = cosmicInsightRef.current;
+    if (!ctx) return;
+    if (ctx.isLite) return; // Lite Mode: skip hemat bandwidth
+    const activeTitle  = ctx.embedTrack ? (ctx.embedTrack.title  || ctx.track.title)  : ctx.track.title;
+    const activeArtist = ctx.embedTrack ? (ctx.embedTrack.artist || ctx.track.artist) : ctx.track.artist;
+    if (!activeTitle || activeTitle === 'Unknown') return;
+    let cancelled = false;
+    const run = async () => {
+      const now = new Date();
+      const hour = now.getHours();
+      const timeOfDay = ctx.lang === 'en'
+        ? (hour < 5 ? 'late night' : hour < 11 ? 'morning' : hour < 15 ? 'afternoon' : hour < 18 ? 'late afternoon' : hour < 21 ? 'evening' : 'night')
+        : (hour < 5 ? 'dini hari' : hour < 11 ? 'pagi' : hour < 15 ? 'siang' : hour < 18 ? 'sore' : hour < 21 ? 'malam' : 'larut malam');
+      const cosmicAmbient = [
+        ctx.userLocation ? (ctx.lang === 'en' ? `Location: ${ctx.userLocation}.` : `Lokasi: ${ctx.userLocation}.`) : '',
+        ctx.userWeather  ? (ctx.lang === 'en' ? `Weather: ${ctx.userWeather.emoji} ${ctx.userWeather.desc}, ${ctx.userWeather.temp}${ctx.userWeather.unit}.` : `Cuaca: ${ctx.userWeather.emoji} ${ctx.userWeather.desc}, ${ctx.userWeather.temp}${ctx.userWeather.unit}.`) : '',
+        ctx.lang === 'en' ? `Time of day: ${timeOfDay}.` : `Waktu: ${timeOfDay}.`,
+      ].filter(Boolean).join(' ');
+      const r = await ctx.askAIRace(
+        `Song: "${activeTitle}" by ${activeArtist}. Vibe/mood: ${ctx.track.mood || 'unknown'}. ${cosmicAmbient}\n\n${ctx.lang === 'en'
+          ? 'Write 1 short poetic sentence capturing the essence of this song woven with the current time, place, or weather. Use metaphors about stars, the universe, or nature. Max 20 words. English only.'
+          : 'Buat 1 kalimat puitis singkat yang menangkap esensi lagu ini, dipadukan dengan suasana waktu, tempat, atau cuaca saat ini. Gunakan metafora tentang bintang, alam semesta, atau alam. Maksimal 20 kata. Bahasa Indonesia.'}`,
+        `${ctx.lang === 'en'
+          ? 'You are a poet. Reply with ONLY the poetic sentence, no quotes, no explanation.'
+          : 'Kamu penyair. Balas HANYA kalimat puitis saja, tanpa tanda petik, tanpa penjelasan.'}`
+      );
+      if (cancelled || !r) return;
+      setMessages(p => [...p, { from: 'ai', text: `✨ ${r}`, isCosmicInsight: true }]);
+      setActiveModelLabel(ctx.activeModel());
+    };
+    run();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [track.id, embedTrack?.videoId]);
 
 
   // ── For You: shared helper — call one provider and return parsed JSON or null
@@ -5525,9 +5586,21 @@ Format exactly:
     }
     const historySnap = messages.filter(m => m.from === 'user' || m.from === 'ai');
     const msg=input; setInput(''); setMessages(p=>[...p,{from:'user',text:msg}]); setCL(true);
+    // ── Bangun konteks jam, lokasi, cuaca untuk system prompt ─────────────
+    const now = new Date();
+    const hour = now.getHours();
+    const timeOfDay = hour < 5 ? 'dini hari' : hour < 11 ? 'pagi' : hour < 15 ? 'siang' : hour < 18 ? 'sore' : hour < 21 ? 'malam' : 'larut malam';
+    const timeStr = now.toLocaleTimeString(lang === 'en' ? 'en-US' : 'id-ID', { hour: '2-digit', minute: '2-digit' });
+    const locationCtx = userLocation ? `Location: ${userLocation}.` : '';
+    const weatherCtx = userWeather ? `Weather: ${userWeather.emoji} ${userWeather.desc}, ${userWeather.temp}${userWeather.unit}.` : '';
+    const timeCtx = lang === 'en'
+      ? `Current time: ${timeStr} (${timeOfDay}).`
+      : `Jam sekarang: ${timeStr} (${timeOfDay}).`;
+    const ambientCtx = [timeCtx, locationCtx, weatherCtx].filter(Boolean).join(' ');
+
     const r = await askAIRace(
       msg,
-      `You are Starry AI — a warm, fun, music-aware chat companion. Be relaxed, friendly, a bit playful. Reply briefly and naturally (max 120 words). Chat about anything: music, feelings, daily life, trivia, motivation, or just hang out. Context: the user is currently listening to "${embedTrack ? (embedTrack.title || track.title) : track.title}" by ${embedTrack ? (embedTrack.artist || track.artist) : track.artist}${track.mood ? ' (mood: ' + track.mood + ')' : ''}. MUSIC RECOMMENDATION RULES: If the user asks for a song or music recommendation, mention the song and artist naturally in your reply. At the very end of your response, on a new line, write EXACTLY one of these machine-readable tags (hidden from user): For a song: ##YT:TITLE|ARTIST## — For a radio/genre search: ##RADIO:KEYWORD## — Rules: use ## delimiters, pipe | between title and artist, no quotes, no extra words. Example endings: ##YT:Shape of You|Ed Sheeran## or ##RADIO:jazz lofi##. Only add a tag when recommending music. General chat = no tag.`,
+      `You are Starry AI — a warm, fun, music-aware chat companion. Be relaxed, friendly, a bit playful. Reply briefly and naturally (max 120 words). Chat about anything: music, feelings, daily life, trivia, motivation, or just hang out. ${ambientCtx} Naturally weave in the time, place, or weather when it feels relevant — don't force it every reply. Context: the user is currently listening to "${embedTrack ? (embedTrack.title || track.title) : track.title}" by ${embedTrack ? (embedTrack.artist || track.artist) : track.artist}${track.mood ? ' (mood: ' + track.mood + ')' : ''}. MUSIC RECOMMENDATION RULES: If the user asks for a song or music recommendation, mention the song and artist naturally in your reply. At the very end of your response, on a new line, write EXACTLY one of these machine-readable tags (hidden from user): For a song: ##YT:TITLE|ARTIST## — For a radio/genre search: ##RADIO:KEYWORD## — Rules: use ## delimiters, pipe | between title and artist, no quotes, no extra words. Example endings: ##YT:Shape of You|Ed Sheeran## or ##RADIO:jazz lofi##. Only add a tag when recommending music. General chat = no tag.`,
       historySnap
     );
 
@@ -5564,7 +5637,10 @@ Format exactly:
   const shazamSourceRef = useRef('mikrofon');    // 'mikrofon' | 'audio device'
 
   const startShazam = async () => {
-    if (shazamListening || shazamLoading) return;
+    // FIX Bug Race: gunakan ref sebagai guard sinkron untuk mencegah double-start
+    // selama jeda async antara guard state dan setShazamListening(true)
+    if (shazamListening || shazamLoading || shazamStartingRef.current) return;
+    shazamStartingRef.current = true;
 
     let stream;
     let sourceLabel = 'mikrofon'; // untuk pesan UI
@@ -5605,6 +5681,7 @@ Format exactly:
       } catch (err) {
         // User tekan Cancel di dialog → jangan lanjut sama sekali
         if (err.name === 'NotAllowedError' || err.name === 'AbortError') {
+          shazamStartingRef.current = false; // FIX Bug Race: reset flag agar tombol mic bisa dipakai lagi
           return;
         }
         // Error lain (NotSupportedError, dll) → lanjut ke fallback mikrofon
@@ -5617,6 +5694,7 @@ Format exactly:
         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         sourceLabel = 'mikrofon';
       } catch {
+        shazamStartingRef.current = false; // FIX Bug Race: reset flag
         setMessages(p => [...p, {
           from: 'ai',
           text: '🎙️ Tidak bisa mengakses mikrofon. Pastikan kamu mengizinkan akses mikrofon di browser ya!',
@@ -5649,6 +5727,7 @@ Format exactly:
     const stoppedPromise = new Promise(resolve => { recorder.onstop = resolve; });
 
     setShazamListening(true);
+    shazamStartingRef.current = false; // FIX Bug Race: guard state sudah aktif, reset ref
     setMessages(p => [...p, { from: 'user', text: sourceLabel === 'audio device' ? '🖥️ Mendengarkan audio device…' : '🎙️ Mendengarkan musik…' }]);
 
     recorder.start();
@@ -5735,12 +5814,14 @@ Format exactly:
     }
 
     setShazamLoading(false);
+    shazamStartingRef.current = false; // FIX Bug Race: pastikan flag selalu bersih di akhir
     shazamMediaRef.current = null;
   };
 
   // Batalkan rekaman jika sedang berlangsung
   const cancelShazam = () => {
     shazamCancelledRef.current = true; // FIX Bug 3: tandai flow sebagai dibatalkan
+    shazamStartingRef.current = false; // FIX Bug Race: reset starting flag
     if (shazamMediaRef.current) {
       try {
         // FIX Bug #5: gunakan shazamStreamRef, bukan recorder.stream yang tidak reliable
@@ -5753,6 +5834,12 @@ Format exactly:
         }
       } catch {}
       shazamMediaRef.current = null;
+    }
+    // FIX Bug STT: jika STT kebetulan aktif, hentikan juga agar state tidak kotor
+    if (sttRef.current) {
+      try { sttRef.current.abort(); } catch {}
+      sttRef.current = null;
+      setSttListening(false);
     }
     setShazamListening(false);
     setShazamLoading(false);
@@ -9957,7 +10044,18 @@ Format exactly:
                   <div key={i} style={{ display:'flex', justifyContent:m.from==='user'?'flex-end':'flex-start' }}>
                     {m.from==='ai'&&<div style={{ width:22, height:22, borderRadius:7, flexShrink:0, background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center', marginRight:6, marginTop:2 }}><Bot size={11} style={{ color:'white' }}/></div>}
                     <div style={{ maxWidth:'78%' }}>
-                      <div style={{ padding:'9px 13px', fontSize:13, lineHeight:1.55, borderRadius:m.from==='user'?'16px 16px 4px 16px':'4px 16px 16px 16px', background:m.from==='user'?track.color:'rgba(255,255,255,0.07)', border:m.from==='user'?'none':'1px solid rgba(255,255,255,0.1)', color:'white' }}>{m.text}</div>
+                      <div style={{
+                        padding:'9px 13px', fontSize:13, lineHeight:1.55,
+                        borderRadius:m.from==='user'?'16px 16px 4px 16px':'4px 16px 16px 16px',
+                        background: m.isCosmicInsight
+                          ? `linear-gradient(135deg,${track.color}22,rgba(168,85,247,0.15))`
+                          : m.from==='user' ? track.color : 'rgba(255,255,255,0.07)',
+                        border: m.isCosmicInsight
+                          ? `1px solid ${track.color}55`
+                          : m.from==='user' ? 'none' : '1px solid rgba(255,255,255,0.1)',
+                        color:'white',
+                        fontStyle: m.isCosmicInsight ? 'italic' : 'normal',
+                      }}>{m.text}</div>
                       {act?.type === 'yt' && (
                         <button
                           onClick={()=>{
@@ -10046,32 +10144,77 @@ Format exactly:
                   </button>
                 ) : (
                   <>
-                    {/* ── Mic button — satu tombol untuk Shazam & STT ── */}
-                    {!shazamListening && !shazamLoading && (
-                      <button
-                        onClick={() => {
-                          if (sttListening) { stopSTT(); return; }
-                          // Jika input kosong → Shazam (kenali lagu), jika ada teks → STT (tambah teks)
-                          if (!input.trim()) startShazam(); else startSTT();
-                        }}
-                        title={sttListening ? 'Hentikan rekaman' : input.trim() ? 'Bicara ke teks' : 'Kenali lagu (Shazam)'}
-                        style={{
-                          width:40, height:40, borderRadius:12,
-                          border: sttListening ? '1px solid #22c55e88' : `1px solid ${track.color}55`,
-                          background: sttListening ? 'rgba(34,197,94,0.18)' : `${track.color}18`,
-                          color: sttListening ? '#22c55e' : track.color,
-                          cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
-                          flexShrink:0, transition:'all 0.2s',
-                          animation: sttListening ? 'pulse 1s ease-in-out infinite' : 'none',
-                        }}
-                      >
-                        {sttListening
-                          ? <span style={{fontSize:14}}>⏹</span>
-                          : input.trim()
-                            ? <span style={{fontSize:14}}>🎤</span>
-                            : <Mic2 size={16}/>
-                        }
-                      </button>
+                    {/* ── Mic button — klik untuk tampilkan menu 2 pilihan ── */}
+                    {(!shazamListening && !shazamLoading || sttListening) && (
+                      <div ref={micMenuRef} style={{ position:'relative', flexShrink:0 }}>
+                        <button
+                          onClick={() => {
+                            if (sttListening) { stopSTT(); return; }
+                            setShowMicMenu(v => !v);
+                          }}
+                          title={sttListening ? 'Hentikan rekaman' : 'Pilih mode mikrofon'}
+                          style={{
+                            width:40, height:40, borderRadius:12,
+                            border: sttListening ? '1px solid #22c55e88' : `1px solid ${track.color}55`,
+                            background: sttListening ? 'rgba(34,197,94,0.18)' : showMicMenu ? `${track.color}30` : `${track.color}18`,
+                            color: sttListening ? '#22c55e' : track.color,
+                            cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
+                            transition:'all 0.2s',
+                            animation: sttListening ? 'pulse 1s ease-in-out infinite' : 'none',
+                          }}
+                        >
+                          {sttListening ? <span style={{fontSize:14}}>⏹</span> : <Mic2 size={16}/>}
+                        </button>
+                        {/* Popup menu 2 pilihan */}
+                        {showMicMenu && (
+                          <div
+                            onClick={e => e.stopPropagation()}
+                            style={{
+                              position:'absolute', bottom:'calc(100% + 8px)', right:0,
+                              background:'rgba(18,18,28,0.97)', border:`1px solid ${track.color}44`,
+                              borderRadius:14, overflow:'hidden', minWidth:195,
+                              boxShadow:'0 8px 32px rgba(0,0,0,0.55)',
+                              zIndex:200,
+                            }}
+                          >
+                            <button
+                              onClick={() => { setShowMicMenu(false); startShazam(); }}
+                              style={{
+                                width:'100%', padding:'11px 16px', background:'none', border:'none',
+                                color:'white', cursor:'pointer', display:'flex', alignItems:'center',
+                                gap:10, fontSize:13, textAlign:'left',
+                                borderBottom:'1px solid rgba(255,255,255,0.07)',
+                                transition:'background 0.15s',
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.background=`${track.color}22`}
+                              onMouseLeave={e => e.currentTarget.style.background='none'}
+                            >
+                              <Mic2 size={15} style={{ color:track.color, flexShrink:0 }}/>
+                              <div>
+                                <div style={{ fontWeight:600, fontSize:13 }}>Kenali Lagu</div>
+                                <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)', marginTop:1 }}>Shazam — dengarkan &amp; identifikasi</div>
+                              </div>
+                            </button>
+                            <button
+                              onClick={() => { setShowMicMenu(false); startSTT(); }}
+                              style={{
+                                width:'100%', padding:'11px 16px', background:'none', border:'none',
+                                color:'white', cursor:'pointer', display:'flex', alignItems:'center',
+                                gap:10, fontSize:13, textAlign:'left',
+                                transition:'background 0.15s',
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.background=`${track.color}22`}
+                              onMouseLeave={e => e.currentTarget.style.background='none'}
+                            >
+                              <span style={{ fontSize:15, flexShrink:0 }}>🎤</span>
+                              <div>
+                                <div style={{ fontWeight:600, fontSize:13 }}>Bicara ke Teks</div>
+                                <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)', marginTop:1 }}>Ketik pesan dengan suara</div>
+                              </div>
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     )}
                     {/* ── Chat send button ── */}
                     <button onClick={sendChat} disabled={chatLoading||!input.trim()}
