@@ -10211,10 +10211,18 @@ Format exactly:
                   style={{ flex:1, background:'rgba(255,255,255,0.07)', border:`1px solid rgba(255,255,255,0.12)`, borderRadius:12, padding:'9px 13px', fontSize:13, color:'white', outline:'none' }}/>
                 {/* Mood send */}
                 {vibeInput&&!vibeInput.startsWith('✨') ? (
-                  <button onClick={()=>{ if(vibeLoading) return; if(!vibeInput.trim()) { setVibeInput(''); } else { searchVibe(); } }}
-                    style={{ width:40, height:40, borderRadius:12, border:'none', background:vibeInput.trim()?track.color:'rgba(255,255,255,0.1)', color:'white', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity:vibeLoading?0.5:1, flexShrink:0 }}>
-                    {vibeLoading ? <Loader2 size={15} style={{ animation:'spin 1s linear infinite' }}/> : <span style={{fontSize:15}}>🔮</span>}
-                  </button>
+                  <div style={{ display:'flex', gap:6, flexShrink:0 }}>
+                    <button onClick={generateCosmicInsight} disabled={cosmicLoading || chatLoading}
+                      title={lang === 'en' ? 'Cosmic Insight' : 'Wawasan Kosmik'}
+                      style={{ width:40, height:40, borderRadius:12, border:'1px solid rgba(99,102,241,0.35)', background:'rgba(99,102,241,0.12)', color:'rgba(99,102,241,0.85)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:17, transition:'all 0.2s', opacity:cosmicLoading?0.5:1 }}
+                      onMouseEnter={e=>{ if(!cosmicLoading){ e.currentTarget.style.background='rgba(99,102,241,0.25)'; e.currentTarget.style.color='#a5b4fc'; } }}
+                      onMouseLeave={e=>{ e.currentTarget.style.background='rgba(99,102,241,0.12)'; e.currentTarget.style.color='rgba(99,102,241,0.85)'; }}
+                    >{cosmicLoading ? <Loader2 size={15} style={{ animation:'spin 1s linear infinite' }}/> : '✨'}</button>
+                    <button onClick={()=>{ if(vibeLoading) return; if(!vibeInput.trim()) { setVibeInput(''); } else { searchVibe(); } }}
+                      style={{ width:40, height:40, borderRadius:12, border:'none', background:vibeInput.trim()?track.color:'rgba(255,255,255,0.1)', color:'white', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity:vibeLoading?0.5:1, flexShrink:0 }}>
+                      {vibeLoading ? <Loader2 size={15} style={{ animation:'spin 1s linear infinite' }}/> : <span style={{fontSize:15}}>🔮</span>}
+                    </button>
+                  </div>
                 ) : (
                   <>
                     
@@ -10297,20 +10305,12 @@ Format exactly:
                         {chatLoading ? <Loader2 size={15} style={{ animation:'spin 1s linear infinite' }}/> : <Send size={15}/>}
                       </button>
                     ) : (
-                      <div style={{ display:'flex', gap:6, flexShrink:0 }}>
-                        <button onClick={generateCosmicInsight} disabled={cosmicLoading || chatLoading}
-                          title={lang === 'en' ? 'Cosmic Insight — poetic sentence about the current song' : 'Wawasan Kosmik — kalimat puitis tentang lagu ini'}
-                          style={{ width:40, height:40, borderRadius:12, border:'1px solid rgba(99,102,241,0.35)', background:'rgba(99,102,241,0.12)', color:'rgba(99,102,241,0.85)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:17, transition:'all 0.2s', opacity: cosmicLoading ? 0.5 : 1 }}
-                          onMouseEnter={e=>{ if(!cosmicLoading){ e.currentTarget.style.background='rgba(99,102,241,0.25)'; e.currentTarget.style.color='#a5b4fc'; } }}
-                          onMouseLeave={e=>{ e.currentTarget.style.background='rgba(99,102,241,0.12)'; e.currentTarget.style.color='rgba(99,102,241,0.85)'; }}
-                        >{cosmicLoading ? <Loader2 size={15} style={{ animation:'spin 1s linear infinite' }}/> : '✨'}</button>
-                        <button onClick={() => setVibeInput(' ')} disabled={chatLoading}
-                          title={t?.vibeSearchBtn || 'Vibe Search — cari lagu berdasarkan suasana hati'}
-                          style={{ width:40, height:40, borderRadius:12, border:'1px solid rgba(168,85,247,0.35)', background:'rgba(168,85,247,0.12)', color:'rgba(168,85,247,0.85)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:17, transition:'all 0.2s' }}
-                          onMouseEnter={e=>{ e.currentTarget.style.background='rgba(168,85,247,0.25)'; e.currentTarget.style.color='#d8b4fe'; }}
-                          onMouseLeave={e=>{ e.currentTarget.style.background='rgba(168,85,247,0.12)'; e.currentTarget.style.color='rgba(168,85,247,0.85)'; }}
-                        >🔮</button>
-                      </div>
+                      <button onClick={() => setVibeInput(' ')} disabled={chatLoading}
+                        title={t?.vibeSearchBtn || 'Vibe Search — cari lagu berdasarkan suasana hati'}
+                        style={{ width:40, height:40, borderRadius:12, border:'1px solid rgba(168,85,247,0.35)', background:'rgba(168,85,247,0.12)', color:'rgba(168,85,247,0.85)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:17, transition:'all 0.2s' }}
+                        onMouseEnter={e=>{ e.currentTarget.style.background='rgba(168,85,247,0.25)'; e.currentTarget.style.color='#d8b4fe'; }}
+                        onMouseLeave={e=>{ e.currentTarget.style.background='rgba(168,85,247,0.12)'; e.currentTarget.style.color='rgba(168,85,247,0.85)'; }}
+                      >🔮</button>
                     )}
                   </>
                 )}
