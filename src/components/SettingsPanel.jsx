@@ -266,7 +266,7 @@ function CacheManager({ lang }) {
         <div>
           <div style={{ fontWeight:800, fontSize:14 }}>{t?.clearCache||'Clear Cache & Cookies'}</div>
           <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>
-            {lang==='id' ? t?.clearCacheDesc||'Free up storage from saved audio & cookies'}
+            {lang==='id' ? t?.clearCacheDesc||'Free up storage from saved audio & cookies' : 'Free up storage from saved audio & cookies'}
           </div>
         </div>
       </div>
