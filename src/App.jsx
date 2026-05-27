@@ -1242,6 +1242,7 @@ Return ONLY valid JSON, no explanation:
 
   // ── Core playback (moved here to avoid TDZ in useCallback closures below)
   const [track, setTrack]       = useState(SONGS[0]);
+  const trackRef = useRef(SONGS[0]); // selalu sinkron dengan track terbaru untuk closure
   const [playing, setPlaying]   = useState(false);
   const playingRef = useRef(false); // sync ref agar useEffect [track.src] bisa baca playing terbaru
   const [progress, setProgress] = useState(0);
@@ -1587,7 +1588,7 @@ Return ONLY valid JSON, no explanation:
     if (spPreviewRef.current) { spPreviewRef.current.pause(); spPreviewRef.current = null; }
     setSpPlaying(false);
     // Stop audio jika sedang radio dan incoming bukan radio
-    if (incomingMode !== 'radio' && track?.isRadio) {
+    if (incomingMode !== 'radio' && trackRef.current?.isRadio) {
       if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
       if (radioReconnectRef.current) { clearTimeout(radioReconnectRef.current); radioReconnectRef.current = null; }
@@ -1597,7 +1598,7 @@ Return ONLY valid JSON, no explanation:
     }
     // Stop audio jika incoming adalah radio/embed (bukan lokal)
     // Khusus embed-to-embed (YT next/prev): jangan setPlaying(false) — biarkan playYouTube yang set
-    if (incomingMode !== 'local' && incomingMode !== 'embed' && !track?.isRadio) {
+    if (incomingMode !== 'local' && incomingMode !== 'embed' && !trackRef.current?.isRadio) {
       setPlaying(false);
     }
   };
@@ -3052,6 +3053,7 @@ Return ONLY valid JSON, no explanation:
 
   // ── Sync playingRef
   useEffect(() => { playingRef.current = playing; }, [playing]);
+  useEffect(() => { trackRef.current = track; }, [track]);
 
   // ── Media Session API — lock screen controls & background playback on mobile
   useEffect(() => {
@@ -4819,6 +4821,7 @@ Format exactly:
     // ── Handle AI-generated songs: navigate to YT search instead of playing empty src
     if (t._aiGenerated) {
       const q = t._searchQuery || `${t.title} ${t.artist}`;
+      stopAllMedia('embed');
       setUnifiedPlatform('ytmusic');
       setUnifiedQuery(q);
       setYtQuery(p => ({ ...p, ytmusic: q }));

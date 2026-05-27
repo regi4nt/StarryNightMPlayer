@@ -453,11 +453,26 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
           </div>
           <div style={{ display:'flex', gap:8 }}>
             <button
-              onClick={() => {
-                if (screen.orientation?.lock) {
-                  screen.orientation.lock('landscape').catch(() => {});
-                } else if (window.screen?.lockOrientation) {
-                  window.screen.lockOrientation('landscape');
+              onClick={async () => {
+                // Coba Screen Orientation API (butuh fullscreen/PWA)
+                try {
+                  if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen().catch(()=>{});
+                  if (screen.orientation?.lock) {
+                    await screen.orientation.lock('landscape');
+                    return;
+                  }
+                } catch(_) {}
+                // Fallback: CSS transform untuk rotate visual
+                const app = document.getElementById('root') || document.body;
+                const isPortrait = window.innerHeight > window.innerWidth;
+                if (isPortrait) {
+                  app.style.transform = 'rotate(90deg)';
+                  app.style.transformOrigin = 'center center';
+                  app.style.width = window.innerHeight + 'px';
+                  app.style.height = window.innerWidth + 'px';
+                  app.style.position = 'fixed';
+                  app.style.top = ((window.innerHeight - window.innerWidth) / 2) + 'px';
+                  app.style.left = -((window.innerHeight - window.innerWidth) / 2) + 'px';
                 }
               }}
               style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:7, padding:'10px 0', borderRadius:12, border:`1px solid ${color}50`, background:`${color}15`, color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}
@@ -465,12 +480,23 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
               <RotateCcw size={13} style={{ transform:'rotate(90deg)' }}/> Landscape
             </button>
             <button
-              onClick={() => {
-                if (screen.orientation?.lock) {
-                  screen.orientation.lock('portrait').catch(() => {});
-                } else if (window.screen?.lockOrientation) {
-                  window.screen.lockOrientation('portrait');
-                }
+              onClick={async () => {
+                try {
+                  if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen().catch(()=>{});
+                  if (screen.orientation?.lock) {
+                    await screen.orientation.lock('portrait');
+                    return;
+                  }
+                } catch(_) {}
+                // Fallback: reset CSS transform
+                const app = document.getElementById('root') || document.body;
+                app.style.transform = '';
+                app.style.transformOrigin = '';
+                app.style.width = '';
+                app.style.height = '';
+                app.style.position = '';
+                app.style.top = '';
+                app.style.left = '';
               }}
               style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:7, padding:'10px 0', borderRadius:12, border:`1px solid ${color}50`, background:`${color}15`, color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}
             >
@@ -478,11 +504,20 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
             </button>
             <button
               onClick={() => {
-                if (screen.orientation?.unlock) {
-                  screen.orientation.unlock();
-                } else if (window.screen?.unlockOrientation) {
-                  window.screen.unlockOrientation();
-                }
+                // Unlock orientation API
+                try {
+                  if (screen.orientation?.unlock) screen.orientation.unlock();
+                  if (document.exitFullscreen) document.exitFullscreen().catch(()=>{});
+                } catch(_) {}
+                // Reset CSS transform fallback
+                const app = document.getElementById('root') || document.body;
+                app.style.transform = '';
+                app.style.transformOrigin = '';
+                app.style.width = '';
+                app.style.height = '';
+                app.style.position = '';
+                app.style.top = '';
+                app.style.left = '';
               }}
               style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:7, padding:'10px 0', borderRadius:12, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.5)', fontSize:12, fontWeight:700, cursor:'pointer' }}
             >
