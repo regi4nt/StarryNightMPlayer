@@ -10046,37 +10046,31 @@ Format exactly:
                   </button>
                 ) : (
                   <>
-                    {/* ── Shazam mic button — tampil saat input kosong ── */}
-                    {!input.trim() && !shazamListening && !shazamLoading && (
-                      <button
-                        onClick={startShazam}
-                        title="Kenali lagu dari suara (Shazam)"
-                        style={{
-                          width:40, height:40, borderRadius:12, border:`1px solid ${track.color}55`,
-                          background:`${track.color}18`, color:track.color,
-                          cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
-                          flexShrink:0, transition:'all 0.2s',
-                        }}
-                      >
-                        <Mic2 size={16}/>
-                      </button>
-                    )}
-                    {/* ── STT button — bicara ke teks ── */}
+                    {/* ── Mic button — satu tombol untuk Shazam & STT ── */}
                     {!shazamListening && !shazamLoading && (
                       <button
-                        onClick={sttListening ? stopSTT : startSTT}
-                        title={sttListening ? 'Hentikan rekaman' : 'Bicara ke teks'}
+                        onClick={() => {
+                          if (sttListening) { stopSTT(); return; }
+                          // Jika input kosong → Shazam (kenali lagu), jika ada teks → STT (tambah teks)
+                          if (!input.trim()) startShazam(); else startSTT();
+                        }}
+                        title={sttListening ? 'Hentikan rekaman' : input.trim() ? 'Bicara ke teks' : 'Kenali lagu (Shazam)'}
                         style={{
                           width:40, height:40, borderRadius:12,
-                          border:`1px solid ${sttListening ? '#22c55e88' : 'rgba(255,255,255,0.15)'}`,
-                          background: sttListening ? 'rgba(34,197,94,0.18)' : 'rgba(255,255,255,0.06)',
-                          color: sttListening ? '#22c55e' : 'rgba(255,255,255,0.55)',
+                          border: sttListening ? '1px solid #22c55e88' : `1px solid ${track.color}55`,
+                          background: sttListening ? 'rgba(34,197,94,0.18)' : `${track.color}18`,
+                          color: sttListening ? '#22c55e' : track.color,
                           cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
                           flexShrink:0, transition:'all 0.2s',
                           animation: sttListening ? 'pulse 1s ease-in-out infinite' : 'none',
                         }}
                       >
-                        {sttListening ? <span style={{fontSize:14}}>⏹</span> : <span style={{fontSize:14}}>🎤</span>}
+                        {sttListening
+                          ? <span style={{fontSize:14}}>⏹</span>
+                          : input.trim()
+                            ? <span style={{fontSize:14}}>🎤</span>
+                            : <Mic2 size={16}/>
+                        }
                       </button>
                     )}
                     {/* ── Chat send button ── */}
