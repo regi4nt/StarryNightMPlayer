@@ -10145,9 +10145,9 @@ Format exactly:
                         const _lang = (() => { try { return localStorage.getItem('sn_lang') || 'id'; } catch { return 'id'; } })();
                         const greetings = _lang === 'en' ? [
                           'Hey! 👋 What are you up to? Want to chat or find the perfect song for the vibe?',
-                          'Hi~ I'm Starry ✨ Tell me anything — music, your day, or just hang out 😊',
-                          'Welcome! 🌙 Happy, sad, or just need some company? I'm here',
-                          'Heyy! Request a song, vent, or ask anything — I'm all ears 🎶',
+                          `Hi~ I'm Starry ✨ Tell me anything — music, your day, or just hang out 😊`,
+                          `Welcome! 🌙 Happy, sad, or just need some company? I'm here`,
+                          `Heyy! Request a song, vent, or ask anything — I'm all ears 🎶`,
                           'Hey! How can I help? Music chat, song recommendations, or just a convo — all good 🌟',
                         ] : [
                           'Halo! 👋 Lagi ngapain nih? Mau ngobrol santai atau cari lagu yang pas buat suasana sekarang?',
