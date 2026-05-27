@@ -139,7 +139,7 @@ function MaskedKeyInput({ value, onChange, onBlur, placeholder, accentColor, lab
 }
 
 // ── CacheManager: sub-komponen terpisah agar hooks tidak dipanggil di dalam IIFE
-function CacheManager({ lang }) {
+function CacheManager({ lang, t }) {
   const [cacheInfo, setCacheInfo] = React.useState(null);
   const [clearing, setClearing] = React.useState(false);
   const [cleared, setCleared] = React.useState(false);
@@ -810,7 +810,7 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
         </div>
 
         {/* ── HAPUS CACHE */}
-        <CacheManager lang={lang} />
+        <CacheManager lang={lang} t={t} />
 
         {/* ── INSTALL APP (PWA) */}
         <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>

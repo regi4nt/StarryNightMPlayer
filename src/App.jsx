@@ -2109,6 +2109,9 @@ Return ONLY valid JSON, no explanation:
   // ── Shazam-like audio recognition ─────────────────────────────
   const [shazamListening, setShazamListening] = useState(false); // sedang merekam
   const [shazamLoading, setShazamLoading]     = useState(false); // mengirim ke API
+  // ── Speech-to-Text (Web Speech API) ───────────────────────────
+  const [sttListening, setSttListening] = useState(false);
+  const sttRef = useRef(null);
   const shazamMediaRef = useRef(null); // MediaRecorder instance
   // FIX Bug #5: simpan stream secara terpisah dari MediaRecorder.
   // MediaRecorder.stream adalah properti spec yang belum diimplementasi di semua browser
@@ -5750,6 +5753,32 @@ Format exactly:
     }
     setShazamListening(false);
     setShazamLoading(false);
+  };
+
+  // ── Speech-to-Text: bicara → teks langsung ke input chat ──────
+  const startSTT = () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { alert('Browser kamu tidak mendukung Speech Recognition. Coba Chrome atau Edge.'); return; }
+    if (sttRef.current) { sttRef.current.abort(); sttRef.current = null; }
+    const rec = new SR();
+    rec.lang = 'id-ID';
+    rec.continuous = false;
+    rec.interimResults = true;
+    rec.maxAlternatives = 1;
+    sttRef.current = rec;
+    setSttListening(true);
+    rec.onresult = (e) => {
+      const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
+      setInput(transcript);
+    };
+    rec.onerror = () => { setSttListening(false); sttRef.current = null; };
+    rec.onend = () => { setSttListening(false); sttRef.current = null; };
+    rec.start();
+  };
+  const stopSTT = () => {
+    sttRef.current?.stop();
+    sttRef.current = null;
+    setSttListening(false);
   };
 
   const searchVibe = async () => {
@@ -10027,6 +10056,24 @@ Format exactly:
                         }}
                       >
                         <Mic2 size={16}/>
+                      </button>
+                    )}
+                    {/* ── STT button — bicara ke teks ── */}
+                    {!shazamListening && !shazamLoading && (
+                      <button
+                        onClick={sttListening ? stopSTT : startSTT}
+                        title={sttListening ? 'Hentikan rekaman' : 'Bicara ke teks'}
+                        style={{
+                          width:40, height:40, borderRadius:12,
+                          border:`1px solid ${sttListening ? '#22c55e88' : 'rgba(255,255,255,0.15)'}`,
+                          background: sttListening ? 'rgba(34,197,94,0.18)' : 'rgba(255,255,255,0.06)',
+                          color: sttListening ? '#22c55e' : 'rgba(255,255,255,0.55)',
+                          cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
+                          flexShrink:0, transition:'all 0.2s',
+                          animation: sttListening ? 'pulse 1s ease-in-out infinite' : 'none',
+                        }}
+                      >
+                        {sttListening ? <span style={{fontSize:14}}>⏹</span> : <span style={{fontSize:14}}>🎤</span>}
                       </button>
                     )}
                     {/* ── Chat send button ── */}
