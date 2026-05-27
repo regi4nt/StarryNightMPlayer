@@ -9,7 +9,7 @@ import {
   ChevronRight, SlidersHorizontal, History,
   Search, Mic2, Trash2, ListPlus, FolderOpen,
   PenLine, ChevronLeft, Radio, Maximize2, Minimize2,
-  Download, Share2, Wand2, Copy, Check, Star
+  Download, Share2, Wand2, Copy, Check, Star, Eye
 } from 'lucide-react';
 
 // ── Split modules ────────────────────────────────────────
@@ -317,6 +317,7 @@ export default function App() {
       const rumbleM      = q.match(/rumble\.com\/embed\/([a-z0-9]+)|rumble\.com\/([a-z0-9-]+-[a-z0-9]+)\.html/i);
       const peertubeMInst = q.match(/https?:\/\/([^/]+)\/videos\/watch\/([a-f0-9-]{36})/i);
       const newgroundsM  = q.match(/newgrounds\.com\/audio\/listen\/(\d+)/i);
+      const fmaM         = q.match(/freemusicarchive\.org\/(?:music|listen)\/([^?#]+)/i);
 
       // ── Social media video URL detection
       const facebookM    = q.match(/(?:facebook\.com|fb\.watch)\/(?:watch\/?\?v=(\d+)|(?:reel|video)\/(\d+)|.*\/videos\/(?:\d+\/)?(\d+))/i);
@@ -8656,7 +8657,7 @@ Format exactly:
                               )}
                               <button onClick={()=>{ setEditingPl(pl); setPlView('form'); }}
                                 style={{ flex:1, padding:'7px 0', background:'none', border:'none', borderLeft:'1px solid rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.4)', fontSize:11, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:5 }}>
-                                <PenLine size={11}/>{t?.editBtn||'Edit'}
+                                <Eye size={11}/>{t?.viewBtn||'View'}
                               </button>
 
                             </div>
@@ -8723,7 +8724,7 @@ Format exactly:
                           onClick={()=>setMySongsEditMode(v=>!v)}
                           style={{ background: mySongsEditMode ? 'rgba(248,113,113,0.15)' : 'rgba(255,255,255,0.06)', border: mySongsEditMode ? '1px solid rgba(248,113,113,0.4)' : '1px solid rgba(255,255,255,0.12)', cursor:'pointer', color: mySongsEditMode ? '#f87171' : 'rgba(255,255,255,0.55)', fontSize:12, padding:'5px 10px', borderRadius:8, fontWeight:700, display:'flex', alignItems:'center', gap:5, transition:'all 0.2s' }}
                         >
-                          <PenLine size={12}/> {mySongsEditMode ? (lang==='id'?'Selesai':'Done') : (t?.editBtn||'Edit')}
+                          <Eye size={12}/> {mySongsEditMode ? (lang==='id'?'Selesai':'Done') : (t?.viewBtn||'View')}
                         </button>
                         {googleUser&&(
                           <button onClick={()=>loadDriveSongs(tokenRef.current, true)}
@@ -8854,7 +8855,7 @@ Format exactly:
                           onClick={()=>setAllSongsEditMode(v=>!v)}
                           style={{ background: allSongsEditMode ? 'rgba(248,113,113,0.15)' : 'rgba(255,255,255,0.06)', border: allSongsEditMode ? '1px solid rgba(248,113,113,0.4)' : '1px solid rgba(255,255,255,0.12)', cursor:'pointer', color: allSongsEditMode ? '#f87171' : 'rgba(255,255,255,0.55)', fontSize:12, padding:'5px 10px', borderRadius:8, fontWeight:700, display:'flex', alignItems:'center', gap:5, transition:'all 0.2s' }}
                         >
-                          <PenLine size={12}/> {allSongsEditMode ? (lang==='id'?'Selesai':'Done') : (t?.editBtn||'Edit')}
+                          <Eye size={12}/> {allSongsEditMode ? (lang==='id'?'Selesai':'Done') : (t?.viewBtn||'View')}
                         </button>
                         {songs.length>0&&(
                           <button onClick={()=>{ activePlRef.current=songs; play(songs[0]); setTab('player'); }}
@@ -8900,7 +8901,7 @@ Format exactly:
                         onClick={()=>setPlSongsEditMode(v=>!v)}
                         style={{ background: plSongsEditMode ? 'rgba(248,113,113,0.15)' : 'rgba(255,255,255,0.06)', border: plSongsEditMode ? '1px solid rgba(248,113,113,0.4)' : '1px solid rgba(255,255,255,0.12)', cursor:'pointer', color: plSongsEditMode ? '#f87171' : 'rgba(255,255,255,0.55)', fontSize:11, padding:'5px 10px', borderRadius:8, fontWeight:700, display:'flex', alignItems:'center', gap:4, flexShrink:0, transition:'all 0.2s' }}
                       >
-                        <Trash2 size={12}/> {plSongsEditMode ? (lang==='id'?'Selesai':'Done') : (lang==='id'?'Hapus':'Delete')}
+                        <Eye size={12}/> {plSongsEditMode ? (lang==='id'?'Selesai':'Done') : (t?.viewBtn||'View')}
                       </button>
                       {songs.length>0&&(
                         <button onClick={()=>{ activePlRef.current=songs; play(songs[0]); setTab('player'); }}
