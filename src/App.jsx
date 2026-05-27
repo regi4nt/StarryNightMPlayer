@@ -5875,41 +5875,51 @@ Format exactly:
     if (!vibeInput.trim()||vibeLoading) return;
     if (isLite) { setVibeInput(t?.liteVibeDisabled||'⚡ Lite Mode active — Vibe Search disabled'); return; }
     setVL(true);
+    try {
+      // First try to match from Drive songs
+      if (customSongs.length > 0) {
+        const customList = customSongs.slice(0,15).map((s,i)=>`${i+1}. "${s.title}" - ${s.artist} (mood: ${s.mood||'unknown'})`).join('\n');
+        const r = await askAIRace(
+          `User wants music with vibe/mood: "${vibeInput}"\n\nAvailable songs:\n${customList}\n\nChoose the song number that PALING cocok dengan vibe tersebut. Balas HANYA satu angka saja.`,
+          'You are an AI music curator. Pick the most fitting song. Reply with the number only.'
+        );
+        const idx = parseInt(r.trim()) - 1;
+        const found = customSongs[idx];
+        if (found && idx >= 0 && idx < customSongs.length) {
+          play(found);
+          setVibeInput(`✨ Cocok untuk "${vibeInput}": ${found.title} - ${found.artist}`);
+          setActiveModelLabel(activeModel());
+          setVL(false);
+          return;
+        }
+      }
 
-    // First try to match from Drive songs
-    if (customSongs.length > 0) {
-      const customList = customSongs.slice(0,15).map((s,i)=>`${i+1}. "${s.title}" - ${s.artist} (mood: ${s.mood||'unknown'})`).join('\n');
+      // Recommend a song → auto-search YouTube
       const r = await askAIRace(
-        `User wants music with vibe/mood: "${vibeInput}"\n\nAvailable songs:\n${customList}\n\nChoose the song number that PALING cocok dengan vibe tersebut. Balas HANYA satu angka saja.`,
-        'You are an AI music curator. Pick the most fitting song. Reply with the number only.'
+        `User wants music with this vibe/mood: "${vibeInput}"\n\nGive ONLY 1 song recommendation in format:\nTITLE - ARTIS\n\nTidak ada teks lain, tidak ada penjelasan.`,
+        'You are an AI music curator. Reply ONLY in format: TITLE - ARTIST. One line only.'
       );
-      const idx = parseInt(r.trim()) - 1;
-      const found = customSongs[idx];
-      if (found && idx >= 0 && idx < customSongs.length) {
-        play(found);
-        setVibeInput(`✨ Cocok untuk "${vibeInput}": ${found.title} - ${found.artist}`);
-        setActiveModelLabel(activeModel());
-        setVL(false);
+      // Kalau semua provider gagal, jangan tampilkan pesan error sebagai hasil vibe
+      if (!r || r.startsWith('Semua provider') || r.startsWith('⚠️')) {
+        setVibeInput(`✨ ${t?.vibeError || 'Gagal mencari lagu, coba lagi.'}`);
         return;
       }
+      const line = r.trim().replace(/^["'✨*]+|["'*]+$/g, '');
+      setVibeInput(`✨ ${line}`);
+      setActiveModelLabel(activeModel());
+      // Auto-search di YouTube
+      const ytPlatformId = 'ytmusic';
+      setYtQuery(p => ({...p, [ytPlatformId]: line}));
+      setTab('stream');
+      setTimeout(() => {
+        searchYouTube(ytPlatformId, line);
+      }, 120);
+    } catch(e) {
+      console.error('[searchVibe] error:', e?.message);
+      setVibeInput(`✨ ${t?.vibeError || 'Gagal mencari lagu, coba lagi.'}`);
+    } finally {
+      setVL(false);
     }
-
-    // Recommend a song → auto-search YouTube
-    const r = await askAIRace(
-      `User wants music with this vibe/mood: "${vibeInput}"\n\nGive ONLY 1 song recommendation in format:\nTITLE - ARTIS\n\nTidak ada teks lain, tidak ada penjelasan.`,
-      'You are an AI music curator. Reply ONLY in format: TITLE - ARTIST. One line only.'
-    );
-    const line = r.trim().replace(/^["'✨*]+|["'*]+$/g, '');
-    setVibeInput(`✨ ${line}`);
-    setActiveModelLabel(activeModel());
-    // Auto-search di YouTube
-    const ytPlatformId = 'ytmusic';
-    setYtQuery(p => ({...p, [ytPlatformId]: line}));
-    setTab('stream');
-    setTimeout(() => {
-      searchYouTube(ytPlatformId, line);
-    }, 120);
-    setVL(false);
   };
 
   // ── Playlists
@@ -9177,16 +9187,60 @@ Format exactly:
 
 
               {/* Sub-nav tabs — centered */}
-              <div style={{ display:'flex', justifyContent:'center', gap:0, marginBottom:0, borderBottom:'1px solid rgba(255,255,255,0.06)', overflowX:'auto' }} className="scrollbar-hide">
+              <div style={{ display:'flex', justifyContent:'center', gap:0, marginBottom:0, borderBottom:'1px solid rgba(255,255,255,0.06)', overflowX:'auto', alignItems:'stretch' }} className="scrollbar-hide">
                 {[
                   { id:'chat', label:'💬 Chat' },
                   { id:'foryou', label:'🎯 For You' },
                   { id:'lyrics', label:`🎵 ${t?.lyricsTab||'Lyrics'}` },
                 ].map(({id, label})=>(
-                  <button key={id} onClick={()=>setAiSubView(id)}
-                    style={{ padding:'9px 22px', borderRadius:0, border:'none', background:'none', color:aiSubView===id?'white':'rgba(255,255,255,0.4)', fontSize:13, fontWeight:aiSubView===id?800:600, cursor:'pointer', borderBottom:aiSubView===id?`2px solid ${track.color}`:'2px solid transparent', marginBottom:-1, flexShrink:0, whiteSpace:'nowrap' }}>
-                    {label}
-                  </button>
+                  <div key={id} style={{ display:'flex', alignItems:'stretch', position:'relative' }}>
+                    <button onClick={()=>setAiSubView(id)}
+                      style={{ padding:'9px 22px', borderRadius:0, border:'none', background:'none', color:aiSubView===id?'white':'rgba(255,255,255,0.4)', fontSize:13, fontWeight:aiSubView===id?800:600, cursor:'pointer', borderBottom:aiSubView===id?`2px solid ${track.color}`:'2px solid transparent', marginBottom:-1, flexShrink:0, whiteSpace:'nowrap' }}>
+                      {label}
+                    </button>
+                    {id === 'chat' && aiSubView === 'chat' && (
+                      <button
+                        onClick={() => {
+                          const _lang = (() => { try { return localStorage.getItem('sn_lang') || 'id'; } catch { return 'id'; } })();
+                          const greetings = _lang === 'en' ? [
+                            'Hey! 👋 What are you up to? Want to chat or find the perfect song for the vibe?',
+                            'Hi~ I\'m Starry ✨ Tell me anything — music, your day, or just hang out 😊',
+                            'Welcome! 🌙 Happy, sad, or just need some company? I\'m here',
+                            'Heyy! Request a song, vent, or ask anything — I\'m all ears 🎶',
+                            'Hey! How can I help? Music chat, song recommendations, or just a convo — all good 🌟',
+                          ] : [
+                            'Halo! 👋 Lagi ngapain nih? Mau ngobrol santai atau cari lagu yang pas buat suasana sekarang?',
+                            'Hai~ aku Starry ✨ Bisa cerita apa aja ke aku — soal musik, hari ini, atau sekadar pengen ngobrol 😊',
+                            'Selamat datang! 🌙 Lagi seneng, galau, atau cuma pengen teman menemani? Aku di sini kok',
+                            'Heyy! Mau request lagu, curhat, atau tanya apa pun — aku siap dengerin 🎶',
+                            'Halo! Ada yang bisa aku bantu? Mau ngobrolin musik, nyari lagu sesuai mood, atau sekadar ngobrol juga bisa 🌟',
+                          ];
+                          setMessages([{ from:'ai', text: greetings[Math.floor(Math.random() * greetings.length)] }]);
+                          setInput('');
+                          setVibeInput('');
+                          setCL(false);
+                        }}
+                        title={t?.refreshChat || 'Refresh chat'}
+                        style={{
+                          padding:'0 8px',
+                          border:'none',
+                          background:'none',
+                          color:'rgba(255,255,255,0.3)',
+                          fontSize:14,
+                          cursor:'pointer',
+                          borderBottom:`2px solid ${track.color}`,
+                          marginBottom:-1,
+                          display:'flex',
+                          alignItems:'center',
+                          transition:'color 0.15s',
+                        }}
+                        onMouseEnter={e=>e.currentTarget.style.color='rgba(255,255,255,0.8)'}
+                        onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,0.3)'}
+                      >
+                        ↺
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>{/* end AI Header */}
@@ -10144,6 +10198,7 @@ Format exactly:
                   </button>
                 ) : (
                   <>
+                    
                     {/* ── Mic button — klik untuk tampilkan menu 2 pilihan ── */}
                     {(!shazamListening && !shazamLoading || sttListening) && (
                       <div ref={micMenuRef} style={{ position:'relative', flexShrink:0 }}>
@@ -10216,11 +10271,20 @@ Format exactly:
                         )}
                       </div>
                     )}
-                    {/* ── Chat send button ── */}
-                    <button onClick={sendChat} disabled={chatLoading||!input.trim()}
-                      style={{ width:40, height:40, borderRadius:12, border:'none', background:input.trim()?track.color:'rgba(255,255,255,0.1)', color:'white', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity:chatLoading?0.5:1, flexShrink:0 }}>
-                      {chatLoading ? <Loader2 size={15} style={{ animation:'spin 1s linear infinite' }}/> : <Send size={15}/>}
-                    </button>
+                    {/* ── Chat send button — 🔮 jika kosong, Send jika ada teks ── */}
+                    {input.trim() ? (
+                      <button onClick={sendChat} disabled={chatLoading}
+                        style={{ width:40, height:40, borderRadius:12, border:'none', background:track.color, color:'white', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', opacity:chatLoading?0.5:1, flexShrink:0 }}>
+                        {chatLoading ? <Loader2 size={15} style={{ animation:'spin 1s linear infinite' }}/> : <Send size={15}/>}
+                      </button>
+                    ) : (
+                      <button onClick={() => setVibeInput(' ')} disabled={chatLoading}
+                        title={t?.vibeSearchBtn || 'Vibe Search — cari lagu berdasarkan suasana hati'}
+                        style={{ width:40, height:40, borderRadius:12, border:'1px solid rgba(168,85,247,0.35)', background:'rgba(168,85,247,0.12)', color:'rgba(168,85,247,0.85)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:17, transition:'all 0.2s' }}
+                        onMouseEnter={e=>{ e.currentTarget.style.background='rgba(168,85,247,0.25)'; e.currentTarget.style.color='#d8b4fe'; }}
+                        onMouseLeave={e=>{ e.currentTarget.style.background='rgba(168,85,247,0.12)'; e.currentTarget.style.color='rgba(168,85,247,0.85)'; }}
+                      >🔮</button>
+                    )}
                   </>
                 )}
               </div>
