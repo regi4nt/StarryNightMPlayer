@@ -2062,7 +2062,6 @@ Return ONLY valid JSON, no explanation:
   const [otherInnerTab, setOtherInnerTab] = useState('pref'); // 'pref' | 'popular'
   const [prefPlaylist, setPrefPlaylist] = useState(null);
   const [prefPlaylistLoading, setPrefPlaylistLoading] = useState(false);
-  const [forYouQueueLoading, setForYouQueueLoading] = useState(false);
   const [prefPlaylistQueueLoading, setPrefPlaylistQueueLoading] = useState(false);
   const [popularPlaylistQueueLoading, setPopularPlaylistQueueLoading] = useState(false);
   const [popularPlaylist, setPopularPlaylist] = useState(null);
@@ -3424,50 +3423,6 @@ Buat 10 lagu yang cocok. Balas HANYA JSON valid tanpa markdown:
     }
     setPrefPlaylistLoading(false);
   };
-
-  // ── For You: Play All — bangun queue dari semua lagu musik rekomendasi ────
-  const playForYouQueue = useCallback(async () => {
-    const musicItems = personaRecs?.music;
-    if (!musicItems?.length || forYouQueueLoading) return;
-    setForYouQueueLoading(true);
-    try {
-      // Cari video pertama yang valid untuk setiap lagu secara paralel (max 5 bersamaan)
-      const BATCH = 5;
-      const results = [];
-      for (let i = 0; i < musicItems.length; i += BATCH) {
-        const batch = musicItems.slice(i, i + BATCH);
-        const batchResults = await Promise.all(batch.map(async (m) => {
-          const q = `${m.title} ${m.artist}`;
-          // Cek cache dulu
-          const cached = ytSearchCacheGet(q + '_video');
-          if (cached?.length) return cached[0];
-          // Coba YT API, fallback ke Piped
-          try {
-            if (isYtApiEnabled()) {
-              const items = await searchViaYouTubeAPI(q, 'video').catch(() => null);
-              if (items?.length) { ytSearchCacheSet(q + '_video', items); return items[0]; }
-            }
-            const piped = await searchViaPiped(q, 'video').catch(() => null);
-            if (piped?.length) { ytSearchCacheSet(q + '_video', piped); return piped[0]; }
-            const inv = await searchViaInvidious(q, 'video').catch(() => null);
-            if (inv?.length) { ytSearchCacheSet(q + '_video', inv); return inv[0]; }
-          } catch(e) { console.warn('[ForYouQueue]', m.title, e?.message); }
-          return null;
-        }));
-        results.push(...batchResults);
-      }
-      const queue = results.filter(Boolean);
-      if (!queue.length) { alert('Tidak ada lagu yang bisa diputar. Coba lagi.'); return; }
-      // Mainkan lagu pertama dengan seluruh queue
-      playYouTube(queue[0], queue, 0);
-      setTab('player');
-    } catch(e) {
-      console.error('[ForYouQueue] error:', e?.message);
-    } finally {
-      setForYouQueueLoading(false);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [personaRecs, forYouQueueLoading]);
 
   // ── Helper generik: bangun queue dari array {title, artist} lalu play ────
   const buildAndPlayQueue = async (songs, setLoading) => {
@@ -9322,15 +9277,9 @@ Format exactly:
                           )}
                           {/* Action bar */}
                           <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-                            {personaRecs?.music?.length > 0 && (
-                              <button onClick={playForYouQueue} disabled={forYouQueueLoading || personaLoading}
-                                style={{ flex:1, padding:'9px 14px', borderRadius:12, border:'none', background:`linear-gradient(135deg,${track.color},#a855f7)`, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, opacity:(forYouQueueLoading||personaLoading)?0.6:1, boxShadow:isLite?'none':`0 4px 16px ${track.color}40` }}>
-                                {forYouQueueLoading ? <><Loader2 size={12} style={{ animation:'spin 1s linear infinite' }}/> Memuat Antrean…</> : <><Play size={12}/> Play All</>}
-                              </button>
-                            )}
                             <button onClick={()=>refreshForYouRef.current?.(true)} disabled={personaLoading}
-                              style={{ flex: personaRecs?.music?.length > 0 ? '0 0 auto' : 1, padding:'9px 14px', borderRadius:12, border:`1px solid ${track.color}40`, background:`${track.color}15`, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, opacity:personaLoading?0.6:1 }}>
-                              {personaLoading ? <><Loader2 size={12} style={{ animation:'spin 1s linear infinite' }}/> Updating…</> : <><Sparkles size={12}/> Refresh</>}
+                              style={{ flex:1, padding:'9px 14px', borderRadius:12, border:`1px solid ${track.color}40`, background:`${track.color}15`, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, opacity:personaLoading?0.6:1 }}>
+                              {personaLoading ? <><Loader2 size={12} style={{ animation:'spin 1s linear infinite' }}/> Updating…</> : <><Sparkles size={12}/> Refresh Feed</>}
                             </button>
                             <button onClick={()=>{ setPersonaStep('onboard'); setPersonaRecs(null); localStorage.removeItem('sn_persona_done'); localStorage.removeItem('sn_persona_recs'); localStorage.removeItem('sn_persona_recs_ts'); }}
                               style={{ padding:'9px 14px', borderRadius:12, border:'1px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.05)', color:'rgba(255,255,255,0.6)', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
