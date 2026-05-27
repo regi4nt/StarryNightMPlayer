@@ -1,21 +1,32 @@
 /**
  * Shared rate limiter — diimpor oleh semua Vercel Serverless Functions di /api/
  *
- * Strategi: in-memory sliding window per IP.
- * Karena Vercel serverless bisa scale ke banyak instance, counter tidak shared
- * antar instance — tapi tetap efektif menghentikan burst dari satu IP.
+ * Strategi: HYBRID — otomatis pilih backend tergantung environment:
  *
- * ── Upgrade ke Upstash Redis (akurat lintas instance) ────────
+ *   • Jika UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN tersedia
+ *     → gunakan Upstash Redis (sliding window, akurat lintas instance)
+ *   • Jika tidak ada env vars tersebut
+ *     → fallback ke in-memory sliding window (cukup untuk dev / single-instance)
+ *
+ * FIX Bug #2: sebelumnya selalu in-memory sehingga setiap Vercel cold-start
+ * mendapat counter baru — user bisa bypass limit dengan menekan banyak instance.
+ * Sekarang jika env vars Upstash diset, semua instance berbagi counter yang sama.
+ *
+ * ── Setup Upstash (opsional, disarankan untuk production) ─────────────────
  * 1. npm install @upstash/ratelimit @upstash/redis
- * 2. Vercel env vars:
+ * 2. Tambah di Vercel Dashboard → Settings → Environment Variables:
  *      UPSTASH_REDIS_REST_URL   = https://xxx.upstash.io
  *      UPSTASH_REDIS_REST_TOKEN = AXxx...
- * 3. Uncomment blok UPSTASH di bawah, comment blok IN-MEMORY
- * ─────────────────────────────────────────────────────────────
+ * ─────────────────────────────────────────────────────────────────────────
  */
 
+// ── Tentukan backend saat module di-load (sekali per instance) ─────────────
+const USE_UPSTASH =
+  !!process.env.UPSTASH_REDIS_REST_URL &&
+  !!process.env.UPSTASH_REDIS_REST_TOKEN;
+
 // ══════════════════════════════════════════════════════════════
-//  IN-MEMORY MODE (default)
+//  IN-MEMORY BACKEND (fallback jika Upstash tidak dikonfigurasi)
 // ══════════════════════════════════════════════════════════════
 
 const store = new Map();
@@ -30,13 +41,7 @@ function cleanup() {
   }
 }
 
-/**
- * @param {string} ip
- * @param {object} opts { max: number, windowMs: number }
- * @param {string} key  unique key per endpoint, e.g. 'openai'
- * @returns {{ allowed: boolean, remaining: number, resetAt: number, max: number }}
- */
-export function checkRateLimit(ip, { max, windowMs }, key) {
+function checkRateLimitInMemory(ip, { max, windowMs }, key) {
   cleanup();
   const storeKey = `${ip}:${key}`;
   const now = Date.now();
@@ -58,36 +63,58 @@ export function checkRateLimit(ip, { max, windowMs }, key) {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  UPSTASH MODE (uncomment setelah install + env vars diset)
-//  npm install @upstash/ratelimit @upstash/redis
+//  UPSTASH BACKEND (aktif jika env vars tersedia)
 // ══════════════════════════════════════════════════════════════
-/*
-import { Ratelimit } from '@upstash/ratelimit';
-import { Redis }     from '@upstash/redis';
 
-const redis = new Redis({
-  url:   process.env.UPSTASH_REDIS_REST_URL,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN,
-});
+let _upstashLimiters = null; // lazy-init agar tidak crash jika package tidak ada
 
-const limiters = {};
-function getLimiter(max, windowMs) {
-  const k = `${max}:${windowMs}`;
-  if (!limiters[k]) {
-    limiters[k] = new Ratelimit({
+async function checkRateLimitUpstash(ip, { max, windowMs }, key) {
+  // Lazy import — tidak crash jika @upstash/* belum di-install
+  if (!_upstashLimiters) {
+    try {
+      const { Ratelimit } = await import('@upstash/ratelimit');
+      const { Redis }     = await import('@upstash/redis');
+      const redis = new Redis({
+        url:   process.env.UPSTASH_REDIS_REST_URL,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN,
+      });
+      _upstashLimiters = { Ratelimit, redis, cache: {} };
+    } catch {
+      // Package belum di-install → fallback in-memory untuk request ini
+      return checkRateLimitInMemory(ip, { max, windowMs }, key);
+    }
+  }
+
+  const { Ratelimit, redis, cache } = _upstashLimiters;
+  const limiterKey = `${max}:${windowMs}`;
+  if (!cache[limiterKey]) {
+    cache[limiterKey] = new Ratelimit({
       redis,
       limiter:   Ratelimit.slidingWindow(max, `${windowMs}ms`),
-      analytics: true,
+      analytics: false,
     });
   }
-  return limiters[k];
-}
 
-export async function checkRateLimit(ip, { max, windowMs }, key) {
-  const { success, remaining, reset } = await getLimiter(max, windowMs).limit(`${ip}:${key}`);
+  const { success, remaining, reset } = await cache[limiterKey].limit(`${ip}:${key}`);
   return { allowed: success, remaining, resetAt: reset, max };
 }
-*/
+
+// ══════════════════════════════════════════════════════════════
+//  UNIFIED ENTRY POINT
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * @param {string} ip
+ * @param {object} opts { max: number, windowMs: number }
+ * @param {string} key  unique key per endpoint, e.g. 'openai'
+ * @returns {{ allowed: boolean, remaining: number, resetAt: number, max: number }}
+ */
+export function checkRateLimit(ip, { max, windowMs }, key) {
+  if (USE_UPSTASH) {
+    return checkRateLimitUpstash(ip, { max, windowMs }, key);
+  }
+  return Promise.resolve(checkRateLimitInMemory(ip, { max, windowMs }, key));
+}
 
 /**
  * Helper: jalankan rate limit check dan kirim response 429 jika terlampaui.

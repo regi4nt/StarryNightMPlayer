@@ -12,17 +12,6 @@
       "destination": "https://api.textyl.co/api/:path*"
     },
     {
-      "source": "/api/jamendo",
-      "has": [
-        {
-          "type": "query",
-          "key": "search",
-          "value": "(?<search>.*)"
-        }
-      ],
-      "destination": "https://api.jamendo.com/v3.0/tracks/?client_id=b6747d04&format=jsonpretty&limit=5&search=:search&include=musicinfo&audioformat=mp32"
-    },
-    {
       "source": "/api/ccmixter",
       "has": [
         {
@@ -46,7 +35,7 @@
     },
     {
       "source": "/api/chartlyrics/:path*",
-      "destination": "http://api.chartlyrics.com/apiv1.asmx/:path*"
+      "destination": "https://api.chartlyrics.com/apiv1.asmx/:path*"
     },
     {
       "source": "/api/invidious",
@@ -99,14 +88,6 @@
     {
       "source": "/api/sambanova",
       "destination": "/api/ai?provider=sambanova"
-    },
-    {
-      "source": "/api/radio",
-      "destination": "/api/radio"
-    },
-    {
-      "source": "/api/:path*",
-      "destination": "/api/:path*"
     },
     {
       "source": "/((?!api/|sw\\.js|workbox-[^/]+\\.js|favicon\\.svg|icon-[^/]+\\.png|manifest\\.webmanifest).*)",
@@ -170,12 +151,20 @@
       "source": "/(.*)",
       "headers": [
         {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
           "key": "X-Content-Type-Options",
           "value": "nosniff"
         },
         {
           "key": "Referrer-Policy",
           "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; frame-src https://www.youtube.com https://www.youtube-nocookie.com https://open.spotify.com https://w.soundcloud.com https://embed.music.apple.com https://www.tiktok.com https://www.vimeo.com https://www.dailymotion.com https://odysee.com https://rumble.com https://www.newgrounds.com https://audiomack.com https://www.mixcloud.com https://www.vidio.com; connect-src 'self' https: wss:; worker-src 'self' blob:;"
         }
       ]
     }

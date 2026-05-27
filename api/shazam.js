@@ -237,8 +237,13 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { audio, format = 'webm' } = req.body || {};
+  const { audio, format: rawFormat = 'webm' } = req.body || {};
   if (!audio) return res.status(400).json({ error: 'Field "audio" (base64) wajib ada' });
+
+  // FIX Bug #2: whitelist format agar tidak bisa dipakai untuk path traversal.
+  // Tanpa ini, nilai seperti "../etc/passwd" bisa membentuk path /tmp/shazam_xxx.../etc/passwd
+  const ALLOWED_FORMATS = ['webm', 'ogg', 'mp4'];
+  const format = ALLOWED_FORMATS.includes(rawFormat) ? rawFormat : 'webm';
 
   let audioBuffer;
   try {

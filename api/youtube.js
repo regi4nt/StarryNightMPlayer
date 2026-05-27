@@ -84,6 +84,35 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing ?path= parameter for backend proxy' });
     }
 
+    // FIX Bug SSRF: validasi path agar tidak bisa dipakai untuk path traversal atau
+    // redirect ke host lain. Path harus dimulai dengan '/' dan tidak boleh mengandung
+    // protokol (://), karakter '@' (bisa jadi user@host), atau sekuens '..' (traversal).
+    if (
+      !apiPath.startsWith('/') ||
+      apiPath.includes('://') ||
+      apiPath.includes('@') ||
+      apiPath.includes('..')
+    ) {
+      return res.status(400).json({ error: 'Invalid path parameter' });
+    }
+
+    // Whitelist path yang diizinkan untuk Invidious dan Piped
+    const ALLOWED_PATH_PREFIXES = [
+      '/api/v1/',   // Invidious API
+      '/trending',  // Piped & Invidious
+      '/search',    // Piped & Invidious
+      '/streams/',  // Piped video streams
+      '/channel/',  // Piped channels
+      '/playlist',  // Piped playlists
+      '/watch',     // Piped watch (video detail)
+    ];
+    if (!ALLOWED_PATH_PREFIXES.some(prefix => apiPath.startsWith(prefix))) {
+      return res.status(400).json({
+        error: 'Path not in allowlist',
+        hint: 'Tambahkan prefix ke ALLOWED_PATH_PREFIXES di api/youtube.js jika diperlukan',
+      });
+    }
+
     const usePiped   = backend === 'piped';
     const instances  = usePiped ? PIPED_INSTANCES : INVIDIOUS_INSTANCES;
     const timeout    = 4500; // balance antara kecepatan dan reliabilitas instance

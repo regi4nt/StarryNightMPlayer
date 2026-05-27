@@ -1008,9 +1008,15 @@ let _USER_HF_KEY    = ''; // HuggingFace Inference API key (hf_...)
 let _USER_CF_KEY    = ''; // Cloudflare Workers AI key
 let _USER_GH_KEY    = ''; // GitHub Models token (ghp_... or github_pat_...)
 let _USER_SN_KEY    = ''; // SambaNova Cloud API key
-export const setRuntimeKeys = (sp_id, sp_secret, sc_id, ai_key, _u1, _u2, yt_key, hf_key, cf_key, gh_key, sn_key) => {
+let _USER_DS_KEY    = ''; // DeepSeek API key (user-supplied, opsional — bisa pakai sk- universal)
+let _USER_GROK_KEY  = ''; // xAI Grok API key (user-supplied, opsional — bisa pakai xai- universal)
+// FIX Bug #4: ganti parameter _u1/_u2 yang selalu '' dengan ds_key dan grok_key yang benar,
+// sehingga key dari Settings benar-benar disimpan ke runtime dan tidak hilang diam-diam.
+export const setRuntimeKeys = (sp_id, sp_secret, sc_id, ai_key, ds_key, grok_key, yt_key, hf_key, cf_key, gh_key, sn_key) => {
   _USER_SP_ID = sp_id || ''; _USER_SP_SECRET = sp_secret || '';
   _USER_SC_ID = sc_id || ''; _USER_AI_KEY    = ai_key    || '';
+  _USER_DS_KEY   = ds_key   || '';
+  _USER_GROK_KEY = grok_key || '';
   _USER_YT_KEY = yt_key || '';
   _USER_HF_KEY = hf_key || '';
   _USER_CF_KEY = cf_key || '';
@@ -1022,8 +1028,10 @@ export const getSpId      = () => _USER_SP_ID     || _ENV_SP_ID;
 export const getSpSecret  = () => _USER_SP_SECRET || _ENV_SP_SECRET;
 export const getScId      = () => _USER_SC_ID     || _ENV_SC_ID;
 export const getUserAiKey  = () => _USER_AI_KEY || (typeof localStorage !== 'undefined' ? localStorage.getItem('sn_ai_key') || '' : '');
-export const getUserDsKey  = () => _ENV_DS_KEY;
-export const getUserGrokKey = () => _ENV_GROK_KEY;
+// FIX Bug #5: getUserDsKey dan getUserGrokKey sebelumnya selalu return '' (hanya _ENV_DS_KEY/GROK_KEY
+// yang kosong). Sekarang ikut pola yang sama dengan key lain: cek runtime key, lalu localStorage.
+export const getUserDsKey   = () => _USER_DS_KEY   || (typeof localStorage !== 'undefined' ? localStorage.getItem('sn_ds_key')   || '' : '') || _ENV_DS_KEY;
+export const getUserGrokKey = () => _USER_GROK_KEY || (typeof localStorage !== 'undefined' ? localStorage.getItem('sn_grok_key') || '' : '') || _ENV_GROK_KEY;
 export const getUserHfKey  = () => {
   if (_USER_HF_KEY) return _USER_HF_KEY;
   const aiKey = typeof localStorage !== 'undefined' ? localStorage.getItem('sn_ai_key') || '' : '';

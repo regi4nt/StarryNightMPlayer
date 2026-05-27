@@ -29,7 +29,7 @@
  *   fetch('/api/ai?provider=anthropic', {
  *     method: 'POST',
  *     headers: { 'Content-Type': 'application/json' },
- *     body: JSON.stringify({ model: 'claude-sonnet-4-20250514', messages, max_tokens: 1000 })
+ *     body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', messages, max_tokens: 1000 })
  *   });
  *
  * ── Env vars yang dibutuhkan (Vercel) ────────────────────────
@@ -55,6 +55,135 @@
 import { applyRateLimit } from './_lib/rateLimit.js';
 
 export const config = { runtime: 'nodejs' };
+
+// ══════════════════════════════════════════════════════════════
+//  BATAS KEAMANAN GLOBAL
+//  Semua req.body divalidasi sebelum dikirim ke upstream.
+// ══════════════════════════════════════════════════════════════
+
+/** Token maksimum yang boleh diminta client — kurangi sesuai budget kamu */
+const MAX_TOKENS_ALLOWED = 4096;
+
+/**
+ * Whitelist model per provider.
+ * Tambahkan model baru di sini, bukan di frontend.
+ * Kalau client kirim model yang tidak ada di list → ditolak 400.
+ */
+const ALLOWED_MODELS = {
+  anthropic:   [
+    'claude-haiku-4-5-20251001',
+    'claude-sonnet-4-6',
+    // tambah model Anthropic lain di sini
+  ],
+  openai:      [
+    'gpt-4o-mini',
+    'gpt-4o',
+    'o4-mini',
+    // tambah model OpenAI lain di sini
+  ],
+  gemini:      [
+    'gemini-2.0-flash',
+    'gemini-2.5-flash-preview-05-20',
+    // tambah model Gemini lain di sini
+  ],
+  groq:        [
+    'llama-3.3-70b-versatile',
+    'llama-3.1-8b-instant',
+    'gemma2-9b-it',
+    // tambah model Groq lain di sini
+  ],
+  grok:        [
+    'grok-3-mini',
+    'grok-3',
+  ],
+  deepseek:    [
+    'deepseek-chat',
+    'deepseek-reasoner',
+  ],
+  openrouter:  [
+    'meta-llama/llama-3.3-70b-instruct',
+    'google/gemini-2.0-flash-001',
+    'mistralai/mistral-7b-instruct',
+    // tambah model OpenRouter lain di sini
+  ],
+  cloudflare:  [
+    '@cf/meta/llama-3.1-8b-instruct',
+    '@cf/mistral/mistral-7b-instruct-v0.1',
+  ],
+  huggingface: [
+    'meta-llama/Llama-3.1-8B-Instruct',
+    'mistralai/Mistral-7B-Instruct-v0.3',
+  ],
+  github:      [
+    'gpt-4o-mini',
+    'gpt-4o',
+    'Phi-4-mini-instruct',
+  ],
+  sambanova:   [
+    'Meta-Llama-3.1-8B-Instruct',
+    'Meta-Llama-3.3-70B-Instruct',
+  ],
+};
+
+/**
+ * Sanitasi req.body:
+ * - Hanya ambil field yang diizinkan (messages, model, max_tokens, system, stream, temperature)
+ * - Paksa model harus ada di whitelist provider
+ * - Cap max_tokens ke MAX_TOKENS_ALLOWED
+ * - Tolak stream: true (tidak didukung proxy ini)
+ *
+ * @param {object} body   - req.body mentah dari client
+ * @param {string} providerName
+ * @returns {{ sanitized: object }|{ error: string }}
+ */
+function sanitizeBody(body, providerName) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return { error: 'Body harus berupa JSON object.' };
+  }
+
+  const { model, messages, max_tokens, system, temperature } = body;
+
+  // ── Validasi model ───────────────────────────────────────────
+  const allowed = ALLOWED_MODELS[providerName] || [];
+  if (!model || typeof model !== 'string') {
+    return { error: 'Field "model" wajib diisi dan harus berupa string.' };
+  }
+  if (!allowed.includes(model)) {
+    return {
+      error: `Model "${model}" tidak diizinkan untuk provider "${providerName}".`,
+      allowed_models: allowed,
+    };
+  }
+
+  // ── Validasi messages ────────────────────────────────────────
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return { error: 'Field "messages" wajib berupa array non-kosong.' };
+  }
+
+  // ── Bangun body yang bersih — hanya field yang kita izinkan ──
+  const sanitized = { model, messages };
+
+  // max_tokens: default 1024, cap ke MAX_TOKENS_ALLOWED
+  const requestedTokens = Number.isInteger(max_tokens) && max_tokens > 0
+    ? max_tokens
+    : 1024;
+  sanitized.max_tokens = Math.min(requestedTokens, MAX_TOKENS_ALLOWED);
+
+  // system prompt (Anthropic) — opsional, harus string
+  if (typeof system === 'string' && system.length > 0) {
+    sanitized.system = system;
+  }
+
+  // temperature — opsional, harus number 0-2
+  if (typeof temperature === 'number' && temperature >= 0 && temperature <= 2) {
+    sanitized.temperature = temperature;
+  }
+
+  // stream TIDAK diteruskan — proxy ini tidak mendukung SSE streaming
+  // (jika client kirim stream:true, diabaikan secara diam-diam)
+
+  return { sanitized };
+}
 
 // ══════════════════════════════════════════════════════════════
 //  KONFIGURASI PROVIDER
@@ -296,9 +425,15 @@ export default async function handler(req, res) {
     });
   }
 
+  // ── Sanitasi & validasi body (KRITIS — jangan hapus) ─────────
+  const { sanitized, error: bodyError } = sanitizeBody(req.body, providerName);
+  if (bodyError) {
+    return res.status(400).json({ error: bodyError });
+  }
+
   // ── Forward ke upstream ──────────────────────────────────────
   try {
-    const upstream = await provider.call(req.body, process.env);
+    const upstream = await provider.call(sanitized, process.env);
     const data = await upstream.json();
     return res.status(upstream.status).json(data);
   } catch (e) {

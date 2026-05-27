@@ -45,7 +45,8 @@ const PlaylistModal       = lazy(() => import('./components/PlaylistViews.jsx').
 import { PlaylistErrorBoundary } from './components/PlaylistViews.jsx';
 // AppLogo & OrbitalRing are critical player UI — eager import
 import { AppLogo, OrbitalRing } from './components/Player.jsx';
-import { SongRow } from './components/SongRow.jsx'; // eager — used immediately in lists
+// SongRow hanya muncul di tab Library/Playlist (bukan initial render) — lazy aman
+const SongRow = lazy(() => import('./components/SongRow.jsx').then(m => ({ default: m.SongRow })));
 const SettingsPanel  = lazy(() => import('./components/SettingsPanel.jsx').then(m => ({ default: m.SettingsPanel })));
 const UploadModal    = lazy(() => import('./components/UploadModal.jsx').then(m => ({ default: m.UploadModal })));
 
@@ -94,7 +95,11 @@ export default function App() {
   const [userYtKey,    setUserYtKey]    = useState(() => localStorage.getItem('sn_yt_key')   ||'');
   const [userCfKey,    setUserCfKey]    = useState(() => localStorage.getItem('sn_cf_key')   ||'');
   const [userSnKey,    setUserSnKey]    = useState(() => localStorage.getItem('sn_sn_key')   ||'');
-  useEffect(() => { setRuntimeKeys(userSpId, userSpSecret, userScId, userAiKey, '', '', userYtKey, '', userCfKey, '', userSnKey); }, [userSpId, userSpSecret, userScId, userAiKey, userYtKey, userCfKey, userSnKey]);
+  // FIX Bug #4: tambahkan state userDsKey & userGrokKey agar key dari Settings
+  // benar-benar diteruskan ke setRuntimeKeys (sebelumnya slot ini selalu '' / diabaikan).
+  const [userDsKey,    setUserDsKey]    = useState(() => { try { return localStorage.getItem('sn_ds_key')   ||''; } catch { return ''; } });
+  const [userGrokKey,  setUserGrokKey]  = useState(() => { try { return localStorage.getItem('sn_grok_key') ||''; } catch { return ''; } });
+  useEffect(() => { setRuntimeKeys(userSpId, userSpSecret, userScId, userAiKey, userDsKey, userGrokKey, userYtKey, '', userCfKey, '', userSnKey); }, [userSpId, userSpSecret, userScId, userAiKey, userDsKey, userGrokKey, userYtKey, userCfKey, userSnKey]);
 
   // ── Startup: cek apakah server punya YOUTUBE_API_KEY (via /api/yt-status)
   // Ini memungkinkan isYtApiEnabled() = true meskipun user tidak input key sendiri
@@ -233,6 +238,25 @@ export default function App() {
   const wsQueueRef    = useRef([]);   // current ws native audio queue
   const wsQueueIdxRef = useRef(-1);
   const wsAbortRef    = useRef(null); // abort controller untuk doWebSearch aktif
+  // FIX Bug #6: cobaltLoading sebelumnya adalah state object { url: 'loading'|'error'|null }
+  // yang tidak pernah menghapus key — hanya set ke null. Dalam sesi panjang dengan banyak
+  // hasil pencarian, object ini mengakumulasi ribuan key URL dan memperlambat setiap render.
+  //
+  // Diganti dengan dua Set (ref) + satu counter state untuk memicu re-render minimal:
+  //   cobaltLoadingSet  — Set of URLs yang sedang loading
+  //   cobaltErrorSet    — Set of URLs yang error sementara
+  // Set tidak masuk ke closure React sehingga tidak memicu re-render saat berubah;
+  // setCobaltTick() dipanggil setelah mutasi untuk memicu satu re-render.
+  const cobaltLoadingSet = useRef(new Set());
+  const cobaltErrorSet   = useRef(new Set());
+  const [, setCobaltTick] = useState(0);
+  const cobaltTick = useCallback(() => setCobaltTick(n => n + 1), []);
+  // Helper: baca status per URL (menggantikan cobaltLoading[url])
+  const cobaltStatus = useCallback((url) =>
+    cobaltLoadingSet.current.has(url) ? 'loading'
+    : cobaltErrorSet.current.has(url) ? 'error'
+    : null
+  , []);
   const audiusHostRef = useRef(null); // cache Audius host agar tidak di-fetch ulang
 
   const doWebSearch = async (q) => {
@@ -287,15 +311,119 @@ export default function App() {
       const vimeoM       = q.match(/vimeo\.com\/(\d+)/);
       const dailymotionM = q.match(/dailymotion\.com\/video\/([a-z0-9]+)/i);
       const archiveM     = q.match(/archive\.org(?:\/(?:details|embed|download))?\/([^/?#]+)/);
-      const bandcampM    = q.match(/([a-z0-9-]+)\.bandcamp\.com\/(track|album)\/([a-z0-9-]+)/i);
       const audiomackM   = q.match(/audiomack\.com\/(song|album|playlist)\/([^/?#]+)\/([^/?#]+)/i);
       const mixcloudM    = q.match(/mixcloud\.com\/([^/?#]+\/[^/?#]+)/i);
       const odyseeM      = q.match(/odysee\.com\/@([^/]+)\/(([^:]+):([a-f0-9]+))/i);
       const rumbleM      = q.match(/rumble\.com\/embed\/([a-z0-9]+)|rumble\.com\/([a-z0-9-]+-[a-z0-9]+)\.html/i);
       const peertubeMInst = q.match(/https?:\/\/([^/]+)\/videos\/watch\/([a-f0-9-]{36})/i);
-      const fmaM         = q.match(/freemusicarchive\.org\/music\/([^/?#]+)/i);
       const newgroundsM  = q.match(/newgrounds\.com\/audio\/listen\/(\d+)/i);
-      const ccmixtM      = q.match(/ccmixter\.org\/files\/(\S+)\/(\d+)/i);
+
+      // ── Social media video URL detection
+      const facebookM    = q.match(/(?:facebook\.com|fb\.watch)\/(?:watch\/?\?v=(\d+)|(?:reel|video)\/(\d+)|.*\/videos\/(?:\d+\/)?(\d+))/i);
+      const instagramM   = q.match(/instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/i);
+      const tiktokM      = q.match(/(?:tiktok\.com\/@[^/]+\/video\/(\d+)|vm\.tiktok\.com\/([A-Za-z0-9]+))/i);
+      const twitterM     = q.match(/(?:twitter\.com|x\.com)\/([^/]+)\/status\/(\d+)/i);
+      const threadsM     = q.match(/threads\.net\/@([^/]+)\/post\/([A-Za-z0-9_-]+)/i);
+
+      if (facebookM) {
+        const fbVideoId = facebookM[1] || facebookM[2] || facebookM[3];
+        const embedUrl = fbVideoId
+          ? `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(q)}&width=500&show_text=false`
+          : null;
+        setWsResults([{
+          type: 'facebook', source: 'facebook',
+          embedUrl: embedUrl || null,
+          externalUrl: q,
+          title: 'Facebook Video',
+          artist: 'Facebook',
+          thumbnail: null,
+        }]);
+        setWsLoading(false); return;
+      }
+      if (instagramM) {
+        const shortcode = instagramM[1];
+        setWsResults([{
+          type: 'instagram', source: 'instagram',
+          embedUrl: `https://www.instagram.com/p/${shortcode}/embed/`,
+          externalUrl: q,
+          title: 'Instagram Post',
+          artist: 'Instagram',
+          thumbnail: null,
+        }]);
+        setWsLoading(false); return;
+      }
+      if (tiktokM) {
+        const videoId = tiktokM[1];
+        setWsResults([{
+          type: 'tiktok', source: 'tiktok',
+          embedUrl: videoId ? `https://www.tiktok.com/embed/v2/${videoId}` : null,
+          externalUrl: q,
+          title: 'TikTok Video',
+          artist: 'TikTok',
+          thumbnail: null,
+        }]);
+        setWsLoading(false); return;
+      }
+      if (twitterM) {
+        const [, tweetUser, tweetId] = twitterM;
+        setWsResults([{
+          type: 'twitter', source: 'twitter',
+          embedUrl: `https://platform.twitter.com/embed/Tweet.html?id=${tweetId}`,
+          externalUrl: q,
+          title: `Tweet oleh @${tweetUser}`,
+          artist: 'Twitter / X',
+          thumbnail: null,
+        }]);
+        setWsLoading(false); return;
+      }
+      if (threadsM) {
+        const [, threadsUser, threadsPostId] = threadsM;
+        setWsResults([{
+          type: 'threads', source: 'threads',
+          embedUrl: `https://www.threads.net/@${threadsUser}/post/${threadsPostId}/embed`,
+          externalUrl: q,
+          title: `Threads oleh @${threadsUser}`,
+          artist: 'Threads',
+          thumbnail: null,
+        }]);
+        setWsLoading(false); return;
+      }
+
+      // ── Bilibili — BV/AV ID
+      const bilibiliM = q.match(/bilibili\.com\/video\/(BV[A-Za-z0-9]+|av(\d+))/i);
+      if (bilibiliM) {
+        const bvid = bilibiliM[1]; // e.g. BV1xx411c7mD
+        const avid = bilibiliM[2]; // e.g. 12345 (jika av format)
+        const embedSrc = bvid.startsWith('BV')
+          ? `https://player.bilibili.com/player.html?bvid=${bvid}&page=1&high_quality=1&danmaku=0`
+          : `https://player.bilibili.com/player.html?aid=${avid}&page=1&high_quality=1&danmaku=0`;
+        setWsResults([{
+          type: 'bilibili', source: 'bilibili',
+          embedUrl: embedSrc,
+          externalUrl: q,
+          title: `Bilibili: ${bvid}`,
+          artist: 'Bilibili',
+          thumbnail: null,
+        }]);
+        setWsLoading(false); return;
+      }
+
+      // ── Vidio.com (platform streaming Indonesia)
+      // Format URL: https://www.vidio.com/watch/<video_id>-<slug>
+      //             https://www.vidio.com/watch/<video_id>
+      const vidioM = q.match(/vidio\.com\/watch\/(\d+)/i);
+      if (vidioM || q.includes('vidio.com')) {
+        const vidioId = vidioM ? vidioM[1] : null;
+        setWsResults([{
+          type: 'vidio', source: 'vidio',
+          embedUrl: vidioId ? `https://www.vidio.com/embed/${vidioId}` : null,
+          externalUrl: q,
+          title: vidioId ? `Vidio Video #${vidioId}` : 'Vidio Video',
+          artist: 'Vidio',
+          thumbnail: null,
+        }]);
+        setWsLoading(false); return;
+      }
 
       if (vimeoM) {
         const vid = vimeoM[1];
@@ -352,14 +480,6 @@ export default function App() {
       if (newgroundsM) {
         const ngId = newgroundsM[1];
         setWsResults([{ type:'newgrounds', embedUrl:`https://www.newgrounds.com/audio/listen/${ngId}`, title:`NG Audio #${ngId}`, artist:'Newgrounds', thumbnail:null, source:'newgrounds', externalUrl:q }]);
-        setWsLoading(false); return;
-      }
-      if (ccmixtM) {
-        setWsResults([{ type:'ccmixter', embedUrl:null, externalUrl:q, title:`ccMixter #${ccmixtM[2]}`, artist:ccmixtM[1], thumbnail:null, source:'ccmixter' }]);
-        setWsLoading(false); return;
-      }
-      if (bandcampM) {
-        setWsResults([{ type:'bandcamp', embedUrl:null, externalUrl:q, title:bandcampM[3].replace(/-/g,' '), artist:bandcampM[1], thumbnail:null, source:'bandcamp' }]);
         setWsLoading(false); return;
       }
 
@@ -1522,6 +1642,60 @@ Return ONLY valid JSON, no explanation:
     if (prevIdx >= 0) { wsQueueIdxRef.current = prevIdx; playWsTrack(q[prevIdx], q, prevIdx); }
   }, [playWsTrack]);
 
+  // ── Extract audio via cobalt.tools API then send to native player ──────────
+  const extractViaCobalt = useCallback(async (sourceUrl, itemMeta) => {
+    const key = sourceUrl;
+    cobaltLoadingSet.current.add(key);
+    cobaltErrorSet.current.delete(key);
+    cobaltTick();
+    try {
+      const res = await fetch('https://api.cobalt.tools/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          url: sourceUrl,
+          downloadMode: 'audio',
+          audioFormat: 'best',
+        }),
+      });
+      if (!res.ok) throw new Error(`cobalt HTTP ${res.status}`);
+      const data = await res.json();
+      const audioUrl = data.url
+        || (Array.isArray(data.picker) ? data.picker[0]?.url : null);
+      if (!audioUrl) throw new Error(data.error?.code || 'No audio URL returned');
+
+      // FIX Bug #6: hapus key dari Set (benar-benar tidak ada memori sisa)
+      cobaltLoadingSet.current.delete(key);
+      cobaltTick();
+      const nativeTrack = {
+        id: `cobalt_${encodeURIComponent(sourceUrl).slice(0,40)}`,
+        title: itemMeta?.title || 'Audio',
+        artist: itemMeta?.artist || itemMeta?.source || 'cobalt.tools',
+        album: itemMeta?.source || 'Web',
+        cover: itemMeta?.thumbnail || '',
+        src: audioUrl,
+        color: '#6366f1',
+        bg: 'rgba(99,102,241,0.15)',
+        mood: '',
+        _wsSource: 'cobalt',
+      };
+      stopAllMedia('local');
+      setEmbedTrack(null);
+      setCustomSongs(prev => { const ex = prev.find(s => s.id === nativeTrack.id); return ex ? prev : [nativeTrack, ...prev]; });
+      setTrack(nativeTrack);
+      setProgress(0); setDuration(0);
+      setPlaying(true);
+      setTab('player');
+    } catch (err) {
+      console.error('[cobalt] extract failed:', err);
+      cobaltLoadingSet.current.delete(key);
+      cobaltErrorSet.current.add(key);
+      cobaltTick();
+      // Hapus error state setelah 3 detik (key benar-benar dibuang dari Set)
+      setTimeout(() => { cobaltErrorSet.current.delete(key); cobaltTick(); }, 3000);
+    }
+  }, [stopAllMedia, cobaltTick]); // eslint-disable-line
+
   const playSoundCloud = (platformId, query) => {
     if (!query.trim()) return;
     const q = query.trim();
@@ -1740,23 +1914,35 @@ Return ONLY valid JSON, no explanation:
     }
   }, [embedTrack, liked, updateFavPlaylist, isLite, triggerYtDownload]); // eslint-disable-line
 
+  // FIX Bug #6: refs untuk likedYtPending, cachedYtIds, triggerYtDownload agar
+  // useEffect di bawah bisa membaca nilai terbaru tanpa stale closure, sekaligus
+  // tidak perlu re-run effect setiap kali nilai berubah (yang akan membatalkan
+  // download yang sedang berjalan).
+  const likedYtPendingRef  = useRef(likedYtPending);
+  const cachedYtIdsRef     = useRef(cachedYtIds);
+  const triggerYtDownloadRef = useRef(triggerYtDownload);
+  useEffect(() => { likedYtPendingRef.current    = likedYtPending;    }, [likedYtPending]);
+  useEffect(() => { cachedYtIdsRef.current       = cachedYtIds;       }, [cachedYtIds]);
+  useEffect(() => { triggerYtDownloadRef.current = triggerYtDownload; }, [triggerYtDownload]);
+
   // ── Saat Lite → Pro: download semua pending YT liked yang belum ter-cache
   useEffect(() => {
     if (isLite) return; // hanya aktif saat Pro
-    const pending = [...likedYtPending].filter(vid => !cachedYtIds.has(vid));
+    // Baca nilai terkini via ref (FIX Bug #6: tidak stale meski deps hanya [isLite])
+    const pending = [...likedYtPendingRef.current].filter(vid => !cachedYtIdsRef.current.has(vid));
     if (pending.length === 0) return;
     // Download semua yang pending satu per satu (sequential agar tidak overload)
     let cancelled = false;
     (async () => {
       for (const videoId of pending) {
         if (cancelled) break;
-        triggerYtDownload(videoId);
+        triggerYtDownloadRef.current(videoId);
         // Jeda 1 detik antar download agar tidak throttle
         await new Promise(r => setTimeout(r, 1000));
       }
     })();
     return () => { cancelled = true; };
-  }, [isLite]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isLite]); // intentionally [isLite] only — triggered once on Lite→Pro transition
 
 
   // ── Jam live (update setiap detik)
@@ -1798,7 +1984,21 @@ Return ONLY valid JSON, no explanation:
   // ── Synced LRC lines: [{time: seconds, text: string}]
   const [lrcLines, setLrcLines]       = useState([]);
   // Cache in-memory lirik: key = "title|artist", value = { text, generated }
+  // FIX Bug #8: lyricsCacheRef dibatasi maksimum 100 entry (LRU sederhana).
+  // Sebelumnya Map tumbuh tanpa batas — sesi panjang dengan ratusan lagu mengakumulasi
+  // semua teks lirik dalam memori tanpa pernah dibuang.
+  // Map insertion-ordered di JS: entry pertama = terlama; saat melebihi batas,
+  // hapus entry paling awal (keys().next().value).
+  const LYRICS_CACHE_MAX = 100;
   const lyricsCacheRef = useRef(new Map());
+  const lyricsCacheSet = useCallback((key, value) => {
+    const m = lyricsCacheRef.current;
+    if (m.has(key)) m.delete(key); // pindah ke "terbaru" (re-insert di akhir)
+    m.set(key, value);
+    if (m.size > LYRICS_CACHE_MAX) {
+      m.delete(m.keys().next().value); // hapus entry terlama
+    }
+  }, []);
 
   // ── Settings panel
   const [showSettings, setShowSettings] = useState(false);
@@ -1907,6 +2107,12 @@ Return ONLY valid JSON, no explanation:
   const [shazamListening, setShazamListening] = useState(false); // sedang merekam
   const [shazamLoading, setShazamLoading]     = useState(false); // mengirim ke API
   const shazamMediaRef = useRef(null); // MediaRecorder instance
+  // FIX Bug #5: simpan stream secara terpisah dari MediaRecorder.
+  // MediaRecorder.stream adalah properti spec yang belum diimplementasi di semua browser
+  // (Safari hingga v17 tidak mengeksposnya). Dengan menyimpan referensi stream sendiri
+  // kita bisa menghentikan semua track dengan aman di manapun tanpa bergantung pada
+  // MediaRecorder.prototype.stream.
+  const shazamStreamRef = useRef(null);
 
   // ── Google Drive — restore session from localStorage if token still valid
   const [googleUser, setGoogleUser]     = useState(() => {
@@ -2158,9 +2364,9 @@ Return ONLY valid JSON, no explanation:
     }, () => {}, { timeout: 8000 });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  useEffect(() => { localStorage.setItem('sn_tab', tab); if (tab !== 'player') setFullscreen(false); }, [tab]);
-  useEffect(() => { localStorage.setItem('sn_shuffle', shuffle); }, [shuffle]);
-  useEffect(() => { localStorage.setItem('sn_repeat', repeat); }, [repeat]);
+  useEffect(() => { try { localStorage.setItem('sn_tab', tab); } catch {} if (tab !== 'player') setFullscreen(false); }, [tab]);
+  useEffect(() => { try { localStorage.setItem('sn_shuffle', shuffle); } catch {} }, [shuffle]);
+  useEffect(() => { try { localStorage.setItem('sn_repeat', repeat); } catch {} }, [repeat]);
   useEffect(() => { try { localStorage.setItem('sn_liked', JSON.stringify(liked)); } catch {} }, [liked]);
   useEffect(() => { try { localStorage.setItem('sn_playlists', JSON.stringify(playlists)); } catch {} }, [playlists]);
 
@@ -2195,35 +2401,55 @@ Return ONLY valid JSON, no explanation:
   useEffect(() => { try { localStorage.setItem('sn_history', JSON.stringify(history)); } catch {} }, [history]);
 
   // ── Silent token refresh — dipindah ke sini agar tersedia sebelum useEffect lain
-  const silentRefreshToken = useCallback(() => new Promise((resolve, reject) => {
-    if (!window.google || !GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes('GANTI_DENGAN')) {
-      return reject(new Error('Google API tidak tersedia'));
-    }
-    try {
-      // Baca email user dari localStorage untuk login_hint
-      // login_hint wajib agar GIS bisa silent refresh tanpa popup
-      let hint = '';
+  //
+  // Guard: simpan promise yang sedang berjalan di ref agar 7 call-site tidak
+  // memunculkan OAuth popup berulang secara bersamaan. Semua caller yang datang
+  // saat refresh sudah in-flight akan di-attach ke promise yang sama.
+  const _refreshInFlight = useRef(null);
+
+  const silentRefreshToken = useCallback(() => {
+    // Kalau sudah ada refresh yang sedang berjalan, kembalikan promise yang sama
+    if (_refreshInFlight.current) return _refreshInFlight.current;
+
+    const promise = new Promise((resolve, reject) => {
+      if (!window.google || !GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes('GANTI_DENGAN')) {
+        return reject(new Error('Google API tidak tersedia'));
+      }
       try {
-        const savedUser = JSON.parse(localStorage.getItem('sn_google_user') || 'null');
-        hint = savedUser?.email || '';
-      } catch {}
-      const client = window.google.accounts.oauth2.initTokenClient({
-        client_id: GOOGLE_CLIENT_ID, scope: GOOGLE_SCOPES,
-        prompt: '',        // no user interaction required
-        hint,              // login_hint: wajib untuk silent refresh agar tidak popup
-        callback: resp => {
-          if (resp.error) return reject(new Error(resp.error));
-          const tok = resp.access_token;
-          setAccessToken(tok); tokenRef.current = tok;
-          // Simpan expiry 55 menit (3300 detik) — lebih konservatif dari token lifetime 60 menit
-          // agar proactive refresh 5 menit sebelum expiry punya cukup waktu
-          localStorage.setItem('sn_google_token', JSON.stringify({ token: tok, expiry: Date.now() + 3300 * 1000 }));
-          resolve(tok);
-        }
-      });
-      client.requestAccessToken({ prompt: '' });
-    } catch(e) { reject(e); }
-  }), []);
+        // Baca email user dari localStorage untuk login_hint
+        // login_hint wajib agar GIS bisa silent refresh tanpa popup
+        let hint = '';
+        try {
+          const savedUser = JSON.parse(localStorage.getItem('sn_google_user') || 'null');
+          hint = savedUser?.email || '';
+        } catch {}
+        const client = window.google.accounts.oauth2.initTokenClient({
+          client_id: GOOGLE_CLIENT_ID, scope: GOOGLE_SCOPES,
+          prompt: '',        // no user interaction required
+          hint,              // login_hint: wajib untuk silent refresh agar tidak popup
+          callback: resp => {
+            if (resp.error) return reject(new Error(resp.error));
+            const tok = resp.access_token;
+            setAccessToken(tok); tokenRef.current = tok;
+            // Simpan expiry 55 menit (3300 detik) — lebih konservatif dari token lifetime 60 menit
+            // agar proactive refresh 5 menit sebelum expiry punya cukup waktu
+            try {
+              localStorage.setItem('sn_google_token', JSON.stringify({ token: tok, expiry: Date.now() + 3300 * 1000 }));
+            } catch (e) {
+              console.warn('[silentRefreshToken] Gagal simpan token ke localStorage:', e);
+            }
+            resolve(tok);
+          }
+        });
+        client.requestAccessToken({ prompt: '' });
+      } catch(e) { reject(e); }
+    });
+
+    // Pasang di ref, bersihkan saat selesai (baik resolve maupun reject)
+    _refreshInFlight.current = promise;
+    promise.finally(() => { _refreshInFlight.current = null; });
+    return promise;
+  }, []);
 
   // ── Load GIS
   useEffect(() => {
@@ -2682,8 +2908,9 @@ Return ONLY valid JSON, no explanation:
     let lastTimeSaved = 0;
     const onTime = () => {
       const now = a.currentTime;
-      const threshold = isLiteRef.current ? 2 : 1;
-      if (Math.abs(now - lastTimeSaved) < threshold) return;
+      // threshold seragam 1 s di semua mode — penghematan CPU dari debounce 2 s
+      // tidak sebanding dengan jerkiness progress bar yang ditimbulkan di Lite.
+      if (Math.abs(now - lastTimeSaved) < 1) return;
       lastTimeSaved = now;
       setProgress(now);
     };
@@ -2956,11 +3183,20 @@ Return ONLY valid JSON, no explanation:
       } catch(_) {}
     };
     window.addEventListener('message', handler);
-    // Poll current time: 1000ms (Pro) / 3000ms (Lite — hemat CPU)
-    const pollMs = isLiteRef.current ? 3000 : 1000;
-    const poll = setInterval(() => {
-      try { ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'listening' }), '*'); } catch(_) {}
-    }, pollMs);
+    // Poll current time via rAF — mulus 1 s di semua mode (Lite & Pro).
+    // rAF otomatis berhenti saat tab di-background (tidak buang CPU/baterai),
+    // menggantikan setInterval 3000ms Lite yang membuat progress bar loncat setiap 3 detik.
+    let rafPollId;
+    let lastPollTs = 0;
+    const RAF_POLL_MS = 1000;
+    const rafPoll = (ts) => {
+      if (ts - lastPollTs >= RAF_POLL_MS) {
+        lastPollTs = ts;
+        try { ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'listening' }), '*'); } catch(_) {}
+      }
+      rafPollId = requestAnimationFrame(rafPoll);
+    };
+    rafPollId = requestAnimationFrame(rafPoll);
     // Fallback: deteksi video selesai via progress jika onStateChange tidak terpanggil
     // (terjadi di beberapa browser/device karena iframe off-screen atau policy browser)
     const endedFallback = setInterval(() => {
@@ -2972,7 +3208,7 @@ Return ONLY valid JSON, no explanation:
         }
       }
     }, 800);
-    return () => { window.removeEventListener('message', handler); clearInterval(poll); clearInterval(endedFallback); };
+    return () => { window.removeEventListener('message', handler); cancelAnimationFrame(rafPollId); clearInterval(endedFallback); };
   }, [embedTrack, seekYt]);
 
   // ── Chat scroll
@@ -4545,6 +4781,35 @@ Format exactly:
       }, 300);
       return;
     }
+    // ── Handle liked YouTube tracks (type:'youtube', src:'') — play via embed iframe
+    if (t.type === 'youtube' && t.videoId) {
+      const ytItem = {
+        videoId: t.videoId,
+        title: t.title,
+        artist: t.artist,
+        uploaderName: t.artist,
+        thumbnail: t.thumbnail || t.cover || `https://i.ytimg.com/vi/${t.videoId}/mqdefault.jpg`,
+        duration: t.duration || t.durationSecs || 0,
+        durationSecs: t.duration || t.durationSecs || 0,
+      };
+      // Build queue from all liked YT songs so next/prev works
+      const ytQueue = ytSongs
+        .filter(s => s.type === 'youtube' && s.videoId)
+        .map(s => ({
+          videoId: s.videoId,
+          title: s.title,
+          artist: s.artist,
+          uploaderName: s.artist,
+          thumbnail: s.thumbnail || s.cover || `https://i.ytimg.com/vi/${s.videoId}/mqdefault.jpg`,
+          duration: s.duration || s.durationSecs || 0,
+          durationSecs: s.duration || s.durationSecs || 0,
+        }));
+      const queueIdx = ytQueue.findIndex(v => v.videoId === t.videoId);
+      playYouTube(ytItem, ytQueue, queueIdx >= 0 ? queueIdx : 0);
+      setTab('player');
+      return;
+    }
+
     // ── Handle fav tracks from SC / Spotify / Radio
     if (t.type === 'soundcloud') {
       stopAllMedia('embed');
@@ -5104,7 +5369,7 @@ Format exactly:
         setActiveModelLabel(activeModel());
         if (fetchedLrcLines.length > 0) setLrcLines(fetchedLrcLines);
         // Simpan ke cache agar tidak re-fetch saat lagu sama diminta lagi
-        lyricsCacheRef.current.set(cacheKey, { text: dbResult.text, generated: dbResult.generated, modelLabel: activeModel(), lrcLines: fetchedLrcLines });
+        lyricsCacheSet(cacheKey, { text: dbResult.text, generated: dbResult.generated, modelLabel: activeModel(), lrcLines: fetchedLrcLines });
       } else if (isLite) {
         setLyrics(t?.liteLyricsDisabled||'⚡ Lyrics not found in public database.\n\nLite Mode active — AI lyrics generation is disabled to save data.\n\nEnable Pro Mode to generate lyrics with AI.');
       } else {
@@ -5138,7 +5403,7 @@ Format exactly:
         setLyrics(r.trim());
         setLyricsGenerated(true);
         setActiveModelLabel(activeModel());
-        lyricsCacheRef.current.set(cacheKey, { text: r.trim(), generated: true, modelLabel: activeModel() });
+        lyricsCacheSet(cacheKey, { text: r.trim(), generated: true, modelLabel: activeModel() });
       } else {
         setLyrics(t?.lyricsNotFoundResult || 'Lyrics not found');
       }
@@ -5309,12 +5574,20 @@ Format exactly:
       }
     }
 
-    // Pilih format yang didukung browser
-    const mimeType = ['audio/webm', 'audio/ogg', 'audio/mp4'].find(m => MediaRecorder.isTypeSupported(m)) || 'audio/webm';
-    const ext = mimeType.includes('webm') ? 'webm' : mimeType.includes('ogg') ? 'ogg' : 'mp4';
+    // FIX Bug #5: jika tidak ada format yang didukung isTypeSupported(), jangan paksa
+    // mimeType yang tidak valid ke MediaRecorder — itu melempar NotSupportedError dan crash.
+    // Biarkan browser memilih format default-nya sendiri dengan tidak menyertakan opsi mimeType.
+    const mimeType = ['audio/webm', 'audio/ogg', 'audio/mp4'].find(m => MediaRecorder.isTypeSupported(m));
+    const ext = !mimeType ? 'webm'
+      : mimeType.includes('webm') ? 'webm'
+      : mimeType.includes('ogg')  ? 'ogg'
+      : 'mp4';
 
-    const recorder = new MediaRecorder(stream, { mimeType });
+    const recorder = mimeType
+      ? new MediaRecorder(stream, { mimeType })
+      : new MediaRecorder(stream); // tanpa mimeType → biarkan browser pilih default
     shazamMediaRef.current = recorder;
+    shazamStreamRef.current = stream; // FIX Bug #5: simpan stream terpisah
     shazamCancelledRef.current = false; // reset flag cancel
     shazamSourceRef.current = sourceLabel;   // simpan sumber untuk UI
     const chunks = [];
@@ -5332,8 +5605,11 @@ Format exactly:
     // Rekam selama 8 detik
     await new Promise(resolve => setTimeout(resolve, 8000));
 
-    // Hentikan stream mikrofon (FIX Bug 2: juga dilakukan di sini, bukan hanya di cancel)
-    stream.getTracks().forEach(t => t.stop());
+    // Hentikan stream mikrofon — FIX Bug #5: gunakan shazamStreamRef (reliable lintas browser)
+    if (shazamStreamRef.current) {
+      shazamStreamRef.current.getTracks().forEach(t => t.stop());
+      shazamStreamRef.current = null;
+    }
     if (recorder.state !== 'inactive') recorder.stop();
     setShazamListening(false);
 
@@ -5416,9 +5692,10 @@ Format exactly:
     shazamCancelledRef.current = true; // FIX Bug 3: tandai flow sebagai dibatalkan
     if (shazamMediaRef.current) {
       try {
-        // FIX Bug 2: hentikan semua track mikrofon agar indikator browser mati
-        if (shazamMediaRef.current.stream) {
-          shazamMediaRef.current.stream.getTracks().forEach(t => t.stop());
+        // FIX Bug #5: gunakan shazamStreamRef, bukan recorder.stream yang tidak reliable
+        if (shazamStreamRef.current) {
+          shazamStreamRef.current.getTracks().forEach(t => t.stop());
+          shazamStreamRef.current = null;
         }
         if (shazamMediaRef.current.state !== 'inactive') {
           shazamMediaRef.current.stop();
@@ -6862,7 +7139,7 @@ Format exactly:
                             <div style={{ padding:'0 10px 12px' }}>
                               {/* Tips */}
                               <div style={{ fontSize:10, color:'rgba(255,255,255,0.3)', marginBottom:8, lineHeight:1.5 }}>
-                                💡 <b style={{color:'rgba(255,255,255,0.5)'}}>Jamendo · Audius · ccMixter</b> play in-app (queue). <b style={{color:'rgba(255,255,255,0.5)'}}>Deezer</b> 30s preview. Paste URL: <b style={{color:'rgba(255,255,255,0.5)'}}>Vimeo · Audiomack · Mixcloud · Odysee · Dailymotion · Bandcamp</b>
+                                💡 <b style={{color:'rgba(255,255,255,0.5)'}}>Jamendo · Audius · ccMixter</b> play in-app (queue). <b style={{color:'rgba(255,255,255,0.5)'}}>Deezer</b> 30s preview. Paste URL: <b style={{color:'rgba(255,255,255,0.5)'}}>Vimeo · Audiomack · Mixcloud · Odysee · Dailymotion · archive.org</b> · <b style={{color:'#1877f2'}}>Facebook</b> · <b style={{color:'#e1306c'}}>Instagram</b> · <b style={{color:'#69c9d0'}}>TikTok</b> · <b style={{color:'#1d9bf0'}}>Twitter/X</b> · <b style={{color:'rgba(255,255,255,0.8)'}}>Threads</b> · <b style={{color:'#fb7299'}}>Bilibili</b> · <b style={{color:'#00a8e8'}}>Vidio</b>
                               </div>
                               {/* Loading skeleton */}
                               {wsLoading && (
@@ -6897,7 +7174,14 @@ Format exactly:
                                       ✕ Tutup
                                     </button>
                                   </div>
-                                  {wsResults.map((item, idx) => {
+                                  {[...wsResults].sort((a, b) => {
+                                    // Embed-only cards (no native audio) selalu di bawah
+                                    const EMBED_TYPES = new Set(['facebook','instagram','tiktok','twitter','threads','bilibili','vidio','vimeo','dailymotion','archive','audiomack','mixcloud','odysee','rumble','peertube','newgrounds','fma','sc_embed','sp_embed','sc_redirect']);
+                                    const aEmbed = EMBED_TYPES.has(a.type) || EMBED_TYPES.has(a.source);
+                                    const bEmbed = EMBED_TYPES.has(b.type) || EMBED_TYPES.has(b.source);
+                                    if (aEmbed === bEmbed) return 0;
+                                    return aEmbed ? 1 : -1;
+                                  }).map((item, idx) => {
                                     // ── Spotify direct embed
                                     if (item.type === 'sp_embed_direct') return (
                                       <div key={idx} style={{ borderRadius:10, overflow:'hidden', border:'1px solid rgba(29,185,84,0.3)', marginBottom:6 }}>
@@ -7169,6 +7453,239 @@ Format exactly:
                                       );
                                     }
                                     // ── Embeddable sources (Vimeo, archive, audiomack, mixcloud, odysee, rumble, peertube, dailymotion)
+                                    // ── Facebook embed card
+                                    if (item.type === 'facebook') return (
+                                      <div key={idx} style={{ marginBottom:8 }}>
+                                        <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:5, paddingLeft:2 }}>
+                                          <span style={{ fontSize:14 }}>🟦</span>
+                                          <span style={{ fontSize:10, fontWeight:700, color:'#1877f2' }}>Facebook</span>
+                                          <span style={{ fontSize:9, color:'rgba(24,119,242,0.5)', marginLeft:2 }}>· Video Embed</span>
+                                        </div>
+                                        {item.embedUrl ? (
+                                          <div style={{ borderRadius:10, overflow:'hidden', border:'1px solid rgba(24,119,242,0.3)', background:'rgba(24,119,242,0.04)' }}>
+                                            <iframe key={`fb-embed-${item.embedUrl}`} src={item.embedUrl}
+                                              width="100%" height="280" frameBorder="0"
+                                              allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+                                              allowFullScreen style={{ display:'block' }}
+                                              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"
+                                            />
+                                            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'4px 8px', background:'rgba(0,0,0,0.3)', gap:6 }}>
+                                              <button onClick={e=>{e.stopPropagation();extractViaCobalt(item.externalUrl,item);}}
+                                                disabled={cobaltStatus(item.externalUrl)==='loading'}
+                                                style={{ fontSize:10, color: cobaltStatus(item.externalUrl)==='error'?'#f87171':cobaltStatus(item.externalUrl)==='loading'?'rgba(255,255,255,0.4)':'#a78bfa', background:'rgba(99,102,241,0.15)', border:'1px solid rgba(99,102,241,0.3)', borderRadius:5, padding:'2px 8px', cursor:'pointer', fontWeight:700, flexShrink:0 }}>
+                                                {cobaltStatus(item.externalUrl)==='loading'?'⏳…':cobaltStatus(item.externalUrl)==='error'?'✗ gagal':'→ Player'}
+                                              </button>
+                                              <button onClick={()=>window.open(item.externalUrl,'_blank','noopener,noreferrer')}
+                                                style={{ fontSize:10, color:'#1877f2', background:'none', border:'none', cursor:'pointer', fontWeight:700 }}>Buka di Facebook ↗</button>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <div style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 12px', borderRadius:10, background:'rgba(24,119,242,0.08)', border:'1px solid rgba(24,119,242,0.25)', cursor:'pointer' }}
+                                            onClick={()=>window.open(item.externalUrl,'_blank','noopener,noreferrer')}>
+                                            <span style={{ fontSize:20 }}>🟦</span>
+                                            <div style={{ flex:1, minWidth:0 }}>
+                                              <div style={{ fontSize:11, fontWeight:700, color:'#1877f2' }}>Facebook Video</div>
+                                              <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)' }}>Klik untuk buka di Facebook</div>
+                                            </div>
+                                            <span style={{ padding:'5px 12px', borderRadius:999, background:'#1877f2', color:'white', fontSize:11, fontWeight:800, flexShrink:0 }}>Buka ↗</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                    // ── Instagram embed card
+                                    if (item.type === 'instagram') return (
+                                      <div key={idx} style={{ marginBottom:8 }}>
+                                        <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:5, paddingLeft:2 }}>
+                                          <span style={{ fontSize:14 }}>📸</span>
+                                          <span style={{ fontSize:10, fontWeight:700, color:'#e1306c' }}>Instagram</span>
+                                          <span style={{ fontSize:9, color:'rgba(225,48,108,0.5)', marginLeft:2 }}>· Post/Reel Embed</span>
+                                        </div>
+                                        <div style={{ borderRadius:10, overflow:'hidden', border:'1px solid rgba(225,48,108,0.3)', background:'rgba(225,48,108,0.04)' }}>
+                                          <iframe key={`ig-embed-${item.embedUrl}`} src={item.embedUrl}
+                                            width="100%" height="480" frameBorder="0"
+                                            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+                                            allowFullScreen style={{ display:'block' }}
+                                            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"
+                                          />
+                                          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'4px 8px', background:'rgba(0,0,0,0.3)', gap:6 }}>
+                                            <button onClick={e=>{e.stopPropagation();extractViaCobalt(item.externalUrl,item);}}
+                                              disabled={cobaltStatus(item.externalUrl)==='loading'}
+                                              style={{ fontSize:10, color: cobaltStatus(item.externalUrl)==='error'?'#f87171':cobaltStatus(item.externalUrl)==='loading'?'rgba(255,255,255,0.4)':'#a78bfa', background:'rgba(99,102,241,0.15)', border:'1px solid rgba(99,102,241,0.3)', borderRadius:5, padding:'2px 8px', cursor:'pointer', fontWeight:700, flexShrink:0 }}>
+                                              {cobaltStatus(item.externalUrl)==='loading'?'⏳…':cobaltStatus(item.externalUrl)==='error'?'✗ gagal':'→ Player'}
+                                            </button>
+                                            <button onClick={()=>window.open(item.externalUrl,'_blank','noopener,noreferrer')}
+                                              style={{ fontSize:10, color:'#e1306c', background:'none', border:'none', cursor:'pointer', fontWeight:700 }}>Buka di Instagram ↗</button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                    // ── TikTok embed card
+                                    if (item.type === 'tiktok') return (
+                                      <div key={idx} style={{ marginBottom:8 }}>
+                                        <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:5, paddingLeft:2 }}>
+                                          <span style={{ fontSize:14 }}>🎵</span>
+                                          <span style={{ fontSize:10, fontWeight:700, color:'#010101' , background:'white', borderRadius:4, padding:'0 4px' }}>TikTok</span>
+                                          <span style={{ fontSize:9, color:'rgba(255,255,255,0.4)', marginLeft:2 }}>· Video Embed</span>
+                                        </div>
+                                        {item.embedUrl ? (
+                                          <div style={{ borderRadius:10, overflow:'hidden', border:'1px solid rgba(255,255,255,0.2)', background:'rgba(0,0,0,0.3)' }}>
+                                            <iframe key={`tt-embed-${item.embedUrl}`} src={item.embedUrl}
+                                              width="100%" height="560" frameBorder="0"
+                                              allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+                                              allowFullScreen style={{ display:'block' }}
+                                              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"
+                                            />
+                                            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'4px 8px', background:'rgba(0,0,0,0.3)', gap:6 }}>
+                                              <button onClick={e=>{e.stopPropagation();extractViaCobalt(item.externalUrl,item);}}
+                                                disabled={cobaltStatus(item.externalUrl)==='loading'}
+                                                style={{ fontSize:10, color: cobaltStatus(item.externalUrl)==='error'?'#f87171':cobaltStatus(item.externalUrl)==='loading'?'rgba(255,255,255,0.4)':'#a78bfa', background:'rgba(99,102,241,0.15)', border:'1px solid rgba(99,102,241,0.3)', borderRadius:5, padding:'2px 8px', cursor:'pointer', fontWeight:700, flexShrink:0 }}>
+                                                {cobaltStatus(item.externalUrl)==='loading'?'⏳…':cobaltStatus(item.externalUrl)==='error'?'✗ gagal':'→ Player'}
+                                              </button>
+                                              <button onClick={()=>window.open(item.externalUrl,'_blank','noopener,noreferrer')}
+                                                style={{ fontSize:10, color:'#69c9d0', background:'none', border:'none', cursor:'pointer', fontWeight:700 }}>Buka di TikTok ↗</button>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <div style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 12px', borderRadius:10, background:'rgba(105,201,208,0.08)', border:'1px solid rgba(105,201,208,0.25)', cursor:'pointer' }}
+                                            onClick={()=>window.open(item.externalUrl,'_blank','noopener,noreferrer')}>
+                                            <span style={{ fontSize:20 }}>🎵</span>
+                                            <div style={{ flex:1, minWidth:0 }}>
+                                              <div style={{ fontSize:11, fontWeight:700, color:'#69c9d0' }}>TikTok Video</div>
+                                              <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)' }}>Klik untuk buka di TikTok</div>
+                                            </div>
+                                            <span style={{ padding:'5px 12px', borderRadius:999, background:'#69c9d0', color:'black', fontSize:11, fontWeight:800, flexShrink:0 }}>Buka ↗</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                    // ── Twitter/X embed card
+                                    if (item.type === 'twitter') return (
+                                      <div key={idx} style={{ marginBottom:8 }}>
+                                        <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:5, paddingLeft:2 }}>
+                                          <span style={{ fontSize:14 }}>🐦</span>
+                                          <span style={{ fontSize:10, fontWeight:700, color:'#1d9bf0' }}>Twitter / X</span>
+                                          <span style={{ fontSize:9, color:'rgba(29,155,240,0.5)', marginLeft:2 }}>· Tweet Embed</span>
+                                        </div>
+                                        <div style={{ borderRadius:10, overflow:'hidden', border:'1px solid rgba(29,155,240,0.3)', background:'rgba(29,155,240,0.04)' }}>
+                                          <iframe key={`tw-embed-${item.embedUrl}`} src={item.embedUrl}
+                                            width="100%" height="320" frameBorder="0"
+                                            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+                                            allowFullScreen style={{ display:'block' }}
+                                            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"
+                                          />
+                                          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'4px 8px', background:'rgba(0,0,0,0.3)', gap:6 }}>
+                                            <button onClick={e=>{e.stopPropagation();extractViaCobalt(item.externalUrl,item);}}
+                                              disabled={cobaltStatus(item.externalUrl)==='loading'}
+                                              style={{ fontSize:10, color: cobaltStatus(item.externalUrl)==='error'?'#f87171':cobaltStatus(item.externalUrl)==='loading'?'rgba(255,255,255,0.4)':'#a78bfa', background:'rgba(99,102,241,0.15)', border:'1px solid rgba(99,102,241,0.3)', borderRadius:5, padding:'2px 8px', cursor:'pointer', fontWeight:700, flexShrink:0 }}>
+                                              {cobaltStatus(item.externalUrl)==='loading'?'⏳…':cobaltStatus(item.externalUrl)==='error'?'✗ gagal':'→ Player'}
+                                            </button>
+                                            <button onClick={()=>window.open(item.externalUrl,'_blank','noopener,noreferrer')}
+                                              style={{ fontSize:10, color:'#1d9bf0', background:'none', border:'none', cursor:'pointer', fontWeight:700 }}>Buka di Twitter/X ↗</button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                    // ── Threads embed card
+                                    if (item.type === 'threads') return (
+                                      <div key={idx} style={{ marginBottom:8 }}>
+                                        <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:5, paddingLeft:2 }}>
+                                          <span style={{ fontSize:14 }}>🧵</span>
+                                          <span style={{ fontSize:10, fontWeight:700, color:'#ffffff' }}>Threads</span>
+                                          <span style={{ fontSize:9, color:'rgba(255,255,255,0.35)', marginLeft:2 }}>· Post Embed</span>
+                                        </div>
+                                        <div style={{ borderRadius:10, overflow:'hidden', border:'1px solid rgba(255,255,255,0.2)', background:'rgba(255,255,255,0.04)' }}>
+                                          <iframe key={`threads-embed-${item.embedUrl}`} src={item.embedUrl}
+                                            width="100%" height="380" frameBorder="0"
+                                            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+                                            allowFullScreen style={{ display:'block' }}
+                                            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"
+                                          />
+                                          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'4px 8px', background:'rgba(0,0,0,0.3)', gap:6 }}>
+                                            <button onClick={e=>{e.stopPropagation();extractViaCobalt(item.externalUrl,item);}}
+                                              disabled={cobaltStatus(item.externalUrl)==='loading'}
+                                              style={{ fontSize:10, color: cobaltStatus(item.externalUrl)==='error'?'#f87171':cobaltStatus(item.externalUrl)==='loading'?'rgba(255,255,255,0.4)':'#a78bfa', background:'rgba(99,102,241,0.15)', border:'1px solid rgba(99,102,241,0.3)', borderRadius:5, padding:'2px 8px', cursor:'pointer', fontWeight:700, flexShrink:0 }}>
+                                              {cobaltStatus(item.externalUrl)==='loading'?'⏳…':cobaltStatus(item.externalUrl)==='error'?'✗ gagal':'→ Player'}
+                                            </button>
+                                            <button onClick={()=>window.open(item.externalUrl,'_blank','noopener,noreferrer')}
+                                              style={{ fontSize:10, color:'rgba(255,255,255,0.7)', background:'none', border:'none', cursor:'pointer', fontWeight:700 }}>Buka di Threads ↗</button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                    // ── Bilibili embed card
+                                    if (item.type === 'bilibili') return (
+                                      <div key={idx} style={{ marginBottom:8 }}>
+                                        <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:5, paddingLeft:2 }}>
+                                          <span style={{ fontSize:14 }}>📺</span>
+                                          <span style={{ fontSize:10, fontWeight:700, color:'#fb7299' }}>Bilibili</span>
+                                          <span style={{ fontSize:9, color:'rgba(251,114,153,0.5)', marginLeft:2 }}>· Video Embed</span>
+                                        </div>
+                                        <div style={{ borderRadius:10, overflow:'hidden', border:'1px solid rgba(251,114,153,0.3)', background:'rgba(251,114,153,0.04)' }}>
+                                          <iframe key={`bili-embed-${item.embedUrl}`} src={item.embedUrl}
+                                            width="100%" height="280" frameBorder="0"
+                                            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+                                            allowFullScreen scrolling="no" style={{ display:'block' }}
+                                            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"
+                                          />
+                                          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'4px 8px', background:'rgba(0,0,0,0.3)', gap:6 }}>
+                                            <span style={{ fontSize:9, color:'rgba(255,255,255,0.3)' }}>⚠️ Mungkin perlu login Bilibili</span>
+                                            <div style={{ display:'flex', gap:5 }}>
+                                              <button onClick={e=>{e.stopPropagation();extractViaCobalt(item.externalUrl,item);}}
+                                                disabled={cobaltStatus(item.externalUrl)==='loading'}
+                                                style={{ fontSize:10, color: cobaltStatus(item.externalUrl)==='error'?'#f87171':cobaltStatus(item.externalUrl)==='loading'?'rgba(255,255,255,0.4)':'#a78bfa', background:'rgba(99,102,241,0.15)', border:'1px solid rgba(99,102,241,0.3)', borderRadius:5, padding:'2px 8px', cursor:'pointer', fontWeight:700 }}>
+                                                {cobaltStatus(item.externalUrl)==='loading'?'⏳…':cobaltStatus(item.externalUrl)==='error'?'✗ gagal':'→ Player'}
+                                              </button>
+                                              <button onClick={()=>window.open(item.externalUrl,'_blank','noopener,noreferrer')}
+                                                style={{ fontSize:10, color:'#fb7299', background:'none', border:'none', cursor:'pointer', fontWeight:700 }}>Buka di Bilibili ↗</button>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                    // ── Vidio.com embed card
+                                    if (item.type === 'vidio') return (
+                                      <div key={idx} style={{ marginBottom:8 }}>
+                                        <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:5, paddingLeft:2 }}>
+                                          <span style={{ fontSize:14 }}>🎬</span>
+                                          <span style={{ fontSize:10, fontWeight:700, color:'#00a8e8' }}>Vidio</span>
+                                          <span style={{ fontSize:9, color:'rgba(0,168,232,0.5)', marginLeft:2 }}>· Video Embed</span>
+                                        </div>
+                                        {item.embedUrl ? (
+                                          <div style={{ borderRadius:10, overflow:'hidden', border:'1px solid rgba(0,168,232,0.3)', background:'rgba(0,168,232,0.04)' }}>
+                                            <iframe key={`vidio-embed-${item.embedUrl}`} src={item.embedUrl}
+                                              width="100%" height="280" frameBorder="0"
+                                              allow="autoplay; encrypted-media; picture-in-picture"
+                                              allowFullScreen style={{ display:'block' }}
+                                              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"
+                                            />
+                                            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'4px 8px', background:'rgba(0,0,0,0.3)', gap:6 }}>
+                                              <span style={{ fontSize:9, color:'rgba(255,255,255,0.3)' }}>⚠️ Mungkin perlu login Vidio</span>
+                                              <div style={{ display:'flex', gap:5 }}>
+                                                <button onClick={e=>{e.stopPropagation();extractViaCobalt(item.externalUrl,item);}}
+                                                  disabled={cobaltStatus(item.externalUrl)==='loading'}
+                                                  style={{ fontSize:10, color: cobaltStatus(item.externalUrl)==='error'?'#f87171':cobaltStatus(item.externalUrl)==='loading'?'rgba(255,255,255,0.4)':'#a78bfa', background:'rgba(99,102,241,0.15)', border:'1px solid rgba(99,102,241,0.3)', borderRadius:5, padding:'2px 8px', cursor:'pointer', fontWeight:700 }}>
+                                                  {cobaltStatus(item.externalUrl)==='loading'?'⏳…':cobaltStatus(item.externalUrl)==='error'?'✗ gagal':'→ Player'}
+                                                </button>
+                                                <button onClick={()=>window.open(item.externalUrl,'_blank','noopener,noreferrer')}
+                                                  style={{ fontSize:10, color:'#00a8e8', background:'none', border:'none', cursor:'pointer', fontWeight:700 }}>Buka di Vidio ↗</button>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', borderRadius:10, background:'rgba(0,168,232,0.08)', border:'1px solid rgba(0,168,232,0.25)', cursor:'pointer' }}
+                                            onClick={()=>window.open(item.externalUrl,'_blank','noopener,noreferrer')}>
+                                            <div style={{ width:40, height:40, borderRadius:10, background:'linear-gradient(135deg,#0077cc,#00a8e8)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                                              <span style={{ fontSize:18 }}>🎬</span>
+                                            </div>
+                                            <div style={{ flex:1, minWidth:0 }}>
+                                              <div style={{ fontSize:11, fontWeight:700, color:'#38bdf8' }}>{item.title}</div>
+                                              <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginTop:2 }}>Klik untuk buka di Vidio</div>
+                                            </div>
+                                            <span style={{ padding:'5px 12px', borderRadius:999, background:'#00a8e8', color:'white', fontSize:11, fontWeight:800, flexShrink:0 }}>Buka ↗</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
                                     const BADGES = {
                                       vimeo:      { label:'Vimeo',    color:'#1ab7ea' },
                                       dailymotion:{ label:'DM',       color:'#0066DC' },
@@ -7178,14 +7695,11 @@ Format exactly:
                                       odysee:     { label:'Odysee',   color:'#ef5b5b' },
                                       rumble:     { label:'Rumble',   color:'#85c742' },
                                       peertube:   { label:'PeerTube', color:'#f2690d' },
-                                      bandcamp:   { label:'BC',       color:'#1da0c3' },
-                                      fma:        { label:'FMA',      color:'#5cb85c' },
-                                      ccmixter:   { label:'ccMixter', color:'#e74c3c' },
                                       newgrounds: { label:'NG',       color:'#ff6600' },
                                     };
                                     const srcBadge = BADGES[item.source] || { label:'Web', color:'#6366f1' };
-                                    const isEmbeddable = ['archive','vimeo','dailymotion','audiomack','mixcloud','odysee','rumble','peertube'].includes(item.source);
-                                    const isExternal = ['bandcamp','fma','ccmixter','newgrounds'].includes(item.source) && !item.audioUrl;
+                                    const isEmbeddable = ['archive','vimeo','dailymotion','audiomack','mixcloud','odysee','rumble','peertube','newgrounds'].includes(item.source);
+                                    const isExternal = false;
                                     return (
                                       <div key={idx}
                                         onClick={() => {
@@ -7204,8 +7718,15 @@ Format exactly:
                                           <div style={{ fontSize:12, fontWeight:600, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{item.title}</div>
                                           <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{item.artist}{item.duration ? ` · ${Math.floor(item.duration/60)}:${String(item.duration%60).padStart(2,'0')}` : ''}</div>
                                         </div>
-                                        <div style={{ width:28, height:28, borderRadius:'50%', background:`${platform.color}25`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                                          <span style={{ fontSize:10, color:platform.color }}>{isExternal ? '↗' : wsEmbedUrl === item.embedUrl ? '▼' : '▶'}</span>
+                                        <div style={{ display:'flex', alignItems:'center', gap:4, flexShrink:0 }}>
+                                          <button onClick={e=>{e.stopPropagation(); const url=item.externalUrl||item.embedUrl; if(url)extractViaCobalt(url,item);}}
+                                            disabled={cobaltStatus(item.externalUrl||item.embedUrl)==='loading'}
+                                            style={{ fontSize:9, color: cobaltStatus(item.externalUrl||item.embedUrl)==='error'?'#f87171':cobaltStatus(item.externalUrl||item.embedUrl)==='loading'?'rgba(255,255,255,0.4)':'#a78bfa', background:'rgba(99,102,241,0.15)', border:'1px solid rgba(99,102,241,0.3)', borderRadius:5, padding:'2px 6px', cursor:'pointer', fontWeight:700, lineHeight:1.4 }}>
+                                            {cobaltStatus(item.externalUrl||item.embedUrl)==='loading'?'⏳':cobaltStatus(item.externalUrl||item.embedUrl)==='error'?'✗':'→ Player'}
+                                          </button>
+                                          <div style={{ width:28, height:28, borderRadius:'50%', background:`${platform.color}25`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                                            <span style={{ fontSize:10, color:platform.color }}>{isExternal ? '↗' : wsEmbedUrl === item.embedUrl ? '▼' : '▶'}</span>
+                                          </div>
                                         </div>
                                       </div>
                                     );
@@ -7234,7 +7755,7 @@ Format exactly:
                               {/* Empty state */}
                               {!wsLoading && !wsError && wsResults.length === 0 && !wsEmbedUrl && (
                                 <div style={{ marginTop:6, fontSize:10, color:'rgba(255,255,255,0.2)', lineHeight:1.6 }}>
-                                  No results yet — search a song/artist name, or paste a URL from Vimeo, Audiomack, Mixcloud, Odysee, Rumble, PeerTube, Dailymotion, Bandcamp… ↑
+                                  No results yet — search a song/artist name, or paste a URL from Vimeo, Audiomack, Mixcloud, Odysee, Rumble, PeerTube, Dailymotion, archive.org, Facebook, Instagram, TikTok, Twitter/X, Threads, Bilibili, Vidio… ↑
                                 </div>
                               )}
                             </div>
@@ -8243,7 +8764,8 @@ Format exactly:
                           )}
                         </div>
                       )}
-                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={play} isDrive isCached={cachedDriveIds.has(s.driveId)} onRemove={mySongsEditMode ? async id=>{
+                      <Suspense fallback={null}>
+                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={play} isDrive isCached={cachedDriveIds.has(s.driveId)} embedTrack={embedTrack} onRemove={mySongsEditMode ? async id=>{
                           const song = customSongs.find(x=>x.id===id);
                           if (song?.driveId && tokenRef.current) {
                             try {
@@ -8258,6 +8780,7 @@ Format exactly:
                         } : null} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite} t={t} editMode={mySongsEditMode}
                         onDownload={async(s)=>{ if(s.driveId&&tokenRef.current){ await downloadToDevice(`https://www.googleapis.com/drive/v3/files/${s.driveId}?alt=media&acknowledgeAbuse=true`,`${s.title} - ${s.artist}.mp3`,{Authorization:`Bearer ${tokenRef.current}`}); } else if(s.src){ const raw=s.src.split('?')[0]; const ext=raw.includes('.')?raw.split('.').pop():'mp3'; await downloadToDevice(s.src,`${s.title} - ${s.artist}.${ext}`); } }}
                       />)}
+                      </Suspense>
                     </div>
                   </div>
                 );
@@ -8342,11 +8865,13 @@ Format exactly:
                       </div>
                     </div>
                     <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'10px 16px 16px', display:'flex', flexDirection:'column', gap:5 }}>
-                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={play} isDrive={s.isDrive} isCached={s.driveId ? cachedDriveIds.has(s.driveId) : false} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite} t={t}
+                      <Suspense fallback={null}>
+                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={play} isDrive={s.isDrive} isCached={s.driveId ? cachedDriveIds.has(s.driveId) : false} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite} t={t} embedTrack={embedTrack}
                       onRemove={allSongsEditMode ? id=>{ setLiked(l=>{const n={...l};delete n[id];return n;}); setFavSongs(p=>p.filter(s=>s.id!==id)); setCustomSongs(p=>p.filter(s=>s.id!==id)); setYtSongs(p=>p.filter(s=>s.id!==id)); setPlaylists(p=>p.map(pl=>({...pl,songIds:pl.songIds.filter(sid=>sid!==id)}))); } : null}
                       editMode={allSongsEditMode}
                       onDownload={async(s)=>{ if(s.isDrive&&s.driveId&&tokenRef.current){ await downloadToDevice(`https://www.googleapis.com/drive/v3/files/${s.driveId}?alt=media&acknowledgeAbuse=true`,`${s.title} - ${s.artist}.mp3`,{Authorization:`Bearer ${tokenRef.current}`}); } else if(s.src){ const raw=s.src.split('?')[0]; const ext=raw.includes('.')?raw.split('.').pop():'mp3'; await downloadToDevice(s.src,`${s.title} - ${s.artist}.${ext}`); } }}
                     />)}
+                      </Suspense>
                     </div>
                   </div>
                 );

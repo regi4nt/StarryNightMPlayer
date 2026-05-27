@@ -2,8 +2,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { CheckCircle, Cloud, Download, Loader2, Music, Trash2, Heart } from 'lucide-react';
 import { btn, downloadToDevice } from '../constants.js';
 
-function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDrive, isCached, onRemove, playlists, addToPlaylist, isLite, t, onDownload, editMode }) {
-  const isActive = track.id === s.id;
+function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDrive, isCached, onRemove, playlists, addToPlaylist, isLite, t, onDownload, editMode, embedTrack }) {
+  const isYtSong = s.type === 'youtube';
+  const isActive = isYtSong
+    ? (embedTrack?.type === 'youtube' && embedTrack?.videoId === s.videoId)
+    : track.id === s.id;
   const [dlState, setDlState] = React.useState('idle'); // idle | loading | done | error
 
   const handleDownload = async (e) => {
@@ -31,15 +34,22 @@ function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDri
       <div style={{ width:28, height:28, borderRadius:8, flexShrink:0, background:isActive?s.color:'rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:800, color:isActive?'white':'rgba(255,255,255,0.4)' }}>
         {isActive&&playing ? (isLite ? <Music size={12} color="white"/> : <div style={{ display:'flex', gap:1.5, alignItems:'flex-end' }}>{[12,6,10].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:'white', borderRadius:1, animation:`bounce 1.4s ease-in-out ${j*0.25}s infinite` }}/>))}</div>) : isDrive?<Cloud size={12}/>:i+1}
       </div>
-      {isLite
-        ? <div style={{ width:42, height:42, borderRadius:10, background:s.bg||'rgba(255,255,255,0.07)', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={16} color={s.color}/></div>
+      {isLite || isYtSong
+        ? <div style={{ width:42, height:42, borderRadius:10, background: isYtSong ? 'rgba(255,68,68,0.15)' : (s.bg||'rgba(255,255,255,0.07)'), flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', position:'relative', overflow:'hidden' }}>
+            {isYtSong && (s.thumbnail||s.cover)
+              ? <img src={s.thumbnail||s.cover} alt={s.title} loading="lazy" decoding="async" style={{ width:'100%', height:'100%', objectFit:'cover', position:'absolute', inset:0 }} onError={e=>{ e.target.style.display='none'; }}/>
+              : <Music size={16} color={isYtSong ? '#ff4444' : s.color}/>
+            }
+            {isYtSong && <div style={{ position:'absolute', bottom:2, right:2, fontSize:7, fontWeight:800, background:'rgba(255,0,0,0.85)', color:'white', padding:'1px 3px', borderRadius:3, lineHeight:1.2 }}>YT</div>}
+          </div>
         : <img src={s.cover} alt={s.title} loading="lazy" decoding="async" style={{ width:42, height:42, borderRadius:10, objectFit:'cover', flexShrink:0 }}/>}
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ fontWeight:700, fontSize:13, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:isActive?'white':'rgba(255,255,255,0.85)' }}>{s.title}</div>
         <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:2, display:'flex', alignItems:'center', gap:4 }}>
-          <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.artist} · {s.album}</span>
-          {isDrive && <span style={{ color:s.color, flexShrink:0 }}>· Drive</span>}
+          <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.artist}{isYtSong ? ' · YouTube' : ` · ${s.album}`}</span>
+          {isDrive && !isYtSong && <span style={{ color:s.color, flexShrink:0 }}>· Drive</span>}
           {isCached && <span style={{ flexShrink:0, fontSize:9, fontWeight:800, color:'#4ade80', background:'rgba(74,222,128,0.12)', padding:'1px 5px', borderRadius:999 }}>✓ Offline</span>}
+          {isYtSong && isActive && playing && <span style={{ flexShrink:0, fontSize:9, fontWeight:800, color:'#ff4444', background:'rgba(255,68,68,0.12)', padding:'1px 5px', borderRadius:999 }}>▶ Playing</span>}
         </div>
       </div>
       <div style={{ display:'flex', gap:2, position:'relative' }}>

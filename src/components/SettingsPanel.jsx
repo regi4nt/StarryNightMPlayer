@@ -264,15 +264,15 @@ function CacheManager({ lang }) {
       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
         <span style={{ fontSize:16 }}>🗑️</span>
         <div>
-          <div style={{ fontWeight:800, fontSize:14 }}>{lang==='id' ? 'Hapus Cache & Cookie' : 'Clear Cache & Cookies'}</div>
+          <div style={{ fontWeight:800, fontSize:14 }}>{t?.clearCache||'Clear Cache & Cookies'}</div>
           <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>
-            {lang==='id' ? 'Bebaskan storage dari audio & cookie tersimpan' : 'Free up storage from saved audio & cookies'}
+            {lang==='id' ? t?.clearCacheDesc||'Free up storage from saved audio & cookies'}
           </div>
         </div>
       </div>
       {cacheInfo === null ? (
         <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', padding:'8px 0' }}>
-          {lang==='id' ? 'Menghitung cache...' : 'Calculating cache...'}
+          {t?.calculatingCache||'Calculating cache...'}
         </div>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
@@ -280,27 +280,27 @@ function CacheManager({ lang }) {
             <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
               {cacheInfo.driveCount > 0 && (
                 <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>
-                  🎵 Drive: <span style={{ color:'rgba(255,255,255,0.75)', fontWeight:600 }}>{cacheInfo.driveCount} {lang==='id' ? 'lagu' : 'songs'}</span>
+                  🎵 Drive: <span style={{ color:'rgba(255,255,255,0.75)', fontWeight:600 }}>{cacheInfo.driveCount} {t?.cacheCountSongs||'songs'}</span>
                 </div>
               )}
               {cacheInfo.ytCount > 0 && (
                 <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>
-                  ▶️ YouTube: <span style={{ color:'rgba(255,255,255,0.75)', fontWeight:600 }}>{cacheInfo.ytCount} {lang==='id' ? 'lagu' : 'songs'}</span>
+                  ▶️ YouTube: <span style={{ color:'rgba(255,255,255,0.75)', fontWeight:600 }}>{cacheInfo.ytCount} {t?.cacheCountSongs||'songs'}</span>
                 </div>
               )}
               {cacheInfo.cookieCount > 0 && (
                 <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>
-                  🍪 Cookie: <span style={{ color:'rgba(255,255,255,0.75)', fontWeight:600 }}>{cacheInfo.cookieCount} {lang==='id' ? 'item' : 'items'}</span>
+                  🍪 Cookie: <span style={{ color:'rgba(255,255,255,0.75)', fontWeight:600 }}>{cacheInfo.cookieCount} {t?.cacheCountItems||'items'}</span>
                 </div>
               )}
               {cacheInfo.lsCount > 0 && (
                 <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>
-                  💾 Storage: <span style={{ color:'rgba(255,255,255,0.75)', fontWeight:600 }}>{cacheInfo.lsCount} {lang==='id' ? 'entri' : 'entries'}</span>
+                  💾 Storage: <span style={{ color:'rgba(255,255,255,0.75)', fontWeight:600 }}>{cacheInfo.lsCount} {t?.cacheCountEntries||'entries'}</span>
                 </div>
               )}
               {!hasCache && (
                 <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)' }}>
-                  {lang==='id' ? 'Tidak ada cache atau cookie tersimpan' : 'No cache or cookies stored'}
+                  {t?.noCacheStored||'No cache or cookies stored'}
                 </div>
               )}
             </div>
@@ -326,10 +326,10 @@ function CacheManager({ lang }) {
           >
             <span style={{ fontSize:14 }}>{clearing ? '⏳' : clearDone ? '✅' : '🗑️'}</span>
             {clearing
-              ? (lang==='id' ? 'Menghapus...' : 'Clearing...')
+              ? (t?.clearingCache||'Clearing...')
               : clearDone
-                ? (lang==='id' ? 'Cache & Cookie Dihapus!' : 'Cache & Cookies Cleared!')
-                : (lang==='id' ? 'Hapus Semua Cache & Cookie' : 'Clear All Cache & Cookies')}
+                ? (t?.cacheCleared||'Cache & Cookies Cleared!')
+                : (t?.clearAllCache||'Clear All Cache & Cookies')}
           </button>
         </div>
       )}
@@ -403,11 +403,22 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
                 onChange={e => {
                   const f = e.target.files[0];
                   if (!f) return;
+                  // Tolak gambar > 1 MB sebelum di-encode — base64 akan ~33% lebih besar,
+                  // dan localStorage rata-rata hanya tersedia 5 MB per origin.
+                  if (f.size > 1_048_576) {
+                    alert(t?.coverTooLarge || 'Ukuran gambar maksimal 1 MB. Silakan pilih gambar yang lebih kecil.');
+                    return;
+                  }
                   const reader = new FileReader();
                   reader.onload = ev => {
                     const dataUrl = ev.target.result;
                     setGlobalCover(dataUrl);
-                    localStorage.setItem('sn_global_cover', dataUrl);
+                    try {
+                      localStorage.setItem('sn_global_cover', dataUrl);
+                    } catch (err) {
+                      console.warn('[SettingsPanel] Gagal simpan cover ke localStorage:', err);
+                      // Tetap tampilkan cover di memori meski storage penuh
+                    }
                   };
                   reader.readAsDataURL(f);
                 }}
@@ -498,7 +509,7 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
               { label:'OpenDNS', value:'208.67.222.222', desc:'OpenDNS — keamanan ekstra' },
               { label:'Quad9', value:'9.9.9.9', desc:'Quad9 — blokir malware' },
             ].map(opt => (
-              <button key={opt.label} onClick={() => { setCustomDns(opt.value); localStorage.setItem('sn_custom_dns', opt.value); }}
+              <button key={opt.label} onClick={() => { setCustomDns(opt.value); try { localStorage.setItem('sn_custom_dns', opt.value); } catch(e) { console.warn('[SettingsPanel] localStorage error:', e); } }}
                 style={{ padding:'6px 12px', borderRadius:999, border:'none', fontSize:11, fontWeight:700, cursor:'pointer',
                   background: customDns === opt.value ? color : 'rgba(255,255,255,0.08)',
                   color: customDns === opt.value ? 'white' : 'rgba(255,255,255,0.55)' }}
@@ -563,7 +574,7 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
                 <MaskedKeyInput
                   value={userSpId}
                   onChange={v => setUserSpId(v)}
-                  onBlur={v => localStorage.setItem('sn_sp_id', v)}
+                  onBlur={v => { try { localStorage.setItem('sn_sp_id', v); } catch(e) { console.warn('[SettingsPanel] localStorage error:', e); } }}
                   placeholder="Client ID"
                   accentColor="#1DB954"
                 />
@@ -571,7 +582,7 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
               <MaskedKeyInput
                 value={userSpSecret}
                 onChange={v => setUserSpSecret(v)}
-                onBlur={v => localStorage.setItem('sn_sp_secret', v)}
+                onBlur={v => { try { localStorage.setItem('sn_sp_secret', v); } catch(e) { console.warn('[SettingsPanel] localStorage error:', e); } }}
                 placeholder="Client Secret"
                 accentColor="#1DB954"
               />
@@ -598,7 +609,7 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
               <MaskedKeyInput
                 value={userScId}
                 onChange={v => setUserScId(v)}
-                onBlur={v => localStorage.setItem('sn_sc_id', v)}
+                onBlur={v => { try { localStorage.setItem('sn_sc_id', v); } catch(e) { console.warn('[SettingsPanel] localStorage error:', e); } }}
                 placeholder="Client ID"
                 accentColor="#ff5500"
               />
@@ -625,7 +636,7 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
               <MaskedKeyInput
                 value={userYtKey}
                 onChange={v => setUserYtKey(v)}
-                onBlur={v => localStorage.setItem('sn_yt_key', v)}
+                onBlur={v => { try { localStorage.setItem('sn_yt_key', v); } catch(e) { console.warn('[SettingsPanel] localStorage error:', e); } }}
                 placeholder="AIza… · console.cloud.google.com"
                 accentColor="#FF0000"
               />
@@ -662,7 +673,7 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
                 <MaskedKeyInput
                   value={userAiKey}
                   onChange={v => setUserAiKey(v)}
-                  onBlur={v => localStorage.setItem('sn_ai_key', v)}
+                  onBlur={v => { try { localStorage.setItem('sn_ai_key', v); } catch(e) { console.warn('[SettingsPanel] localStorage error:', e); } }}
                   placeholder="sk- / sk-or- / sk-ant- / gsk_ / AIza / xai- / hf_ / ghp_"
                   accentColor="#818cf8"
                 />
@@ -694,7 +705,7 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
                 <MaskedKeyInput
                   value={userCfKey}
                   onChange={v => setUserCfKey(v)}
-                  onBlur={v => localStorage.setItem('sn_cf_key', v)}
+                  onBlur={v => { try { localStorage.setItem('sn_cf_key', v); } catch(e) { console.warn('[SettingsPanel] localStorage error:', e); } }}
                   placeholder="accountId:apiKey"
                   accentColor="#F6821F"
                 />
@@ -719,7 +730,7 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
                 <MaskedKeyInput
                   value={userSnKey}
                   onChange={v => setUserSnKey(v)}
-                  onBlur={v => localStorage.setItem('sn_sn_key', v)}
+                  onBlur={v => { try { localStorage.setItem('sn_sn_key', v); } catch(e) { console.warn('[SettingsPanel] localStorage error:', e); } }}
                   placeholder="SambaNova API key..."
                   accentColor="#ff6b5b"
                 />
@@ -814,16 +825,16 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
             <div style={{ padding:'10px 14px', borderRadius:12, background:'rgba(99,102,241,0.1)', border:'1px solid rgba(99,102,241,0.25)', display:'flex', alignItems:'center', gap:10 }}>
               <span style={{ fontSize:20 }}>✅</span>
               <div>
-                <div style={{ fontSize:13, fontWeight:700, color:'#a5b4fc' }}>Sudah terinstall!</div>
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:2 }}>Buka dari layar utama atau app launcher</div>
+                <div style={{ fontSize:13, fontWeight:700, color:'#a5b4fc' }}>{t?.pwaInstalled||'Already installed!'}</div>
+                <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:2 }}>{t?.pwaInstalledDesc||'Open from your home screen or app launcher'}</div>
               </div>
             </div>
           ) : (
             <div style={{ padding:'10px 14px', borderRadius:12, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)' }}>
-              <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)', marginBottom:6 }}>Cara install manual:</div>
+              <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)', marginBottom:6 }}>{t?.pwaManualTitle||'Manual install steps:'}</div>
               <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
                 {[
-                  ['📱 Chrome Android', 'Menu ⋮ → Tambahkan ke Layar Utama'],
+                  [t?.pwaShortcutRadio?.startsWith('🎙️') ? '📱 Chrome Android' : '📱 Chrome Android', t?.pwaStepAndroid||'Menu ⋮ → Add to Home Screen'],
                   ['🍎 Safari iOS', 'Tap 🔗 → Tambahkan ke Layar Utama'],
                   ['🖥️ Chrome Desktop', 'Klik ikon ⬇️ di address bar'],
                   ['🖥️ Edge Desktop', 'Klik ikon ... → Apps → Install'],

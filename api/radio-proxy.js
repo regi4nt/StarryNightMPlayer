@@ -26,7 +26,7 @@ export const config = {
 // Whitelist domain yang diizinkan di-proxy
 // (cegah penyalahgunaan sebagai open proxy)
 const ALLOWED_DOMAINS = [
-  'stream.live.vc.bbcmedia.co.uk',
+  'stream.live.vc.bbcmedia.co.uk',   // FIX Bug #7: hapus duplikat (sebelumnya muncul 2×)
   'rfe21.akacast.akamaistream.net',
   'ibb.akacast.akamaistream.net',
   'stream.radioparadise.com',
@@ -40,10 +40,43 @@ const ALLOWED_DOMAINS = [
   'icecast.radiofrance.fr',
   'stream.wfmu.org',
   'kexp-mp3-128.streamguys1.com',
-  'stream.live.vc.bbcmedia.co.uk',
   'playerservices.streamtheworld.com',
   // tambah domain lain jika diperlukan
 ];
+
+/**
+ * FIX Bug #1 (SSRF via DNS rebinding): validasi bahwa IP hasil resolusi custom DNS
+ * bukan alamat private/loopback/link-local/multicast.
+ *
+ * Tanpa ini, attacker bisa menunjuk DNS server milik sendiri agar domain whitelist
+ * seperti 'stream.live.vc.bbcmedia.co.uk' ter-resolve ke 10.0.0.1, 169.254.169.254
+ * (AWS metadata), 192.168.x.x, dst — sehingga Vercel server connect ke jaringan internal.
+ *
+ * Range yang diblokir (IPv4):
+ *   10.0.0.0/8       — private class A
+ *   172.16.0.0/12    — private class B
+ *   192.168.0.0/16   — private class C
+ *   127.0.0.0/8      — loopback
+ *   169.254.0.0/16   — link-local (AWS/GCP metadata endpoint)
+ *   100.64.0.0/10    — shared address space (Carrier-grade NAT)
+ *   0.0.0.0/8        — "this" network
+ *   224.0.0.0/4      — multicast
+ *   240.0.0.0/4      — reserved
+ */
+function isPrivateIp(ip) {
+  const parts = ip.split('.').map(Number);
+  if (parts.length !== 4 || parts.some(p => isNaN(p) || p < 0 || p > 255)) return true; // malformed → block
+  const [a, b] = parts;
+  if (a === 10)                          return true; // 10.0.0.0/8
+  if (a === 172 && b >= 16 && b <= 31)  return true; // 172.16.0.0/12
+  if (a === 192 && b === 168)            return true; // 192.168.0.0/16
+  if (a === 127)                         return true; // 127.0.0.0/8  loopback
+  if (a === 169 && b === 254)            return true; // 169.254.0.0/16 link-local
+  if (a === 100 && b >= 64 && b <= 127) return true; // 100.64.0.0/10 CGNAT
+  if (a === 0)                           return true; // 0.0.0.0/8
+  if (a >= 224)                          return true; // multicast + reserved
+  return false;
+}
 
 function isAllowed(urlStr) {
   try {
@@ -120,6 +153,13 @@ export default async function handler(req, res) {
       const parsedUrl = new URL(url);
       const resolvedIp = await resolveWithCustomDns(parsedUrl.hostname, customDns);
       if (resolvedIp) {
+        // FIX Bug #1: blokir IP internal/loopback/link-local untuk cegah SSRF
+        if (isPrivateIp(resolvedIp)) {
+          return res.status(403).json({
+            error: 'Resolved IP is in a private/reserved range',
+            hint: 'Custom DNS tidak boleh me-resolve ke alamat IP internal atau loopback.',
+          });
+        }
         // Ganti hostname dengan IP hasil resolusi custom DNS
         // Tambah Host header agar virtual hosting di server tujuan tetap berfungsi
         headers['Host'] = parsedUrl.hostname;
@@ -157,13 +197,26 @@ export default async function handler(req, res) {
     res.status(upstream.status);
 
     // Stream langsung ke client
+    // FIX Bug #1: ganti rekursi tak terbatas dengan iterative async loop.
+    // Rekursi di dalam .then() membentuk call-stack baru setiap chunk — untuk
+    // live radio yang tidak pernah selesai, ini menyebabkan stack overflow.
     const reader = upstream.body.getReader();
-    const write = () => reader.read().then(({ done, value }) => {
-      if (done) { res.end(); return; }
-      res.write(Buffer.from(value));
-      write();
-    }).catch(() => res.end());
-    write();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        // res.write() bisa return false (backpressure). Tunggu 'drain' agar
+        // buffer tidak meledak saat client lambat menerima data.
+        const canContinue = res.write(Buffer.from(value));
+        if (!canContinue) {
+          await new Promise(resolve => res.once('drain', resolve));
+        }
+      }
+    } catch {
+      // Client disconnect / upstream error — tutup saja
+    } finally {
+      res.end();
+    }
 
   } catch (e) {
     if (!res.headersSent) {

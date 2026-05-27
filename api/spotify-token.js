@@ -92,11 +92,13 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // ── Rate limiting ─────────────────────────────────────────────
-  if (await applyRateLimit(req, res, { max: 30, windowMs: 60_000, key: 'spotify' })) return;
-  // ─────────────────────────────────────────────────────────────
-
+  // FIX Bug #4: cek method SEBELUM rate limit agar request GET/PUT/DELETE yang tidak valid
+  // tidak mengonsumsi kuota IP pengguna — sebelumnya attacker bisa menghabiskan jatah
+  // rate limit dengan mengirim request method murah (non-POST) secara massal.
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // ── Rate limiting (hanya untuk POST yang valid) ───────────────
+  if (await applyRateLimit(req, res, { max: 30, windowMs: 60_000, key: 'spotify' })) return;
 
   const clientId     = process.env.SPOTIFY_CLIENT_ID;
   const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
