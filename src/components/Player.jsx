@@ -166,9 +166,11 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
         <circle cx={cx} cy={cy} r={ringR} stroke="rgba(255,255,255,0.09)" strokeWidth="3.5" fill="none"/>
         {/* Radio: spinning dashed ring. Normal: progress arc */}
         {isRadio ? (
-          <circle cx={cx} cy={cy} r={ringR} stroke={color} strokeWidth="4.5" fill="none"
-            strokeDasharray={`${circ*0.35} ${circ*0.65}`} strokeLinecap="round"
-            style={{ transformBox:'fill-box', transformOrigin:'center', animation: isPlaying ? 'spin 3s linear infinite' : 'none', filter:isLite?'none':`drop-shadow(0 0 6px ${color})` }}/>
+          <g style={{ transformOrigin:`${cx}px ${cy}px`, animation: isPlaying ? 'spin 3s linear infinite' : 'none' }}>
+            <circle cx={cx} cy={cy} r={ringR} stroke={color} strokeWidth="4.5" fill="none"
+              strokeDasharray={`${circ*0.35} ${circ*0.65}`} strokeLinecap="round"
+              style={{ filter:isLite?'none':`drop-shadow(0 0 6px ${color})` }}/>
+          </g>
         ) : (
           <circle className="progress-arc" cx={cx} cy={cy} r={ringR} stroke={color} strokeWidth="4.5" fill="none"
             strokeDasharray={circ} strokeDashoffset={circ-circ*pct} strokeLinecap="round"
