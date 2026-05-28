@@ -148,14 +148,19 @@ function CacheManager({ lang, t }) {
   // ── Keys yang PENTING (jangan hapus saat Quick Clean)
   const KEEP_KEYS = new Set([
     'sn_playlists', 'sn_fav_songs', 'sn_liked', 'sn_custom_songs',
+    'sn_yt_songs',       // FIX: lagu YouTube yang di-like/saved — harus dijaga agar tidak ikut terhapus
+    'sn_drive_meta',     // FIX: metadata lagu Google Drive
     'sn_history', 'sn_persona_prefs', 'sn_persona_done',
+    'sn_persona_recs', 'sn_persona_recs_ts', // FIX: hasil rekomendasi AI persona
     'sn_google_token', 'sn_google_user',
     'sn_global_cover', 'sn_tab', 'sn_volume', 'sn_muted',
     'sn_repeat', 'sn_shuffle', 'sn_lang', 'sn_mode',
+    'sn_cover_spin',     // FIX: preferensi animasi cover
     'sn_custom_dns', 'sn_ai_key', 'sn_yt_key', 'sn_sp_id',
     'sn_sp_secret', 'sn_sc_id', 'sn_cf_key', 'sn_sb_key', 'sn_sn_key',
     'sn_user_yt_key', 'sn_user_sp_id', 'sn_user_sp_secret',
     'sn_user_sc_id', 'sn_user_cf_key', 'sn_user_sn_key',
+    'sn_ds_key', 'sn_grok_key', // FIX: API key tambahan
   ]);
 
   React.useEffect(() => {

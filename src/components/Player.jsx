@@ -88,7 +88,7 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
   return (
     <div style={{ position:'relative', width:size, height:size, flexShrink:0 }}>
       {/* Album art */}
-      <div style={{ position:'absolute', top:cy-artR, left:cx-artR, width:artR*2, height:artR*2, borderRadius:'50%', overflow:'hidden', border:`3px solid ${(isRadio&&!cover)?color+'60':'rgba(255,255,255,0.13)'}`, boxShadow:isLite?'none':`0 0 40px -8px ${color}90`, animation:(!isLite && coverSpin && isPlaying && (!isRadio||!!cover))?'spin20 20s linear infinite':'none', zIndex:2 }}>
+      <div style={{ position:'absolute', top:cy-artR, left:cx-artR, width:artR*2, height:artR*2, borderRadius:'50%', overflow:'hidden', border:`3px solid ${(isRadio&&!cover)?color+'60':'rgba(255,255,255,0.13)'}`, boxShadow:isLite?'none':`0 0 40px -8px ${color}90`, animation:(!isLite && coverSpin && isPlaying && (!isRadio||!!cover))?'spin20 36s linear infinite':'none', zIndex:2 }}>
         {(isRadio && !cover)
           ? <div style={{ width:'100%', height:'100%', background:`linear-gradient(135deg,${color}30,${color}18)`, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:6, position:'relative' }}>
               <Radio size={artR*0.45} color={color}/>
@@ -170,7 +170,7 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
             strokeDasharray={`${circ*0.35} ${circ*0.65}`} strokeLinecap="round"
             style={{ filter:isLite?'none':`drop-shadow(0 0 6px ${color})` }}>
             {isPlaying && <animateTransform attributeName="transform" type="rotate"
-              from={`0 ${cx} ${cy}`} to={`360 ${cx} ${cy}`} dur="3s" repeatCount="indefinite"/>}
+              from={`0 ${cx} ${cy}`} to={`360 ${cx} ${cy}`} dur="36s" repeatCount="indefinite"/>}
           </circle>
         ) : (
           <circle className="progress-arc" cx={cx} cy={cy} r={ringR} stroke={color} strokeWidth="4.5" fill="none"

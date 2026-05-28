@@ -1324,7 +1324,7 @@ async function ytCachePut(videoId, blob) {
 }
 
 // Ambil audio blob YouTube dari cache
-async function ytCacheGet(videoId) {
+export async function ytCacheGet(videoId) {
   try {
     const cache = await caches.open(YT_CACHE_NAME);
     const res = await cache.match(`/yt/${videoId}`);
@@ -1431,6 +1431,18 @@ export async function downloadToDevice(url, filename, headers = {}) {
   const res = await fetch(url, { headers });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const blob = await res.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+}
+
+// ── Unduh blob yang sudah ada di memori ke perangkat (tanpa fetch ulang)
+export function downloadBlobToDevice(blob, filename) {
   const blobUrl = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = blobUrl;

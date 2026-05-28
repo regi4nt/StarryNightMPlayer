@@ -32,6 +32,7 @@ import {
   btn, driveListSongs, drivePrefetch,
   searchSpotify, searchSoundCloud,
   downloadYtAudio, downloadToDevice, downloadFavAudio, favCacheGet, favCacheDelete,
+  ytCacheGet, downloadBlobToDevice,
   cacheGet, driveStreamBlob, driveStreamLite, driveDownloadBlob, driveUploadSong,
   driveSavePlaylists, driveLoadPlaylists,
 } from './constants.js';
@@ -1986,6 +1987,55 @@ Return ONLY valid JSON, no explanation:
   }, [isLite]); // intentionally [isLite] only — triggered once on Lite→Pro transition
 
 
+  // ── Helper: unduh lagu ke perangkat — pakai cache offline jika sudah ada,
+  //    baru fetch dari internet jika belum.
+  const downloadWithCache = useCallback(async (s) => {
+    const name = `${s.title} - ${s.artist}`;
+
+    // Google Drive: cek Cache API lokal dulu (sn-drive-v1), baru fetch jika miss
+    if (s.isDrive && s.driveId) {
+      const cached = await cacheGet(s.driveId);
+      if (cached && cached.size > 10000) {
+        downloadBlobToDevice(cached, `${name}.mp3`);
+        return;
+      }
+      if (tokenRef.current) {
+        await downloadToDevice(
+          `https://www.googleapis.com/drive/v3/files/${s.driveId}?alt=media&acknowledgeAbuse=true`,
+          `${name}.mp3`,
+          { Authorization: `Bearer ${tokenRef.current}` }
+        );
+      }
+      return;
+    }
+
+    // YouTube: cek cache offline dulu
+    if (s.type === 'youtube' && s.videoId) {
+      const cached = await ytCacheGet(s.videoId);
+      if (cached && cached.size > 10000) {
+        downloadBlobToDevice(cached, `${name}.mp3`);
+        return;
+      }
+    }
+
+    // favSong (SC/Spotify preview dll): cek cache offline dulu
+    if (s.id && s.type !== 'youtube') {
+      const cached = await favCacheGet(s.id);
+      if (cached && cached.size > 1000) {
+        const ext = s.src ? (s.src.split('?')[0].split('.').pop() || 'mp3') : 'mp3';
+        downloadBlobToDevice(cached, `${name}.${ext}`);
+        return;
+      }
+    }
+
+    // Fallback: fetch dari internet
+    if (s.src) {
+      const raw = s.src.split('?')[0];
+      const ext = raw.includes('.') ? raw.split('.').pop() : 'mp3';
+      await downloadToDevice(s.src, `${name}.${ext}`);
+    }
+  }, []);  // tokenRef adalah ref — tidak perlu di deps
+
   // ── Jam live (update setiap detik)
   const [nowTime, setNowTime] = useState(() => new Date());
 
@@ -2046,8 +2096,6 @@ Return ONLY valid JSON, no explanation:
   const [fullscreen, setFullscreen] = useState(false);
   const [coverSpin, setCoverSpin] = useState(() => localStorage.getItem('sn_cover_spin') !== 'false');
   const fullscreenRef = useRef(false);
-  // Simpan orientasi sebelum masuk fullscreen agar bisa dikunci ke posisi itu
-  const orientationBeforeFullscreen = useRef(null);
 
 
 
@@ -2063,15 +2111,15 @@ Return ONLY valid JSON, no explanation:
       window.matchMedia('(display-mode: window-controls-overlay)').matches ||
       window.matchMedia('(display-mode: fullscreen)').matches;
 
-    if (isPWA && screen?.orientation?.lock) {
+    if (isPWA && screen?.orientation) {
       if (fullscreen) {
-        // Gunakan lockType yang sudah di-capture tepat saat tombol diklik
-        const lockType = orientationBeforeFullscreen.current || 'portrait-primary';
-        screen.orientation.lock(lockType).catch(() => {});
+        // Kunci ke orientasi SAAT INI (portrait atau landscape sesuai posisi device)
+        // agar layar tidak berputar saat Screen Lock aktif
+        const currentType = screen.orientation.type; // e.g. 'portrait-primary', 'landscape-primary'
+        if (screen.orientation.lock) screen.orientation.lock(currentType).catch(() => {});
       } else {
-        orientationBeforeFullscreen.current = null;
-        // Kunci kembali ke portrait saat keluar fullscreen (bukan unlock total)
-        screen.orientation.lock('portrait').catch(() => {});
+        // Kunci kembali ke portrait saat keluar fullscreen
+        if (screen.orientation.lock) screen.orientation.lock('portrait').catch(() => {});
       }
     }
     // ─────────────────────────────────────────────────────────────────────
@@ -2105,9 +2153,15 @@ Return ONLY valid JSON, no explanation:
       if (document.visibilityState !== 'visible') return;
       const a = audioRef.current;
       if (!a || !playingRef.current) return;
-      // Audio terinterrupt → coba resume
+      // Audio terinterrupt atau stalled saat background → coba resume
       if (a.paused && !a.ended) {
         a.play().catch(() => {});
+      } else if (!a.paused && a.readyState < 3) {
+        // FIX: Audio tidak ter-pause tapi stalled karena background throttle.
+        // Perlu reload dari posisi saat ini agar buffer kembali jalan.
+        const pos = a.currentTime;
+        a.load();
+        a.addEventListener('canplay', () => { a.currentTime = pos; a.play().catch(() => {}); }, { once: true });
       }
     };
     document.addEventListener('visibilitychange', onResume);
@@ -3115,6 +3169,10 @@ Return ONLY valid JSON, no explanation:
         if (a.readyState < 2 && !a.paused) scheduleRadioReconnect(track);
         return;
       }
+      // FIX: Jangan reset audio saat tab/app di-background.
+      // Browser sengaja menghentikan buffering saat background → stall adalah normal.
+      // Memanggil a.load() di sini akan mereset posisi & membatalkan background playback.
+      if (document.visibilityState === 'hidden') return;
       if (a.readyState < 3 && !a.paused) {
         a.load();
         const pos = a.currentTime;
@@ -6939,14 +6997,6 @@ Format exactly:
                   <button onClick={()=>{ setShowQueue(q=>!q); setShowShareMenu(false); }} style={{ background:'none', border:'none', cursor:'pointer', color:showQueue?track.color:'rgba(255,255,255,0.35)', padding:'4px 7px' }}><ListMusic size={16}/></button>
                   <button onClick={()=>setShowSettings(v=>!v)} style={{ background:showSettings?'rgba(255,255,255,0.08)':'none', borderRadius:8, border:'none', cursor:'pointer', color:sleepTimer?track.color:(showSettings?'rgba(255,255,255,0.7)':'rgba(255,255,255,0.35)'), padding:'4px 7px' }}><Settings size={16}/></button>
                   <button onClick={()=>{
-                    if (!fullscreen) {
-                      const a = screen?.orientation?.angle ?? window.orientation ?? 0;
-                      let lt = 'portrait-primary';
-                      if (a === 90) lt = 'landscape-primary';
-                      else if (a === 270 || a === -90) lt = 'landscape-secondary';
-                      else if (a === 180) lt = 'portrait-secondary';
-                      orientationBeforeFullscreen.current = lt;
-                    }
                     setFullscreen(f=>!f);
                   }} style={{ background:'none', border:'none', cursor:'pointer', color:fullscreen?track.color:'rgba(255,255,255,0.35)', padding:'4px 7px' }}>{fullscreen?<Minimize2 size={16}/>:<Maximize2 size={16}/>}</button>
                   {embedTrack && <button onClick={()=>{ closeEmbed(); setShowSettings(false); }} style={{ background:'none', border:'none', cursor:'pointer', color:'#fca5a5', padding:'4px 7px' }}><X size={16}/></button>}
@@ -7170,14 +7220,6 @@ Format exactly:
               <button onClick={()=>setShowSettings(v=>!v)} title={t?.settings||"Settings"} style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:layoutVars.actionPad, borderRadius:12, background: showSettings?'rgba(255,255,255,0.08)':'none', border:'none', color:sleepTimer?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):(showSettings?'rgba(255,255,255,0.7)':'rgba(255,255,255,0.35)') }}><Settings size={16}/></button>
               {/* Fullscreen */}
               <button onClick={()=>{
-                if (!fullscreen) {
-                  const a = screen?.orientation?.angle ?? window.orientation ?? 0;
-                  let lt = 'portrait-primary';
-                  if (a === 90) lt = 'landscape-primary';
-                  else if (a === 270 || a === -90) lt = 'landscape-secondary';
-                  else if (a === 180) lt = 'portrait-secondary';
-                  orientationBeforeFullscreen.current = lt;
-                }
                 setFullscreen(f=>!f);
               }} title={fullscreen?(t?.exitFullscreenBtn||'Exit Fullscreen'):(t?.fullscreenBtn||'Fullscreen')} style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:layoutVars.actionPad, borderRadius:12, background:'none', border:'none', color:fullscreen?(embedTrack?.type==='youtube'?'#ff6b6b':track.color):'rgba(255,255,255,0.35)' }}>
                 {fullscreen?<Minimize2 size={16}/>:<Maximize2 size={16}/>}
@@ -9124,7 +9166,7 @@ Format exactly:
                           setFavSongs(p=>p.filter(s=>s.id!==id));
                           if(activePlRef.current) activePlRef.current=activePlRef.current.filter(s=>s.id!==id);
                         } : null} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite} t={t} editMode={mySongsEditMode}
-                        onDownload={async(s)=>{ if(s.driveId&&tokenRef.current){ await downloadToDevice(`https://www.googleapis.com/drive/v3/files/${s.driveId}?alt=media&acknowledgeAbuse=true`,`${s.title} - ${s.artist}.mp3`,{Authorization:`Bearer ${tokenRef.current}`}); } else if(s.src){ const raw=s.src.split('?')[0]; const ext=raw.includes('.')?raw.split('.').pop():'mp3'; await downloadToDevice(s.src,`${s.title} - ${s.artist}.${ext}`); } }}
+                        onDownload={downloadWithCache}
                       />)}
                       </Suspense>
                     </div>
@@ -9215,7 +9257,7 @@ Format exactly:
                       {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={s2=>{ activePlRef.current=songs; play(s2); }} isDrive={s.isDrive} isCached={s.driveId ? cachedDriveIds.has(s.driveId) : s.type==='youtube' ? cachedYtIds.has(s.videoId) : cachedFavIds.has(s.id)} isDownloading={s.type==='youtube' ? ytDownloadingIds.has(s.videoId) : favDownloadingIds.has(s.id)} dlProgress={s.type==='youtube' ? (ytDownloadProg[s.videoId]||0) : (favDownloadProg[s.id]||0)} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite} t={t} embedTrack={embedTrack}
                       onRemove={allSongsEditMode ? id=>{ setLiked(l=>{const n={...l};delete n[id];return n;}); setFavSongs(p=>p.filter(s=>s.id!==id)); setCustomSongs(p=>p.filter(s=>s.id!==id)); setYtSongs(p=>p.filter(s=>s.id!==id)); setPlaylists(p=>p.map(pl=>({...pl,songIds:pl.songIds.filter(sid=>sid!==id)}))); } : null}
                       editMode={allSongsEditMode}
-                      onDownload={async(s)=>{ if(s.isDrive&&s.driveId&&tokenRef.current){ await downloadToDevice(`https://www.googleapis.com/drive/v3/files/${s.driveId}?alt=media&acknowledgeAbuse=true`,`${s.title} - ${s.artist}.mp3`,{Authorization:`Bearer ${tokenRef.current}`}); } else if(s.src){ const raw=s.src.split('?')[0]; const ext=raw.includes('.')?raw.split('.').pop():'mp3'; await downloadToDevice(s.src,`${s.title} - ${s.artist}.${ext}`); } }}
+                      onDownload={downloadWithCache}
                     />)}
                       </Suspense>
                     </div>
@@ -9279,14 +9321,7 @@ Format exactly:
                         playlists={playlists} addToPlaylist={addToPlaylist}
                         isLite={isLite} t={t} embedTrack={embedTrack}
                         editMode={plSongsEditMode}
-                        onDownload={async(s2)=>{
-                          if(s2.isDrive&&s2.driveId&&tokenRef.current){
-                            await downloadToDevice(`https://www.googleapis.com/drive/v3/files/${s2.driveId}?alt=media&acknowledgeAbuse=true`,`${s2.title} - ${s2.artist}.mp3`,{Authorization:`Bearer ${tokenRef.current}`});
-                          } else if(s2.src){
-                            const raw=s2.src.split('?')[0]; const ext=raw.includes('.')?raw.split('.').pop():'mp3';
-                            await downloadToDevice(s2.src,`${s2.title} - ${s2.artist}.${ext}`);
-                          }
-                        }}
+                        onDownload={downloadWithCache}
                         onRemove={plSongsEditMode ? id=>{
                           setPlaylists(p=>p.map(pl2=>pl2.id===pl.id?{...pl2,songIds:pl2.songIds.filter(sid=>sid!==id)}:pl2));
                           if(pl.id==='pl_fav'){
