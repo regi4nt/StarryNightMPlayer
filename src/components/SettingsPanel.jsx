@@ -144,6 +144,7 @@ function CacheManager({ lang, t }) {
   const [clearing, setClearing] = React.useState(null); // null | 'quick' | 'all'
   const [cleared, setCleared] = React.useState(false);
   const [clearDone, setClearDone] = React.useState(null); // null | 'quick' | 'all'
+  const [confirmClearAll, setConfirmClearAll] = React.useState(false);
 
   // ── Keys yang PENTING (jangan hapus saat Quick Clean)
   const KEEP_KEYS = new Set([
@@ -458,37 +459,58 @@ function CacheManager({ lang, t }) {
               </span>
             </button>
 
-            {/* Clear All */}
-            <button
-              onClick={handleClearAll}
-              disabled={isClearing || !hasCache}
-              style={{
-                flex:1, padding:'11px 0', borderRadius:12, border:'none',
-                background: clearDone==='all'
-                  ? 'linear-gradient(135deg,#22c55e,#16a34a)'
-                  : hasCache
-                    ? (clearing==='all' ? 'rgba(239,68,68,0.4)' : 'linear-gradient(135deg,#ef4444,#b91c1c)')
-                    : 'rgba(255,255,255,0.06)',
-                color: hasCache ? 'white' : 'rgba(255,255,255,0.2)',
-                fontSize:12, fontWeight:800, cursor: hasCache && !isClearing ? 'pointer' : 'default',
-                display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3,
-                transition:'all 0.3s', opacity: isClearing && clearing!=='all' ? 0.5 : 1,
-              }}
-            >
-              <span style={{ fontSize:15 }}>
-                {clearing==='all' ? '⏳' : clearDone==='all' ? '✅' : '🗑️'}
-              </span>
-              <span style={{ fontSize:11, fontWeight:800, lineHeight:1 }}>
-                {clearing==='all'
-                  ? (lang==='id'?'Menghapus...':'Erasing...')
-                  : clearDone==='all'
-                    ? (lang==='id'?'Terhapus!':'Cleared!')
-                    : 'Clear All'}
-              </span>
-              <span style={{ fontSize:9, fontWeight:600, opacity:0.75, lineHeight:1 }}>
-                {lang==='id' ? 'Hapus semua data' : 'Removes everything'}
-              </span>
-            </button>
+            {/* Clear All — dengan konfirmasi */}
+            {!confirmClearAll ? (
+              <button
+                onClick={()=>{ if(hasCache && !isClearing) setConfirmClearAll(true); }}
+                disabled={isClearing || !hasCache}
+                style={{
+                  flex:1, padding:'11px 0', borderRadius:12, border:'none',
+                  background: clearDone==='all'
+                    ? 'linear-gradient(135deg,#22c55e,#16a34a)'
+                    : hasCache
+                      ? (clearing==='all' ? 'rgba(239,68,68,0.4)' : 'linear-gradient(135deg,#ef4444,#b91c1c)')
+                      : 'rgba(255,255,255,0.06)',
+                  color: hasCache ? 'white' : 'rgba(255,255,255,0.2)',
+                  fontSize:12, fontWeight:800, cursor: hasCache && !isClearing ? 'pointer' : 'default',
+                  display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3,
+                  transition:'all 0.3s', opacity: isClearing && clearing!=='all' ? 0.5 : 1,
+                }}
+              >
+                <span style={{ fontSize:15 }}>
+                  {clearing==='all' ? '⏳' : clearDone==='all' ? '✅' : '🗑️'}
+                </span>
+                <span style={{ fontSize:11, fontWeight:800, lineHeight:1 }}>
+                  {clearing==='all'
+                    ? (lang==='id'?'Menghapus...':'Erasing...')
+                    : clearDone==='all'
+                      ? (lang==='id'?'Terhapus!':'Cleared!')
+                      : 'Clear All'}
+                </span>
+                <span style={{ fontSize:9, fontWeight:600, opacity:0.75, lineHeight:1 }}>
+                  {lang==='id' ? 'Hapus semua data' : 'Removes everything'}
+                </span>
+              </button>
+            ) : (
+              /* Konfirmasi Clear All */
+              <div style={{ flex:1, display:'flex', flexDirection:'column', gap:5, padding:'8px 6px', borderRadius:12, background:'rgba(239,68,68,0.1)', border:'1.5px solid rgba(239,68,68,0.4)' }}>
+                <div style={{ fontSize:10, fontWeight:700, color:'#fca5a5', textAlign:'center', lineHeight:1.3 }}>
+                  {lang==='id' ? '⚠️ Yakin hapus semua?' : '⚠️ Delete everything?'}
+                </div>
+                <div style={{ display:'flex', gap:4 }}>
+                  <button
+                    onClick={()=>setConfirmClearAll(false)}
+                    style={{ flex:1, padding:'6px 0', borderRadius:8, border:'1px solid rgba(255,255,255,0.15)', background:'rgba(255,255,255,0.07)', color:'rgba(255,255,255,0.6)', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                    {lang==='id' ? 'Batal' : 'Cancel'}
+                  </button>
+                  <button
+                    onClick={()=>{ setConfirmClearAll(false); handleClearAll(); }}
+                    style={{ flex:1, padding:'6px 0', borderRadius:8, border:'none', background:'linear-gradient(135deg,#ef4444,#b91c1c)', color:'white', fontSize:11, fontWeight:800, cursor:'pointer' }}>
+                    {lang==='id' ? 'Hapus' : 'Delete'}
+                  </button>
+                </div>
+              </div>
+            )}
 
           </div>
 
@@ -505,7 +527,7 @@ function CacheManager({ lang, t }) {
   );
 }
 
-function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t, userSpId, setUserSpId, userSpSecret, setUserSpSecret, userScId, setUserScId, userAiKey, setUserAiKey, userYtKey, setUserYtKey, userCfKey, setUserCfKey, userSnKey, setUserSnKey, setTab, setFullscreen }) {
+function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t, userSpId, setUserSpId, userSpSecret, setUserSpSecret, userScId, setUserScId, userAiKey, setUserAiKey, userYtKey, setUserYtKey, userCfKey, setUserCfKey, userSnKey, setUserSnKey, setTab, setFullscreen, googleUser, handleGoogleLogin, syncPlaylistsToCloud, accessToken, plSyncStatus, plSyncError, plSyncedAt }) {
   const coverRef = useRef(null);
   const [apiKeyTab, setApiKeyTab] = React.useState('spotify');
   // Local state untuk DNS input agar tidak terganggu re-render parent
@@ -525,6 +547,50 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 18px 0', marginBottom:6 }}>
           <div style={{ fontWeight:900, fontSize:15, letterSpacing:'-0.02em' }}>{t ? t.settings : 'Pengaturan'}</div>
           <button onClick={onClose} style={{ width:28, height:28, borderRadius:999, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.7)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:14 }}>×</button>
+        </div>
+
+        {/* ── GOOGLE DRIVE */}
+        <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+            <span style={{ fontSize:16 }}>☁️</span>
+            <div>
+              <div style={{ fontWeight:800, fontSize:14 }}>Google Drive</div>
+              <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>
+                {googleUser ? `Login sebagai ${googleUser.name || googleUser.email}` : 'Login untuk akses lagu & sync playlist'}
+              </div>
+            </div>
+          </div>
+          {!googleUser ? (
+            <button onClick={handleGoogleLogin}
+              style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:7, padding:'10px 0', borderRadius:12, border:'1.5px solid rgba(14,165,233,0.4)', background:'rgba(14,165,233,0.1)', color:'#38bdf8', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+              <svg width={14} height={14} viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#4285F4"/><path d="M12 11h8.4c.1.5.1 1 .1 1.5C20.5 17 16.8 20 12 20c-4.4 0-8-3.6-8-8s3.6-8 8-8c2.1 0 4 .8 5.5 2.1l-2.2 2.2C14.3 7.5 13.2 7 12 7c-2.8 0-5 2.2-5 5s2.2 5 5 5c2.5 0 4.5-1.5 5-3.5H12v-2.5z" fill="white"/></svg>
+              Login dengan Google
+            </button>
+          ) : (
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              {(() => {
+                const syncSyncing = plSyncStatus === 'syncing';
+                const syncDone    = plSyncStatus === 'synced';
+                const syncError   = plSyncStatus === 'error';
+                const syncColor   = syncError ? '#fca5a5' : syncDone ? '#6ee7b7' : '#93c5fd';
+                const syncBg      = syncError ? 'rgba(239,68,68,0.1)' : syncDone ? 'rgba(16,185,129,0.08)' : 'rgba(59,130,246,0.08)';
+                const syncBorder  = syncError ? 'rgba(239,68,68,0.3)' : syncDone ? 'rgba(16,185,129,0.25)' : 'rgba(59,130,246,0.2)';
+                const syncLabel   = syncSyncing ? 'Menyimpan...' : syncDone ? '✅ Playlist tersimpan' : syncError ? '⚠️ Gagal sync' : 'Sync Playlist ke Drive';
+                const syncSub     = syncError ? plSyncError : plSyncedAt ? `Terakhir: ${new Date(plSyncedAt).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}` : 'Simpan playlist ke Google Drive';
+                return (
+                  <button onClick={()=>{ if(!syncSyncing && syncPlaylistsToCloud) syncPlaylistsToCloud(accessToken); }}
+                    disabled={syncSyncing}
+                    style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:12, border:`1.5px solid ${syncBorder}`, background:syncBg, color:syncColor, fontSize:12, fontWeight:700, cursor:syncSyncing?'default':'pointer', textAlign:'left', transition:'all 0.2s' }}>
+                    <span style={{ fontSize:16 }}>{syncSyncing ? '⬆️' : syncDone ? '✅' : syncError ? '⚠️' : '☁️'}</span>
+                    <div>
+                      <div style={{ fontWeight:700, fontSize:12 }}>{syncLabel}</div>
+                      <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{syncSub}</div>
+                    </div>
+                  </button>
+                );
+              })()}
+            </div>
+          )}
         </div>
 
         {/* ── SLEEP TIMER */}

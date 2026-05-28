@@ -3376,9 +3376,18 @@ Return ONLY valid JSON, no explanation:
       }
       setPlaying(false); setLoadingTrack(false);
     };
+    let stallTimer = null;
     const onStall = () => {
       if (track.isRadio) {
-        if (a.readyState < 2 && !a.paused) scheduleRadioReconnect(track);
+        // Debounce: tunggu 4 detik sebelum reconnect, stall singkat adalah normal
+        if (a.readyState < 2 && !a.paused) {
+          if (!stallTimer) {
+            stallTimer = setTimeout(() => {
+              stallTimer = null;
+              if (!a.paused && a.readyState < 2) scheduleRadioReconnect(track);
+            }, 4000);
+          }
+        }
         return;
       }
       // FIX: Jangan reset audio saat tab/app di-background.
@@ -3392,7 +3401,7 @@ Return ONLY valid JSON, no explanation:
       }
     };
     const onWaiting  = () => { if (track.isRadio) setStreamBuffering(true); };
-    const onPlaying2 = () => { if (track.isRadio) { setStreamBuffering(false); radioReconnectCount.current = 0; if (radioReconnectRef.current) { clearTimeout(radioReconnectRef.current); radioReconnectRef.current = null; } } };
+    const onPlaying2 = () => { if (track.isRadio) { setStreamBuffering(false); radioReconnectCount.current = 0; if (radioReconnectRef.current) { clearTimeout(radioReconnectRef.current); radioReconnectRef.current = null; } if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; } } };
     a.addEventListener('timeupdate',     onTime);
     a.addEventListener('loadedmetadata', onMeta);
     a.addEventListener('durationchange', onDurChange);
@@ -4680,10 +4689,17 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
         return;
       }
       const hls = new Hls({
-        lowLatencyMode: true,
-        liveSyncDurationCount: 3,
-        maxBufferLength: 60,
-        maxMaxBufferLength: 120,
+        lowLatencyMode: false,        // radio bukan low-latency HLS, mode ini justru ganggu buffer
+        liveSyncDurationCount: 7,     // lebih banyak segment = lebih tahan network hiccup
+        maxBufferLength: 90,          // buffer lebih besar agar tahan fluktuasi jaringan
+        maxMaxBufferLength: 180,
+        fragLoadingTimeOut: 20000,    // toleransi load fragment lebih lama
+        manifestLoadingTimeOut: 15000,
+        levelLoadingTimeOut: 15000,
+        fragLoadingMaxRetry: 6,
+        manifestLoadingMaxRetry: 4,
+        levelLoadingMaxRetry: 4,
+        fragLoadingRetryDelay: 1000,
       });
       hlsRef.current = hls;
       hls.loadSource(src);
@@ -4718,8 +4734,8 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       setStreamBuffering(false);
       return;
     }
-    // Exponential back-off: 2s, 4s, 8s, 16s, 30s, 30s
-    const delay = Math.min(2000 * Math.pow(2, attempt), 30000);
+    // Exponential back-off: 1s, 2s, 4s, 8s, 20s, 30s
+    const delay = attempt === 0 ? 1000 : Math.min(1000 * Math.pow(2, attempt), 30000);
     console.warn(`[Radio] Reconnect attempt ${attempt + 1} in ${delay}ms`);
     setStreamBuffering(true);
     radioReconnectRef.current = setTimeout(() => {
@@ -4734,10 +4750,10 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       } else {
         a.src = '';
         setTimeout(() => {
-          a.src = src;
+          a.src = src + (src.includes('?') ? '&' : '?') + '_t=' + Date.now(); // cache-bust agar server kirim stream baru
           a.load();
           a.play().catch(() => {});
-        }, 100);
+        }, 500);
       }
     }, delay);
   }, [attachHls]);
@@ -6851,7 +6867,7 @@ Format exactly:
 
         {/* ── SETTINGS PANEL — menutup semua tab di desktop & landscape, hanya player di portrait */}
         {showSettings && (isDesktop || layoutMode === 'mobile-landscape' || tab === 'player') && (
-          <Suspense fallback={<Spinner/>}><SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userScId={userScId} setUserScId={setUserScId} userAiKey={userAiKey} setUserAiKey={setUserAiKey} userYtKey={userYtKey} setUserYtKey={setUserYtKey} userCfKey={userCfKey} setUserCfKey={setUserCfKey} userSnKey={userSnKey} setUserSnKey={setUserSnKey} setTab={setTab} setFullscreen={setFullscreen}/></Suspense>
+          <Suspense fallback={<Spinner/>}><SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userScId={userScId} setUserScId={setUserScId} userAiKey={userAiKey} setUserAiKey={setUserAiKey} userYtKey={userYtKey} setUserYtKey={setUserYtKey} userCfKey={userCfKey} setUserCfKey={setUserCfKey} userSnKey={userSnKey} setUserSnKey={setUserSnKey} setTab={setTab} setFullscreen={setFullscreen} googleUser={googleUser||null} handleGoogleLogin={handleGoogleLogin} syncPlaylistsToCloud={syncPlaylistsToCloud} accessToken={accessToken||null} plSyncStatus={plSyncStatus} plSyncError={plSyncError||null} plSyncedAt={plSyncedAt||null}/></Suspense>
         )}
 
         {/* ─── PLAYER TAB */}
@@ -9083,59 +9099,28 @@ Format exactly:
                     <div style={{ fontWeight:800, fontSize:15 }}>{t?.musicCollection||'Music Collection'}</div>
                     <span style={{ fontSize:9, fontWeight:800, padding:'2px 7px', borderRadius:999, background:'rgba(99,102,241,0.18)', color:'#a78bfa', letterSpacing:'0.04em' }}>{allSongs.length} {t?.songsCount||'lagu'}</span>
                   </div>
-                  {/* ── Global Search Bar */}
-                  <div style={{ display:'flex', alignItems:'center', gap:7, background:'rgba(0,0,0,0.35)', borderRadius:12, padding:'8px 12px', border:'1px solid rgba(255,255,255,0.1)', marginBottom:10 }}>
-                    <Search size={13} style={{ color:'rgba(255,255,255,0.3)', flexShrink:0 }}/>
-                    <input
-                      value={plGlobalSearch}
-                      onChange={e=>setPlGlobalSearch(e.target.value)}
-                      placeholder={lang==='id' ? 'Cari lagu atau playlist...' : 'Search songs or playlists...'}
-                      style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'white', fontSize:12, minWidth:0 }}
-                    />
-                    {plGlobalSearch && (
-                      <button onClick={()=>setPlGlobalSearch('')} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.35)', cursor:'pointer', padding:0, lineHeight:1, fontSize:16 }}>×</button>
-                    )}
-                  </div>
-                  {/* Quick action bar */}
-                  <div style={{ display:'flex', gap:6 }}>
+                  {/* ── Search + New Playlist satu baris */}
+                  <div style={{ display:'flex', gap:6, alignItems:'center', marginBottom:10 }}>
+                    <div style={{ flex:1, display:'flex', alignItems:'center', gap:7, background:'rgba(0,0,0,0.35)', borderRadius:10, padding:'7px 11px', border:'1px solid rgba(255,255,255,0.1)' }}>
+                      <Search size={13} style={{ color:'rgba(255,255,255,0.3)', flexShrink:0 }}/>
+                      <input
+                        value={plGlobalSearch}
+                        onChange={e=>setPlGlobalSearch(e.target.value)}
+                        placeholder={lang==='id' ? 'Cari lagu atau playlist...' : 'Search songs or playlists...'}
+                        style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'white', fontSize:12, minWidth:0 }}
+                      />
+                      {plGlobalSearch && (
+                        <button onClick={()=>setPlGlobalSearch('')} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.35)', cursor:'pointer', padding:0, lineHeight:1, fontSize:16 }}>×</button>
+                      )}
+                    </div>
                     <button onClick={()=>{ setEditingPl(null); setPlView('form'); }}
-                      style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'8px 0', borderRadius:10, border:'1.5px solid rgba(99,102,241,0.4)', background:'rgba(99,102,241,0.12)', color:'#a78bfa', fontSize:11, fontWeight:700, cursor:'pointer' }}
+                      style={{ flexShrink:0, display:'flex', alignItems:'center', gap:5, padding:'7px 12px', borderRadius:10, border:'1.5px solid rgba(99,102,241,0.4)', background:'rgba(99,102,241,0.12)', color:'#a78bfa', fontSize:11, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}
                       onMouseEnter={e=>{ e.currentTarget.style.background='rgba(99,102,241,0.22)'; }}
                       onMouseLeave={e=>{ e.currentTarget.style.background='rgba(99,102,241,0.12)'; }}>
                       <ListPlus size={13}/>{t?.createPlaylistBtn||'Playlist Baru'}
                     </button>
-                    {!googleUser && (
-                      <button onClick={handleGoogleLogin}
-                        style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'8px 0', borderRadius:10, border:'1.5px solid rgba(14,165,233,0.3)', background:'rgba(14,165,233,0.08)', color:'#38bdf8', fontSize:11, fontWeight:700, cursor:'pointer' }}
-                        onMouseEnter={e=>{ e.currentTarget.style.background='rgba(14,165,233,0.16)'; }}
-                        onMouseLeave={e=>{ e.currentTarget.style.background='rgba(14,165,233,0.08)'; }}>
-                        <LogIn size={13}/>{t?.loginForSongs||'Google Drive'}
-                      </button>
-                    )}
-                    {/* ── Cloud Sync Button (hanya tampil jika login) */}
-                    {googleUser && (() => {
-                      const syncIdle    = plSyncStatus === 'idle';
-                      const syncSyncing = plSyncStatus === 'syncing';
-                      const syncDone    = plSyncStatus === 'synced';
-                      const syncError   = plSyncStatus === 'error';
-                      const syncColor   = syncError ? '#fca5a5' : syncDone ? '#6ee7b7' : '#93c5fd';
-                      const syncBg      = syncError ? 'rgba(239,68,68,0.12)' : syncDone ? 'rgba(16,185,129,0.1)' : 'rgba(59,130,246,0.1)';
-                      const syncBorder  = syncError ? 'rgba(239,68,68,0.35)' : syncDone ? 'rgba(16,185,129,0.3)' : 'rgba(59,130,246,0.25)';
-                      const syncLabel   = syncSyncing ? '⬆️ Sync...' : syncDone ? '✅ Tersimpan' : syncError ? '⚠️ Gagal' : '☁️ Sync';
-                      const syncTitle   = syncError ? plSyncError : plSyncedAt ? `Terakhir sync: ${new Date(plSyncedAt).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}` : 'Simpan playlist ke Google Drive';
-                      return (
-                        <button
-                          onClick={()=>{ if(!syncSyncing) syncPlaylistsToCloud(accessToken, playlists); }}
-                          disabled={syncSyncing}
-                          title={syncTitle}
-                          style={{ flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', gap:5, padding:'8px 12px', borderRadius:10, border:`1.5px solid ${syncBorder}`, background:syncBg, color:syncColor, fontSize:11, fontWeight:700, cursor:syncSyncing?'default':'pointer', whiteSpace:'nowrap', transition:'all 0.25s' }}
-                          onMouseEnter={e=>{ if(!syncSyncing) e.currentTarget.style.opacity='0.8'; }}
-                          onMouseLeave={e=>{ e.currentTarget.style.opacity='1'; }}>
-                          {syncLabel}
-                        </button>
-                      );
-                    })()}
                   </div>
+
                 </div>
 
                 <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column', gap:10, paddingBottom:16 }}>

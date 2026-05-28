@@ -170,7 +170,7 @@ export default async function handler(req, res) {
 
     const upstream = await fetch(fetchUrl, {
       headers,
-      signal: AbortSignal.timeout(10_000),
+      signal: AbortSignal.timeout(25_000), // cukup lama untuk koneksi lambat
     });
 
     if (!upstream.ok && upstream.status !== 206) {
