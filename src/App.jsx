@@ -1836,6 +1836,35 @@ Return ONLY valid JSON, no explanation:
     }));
   }, []);
 
+  // ── Cache state untuk favSongs (SC/Spotify preview) — harus sebelum toggleFav
+  const [cachedFavIds, setCachedFavIds] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('sn_cached_fav_ids') || '[]')); }
+    catch { return new Set(); }
+  });
+  const [favDownloadingIds, setFavDownloadingIds] = useState(new Set());
+  const [favDownloadProg, setFavDownloadProg]     = useState({}); // songId → 0-100
+
+  // ── Helper: download audio favSong (preview) ke cache — harus sebelum toggleFav
+  const triggerFavDownload = useCallback((songId, previewUrl) => {
+    if (!previewUrl) return;
+    if (cachedFavIds.has(songId) || favDownloadingIds.has(songId)) return;
+    setFavDownloadingIds(prev => new Set([...prev, songId]));
+    setFavDownloadProg(prev => ({ ...prev, [songId]: 0 }));
+    const ctrl = new AbortController();
+    downloadFavAudio(
+      songId, previewUrl,
+      (pct) => setFavDownloadProg(prev => ({ ...prev, [songId]: pct })),
+      ctrl.signal
+    ).then(() => {
+      setCachedFavIds(prev => new Set([...prev, songId]));
+      setFavDownloadingIds(prev => { const n = new Set(prev); n.delete(songId); return n; });
+      setFavDownloadProg(prev => { const n = { ...prev }; delete n[songId]; return n; });
+    }).catch(() => {
+      setFavDownloadingIds(prev => { const n = new Set(prev); n.delete(songId); return n; });
+      setFavDownloadProg(prev => { const n = { ...prev }; delete n[songId]; return n; });
+    });
+  }, [cachedFavIds, favDownloadingIds]); // eslint-disable-line
+
   // ── Toggle like for SC / Spotify / Radio tracks (adds to favSongs + pl_fav)
   const toggleFav = useCallback((id, songObj = null) => {
     setLiked(l => {
@@ -1844,18 +1873,14 @@ Return ONLY valid JSON, no explanation:
       if (songObj) {
         if (nowLiked) {
           setFavSongs(p => p.find(s => s.id === id) ? p : [...p, songObj]);
-          // Cache audio preview jika ada previewUrl
           if (songObj.previewUrl) {
             triggerFavDownload(id, songObj.previewUrl);
           }
         } else {
           setFavSongs(p => p.filter(s => s.id !== id));
-          // Hapus dari cache & state
           favCacheDelete(id);
           setCachedFavIds(prev => { const n = new Set(prev); n.delete(id); return n; });
         }
-      } else {
-        // Regular track already in allSongs — just update pl_fav
       }
       return { ...l, [id]: nowLiked };
     });
@@ -1873,14 +1898,6 @@ Return ONLY valid JSON, no explanation:
     try { return new Set(JSON.parse(localStorage.getItem('sn_liked_yt_pending') || '[]')); }
     catch { return new Set(); }
   });
-
-  // ── Cache state untuk favSongs (SC/Spotify preview)
-  const [cachedFavIds, setCachedFavIds] = useState(() => {
-    try { return new Set(JSON.parse(localStorage.getItem('sn_cached_fav_ids') || '[]')); }
-    catch { return new Set(); }
-  });
-  const [favDownloadingIds, setFavDownloadingIds] = useState(new Set());
-  const [favDownloadProg, setFavDownloadProg]     = useState({}); // songId → 0-100
 
   // ── Helper: download audio YT ke cache (dipanggil di Pro saat love, atau saat Lite→Pro)
   const triggerYtDownload = useCallback((videoId) => {
@@ -1905,26 +1922,6 @@ Return ONLY valid JSON, no explanation:
     });
   }, [cachedYtIds, ytDownloadingIds]); // eslint-disable-line
 
-  // ── Helper: download audio favSong (preview) ke cache
-  const triggerFavDownload = useCallback((songId, previewUrl) => {
-    if (!previewUrl) return;
-    if (cachedFavIds.has(songId) || favDownloadingIds.has(songId)) return;
-    setFavDownloadingIds(prev => new Set([...prev, songId]));
-    setFavDownloadProg(prev => ({ ...prev, [songId]: 0 }));
-    const ctrl = new AbortController();
-    downloadFavAudio(
-      songId, previewUrl,
-      (pct) => setFavDownloadProg(prev => ({ ...prev, [songId]: pct })),
-      ctrl.signal
-    ).then(() => {
-      setCachedFavIds(prev => new Set([...prev, songId]));
-      setFavDownloadingIds(prev => { const n = new Set(prev); n.delete(songId); return n; });
-      setFavDownloadProg(prev => { const n = { ...prev }; delete n[songId]; return n; });
-    }).catch(() => {
-      setFavDownloadingIds(prev => { const n = new Set(prev); n.delete(songId); return n; });
-      setFavDownloadProg(prev => { const n = { ...prev }; delete n[songId]; return n; });
-    });
-  }, [cachedFavIds, favDownloadingIds]); // eslint-disable-line
   const likeYtTrack = useCallback(() => {
     if (!embedTrack || embedTrack.type !== 'youtube') return;
     const id = `yt_${embedTrack.videoId}`;
