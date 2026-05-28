@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Moon, Music, SlidersHorizontal, Zap, Bot, History, Radio, RotateCcw } from 'lucide-react';
+import { Moon, Music, SlidersHorizontal, Zap, Bot, History, Radio, RotateCcw, Lock } from 'lucide-react';
 import { SLEEP_OPTIONS, fmtSec } from '../constants.js';
 
 class SettingsErrorBoundary extends React.Component {
@@ -337,7 +337,7 @@ function CacheManager({ lang, t }) {
   );
 }
 
-function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t, userSpId, setUserSpId, userSpSecret, setUserSpSecret, userScId, setUserScId, userAiKey, setUserAiKey, userYtKey, setUserYtKey, userCfKey, setUserCfKey, userSnKey, setUserSnKey }) {
+function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t, userSpId, setUserSpId, userSpSecret, setUserSpSecret, userScId, setUserScId, userAiKey, setUserAiKey, userYtKey, setUserYtKey, userCfKey, setUserCfKey, userSnKey, setUserSnKey, setTab, setFullscreen }) {
   const coverRef = useRef(null);
   const [apiKeyTab, setApiKeyTab] = React.useState('spotify');
   // Local state untuk DNS input agar tidak terganggu re-render parent
@@ -403,24 +403,71 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
                 onChange={e => {
                   const f = e.target.files[0];
                   if (!f) return;
-                  // Tolak gambar > 1 MB sebelum di-encode — base64 akan ~33% lebih besar,
-                  // dan localStorage rata-rata hanya tersedia 5 MB per origin.
-                  if (f.size > 1_048_576) {
-                    alert(t?.coverTooLarge || 'Ukuran gambar maksimal 1 MB. Silakan pilih gambar yang lebih kecil.');
-                    return;
-                  }
-                  const reader = new FileReader();
-                  reader.onload = ev => {
-                    const dataUrl = ev.target.result;
+
+                  const MAX_BYTES = 1_048_576; // 1 MB
+
+                  const saveDataUrl = (dataUrl) => {
                     setGlobalCover(dataUrl);
                     try {
                       localStorage.setItem('sn_global_cover', dataUrl);
                     } catch (err) {
                       console.warn('[SettingsPanel] Gagal simpan cover ke localStorage:', err);
-                      // Tetap tampilkan cover di memori meski storage penuh
                     }
                   };
-                  reader.readAsDataURL(f);
+
+                  // Jika sudah <= 1 MB, langsung pakai tanpa kompresi
+                  if (f.size <= MAX_BYTES) {
+                    const reader = new FileReader();
+                    reader.onload = ev => saveDataUrl(ev.target.result);
+                    reader.readAsDataURL(f);
+                    return;
+                  }
+
+                  // Gambar > 1 MB: compress via Canvas
+                  const img = new Image();
+                  const objectUrl = URL.createObjectURL(f);
+                  img.onload = () => {
+                    URL.revokeObjectURL(objectUrl);
+                    const canvas = document.createElement('canvas');
+                    let { width, height } = img;
+
+                    // Turunkan dimensi ke max 1200px proporsional
+                    const MAX_DIM = 1200;
+                    if (width > MAX_DIM || height > MAX_DIM) {
+                      const ratio = Math.min(MAX_DIM / width, MAX_DIM / height);
+                      width = Math.round(width * ratio);
+                      height = Math.round(height * ratio);
+                    }
+
+                    let quality = 0.85;
+                    let dataUrl = '';
+
+                    // Loop: turunkan kualitas lalu dimensi sampai raw bytes <= 1 MB
+                    for (let attempt = 0; attempt < 8; attempt++) {
+                      canvas.width = width;
+                      canvas.height = height;
+                      const ctx = canvas.getContext('2d');
+                      ctx.drawImage(img, 0, 0, width, height);
+                      dataUrl = canvas.toDataURL('image/jpeg', quality);
+                      const b64 = dataUrl.split(',')[1] || '';
+                      const rawBytes = b64.length * 0.75;
+                      if (rawBytes <= MAX_BYTES) break;
+                      if (quality > 0.4) {
+                        quality -= 0.1;
+                      } else {
+                        width = Math.round(width * 0.8);
+                        height = Math.round(height * 0.8);
+                        quality = 0.7;
+                      }
+                    }
+
+                    saveDataUrl(dataUrl);
+                  };
+                  img.onerror = () => {
+                    URL.revokeObjectURL(objectUrl);
+                    alert('Gagal membaca gambar. Silakan coba file lain.');
+                  };
+                  img.src = objectUrl;
                 }}
               />
               <button onClick={() => coverRef.current?.click()}
@@ -526,7 +573,116 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
           </div>
         </div>
 
-        {/* ── DNS SETTINGS */}
+        {/* ── KUNCI LAYAR / PRESENTATION MODE */}
+        <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+            <span style={{ fontSize:16 }}>🔒</span>
+            <div>
+              <div style={{ fontWeight:800, fontSize:14 }}>{lang==='en' ? 'Screen Lock' : 'Kunci Layar'}</div>
+              <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>
+                {lang==='en' ? 'Disable touch — prevent accidental taps on player' : 'Nonaktifkan sentuhan — cegah tap tidak sengaja saat memutar'}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              // 1. Tutup settings
+              if (onClose) onClose();
+              // 2. Pindah ke tab player
+              if (setTab) setTab('player');
+              // 3. Aktifkan fullscreen
+              if (setFullscreen) setFullscreen(true);
+              // 4. Request fullscreen API browser
+              setTimeout(() => {
+                try {
+                  if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen().catch(() => {});
+                  }
+                } catch(_) {}
+              }, 150);
+              // 5. Overlay kunci layar — pasang transparan interceptor di atas UI
+              setTimeout(() => {
+                const existingLock = document.getElementById('sn-screen-lock');
+                if (existingLock) return; // sudah aktif
+                const overlay = document.createElement('div');
+                overlay.id = 'sn-screen-lock';
+                overlay.style.cssText = [
+                  'position:fixed', 'inset:0', 'z-index:99999',
+                  'background:transparent',
+                  'touch-action:none', 'user-select:none',
+                  '-webkit-user-select:none',
+                  'display:flex', 'align-items:flex-end', 'justify-content:center',
+                  'padding-bottom:32px',
+                  'pointer-events:all',
+                ].join(';');
+
+                // Badge kecil di pojok bawah tengah
+                const badge = document.createElement('div');
+                badge.style.cssText = [
+                  'display:flex', 'align-items:center', 'gap:6px',
+                  'padding:7px 14px', 'border-radius:999px',
+                  'background:rgba(0,0,0,0.55)',
+                  'border:1px solid rgba(255,255,255,0.12)',
+                  'backdrop-filter:blur(12px)',
+                  '-webkit-backdrop-filter:blur(12px)',
+                  'color:rgba(255,255,255,0.6)', 'font-size:11px',
+                  'font-weight:700', 'font-family:inherit',
+                  'cursor:default', 'pointer-events:none',
+                  'letter-spacing:0.03em',
+                ].join(';');
+                badge.innerHTML = '🔒 ' + (lang === 'en' ? 'Screen locked · Hold 3s to unlock' : 'Layar terkunci · Tahan 3 dtk untuk buka');
+                overlay.appendChild(badge);
+
+                // Tahan 3 detik untuk buka kunci
+                let holdTimer = null;
+                let holdStart = null;
+                const startHold = (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  holdStart = Date.now();
+                  badge.style.background = 'rgba(99,102,241,0.5)';
+                  badge.style.borderColor = 'rgba(99,102,241,0.6)';
+                  badge.style.color = 'white';
+                  badge.innerHTML = '🔓 ' + (lang === 'en' ? 'Hold to unlock…' : 'Tahan untuk buka…');
+                  holdTimer = setTimeout(() => {
+                    // Buka kunci
+                    overlay.remove();
+                    try { if (document.exitFullscreen) document.exitFullscreen().catch(()=>{}); } catch(_) {}
+                  }, 3000);
+                };
+                const cancelHold = (e) => {
+                  if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+                  badge.style.background = 'rgba(0,0,0,0.55)';
+                  badge.style.borderColor = 'rgba(255,255,255,0.12)';
+                  badge.style.color = 'rgba(255,255,255,0.6)';
+                  badge.innerHTML = '🔒 ' + (lang === 'en' ? 'Screen locked · Hold 3s to unlock' : 'Layar terkunci · Tahan 3 dtk untuk buka');
+                };
+                overlay.addEventListener('touchstart', startHold, { passive:false });
+                overlay.addEventListener('touchend', cancelHold, { passive:false });
+                overlay.addEventListener('mousedown', startHold);
+                overlay.addEventListener('mouseup', cancelHold);
+                overlay.addEventListener('mouseleave', cancelHold);
+                // Blokir semua event lain
+                ['click','touchmove','contextmenu','wheel'].forEach(ev =>
+                  overlay.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); }, { passive:false })
+                );
+                document.body.appendChild(overlay);
+              }, 300);
+            }}
+            style={{
+              width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+              padding:'11px 0', borderRadius:12,
+              border:`1px solid rgba(99,102,241,0.35)`,
+              background:'rgba(99,102,241,0.1)',
+              color:'rgba(200,200,255,0.85)', fontSize:13, fontWeight:700, cursor:'pointer',
+              transition:'all 0.2s',
+            }}
+            onMouseEnter={e=>{ e.currentTarget.style.background='rgba(99,102,241,0.22)'; e.currentTarget.style.color='white'; }}
+            onMouseLeave={e=>{ e.currentTarget.style.background='rgba(99,102,241,0.1)'; e.currentTarget.style.color='rgba(200,200,255,0.85)'; }}
+          >
+            <Lock size={14}/> {lang==='en' ? 'Lock Screen & Go to Player' : 'Kunci Layar & Buka Player'}
+          </button>
+        </div>
         <div style={{ padding:'16px 18px 20px' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
             <span style={{ fontSize:16 }}>🌐</span>
@@ -844,9 +1000,6 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
           </div>
         </div>
 
-        {/* ── HAPUS CACHE */}
-        <CacheManager lang={lang} t={t} />
-
         {/* ── INSTALL APP (PWA) */}
         <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
@@ -898,6 +1051,9 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
             </div>
           </div>
         </div>
+
+        {/* ── HAPUS CACHE */}
+        <CacheManager lang={lang} t={t} />
 
       </div>
     </div>

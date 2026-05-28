@@ -160,7 +160,7 @@ export const T = {
     changeCover: 'Ganti Foto',
     chooseCover: 'Pilih Foto',
     deleteCover: 'Hapus Foto',
-    coverApplied: 'Foto diterapkan ke semua lagu · Tersimpan di browser',
+    coverApplied: 'Foto diterapkan ke semua lagu · Tersimpan di browser · Otomatis dikompresi ke maks 1 MB',
     coverTooLarge: 'Ukuran gambar maksimal 1 MB. Silakan pilih gambar yang lebih kecil.',
     // Cache manager
     clearCache: 'Hapus Cache & Cookie',
@@ -358,7 +358,7 @@ export const T = {
     changeCover: 'Change Photo',
     chooseCover: 'Choose Photo',
     deleteCover: 'Remove Photo',
-    coverApplied: 'Photo applied to all songs · Saved in browser',
+    coverApplied: 'Photo applied to all songs · Saved in browser · Auto-compressed to max 1 MB',
     coverTooLarge: 'Maximum image size is 1 MB. Please choose a smaller image.',
     // Cache manager
     clearCache: 'Clear Cache & Cookies',

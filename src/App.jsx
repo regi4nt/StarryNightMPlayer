@@ -6426,7 +6426,7 @@ Format exactly:
 
         {/* ── SETTINGS PANEL — menutup semua tab di desktop & landscape, hanya player di portrait */}
         {showSettings && (isDesktop || layoutMode === 'mobile-landscape' || tab === 'player') && (
-          <Suspense fallback={<Spinner/>}><SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userScId={userScId} setUserScId={setUserScId} userAiKey={userAiKey} setUserAiKey={setUserAiKey} userYtKey={userYtKey} setUserYtKey={setUserYtKey} userCfKey={userCfKey} setUserCfKey={setUserCfKey} userSnKey={userSnKey} setUserSnKey={setUserSnKey}/></Suspense>
+          <Suspense fallback={<Spinner/>}><SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userScId={userScId} setUserScId={setUserScId} userAiKey={userAiKey} setUserAiKey={setUserAiKey} userYtKey={userYtKey} setUserYtKey={setUserYtKey} userCfKey={userCfKey} setUserCfKey={setUserCfKey} userSnKey={userSnKey} setUserSnKey={setUserSnKey} setTab={setTab} setFullscreen={setFullscreen}/></Suspense>
         )}
 
         {/* ─── PLAYER TAB */}
@@ -8848,7 +8848,7 @@ Format exactly:
                               )}
                               <button onClick={()=>{ setEditingPl(pl); setPlView('form'); }}
                                 style={{ flex:1, padding:'7px 0', background:'none', border:'none', borderLeft:'1px solid rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.4)', fontSize:11, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:5 }}>
-                                <Eye size={11}/>{t?.viewBtn||'View'}
+                                <PenLine size={11}/>{t?.editBtn||'Edit'}
                               </button>
 
                             </div>
@@ -10200,6 +10200,48 @@ Format exactly:
                     </button>
                   )}
                   {shazamLoading && <Loader2 size={13} style={{ color:track.color, animation:'spin 1s linear infinite', flexShrink:0 }}/>}
+                </div>
+              )}
+              {/* ── Vibe mode hint chips ── */}
+              {vibeInput && !vibeInput.startsWith('✨') && (
+                <div className="scrollbar-hide" style={{ display:'flex', gap:6, overflowX:'auto', marginBottom:7, paddingBottom:1 }}>
+                  {(lang==='en' ? [
+                    { emoji:'😌', label:'chill & relaxed' },
+                    { emoji:'🌧️', label:'rainy day sad' },
+                    { emoji:'🔥', label:'hype & energetic' },
+                    { emoji:'💔', label:'heartbroken' },
+                    { emoji:'🌅', label:'morning motivation' },
+                    { emoji:'🌙', label:'late night focus' },
+                    { emoji:'🥰', label:'feeling in love' },
+                    { emoji:'😤', label:'angry release' },
+                  ] : [
+                    { emoji:'😌', label:'santai & tenang' },
+                    { emoji:'🌧️', label:'hujan & galau' },
+                    { emoji:'🔥', label:'semangat banget' },
+                    { emoji:'💔', label:'patah hati' },
+                    { emoji:'🌅', label:'pagi motivasi' },
+                    { emoji:'🌙', label:'malam fokus' },
+                    { emoji:'🥰', label:'lagi jatuh cinta' },
+                    { emoji:'😤', label:'butuh pelampiasan' },
+                  ]).map(({ emoji, label }) => (
+                    <button
+                      key={label}
+                      onClick={() => { setVibeInput(label); }}
+                      style={{
+                        flexShrink:0, display:'flex', alignItems:'center', gap:4,
+                        padding:'4px 10px', borderRadius:999,
+                        border:'1px solid rgba(168,85,247,0.25)',
+                        background:'rgba(168,85,247,0.08)',
+                        color:'rgba(255,255,255,0.6)',
+                        fontSize:11, fontWeight:600, cursor:'pointer',
+                        transition:'all 0.15s', whiteSpace:'nowrap',
+                      }}
+                      onMouseEnter={e=>{ e.currentTarget.style.background='rgba(168,85,247,0.2)'; e.currentTarget.style.color='#d8b4fe'; e.currentTarget.style.borderColor='rgba(168,85,247,0.5)'; }}
+                      onMouseLeave={e=>{ e.currentTarget.style.background='rgba(168,85,247,0.08)'; e.currentTarget.style.color='rgba(255,255,255,0.6)'; e.currentTarget.style.borderColor='rgba(168,85,247,0.25)'; }}
+                    >
+                      <span style={{ fontSize:12 }}>{emoji}</span> {label}
+                    </button>
+                  ))}
                 </div>
               )}
               <div style={{ display:'flex', gap:8 }}>
