@@ -9,10 +9,12 @@ function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDri
     : track.id === s.id;
   const [dlState, setDlState] = React.useState('idle'); // idle | loading | done | error
 
+  const [dlError, setDlError] = React.useState('');
   const handleDownload = async (e) => {
     e.stopPropagation();
     if (dlState === 'loading') return;
     setDlState('loading');
+    setDlError('');
     try {
       if (onDownload) {
         await onDownload(s);
@@ -23,9 +25,10 @@ function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDri
       }
       setDlState('done');
       setTimeout(() => setDlState('idle'), 3000);
-    } catch {
+    } catch(err) {
+      setDlError(err?.message || 'Gagal');
       setDlState('error');
-      setTimeout(() => setDlState('idle'), 3000);
+      setTimeout(() => { setDlState('idle'); setDlError(''); }, 4000);
     }
   };
   const dlColor = dlState === 'done' ? '#4ade80' : dlState === 'error' ? '#f87171' : dlState === 'loading' ? (s.color || '#a78bfa') : 'rgba(255,255,255,0.2)';
@@ -55,13 +58,18 @@ function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDri
       </div>
       <div style={{ display:'flex', gap:2, position:'relative' }}>
         {/* ── Tombol unduh ke perangkat (tidak tampil untuk radio) */}
-        {!s.isRadio&&editMode&&<button onClick={handleDownload} title={dlState==='done'?'Berhasil diunduh!':dlState==='error'?'Gagal, coba lagi':'Unduh ke perangkat'}
-          style={{ ...btn, color:dlColor, padding:6, transition:'color 0.2s' }}>
+        {!s.isRadio&&editMode&&<button onClick={handleDownload} title={dlState==='done'?'Berhasil diunduh!':dlState==='error'?(dlError||'Gagal, coba lagi'):'Unduh ke perangkat'}
+          style={{ ...btn, color:dlColor, padding:6, transition:'color 0.2s', position:'relative' }}>
           {dlState==='loading'
             ? <Loader2 size={14} style={{ animation:'spin 0.8s linear infinite' }}/>
             : dlState==='done'
             ? <CheckCircle size={14}/>
             : <Download size={14}/>}
+          {dlState==='error' && dlError && (
+            <span style={{ position:'absolute', bottom:'calc(100% + 4px)', right:0, background:'rgba(20,5,5,0.96)', color:'#fca5a5', fontSize:9, fontWeight:700, padding:'3px 7px', borderRadius:6, whiteSpace:'nowrap', border:'1px solid rgba(248,113,113,0.3)', pointerEvents:'none', maxWidth:180, overflow:'hidden', textOverflow:'ellipsis', zIndex:10 }}>
+              {dlError}
+            </span>
+          )}
         </button>}
 
         {/* ── Tombol Hapus — hanya tampil saat editMode aktif (dikontrol dari parent) */}

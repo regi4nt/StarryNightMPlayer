@@ -1987,52 +1987,109 @@ Return ONLY valid JSON, no explanation:
   }, [isLite]); // intentionally [isLite] only — triggered once on Lite→Pro transition
 
 
+  // ── Helper: validasi blob dari cache — pastikan tidak kosong/corrupt
+  const isBlobValid = (blob, minSize = 1000) =>
+    blob instanceof Blob && blob.size >= minSize;
+
   // ── Helper: unduh lagu ke perangkat — pakai cache offline jika sudah ada,
   //    baru fetch dari internet jika belum.
   const downloadWithCache = useCallback(async (s) => {
     const name = `${s.title} - ${s.artist}`;
 
-    // Google Drive: cek Cache API lokal dulu (sn-drive-v1), baru fetch jika miss
+    // ── Google Drive ──────────────────────────────────────────────────────────
     if (s.isDrive && s.driveId) {
-      const cached = await cacheGet(s.driveId);
-      if (cached && cached.size > 10000) {
-        downloadBlobToDevice(cached, `${name}.mp3`);
-        return;
-      }
+      // Coba dari cache lokal dulu
+      try {
+        const cached = await cacheGet(s.driveId);
+        if (isBlobValid(cached, 10000)) {
+          downloadBlobToDevice(cached, `${name}.mp3`);
+          return;
+        }
+      } catch { /* cache miss — lanjut ke fetch */ }
+
+      // Cache miss / corrupt → fetch langsung dari Drive
       if (tokenRef.current) {
         await downloadToDevice(
           `https://www.googleapis.com/drive/v3/files/${s.driveId}?alt=media&acknowledgeAbuse=true`,
           `${name}.mp3`,
           { Authorization: `Bearer ${tokenRef.current}` }
         );
+      } else {
+        throw new Error('Google Drive: token tidak tersedia, silakan login ulang.');
       }
       return;
     }
 
-    // YouTube: cek cache offline dulu
+    // ── YouTube ───────────────────────────────────────────────────────────────
     if (s.type === 'youtube' && s.videoId) {
-      const cached = await ytCacheGet(s.videoId);
-      if (cached && cached.size > 10000) {
-        downloadBlobToDevice(cached, `${name}.mp3`);
-        return;
-      }
+      // Coba dari cache lokal dulu
+      try {
+        const cached = await ytCacheGet(s.videoId);
+        if (isBlobValid(cached, 10000)) {
+          downloadBlobToDevice(cached, `${name}.mp3`);
+          return;
+        }
+      } catch { /* cache miss */ }
+
+      // Cache miss / corrupt → download via Piped (simpan ke cache sekaligus)
+      await new Promise((resolve, reject) => {
+        downloadYtAudio(
+          s.videoId,
+          null, // tidak perlu track progress untuk download ke perangkat
+          null
+        ).then(async () => {
+          // Setelah tersimpan ke cache, ambil dan kirim ke perangkat
+          const blob = await ytCacheGet(s.videoId);
+          if (isBlobValid(blob, 10000)) {
+            downloadBlobToDevice(blob, `${name}.mp3`);
+            resolve();
+          } else {
+            reject(new Error('YouTube: gagal menyimpan ke cache'));
+          }
+        }).catch(reject);
+      });
+      return;
     }
 
-    // favSong (SC/Spotify preview dll): cek cache offline dulu
+    // ── Lagu dari Stream (Audius, Jamendo, FMA, CCMixter, dll.) ──────────────
+    if (s._wsSource && s.src) {
+      const raw = s.src.split('?')[0];
+      const ext = raw.includes('.') ? raw.split('.').pop().toLowerCase() : 'mp3';
+      const safeExt = ['mp3','ogg','opus','flac','wav','aac','m4a'].includes(ext) ? ext : 'mp3';
+      try {
+        await downloadToDevice(s.src, `${name}.${safeExt}`);
+      } catch {
+        // CORS block → buka di tab baru agar user bisa save manual
+        const a = document.createElement('a');
+        a.href = s.src;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+      return;
+    }
+
+    // ── favSong (SC/Spotify preview dll.) ────────────────────────────────────
     if (s.id && s.type !== 'youtube') {
-      const cached = await favCacheGet(s.id);
-      if (cached && cached.size > 1000) {
-        const ext = s.src ? (s.src.split('?')[0].split('.').pop() || 'mp3') : 'mp3';
-        downloadBlobToDevice(cached, `${name}.${ext}`);
-        return;
-      }
+      try {
+        const cached = await favCacheGet(s.id);
+        if (isBlobValid(cached, 1000)) {
+          const ext = s.src ? (s.src.split('?')[0].split('.').pop() || 'mp3') : 'mp3';
+          downloadBlobToDevice(cached, `${name}.${ext}`);
+          return;
+        }
+      } catch { /* cache miss */ }
     }
 
-    // Fallback: fetch dari internet
+    // ── Fallback universal: fetch langsung dari src ───────────────────────────
     if (s.src) {
       const raw = s.src.split('?')[0];
       const ext = raw.includes('.') ? raw.split('.').pop() : 'mp3';
       await downloadToDevice(s.src, `${name}.${ext}`);
+    } else {
+      throw new Error('Tidak ada sumber audio untuk diunduh.');
     }
   }, []);  // tokenRef adalah ref — tidak perlu di deps
 
