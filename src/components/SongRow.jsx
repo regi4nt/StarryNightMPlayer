@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { CheckCircle, Cloud, Download, Loader2, Music, Trash2, Heart } from 'lucide-react';
 import { btn, downloadToDevice } from '../constants.js';
 
-function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDrive, isCached, onRemove, playlists, addToPlaylist, isLite, t, onDownload, editMode, embedTrack }) {
+function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDrive, isCached, onRemove, playlists, addToPlaylist, isLite, t, onDownload, editMode, embedTrack, isDownloading, dlProgress }) {
   const isYtSong = s.type === 'youtube';
   const isActive = isYtSong
     ? (embedTrack?.type === 'youtube' && embedTrack?.videoId === s.videoId)
@@ -49,20 +49,11 @@ function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDri
           <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.artist}{isYtSong ? ' · YouTube' : ` · ${s.album}`}</span>
           {isDrive && !isYtSong && <span style={{ color:s.color, flexShrink:0 }}>· Drive</span>}
           {isCached && <span style={{ flexShrink:0, fontSize:9, fontWeight:800, color:'#4ade80', background:'rgba(74,222,128,0.12)', padding:'1px 5px', borderRadius:999 }}>✓ Offline</span>}
+          {isDownloading && !isCached && <span style={{ flexShrink:0, fontSize:9, fontWeight:800, color:'#60a5fa', background:'rgba(96,165,250,0.12)', padding:'1px 5px', borderRadius:999 }}>↓ {dlProgress > 0 ? `${dlProgress}%` : '…'}</span>}
           {isYtSong && isActive && playing && <span style={{ flexShrink:0, fontSize:9, fontWeight:800, color:'#ff4444', background:'rgba(255,68,68,0.12)', padding:'1px 5px', borderRadius:999 }}>▶ Playing</span>}
         </div>
       </div>
       <div style={{ display:'flex', gap:2, position:'relative' }}>
-        {/* ── Tombol Hapus — hanya tampil saat editMode aktif (dikontrol dari parent) */}
-        {onRemove && (
-          <button onClick={e=>{ e.stopPropagation(); onRemove(s.id); }}
-            title={t?.deleteBtn||'Hapus'}
-            style={{ background:'none', border:'none', cursor:'pointer', padding:6, color:'#f87171', display:'flex', alignItems:'center' }}
-          >
-            <Trash2 size={14}/>
-          </button>
-        )}
-
         {/* ── Tombol unduh ke perangkat (tidak tampil untuk radio) */}
         {!s.isRadio&&editMode&&<button onClick={handleDownload} title={dlState==='done'?'Berhasil diunduh!':dlState==='error'?'Gagal, coba lagi':'Unduh ke perangkat'}
           style={{ ...btn, color:dlColor, padding:6, transition:'color 0.2s' }}>
@@ -72,6 +63,16 @@ function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDri
             ? <CheckCircle size={14}/>
             : <Download size={14}/>}
         </button>}
+
+        {/* ── Tombol Hapus — hanya tampil saat editMode aktif (dikontrol dari parent) */}
+        {onRemove && (
+          <button onClick={e=>{ e.stopPropagation(); onRemove(s.id); }}
+            title={t?.deleteBtn||'Hapus'}
+            style={{ background:'none', border:'none', cursor:'pointer', padding:6, color:'#f87171', display:'flex', alignItems:'center' }}
+          >
+            <Trash2 size={14}/>
+          </button>
+        )}
       </div>
     </div>
   );

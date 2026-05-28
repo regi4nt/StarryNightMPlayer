@@ -1313,6 +1313,7 @@ window._snBlobCacheRef = _blobCache; // expose agar handleClearCache bisa clear 
 export const DRIVE_CACHE_NAME = 'sn-drive-v1';
 const DRIVE_SIZE_KEY   = 'sn_drive_sizes'; // localStorage key untuk menyimpan ukuran file penuh
 export const YT_CACHE_NAME    = 'sn-yt-v1';      // cache audio YouTube yang di-love
+export const FAV_CACHE_NAME   = 'sn-fav-v1';     // cache audio favSongs (SC/Spotify preview) yang di-love
 
 // Simpan audio blob YouTube ke cache
 async function ytCachePut(videoId, blob) {
@@ -1330,6 +1331,55 @@ async function ytCacheGet(videoId) {
     if (res) return await res.blob();
   } catch {}
   return null;
+}
+
+// ── Cache untuk favSongs (audio preview SC/Spotify dll)
+async function favCachePut(songId, blob) {
+  try {
+    const cache = await caches.open(FAV_CACHE_NAME);
+    await cache.put(`/fav/${songId}`, new Response(blob, { headers: { 'Content-Type': blob.type || 'audio/mpeg' } }));
+  } catch { /* private browsing / storage penuh */ }
+}
+
+export async function favCacheGet(songId) {
+  try {
+    const cache = await caches.open(FAV_CACHE_NAME);
+    const res = await cache.match(`/fav/${songId}`);
+    if (res) return await res.blob();
+  } catch {}
+  return null;
+}
+
+export async function favCacheDelete(songId) {
+  try {
+    const cache = await caches.open(FAV_CACHE_NAME);
+    await cache.delete(`/fav/${songId}`);
+  } catch {}
+}
+
+// Download audio favSong (preview URL) → simpan ke cache
+export async function downloadFavAudio(songId, previewUrl, onProgress, signal) {
+  if (!previewUrl) throw new Error('No previewUrl');
+  // Cek cache dulu
+  const existing = await favCacheGet(songId);
+  if (existing && existing.size > 1000) { onProgress && onProgress(100); return; }
+
+  const res = await fetch(previewUrl, { signal });
+  if (!res.ok) throw new Error(`Fav fetch ${res.status}`);
+  const total = parseInt(res.headers.get('content-length') || '0', 10);
+  const mime = res.headers.get('content-type') || 'audio/mpeg';
+  const reader = res.body.getReader();
+  const chunks = []; let loaded = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    loaded += value.length;
+    if (total > 0 && onProgress) onProgress(Math.round((loaded / total) * 100));
+  }
+  const blob = new Blob(chunks, { type: mime });
+  await favCachePut(songId, blob);
+  onProgress && onProgress(100);
 }
 
 // Download audio YouTube via Piped API → simpan ke cache

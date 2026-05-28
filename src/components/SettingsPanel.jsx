@@ -141,20 +141,32 @@ function MaskedKeyInput({ value, onChange, onBlur, placeholder, accentColor, lab
 // ── CacheManager: sub-komponen terpisah agar hooks tidak dipanggil di dalam IIFE
 function CacheManager({ lang, t }) {
   const [cacheInfo, setCacheInfo] = React.useState(null);
-  const [clearing, setClearing] = React.useState(false);
+  const [clearing, setClearing] = React.useState(null); // null | 'quick' | 'all'
   const [cleared, setCleared] = React.useState(false);
-  const [clearDone, setClearDone] = React.useState(false);
+  const [clearDone, setClearDone] = React.useState(null); // null | 'quick' | 'all'
+
+  // ── Keys yang PENTING (jangan hapus saat Quick Clean)
+  const KEEP_KEYS = new Set([
+    'sn_playlists', 'sn_fav_songs', 'sn_liked', 'sn_custom_songs',
+    'sn_history', 'sn_persona_prefs', 'sn_persona_done',
+    'sn_google_token', 'sn_google_user',
+    'sn_global_cover', 'sn_tab', 'sn_volume', 'sn_muted',
+    'sn_repeat', 'sn_shuffle', 'sn_lang', 'sn_mode',
+    'sn_custom_dns', 'sn_ai_key', 'sn_yt_key', 'sn_sp_id',
+    'sn_sp_secret', 'sn_sc_id', 'sn_cf_key', 'sn_sb_key', 'sn_sn_key',
+    'sn_user_yt_key', 'sn_user_sp_id', 'sn_user_sp_secret',
+    'sn_user_sc_id', 'sn_user_cf_key', 'sn_user_sn_key',
+  ]);
 
   React.useEffect(() => {
     async function loadCacheInfo() {
       try {
-        let driveCount = 0, ytCount = 0, totalBytes = 0;
+        let driveCount = 0, ytCount = 0, swCount = 0, totalBytes = 0;
         if ('caches' in window) {
           try {
             const driveCache = await caches.open('sn-drive-v1');
             const driveKeys = await driveCache.keys();
             driveCount = driveKeys.length;
-            // Gunakan Content-Length header (cepat di mobile, tidak perlu download blob penuh)
             for (const req of driveKeys) {
               const res = await driveCache.match(req);
               if (res) {
@@ -177,41 +189,124 @@ function CacheManager({ lang, t }) {
               }
             }
           } catch(e) {}
+          // Hitung SW cache lainnya (assets, dll)
+          try {
+            const names = await caches.keys();
+            for (const name of names) {
+              if (name === 'sn-drive-v1' || name === 'sn-yt-v1') continue;
+              const c = await caches.open(name);
+              const keys = await c.keys();
+              swCount += keys.length;
+            }
+          } catch(e) {}
         }
-        // Hitung localStorage keys sn_ (YT & Drive cached IDs)
-        let lsCount = 0;
+        // Hitung localStorage: quick-only vs important
+        let lsQuickCount = 0, lsAllCount = 0;
         try {
           for (let i = 0; i < localStorage.length; i++) {
             const k = localStorage.key(i);
-            if (k && k.startsWith('sn_')) lsCount++;
+            if (!k || !k.startsWith('sn_')) continue;
+            lsAllCount++;
+            if (!KEEP_KEYS.has(k)) lsQuickCount++;
           }
         } catch(e) {}
-        // Hitung jumlah cookie aktif
         const cookieCount = document.cookie ? document.cookie.split(';').filter(c => c.trim()).length : 0;
-        setCacheInfo({ driveCount, ytCount, totalMB: (totalBytes / 1024 / 1024).toFixed(1), cookieCount, lsCount });
+        // Perkiraan ukuran localStorage (karakter ≈ 2 bytes)
+        let lsBytes = 0;
+        try {
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && k.startsWith('sn_')) {
+              lsBytes += ((k.length + (localStorage.getItem(k)||'').length) * 2);
+            }
+          }
+        } catch(e) {}
+        totalBytes += lsBytes;
+        setCacheInfo({ driveCount, ytCount, swCount, cookieCount, lsQuickCount, lsAllCount, totalMB: (totalBytes / 1024 / 1024).toFixed(1) });
       } catch(e) {
-        setCacheInfo({ driveCount: 0, ytCount: 0, totalMB: '0.0', cookieCount: 0, lsCount: 0 });
+        setCacheInfo({ driveCount:0, ytCount:0, swCount:0, cookieCount:0, lsQuickCount:0, lsAllCount:0, totalMB:'0.0' });
       }
     }
     loadCacheInfo();
-  }, [cleared]);
+  }, [cleared]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleClearCache = async () => {
-    setClearing(true);
+  // ── Hapus cookie helper
+  const clearAllCookies = async () => {
     try {
-      // 1. Hapus Cache API (audio drive & YouTube)
+      const cookies = document.cookie.split(';');
+      const hostname = window.location.hostname;
+      const domainParts = hostname.split('.');
+      const domains = [hostname, ...domainParts.slice(1).map((_,i)=>'.' + domainParts.slice(i+1).join('.')).filter(d=>d.length>1), ''];
+      const paths = ['/', '/api', ''];
+      for (const cookie of cookies) {
+        const name = cookie.split('=')[0].trim();
+        if (!name) continue;
+        for (const domain of domains) {
+          for (const path of paths) {
+            const da = domain ? `;domain=${domain}` : '';
+            document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=${path}${da}`;
+          }
+        }
+      }
+      if (window.cookieStore) {
+        const all = await window.cookieStore.getAll();
+        await Promise.allSettled(all.map(c => window.cookieStore.delete({ name:c.name, path:c.path||'/' })));
+      }
+    } catch(e) {}
+  };
+
+  // ── QUICK CLEAN: hapus file berat tapi jaga data penting
+  const handleQuickClear = async () => {
+    setClearing('quick');
+    try {
+      // 1. Cache API audio (Drive & YouTube — file besar, bisa re-download)
       if ('caches' in window) {
         try { await caches.delete('sn-drive-v1'); } catch(e) {}
         try { await caches.delete('sn-yt-v1'); } catch(e) {}
       }
-      // 2. Hapus in-memory blob cache
+      // 2. In-memory blob cache
       try {
         if (window._snBlobCacheRef) {
           for (const v of window._snBlobCacheRef.values()) URL.revokeObjectURL(v);
           window._snBlobCacheRef.clear();
         }
       } catch(e) {}
-      // 3. Hapus localStorage keys milik StarryNight (prefix sn_)
+      // 3. localStorage: hanya hapus key yang tidak penting (cache ID, temp state, dll)
+      try {
+        const toDelete = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith('sn_') && !KEEP_KEYS.has(k)) toDelete.push(k);
+        }
+        toDelete.forEach(k => { try { localStorage.removeItem(k); } catch(e) {} });
+      } catch(e) {}
+      // Cookie tidak dihapus di Quick Clean — bisa berisi sesi login
+      setCleared(c => !c);
+      setClearDone('quick');
+      setTimeout(() => setClearDone(null), 2500);
+    } catch(e) {}
+    setClearing(null);
+  };
+
+  // ── CLEAR ALL: hapus benar-benar semuanya termasuk data user
+  const handleClearAll = async () => {
+    setClearing('all');
+    try {
+      // 1. Semua Cache API
+      if ('caches' in window) {
+        try {
+          const names = await caches.keys();
+          await Promise.allSettled(names.map(n => caches.delete(n)));
+        } catch(e) {}
+      }
+      // 2. In-memory blob cache
+      try {
+        if (window._snBlobCacheRef) {
+          for (const v of window._snBlobCacheRef.values()) URL.revokeObjectURL(v);
+          window._snBlobCacheRef.clear();
+        }
+      } catch(e) {}
+      // 3. Semua localStorage keys sn_
       try {
         const snKeys = [];
         for (let i = 0; i < localStorage.length; i++) {
@@ -220,117 +315,185 @@ function CacheManager({ lang, t }) {
         }
         snKeys.forEach(k => { try { localStorage.removeItem(k); } catch(e) {} });
       } catch(e) {}
-      // 4. Hapus semua cookie untuk domain ini
+      // 4. Semua cookie
+      await clearAllCookies();
+      // 5. IndexedDB (SW cache, dll)
       try {
-        const cookies = document.cookie.split(';');
-        const hostname = window.location.hostname;
-        const domainParts = hostname.split('.');
-        // Coba hapus dengan berbagai kombinasi domain (termasuk subdomain)
-        const domains = [
-          hostname,
-          ...domainParts.slice(1).map((_, i) => '.' + domainParts.slice(i + 1).join('.')).filter(d => d.length > 1),
-          ''
-        ];
-        const paths = ['/', '/api', ''];
-        for (const cookie of cookies) {
-          const name = cookie.split('=')[0].trim();
-          if (!name) continue;
-          for (const domain of domains) {
-            for (const path of paths) {
-              const domainAttr = domain ? `;domain=${domain}` : '';
-              document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=${path}${domainAttr}`;
-            }
-          }
-        }
-        // Coba juga via cookieStore API (Chrome 87+) untuk cookie HttpOnly sekalipun dapat dihapus
-        if (window.cookieStore) {
-          try {
-            const all = await window.cookieStore.getAll();
-            await Promise.allSettled(all.map(c => window.cookieStore.delete({ name: c.name, path: c.path || '/' })));
-          } catch(e) {}
+        if (window.indexedDB && indexedDB.databases) {
+          const dbs = await indexedDB.databases();
+          await Promise.allSettled(dbs.map(db => indexedDB.deleteDatabase(db.name)));
         }
       } catch(e) {}
       setCleared(c => !c);
-      setClearDone(true);
-      setTimeout(() => setClearDone(false), 2500);
+      setClearDone('all');
+      setTimeout(() => setClearDone(null), 2500);
     } catch(e) {}
-    setClearing(false);
+    setClearing(null);
   };
 
-  const hasCache = cacheInfo && (cacheInfo.driveCount > 0 || cacheInfo.ytCount > 0 || cacheInfo.cookieCount > 0 || cacheInfo.lsCount > 0);
+  const hasCache = cacheInfo && (
+    cacheInfo.driveCount > 0 || cacheInfo.ytCount > 0 ||
+    cacheInfo.swCount > 0   || cacheInfo.lsAllCount > 0
+  );
+  const hasQuickCache = cacheInfo && (cacheInfo.driveCount > 0 || cacheInfo.ytCount > 0 || cacheInfo.lsQuickCount > 0);
+
+  const isClearing = clearing !== null;
 
   return (
     <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
         <span style={{ fontSize:16 }}>🗑️</span>
         <div>
-          <div style={{ fontWeight:800, fontSize:14 }}>{t?.clearCache||'Clear Cache & Cookies'}</div>
+          <div style={{ fontWeight:800, fontSize:14 }}>{t?.clearCache||'Hapus Cache'}</div>
           <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>
-            {lang==='id' ? t?.clearCacheDesc||'Free up storage from saved audio & cookies' : 'Free up storage from saved audio & cookies'}
+            {lang==='id' ? 'Bebaskan ruang penyimpanan browser' : 'Free up browser storage space'}
           </div>
         </div>
       </div>
+
       {cacheInfo === null ? (
         <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', padding:'8px 0' }}>
-          {t?.calculatingCache||'Calculating cache...'}
+          {t?.calculatingCache||'Menghitung cache...'}
         </div>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-          <div style={{ padding:'10px 14px', borderRadius:12, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
-              {cacheInfo.driveCount > 0 && (
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>
-                  🎵 Drive: <span style={{ color:'rgba(255,255,255,0.75)', fontWeight:600 }}>{cacheInfo.driveCount} {t?.cacheCountSongs||'songs'}</span>
-                </div>
-              )}
-              {cacheInfo.ytCount > 0 && (
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>
-                  ▶️ YouTube: <span style={{ color:'rgba(255,255,255,0.75)', fontWeight:600 }}>{cacheInfo.ytCount} {t?.cacheCountSongs||'songs'}</span>
-                </div>
-              )}
-              {cacheInfo.cookieCount > 0 && (
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>
-                  🍪 Cookie: <span style={{ color:'rgba(255,255,255,0.75)', fontWeight:600 }}>{cacheInfo.cookieCount} {t?.cacheCountItems||'items'}</span>
-                </div>
-              )}
-              {cacheInfo.lsCount > 0 && (
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>
-                  💾 Storage: <span style={{ color:'rgba(255,255,255,0.75)', fontWeight:600 }}>{cacheInfo.lsCount} {t?.cacheCountEntries||'entries'}</span>
-                </div>
-              )}
-              {!hasCache && (
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)' }}>
-                  {t?.noCacheStored||'No cache or cookies stored'}
+
+          {/* ── Info panel */}
+          <div style={{ padding:'10px 14px', borderRadius:12, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+              <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                {cacheInfo.driveCount > 0 && (
+                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>
+                    🎵 Drive audio: <span style={{ color:'#fca5a5', fontWeight:700 }}>{cacheInfo.driveCount} file</span>
+                  </div>
+                )}
+                {cacheInfo.ytCount > 0 && (
+                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>
+                    ▶️ YouTube cache: <span style={{ color:'#fca5a5', fontWeight:700 }}>{cacheInfo.ytCount} file</span>
+                  </div>
+                )}
+                {cacheInfo.swCount > 0 && (
+                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>
+                    ⚙️ App cache: <span style={{ color:'rgba(255,255,255,0.65)', fontWeight:600 }}>{cacheInfo.swCount} {lang==='id'?'entri':'entries'}</span>
+                  </div>
+                )}
+                {cacheInfo.lsAllCount > 0 && (
+                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>
+                    💾 Storage: <span style={{ color:'rgba(255,255,255,0.65)', fontWeight:600 }}>{cacheInfo.lsAllCount} {lang==='id'?'entri':'entries'}
+                    {cacheInfo.lsQuickCount > 0 && <span style={{ color:'#fca5a5' }}> ({cacheInfo.lsQuickCount} {lang==='id'?'sementara':'temp'})</span>}
+                    </span>
+                  </div>
+                )}
+                {cacheInfo.cookieCount > 0 && (
+                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>
+                    🍪 Cookie: <span style={{ color:'rgba(255,255,255,0.65)', fontWeight:600 }}>{cacheInfo.cookieCount} {lang==='id'?'aktif':'active'}</span>
+                  </div>
+                )}
+                {!hasCache && (
+                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)' }}>
+                    ✨ {lang==='id' ? 'Tidak ada cache tersimpan' : 'No cache stored'}
+                  </div>
+                )}
+              </div>
+              {hasCache && (
+                <div style={{ textAlign:'right' }}>
+                  <div style={{ fontSize:16, fontWeight:800, color:'#a5b4fc' }}>{cacheInfo.totalMB}</div>
+                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.3)', fontWeight:600 }}>MB</div>
                 </div>
               )}
             </div>
+
+            {/* Legend: quick vs all */}
             {hasCache && (
-              <div style={{ fontSize:13, fontWeight:700, color:'#a5b4fc' }}>{cacheInfo.totalMB} MB</div>
+              <div style={{ marginTop:10, paddingTop:8, borderTop:'1px solid rgba(255,255,255,0.06)', display:'flex', gap:12 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:5, fontSize:10, color:'rgba(255,255,255,0.4)' }}>
+                  <div style={{ width:8, height:8, borderRadius:2, background:'linear-gradient(135deg,#f59e0b,#d97706)', flexShrink:0 }}/>
+                  {lang==='id' ? 'Quick: audio cache & temp' : 'Quick: audio cache & temp'}
+                </div>
+                <div style={{ display:'flex', alignItems:'center', gap:5, fontSize:10, color:'rgba(255,255,255,0.4)' }}>
+                  <div style={{ width:8, height:8, borderRadius:2, background:'linear-gradient(135deg,#ef4444,#dc2626)', flexShrink:0 }}/>
+                  {lang==='id' ? 'All: hapus semua data' : 'All: erase everything'}
+                </div>
+              </div>
             )}
           </div>
-          <button
-            onClick={handleClearCache}
-            disabled={clearing || !hasCache}
-            style={{
-              width:'100%', padding:'11px 0', borderRadius:12, border:'none',
-              background: clearDone
-                ? 'linear-gradient(135deg,#22c55e,#16a34a)'
-                : hasCache
-                  ? (clearing ? 'rgba(239,68,68,0.4)' : 'linear-gradient(135deg,#ef4444,#dc2626)')
-                  : 'rgba(255,255,255,0.06)',
-              color: hasCache ? 'white' : 'rgba(255,255,255,0.25)',
-              fontSize:13, fontWeight:800, cursor: hasCache ? 'pointer' : 'default',
-              display:'flex', alignItems:'center', justifyContent:'center', gap:8,
-              transition:'all 0.3s'
-            }}
-          >
-            <span style={{ fontSize:14 }}>{clearing ? '⏳' : clearDone ? '✅' : '🗑️'}</span>
-            {clearing
-              ? (t?.clearingCache||'Clearing...')
-              : clearDone
-                ? (t?.cacheCleared||'Cache & Cookies Cleared!')
-                : (t?.clearAllCache||'Clear All Cache & Cookies')}
-          </button>
+
+          {/* ── Tombol Quick & All berdampingan */}
+          <div style={{ display:'flex', gap:8 }}>
+
+            {/* Quick Clean */}
+            <button
+              onClick={handleQuickClear}
+              disabled={isClearing || !hasQuickCache}
+              style={{
+                flex:1, padding:'11px 0', borderRadius:12, border:'none',
+                background: clearDone==='quick'
+                  ? 'linear-gradient(135deg,#22c55e,#16a34a)'
+                  : hasQuickCache
+                    ? (clearing==='quick' ? 'rgba(245,158,11,0.4)' : 'linear-gradient(135deg,#f59e0b,#d97706)')
+                    : 'rgba(255,255,255,0.06)',
+                color: hasQuickCache ? 'white' : 'rgba(255,255,255,0.2)',
+                fontSize:12, fontWeight:800, cursor: hasQuickCache && !isClearing ? 'pointer' : 'default',
+                display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3,
+                transition:'all 0.3s', opacity: isClearing && clearing!=='quick' ? 0.5 : 1,
+              }}
+            >
+              <span style={{ fontSize:15 }}>
+                {clearing==='quick' ? '⏳' : clearDone==='quick' ? '✅' : '⚡'}
+              </span>
+              <span style={{ fontSize:11, fontWeight:800, lineHeight:1 }}>
+                {clearing==='quick'
+                  ? (lang==='id'?'Membersihkan...':'Cleaning...')
+                  : clearDone==='quick'
+                    ? (lang==='id'?'Selesai!':'Done!')
+                    : 'Quick Clean'}
+              </span>
+              <span style={{ fontSize:9, fontWeight:600, opacity:0.75, lineHeight:1 }}>
+                {lang==='id' ? 'Jaga data penting' : 'Keeps your data'}
+              </span>
+            </button>
+
+            {/* Clear All */}
+            <button
+              onClick={handleClearAll}
+              disabled={isClearing || !hasCache}
+              style={{
+                flex:1, padding:'11px 0', borderRadius:12, border:'none',
+                background: clearDone==='all'
+                  ? 'linear-gradient(135deg,#22c55e,#16a34a)'
+                  : hasCache
+                    ? (clearing==='all' ? 'rgba(239,68,68,0.4)' : 'linear-gradient(135deg,#ef4444,#b91c1c)')
+                    : 'rgba(255,255,255,0.06)',
+                color: hasCache ? 'white' : 'rgba(255,255,255,0.2)',
+                fontSize:12, fontWeight:800, cursor: hasCache && !isClearing ? 'pointer' : 'default',
+                display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3,
+                transition:'all 0.3s', opacity: isClearing && clearing!=='all' ? 0.5 : 1,
+              }}
+            >
+              <span style={{ fontSize:15 }}>
+                {clearing==='all' ? '⏳' : clearDone==='all' ? '✅' : '🗑️'}
+              </span>
+              <span style={{ fontSize:11, fontWeight:800, lineHeight:1 }}>
+                {clearing==='all'
+                  ? (lang==='id'?'Menghapus...':'Erasing...')
+                  : clearDone==='all'
+                    ? (lang==='id'?'Terhapus!':'Cleared!')
+                    : 'Clear All'}
+              </span>
+              <span style={{ fontSize:9, fontWeight:600, opacity:0.75, lineHeight:1 }}>
+                {lang==='id' ? 'Hapus semua data' : 'Removes everything'}
+              </span>
+            </button>
+
+          </div>
+
+          {/* Warning untuk Clear All */}
+          <div style={{ fontSize:10, color:'rgba(255,255,255,0.25)', textAlign:'center', lineHeight:1.4 }}>
+            ⚠️ {lang==='id'
+              ? 'Clear All menghapus playlist, login, dan semua pengaturan'
+              : 'Clear All removes playlists, login & all settings'}
+          </div>
+
         </div>
       )}
     </div>
@@ -601,9 +764,27 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
                 } catch(_) {}
               }, 150);
               // 5. Overlay kunci layar — pasang transparan interceptor di atas UI
-              setTimeout(() => {
+              setTimeout(async () => {
                 const existingLock = document.getElementById('sn-screen-lock');
                 if (existingLock) return; // sudah aktif
+
+                // Aktifkan Wake Lock agar sistem tidak suspend audio saat layar terkunci
+                let wakeLock = null;
+                try {
+                  if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                  }
+                } catch(_) {}
+
+                // Re-acquire wake lock bila halaman kembali visible (sistem bisa release saat hidden)
+                const reacquireWakeLock = async () => {
+                  if (document.visibilityState === 'visible' && wakeLock?.released !== false) {
+                    try {
+                      if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
+                    } catch(_) {}
+                  }
+                };
+                document.addEventListener('visibilitychange', reacquireWakeLock);
                 const overlay = document.createElement('div');
                 overlay.id = 'sn-screen-lock';
                 overlay.style.cssText = [
@@ -635,34 +816,77 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
 
                 // Tahan 3 detik untuk buka kunci
                 let holdTimer = null;
-                let holdStart = null;
+                let progressInterval = null;
+                let holdActive = false;
+
+                const unlock = () => {
+                  // Bersihkan semua timer
+                  if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+                  if (progressInterval) { clearInterval(progressInterval); progressInterval = null; }
+                  // Hapus overlay
+                  overlay.remove();
+                  // Release wake lock
+                  document.removeEventListener('visibilitychange', reacquireWakeLock);
+                  try { if (wakeLock && !wakeLock.released) wakeLock.release(); } catch(_) {}
+                  // Reset React fullscreen state agar UI sinkron
+                  if (setFullscreen) setFullscreen(false);
+                  // Keluar fullscreen browser
+                  try {
+                    if (document.fullscreenElement && document.exitFullscreen) {
+                      document.exitFullscreen().catch(() => {});
+                    }
+                  } catch(_) {}
+                };
+
                 const startHold = (e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  holdStart = Date.now();
+                  // Hanya proses jika sentuh area badge
+                  const touch = e.touches ? e.touches[0] : e;
+                  const rect = badge.getBoundingClientRect();
+                  if (touch.clientX < rect.left - 20 || touch.clientX > rect.right + 20 ||
+                      touch.clientY < rect.top - 20  || touch.clientY > rect.bottom + 20) {
+                    // Tap di luar badge — blokir saja tanpa buka kunci
+                    e.preventDefault(); e.stopPropagation(); return;
+                  }
+                  e.preventDefault(); e.stopPropagation();
+                  if (holdActive) return;
+                  holdActive = true;
+                  let elapsed = 0;
                   badge.style.background = 'rgba(99,102,241,0.5)';
                   badge.style.borderColor = 'rgba(99,102,241,0.6)';
                   badge.style.color = 'white';
-                  badge.innerHTML = '🔓 ' + (lang === 'en' ? 'Hold to unlock…' : 'Tahan untuk buka…');
-                  holdTimer = setTimeout(() => {
-                    // Buka kunci
-                    overlay.remove();
-                    try { if (document.exitFullscreen) document.exitFullscreen().catch(()=>{}); } catch(_) {}
-                  }, 3000);
+                  badge.innerHTML = '🔓 ' + (lang === 'en' ? 'Hold to unlock… 3s' : 'Tahan untuk buka… 3d');
+                  progressInterval = setInterval(() => {
+                    elapsed += 1;
+                    const remaining = 3 - elapsed;
+                    if (remaining > 0) {
+                      badge.innerHTML = '🔓 ' + (lang === 'en' ? `Hold to unlock… ${remaining}s` : `Tahan untuk buka… ${remaining}d`);
+                    }
+                  }, 1000);
+                  holdTimer = setTimeout(unlock, 3000);
                 };
+
                 const cancelHold = (e) => {
+                  if (!holdActive) return;
+                  holdActive = false;
                   if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+                  if (progressInterval) { clearInterval(progressInterval); progressInterval = null; }
                   badge.style.background = 'rgba(0,0,0,0.55)';
                   badge.style.borderColor = 'rgba(255,255,255,0.12)';
                   badge.style.color = 'rgba(255,255,255,0.6)';
                   badge.innerHTML = '🔒 ' + (lang === 'en' ? 'Screen locked · Hold 3s to unlock' : 'Layar terkunci · Tahan 3 dtk untuk buka');
                 };
+
+                // Badge perlu bisa menerima pointer untuk deteksi hold
+                badge.style.pointerEvents = 'auto';
+                badge.style.cursor = 'pointer';
+
                 overlay.addEventListener('touchstart', startHold, { passive:false });
                 overlay.addEventListener('touchend', cancelHold, { passive:false });
+                overlay.addEventListener('touchcancel', cancelHold, { passive:false });
                 overlay.addEventListener('mousedown', startHold);
                 overlay.addEventListener('mouseup', cancelHold);
                 overlay.addEventListener('mouseleave', cancelHold);
-                // Blokir semua event lain
+                // Blokir semua event lain agar UI di bawah tidak bisa disentuh
                 ['click','touchmove','contextmenu','wheel'].forEach(ev =>
                   overlay.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); }, { passive:false })
                 );
@@ -940,39 +1164,6 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
           )}
         </div>
 
-        {/* ── BAHASA / LANGUAGE */}
-        <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <span style={{ fontSize:16 }}>🌐</span>
-              <div>
-                <div style={{ fontWeight:800, fontSize:14 }}>{t ? t.language : 'Bahasa'}</div>
-                <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{t ? t.languageDesc : 'Pilih bahasa tampilan aplikasi'}</div>
-              </div>
-            </div>
-            {/* Language pill toggle */}
-            <div style={{ display:'flex', alignItems:'center', gap:0, borderRadius:999, border:'1px solid rgba(255,255,255,0.15)', overflow:'hidden', flexShrink:0 }}>
-              <button
-                onClick={() => { if (lang !== 'id') toggleLang(); }}
-                style={{ padding:'5px 12px', border:'none', cursor:'pointer', fontSize:11, fontWeight:800, letterSpacing:'0.04em',
-                  background: lang === 'id' ? color : 'transparent',
-                  color: lang === 'id' ? 'white' : 'rgba(255,255,255,0.4)',
-                  transition:'all 0.2s' }}>
-                🇮🇩 ID
-              </button>
-              <div style={{ width:1, height:16, background:'rgba(255,255,255,0.15)', flexShrink:0 }}/>
-              <button
-                onClick={() => { if (lang !== 'en') toggleLang(); }}
-                style={{ padding:'5px 12px', border:'none', cursor:'pointer', fontSize:11, fontWeight:800, letterSpacing:'0.04em',
-                  background: lang === 'en' ? color : 'transparent',
-                  color: lang === 'en' ? 'white' : 'rgba(255,255,255,0.4)',
-                  transition:'all 0.2s' }}>
-                🇬🇧 EN
-              </button>
-            </div>
-          </div>
-        </div>
-
         {/* ── MODE LITE / PRO */}
         <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
@@ -1048,6 +1239,39 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
                   <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)' }}>{desc}</span>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ── BAHASA / LANGUAGE */}
+        <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <span style={{ fontSize:16 }}>🌐</span>
+              <div>
+                <div style={{ fontWeight:800, fontSize:14 }}>{t ? t.language : 'Bahasa'}</div>
+                <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{t ? t.languageDesc : 'Pilih bahasa tampilan aplikasi'}</div>
+              </div>
+            </div>
+            {/* Language pill toggle */}
+            <div style={{ display:'flex', alignItems:'center', gap:0, borderRadius:999, border:'1px solid rgba(255,255,255,0.15)', overflow:'hidden', flexShrink:0 }}>
+              <button
+                onClick={() => { if (lang !== 'id') toggleLang(); }}
+                style={{ padding:'5px 12px', border:'none', cursor:'pointer', fontSize:11, fontWeight:800, letterSpacing:'0.04em',
+                  background: lang === 'id' ? color : 'transparent',
+                  color: lang === 'id' ? 'white' : 'rgba(255,255,255,0.4)',
+                  transition:'all 0.2s' }}>
+                🇮🇩 ID
+              </button>
+              <div style={{ width:1, height:16, background:'rgba(255,255,255,0.15)', flexShrink:0 }}/>
+              <button
+                onClick={() => { if (lang !== 'en') toggleLang(); }}
+                style={{ padding:'5px 12px', border:'none', cursor:'pointer', fontSize:11, fontWeight:800, letterSpacing:'0.04em',
+                  background: lang === 'en' ? color : 'transparent',
+                  color: lang === 'en' ? 'white' : 'rgba(255,255,255,0.4)',
+                  transition:'all 0.2s' }}>
+                🇬🇧 EN
+              </button>
             </div>
           </div>
         </div>
