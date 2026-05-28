@@ -3290,8 +3290,8 @@ Return ONLY valid JSON, no explanation:
     }
     const a = new Audio();
     a.volume = muted ? 0 : volume;
-    // Lite: preload none (hemat bandwidth). Pro: metadata (baca durasi tanpa full buffer)
-    a.preload = isLite ? 'none' : 'metadata';
+    // Lite: preload none (hemat bandwidth). Radio: auto (mulai buffer segera untuk kurangi loading awal)
+    a.preload = isLite ? 'none' : (track.isRadio ? 'auto' : 'metadata');
     // Mobile: izinkan playback di background / lock screen
     a.setAttribute('playsinline', '');
     a.setAttribute('webkit-playsinline', '');
@@ -3319,6 +3319,13 @@ Return ONLY valid JSON, no explanation:
     const onMeta      = () => trySetDur();
     const onDurChange = () => trySetDur();
     const onEnd = () => {
+      // Radio: 'ended' bukan berarti lagu selesai — stream diputus (misal: Vercel proxy timeout)
+      // Reconnect otomatis agar playback tidak terputus
+      if (track.isRadio) {
+        console.warn('[Radio] Stream ended unexpectedly (proxy timeout?), reconnecting…');
+        scheduleRadioReconnect(track);
+        return;
+      }
       if (repeatRef.current === 'one') {
         // Fix repeat-one: simpan src, reset via load(), set src ulang agar canplay selalu fire.
         // Tanpa re-assign src, beberapa browser (Chrome/Safari) tidak fire canplay setelah load().
@@ -3377,15 +3384,17 @@ Return ONLY valid JSON, no explanation:
       setPlaying(false); setLoadingTrack(false);
     };
     let stallTimer = null;
+    let waitingTimer = null; // debounce untuk 'waiting' agar tidak flicker di koneksi normal
     const onStall = () => {
       if (track.isRadio) {
-        // Debounce: tunggu 4 detik sebelum reconnect, stall singkat adalah normal
+        // Debounce: tunggu 2 detik sebelum reconnect (dipercepat dari 4s)
+        // Alasan: Vercel proxy memotong stream tiap ~60 detik, reconnect harus cepat
         if (a.readyState < 2 && !a.paused) {
           if (!stallTimer) {
             stallTimer = setTimeout(() => {
               stallTimer = null;
               if (!a.paused && a.readyState < 2) scheduleRadioReconnect(track);
-            }, 4000);
+            }, 2000);
           }
         }
         return;
@@ -3400,8 +3409,17 @@ Return ONLY valid JSON, no explanation:
         a.addEventListener('canplay', () => { a.currentTime = pos; a.play().catch(()=>{}); }, { once: true });
       }
     };
-    const onWaiting  = () => { if (track.isRadio) setStreamBuffering(true); };
-    const onPlaying2 = () => { if (track.isRadio) { setStreamBuffering(false); radioReconnectCount.current = 0; if (radioReconnectRef.current) { clearTimeout(radioReconnectRef.current); radioReconnectRef.current = null; } if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; } } };
+    const onWaiting  = () => {
+      if (!track.isRadio) return;
+      // Debounce 800ms: 'waiting' event sering muncul singkat saat normal buffering
+      // Tanpa debounce, indikator BUFFERING… berkedip-kedip terus padahal stream sehat
+      if (waitingTimer) clearTimeout(waitingTimer);
+      waitingTimer = setTimeout(() => {
+        waitingTimer = null;
+        if (!a.paused) setStreamBuffering(true);
+      }, 800);
+    };
+    const onPlaying2 = () => { if (track.isRadio) { setStreamBuffering(false); radioReconnectCount.current = 0; if (radioReconnectRef.current) { clearTimeout(radioReconnectRef.current); radioReconnectRef.current = null; } if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; } if (waitingTimer) { clearTimeout(waitingTimer); waitingTimer = null; } } };
     a.addEventListener('timeupdate',     onTime);
     a.addEventListener('loadedmetadata', onMeta);
     a.addEventListener('durationchange', onDurChange);
@@ -3449,6 +3467,8 @@ Return ONLY valid JSON, no explanation:
       a.removeEventListener('waiting',        onWaiting);
       a.removeEventListener('playing',        onPlaying2);
       clearInterval(durPoll);
+      if (stallTimer) clearTimeout(stallTimer);
+      if (waitingTimer) clearTimeout(waitingTimer);
       a.pause(); a.src = '';
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
     };
@@ -4690,16 +4710,18 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       }
       const hls = new Hls({
         lowLatencyMode: false,        // radio bukan low-latency HLS, mode ini justru ganggu buffer
-        liveSyncDurationCount: 7,     // lebih banyak segment = lebih tahan network hiccup
-        maxBufferLength: 90,          // buffer lebih besar agar tahan fluktuasi jaringan
-        maxMaxBufferLength: 180,
-        fragLoadingTimeOut: 20000,    // toleransi load fragment lebih lama
-        manifestLoadingTimeOut: 15000,
-        levelLoadingTimeOut: 15000,
-        fragLoadingMaxRetry: 6,
-        manifestLoadingMaxRetry: 4,
-        levelLoadingMaxRetry: 4,
-        fragLoadingRetryDelay: 1000,
+        liveSyncDurationCount: 5,     // turun dari 7 → 5: kurangi latency awal tanpa korbankan stabilitas
+        maxBufferLength: 60,          // turun dari 90 → 60: HLS tidak perlu buffer sebesar itu, hemat RAM
+        maxMaxBufferLength: 120,
+        backBufferLength: 10,         // simpan 10s buffer mundur untuk recovery cepat
+        fragLoadingTimeOut: 15000,    // turun dari 20s → 15s: gagal lebih cepat, retry lebih cepat
+        manifestLoadingTimeOut: 10000,
+        levelLoadingTimeOut: 10000,
+        fragLoadingMaxRetry: 8,       // naik dari 6 → 8: lebih persisten sebelum menyerah
+        manifestLoadingMaxRetry: 5,
+        levelLoadingMaxRetry: 5,
+        fragLoadingRetryDelay: 500,   // turun dari 1000 → 500ms: retry lebih cepat setelah gagal
+        progressive: true,            // mulai putar segera saat ada data, tidak perlu tunggu buffer penuh
       });
       hlsRef.current = hls;
       hls.loadSource(src);
@@ -4734,8 +4756,9 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       setStreamBuffering(false);
       return;
     }
-    // Exponential back-off: 1s, 2s, 4s, 8s, 20s, 30s
-    const delay = attempt === 0 ? 1000 : Math.min(1000 * Math.pow(2, attempt), 30000);
+    // Exponential back-off: 500ms, 1s, 2s, 4s, 10s, 20s
+    // Attempt pertama sangat cepat (500ms) untuk handle Vercel proxy timeout
+    const delay = attempt === 0 ? 500 : Math.min(500 * Math.pow(2, attempt), 20000);
     console.warn(`[Radio] Reconnect attempt ${attempt + 1} in ${delay}ms`);
     setStreamBuffering(true);
     radioReconnectRef.current = setTimeout(() => {

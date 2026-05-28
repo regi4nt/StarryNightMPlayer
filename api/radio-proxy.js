@@ -20,7 +20,12 @@ import dns from 'dns';
 
 export const config = {
   runtime: 'nodejs',
-  maxDuration: 30, // Vercel max untuk Hobby plan
+  maxDuration: 60, // Vercel Pro/Hobby: 60s. Lebih dari ini perlu upgrade plan.
+  // CATATAN: Batas 30s lama adalah penyebab utama buffering — stream diputus paksa
+  // oleh Vercel setiap 30 detik, browser harus reconnect terus-menerus.
+  // Dengan 60s, frekuensi reconnect berkurang 50%.
+  // Untuk Hobby plan (gratis), maxDuration max adalah 60s.
+  // Untuk Pro plan, bisa diset sampai 300s atau lebih.
 };
 
 // Whitelist domain yang diizinkan di-proxy
