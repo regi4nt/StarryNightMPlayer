@@ -1358,16 +1358,52 @@ export async function favCacheDelete(songId) {
 }
 
 // Download audio favSong (preview URL) → simpan ke cache
+// Download audio favSong (preview URL) → simpan ke cache
+// Fallback: previewUrl langsung → URL alternatif (CDN Spotify/Deezer) → throw
 export async function downloadFavAudio(songId, previewUrl, onProgress, signal) {
   if (!previewUrl) throw new Error('No previewUrl');
   // Cek cache dulu
   const existing = await favCacheGet(songId);
   if (existing && existing.size > 1000) { onProgress && onProgress(100); return; }
 
-  const res = await fetch(previewUrl, { signal });
-  if (!res.ok) throw new Error(`Fav fetch ${res.status}`);
+  // Kumpulkan URL kandidat yang akan dicoba berurutan
+  const candidates = [previewUrl];
+
+  // Beberapa preview Spotify/Deezer punya mirror CDN — coba variasi URL
+  // p.scdn.co / audio-ak-spotify-com (Spotify CDN alternatif)
+  if (previewUrl.includes('p.scdn.co') || previewUrl.includes('audio-ak')) {
+    const mirror = previewUrl
+      .replace('p.scdn.co', 'audio-ak-spotify-com.akamaized.net')
+      .replace('audio-ak-spotify-com.akamaized.net', 'p.scdn.co');
+    if (mirror !== previewUrl) candidates.push(mirror);
+  }
+  // e-cdns.dzcdn.net (Deezer CDN)
+  if (previewUrl.includes('dzcdn.net')) {
+    const mirror = previewUrl.replace('e-cdns.dzcdn.net', 'cdns.dzcdn.net');
+    if (mirror !== previewUrl) candidates.push(mirror);
+  }
+
+  let lastErr = null;
+  for (const url of candidates) {
+    try {
+      const blob = await _fetchAudioBlob(url, onProgress, signal, 'audio/mpeg');
+      if (!blob || blob.size < 500) throw new Error('empty blob');
+      await favCachePut(songId, blob);
+      onProgress && onProgress(100);
+      return;
+    } catch(e) {
+      lastErr = e;
+      if (signal?.aborted) throw e; // batalkan jika user abort
+    }
+  }
+  throw lastErr || new Error('Semua URL preview gagal diunduh');
+}
+
+// ── Helper: download blob dari URL dengan tracking progress ──────────────────
+async function _fetchAudioBlob(url, onProgress, signal, mimeType = 'audio/mpeg') {
+  const res = await fetch(url, { signal });
+  if (!res.ok) throw new Error(`Audio fetch ${res.status}`);
   const total = parseInt(res.headers.get('content-length') || '0', 10);
-  const mime = res.headers.get('content-type') || 'audio/mpeg';
   const reader = res.body.getReader();
   const chunks = []; let loaded = 0;
   while (true) {
@@ -1377,51 +1413,96 @@ export async function downloadFavAudio(songId, previewUrl, onProgress, signal) {
     loaded += value.length;
     if (total > 0 && onProgress) onProgress(Math.round((loaded / total) * 100));
   }
-  const blob = new Blob(chunks, { type: mime });
-  await favCachePut(songId, blob);
-  onProgress && onProgress(100);
+  return new Blob(chunks, { type: mimeType });
 }
 
-// Download audio YouTube via Piped API → simpan ke cache
-// Mencoba semua instance Piped satu per satu hingga berhasil
-export async function downloadYtAudio(videoId, onProgress, signal) {
-  // Cek cache dulu
-  const existing = await ytCacheGet(videoId);
-  if (existing && existing.size > 10000) { onProgress && onProgress(100); return; }
-
-  // Coba setiap Piped instance untuk dapatkan audio streams
-  let audioUrl = null;
+// ── Method 1: Piped (/streams/{videoId}) ─────────────────────────────────────
+async function _ytAudioUrlViaPiped(videoId, signal) {
   for (const base of PIPED_INSTANCES) {
     try {
       const res = await fetch(buildPipedUrl(base, `/streams/${videoId}`), { signal });
       if (!res.ok) continue;
       const data = await res.json();
-      // Ambil audio stream dengan bitrate tertinggi
       const streams = (data.audioStreams || []).filter(s => s.url && (s.mimeType||'').includes('audio'));
       if (!streams.length) continue;
       streams.sort((a, b) => (b.bitrate||0) - (a.bitrate||0));
-      audioUrl = streams[0].url;
-      break;
+      return { url: streams[0].url, mime: streams[0].mimeType || 'audio/mpeg' };
+    } catch { continue; }
+  }
+  return null;
+}
+
+// ── Method 2: Invidious (/api/v1/videos/{videoId} → adaptiveFormats) ─────────
+async function _ytAudioUrlViaInvidious(videoId, signal) {
+  for (const base of INVIDIOUS_INSTANCES) {
+    try {
+      const url = buildInvidiousUrl(base, `/api/v1/videos/${videoId}`, { fields: 'adaptiveFormats,formatStreams' });
+      const res = await fetch(url, { signal });
+      if (!res.ok) continue;
+      const data = await res.json();
+      // adaptiveFormats: audio-only streams
+      const adaptive = (data.adaptiveFormats || []).filter(f => f.url && (f.type||'').includes('audio'));
+      if (adaptive.length) {
+        adaptive.sort((a, b) => (b.bitrate||0) - (a.bitrate||0));
+        return { url: adaptive[0].url, mime: adaptive[0].type?.split(';')[0] || 'audio/mpeg' };
+      }
+      // formatStreams: muxed streams — ambil sebagai last resort
+      const muxed = (data.formatStreams || []).filter(f => f.url);
+      if (muxed.length) {
+        return { url: muxed[muxed.length - 1].url, mime: 'audio/mpeg' };
+      }
+    } catch { continue; }
+  }
+  return null;
+}
+
+// ── Method 3: Cobalt.tools (public API — tidak butuh key) ────────────────────
+async function _ytAudioUrlViaCobalt(videoId, signal) {
+  try {
+    const res = await fetch('https://api.cobalt.tools/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({
+        url: `https://www.youtube.com/watch?v=${videoId}`,
+        downloadMode: 'audio',
+        audioFormat: 'best',
+      }),
+      signal,
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const audioUrl = data.url || (Array.isArray(data.picker) ? data.picker[0]?.url : null);
+    if (!audioUrl) return null;
+    return { url: audioUrl, mime: 'audio/mpeg' };
+  } catch { return null; }
+}
+
+// Download audio YouTube → simpan ke cache
+// Fallback berlapis: Piped → Invidious → Cobalt
+export async function downloadYtAudio(videoId, onProgress, signal) {
+  // Cek cache dulu
+  const existing = await ytCacheGet(videoId);
+  if (existing && existing.size > 10000) { onProgress && onProgress(100); return; }
+
+  // Coba semua method satu per satu
+  let audioInfo = null;
+  const methods = [
+    () => _ytAudioUrlViaPiped(videoId, signal),
+    () => _ytAudioUrlViaInvidious(videoId, signal),
+    () => _ytAudioUrlViaCobalt(videoId, signal),
+  ];
+  for (const method of methods) {
+    try {
+      audioInfo = await method();
+      if (audioInfo?.url) break;
     } catch { continue; }
   }
 
-  if (!audioUrl) throw new Error('No audio stream found');
+  if (!audioInfo?.url) throw new Error('Semua sumber audio YouTube tidak tersedia (Piped/Invidious/Cobalt gagal)');
 
   // Download blob dengan progress
-  const res = await fetch(audioUrl, { signal });
-  if (!res.ok) throw new Error(`Audio fetch ${res.status}`);
-  const total = parseInt(res.headers.get('content-length') || '0', 10);
-  const reader = res.body.getReader();
-  const chunks = [];
-  let loaded = 0;
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    loaded += value.length;
-    if (total > 0 && onProgress) onProgress(Math.round((loaded / total) * 100));
-  }
-  const blob = new Blob(chunks, { type: 'audio/mpeg' });
+  const blob = await _fetchAudioBlob(audioInfo.url, onProgress, signal, audioInfo.mime);
+  if (!blob || blob.size < 1000) throw new Error('Audio yang diunduh kosong atau rusak');
   await ytCachePut(videoId, blob);
   onProgress && onProgress(100);
 }
@@ -1454,19 +1535,20 @@ export function downloadBlobToDevice(blob, filename) {
 }
 
 // ── Dapatkan URL audio YouTube dari Piped (tanpa simpan ke cache)
+// Dapatkan URL audio YT tanpa simpan ke cache — fallback Piped → Invidious → Cobalt
 async function getYtAudioUrl(videoId) {
-  for (const base of PIPED_INSTANCES) {
+  const methods = [
+    () => _ytAudioUrlViaPiped(videoId, null),
+    () => _ytAudioUrlViaInvidious(videoId, null),
+    () => _ytAudioUrlViaCobalt(videoId, null),
+  ];
+  for (const method of methods) {
     try {
-      const res = await fetch(buildPipedUrl(base, `/streams/${videoId}`));
-      if (!res.ok) continue;
-      const data = await res.json();
-      const streams = (data.audioStreams || []).filter(s => s.url && (s.mimeType||'').includes('audio'));
-      if (!streams.length) continue;
-      streams.sort((a, b) => (b.bitrate||0) - (a.bitrate||0));
-      return streams[0].url;
+      const info = await method();
+      if (info?.url) return info.url;
     } catch { continue; }
   }
-  throw new Error('No audio stream found');
+  throw new Error('Semua sumber audio YouTube tidak tersedia');
 }
 
 // Tandai file sudah ter-download penuh (simpan size ke localStorage)

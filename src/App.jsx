@@ -1991,105 +1991,259 @@ Return ONLY valid JSON, no explanation:
   const isBlobValid = (blob, minSize = 1000) =>
     blob instanceof Blob && blob.size >= minSize;
 
-  // ── Helper: unduh lagu ke perangkat — pakai cache offline jika sudah ada,
-  //    baru fetch dari internet jika belum.
+  // ── Helper: buka URL di tab baru sebagai last-resort download ────────────
+  const openUrlFallback = (url) => {
+    const a = document.createElement('a');
+    a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  };
+
+  // ── Helper: ekstensi aman dari URL ───────────────────────────────────────
+  const safeExtFromUrl = (url, fallback = 'mp3') => {
+    const raw = (url || '').split('?')[0];
+    const ext = raw.includes('.') ? raw.split('.').pop().toLowerCase() : '';
+    return ['mp3','ogg','opus','flac','wav','aac','m4a','webm'].includes(ext) ? ext : fallback;
+  };
+
+  // ── Helper: cobalt fallback — ambil audio URL untuk URL apapun ───────────
+  const cobaltAudioUrl = async (pageUrl) => {
+    const res = await fetch('https://api.cobalt.tools/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ url: pageUrl, downloadMode: 'audio', audioFormat: 'best' }),
+    });
+    if (!res.ok) throw new Error(`cobalt ${res.status}`);
+    const data = await res.json();
+    const url = data.url || (Array.isArray(data.picker) ? data.picker[0]?.url : null);
+    if (!url) throw new Error('cobalt: no url');
+    return url;
+  };
+
+  // ── unduh lagu ke perangkat — pakai cache offline, fallback berlapis ─────
   const downloadWithCache = useCallback(async (s) => {
     const name = `${s.title} - ${s.artist}`;
 
-    // ── Google Drive ──────────────────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════
+    // Google Drive
+    // Fallback: cache → Drive API → buka di browser
+    // ═══════════════════════════════════════════════════════
     if (s.isDrive && s.driveId) {
-      // Coba dari cache lokal dulu
+      // 1. Cache lokal
       try {
         const cached = await cacheGet(s.driveId);
-        if (isBlobValid(cached, 10000)) {
-          downloadBlobToDevice(cached, `${name}.mp3`);
-          return;
-        }
-      } catch { /* cache miss — lanjut ke fetch */ }
-
-      // Cache miss / corrupt → fetch langsung dari Drive
+        if (isBlobValid(cached, 10000)) { downloadBlobToDevice(cached, `${name}.mp3`); return; }
+      } catch {}
+      // 2. Drive API (butuh token)
       if (tokenRef.current) {
-        await downloadToDevice(
-          `https://www.googleapis.com/drive/v3/files/${s.driveId}?alt=media&acknowledgeAbuse=true`,
-          `${name}.mp3`,
-          { Authorization: `Bearer ${tokenRef.current}` }
-        );
-      } else {
-        throw new Error('Google Drive: token tidak tersedia, silakan login ulang.');
+        try {
+          await downloadToDevice(
+            `https://www.googleapis.com/drive/v3/files/${s.driveId}?alt=media&acknowledgeAbuse=true`,
+            `${name}.mp3`,
+            { Authorization: `Bearer ${tokenRef.current}` }
+          );
+          return;
+        } catch {}
       }
+      // 3. Buka di tab baru
+      openUrlFallback(`https://drive.google.com/file/d/${s.driveId}/view`);
       return;
     }
 
-    // ── YouTube ───────────────────────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════
+    // YouTube
+    // Fallback: cache → Piped → Invidious → Cobalt → buka YouTube
+    // ═══════════════════════════════════════════════════════
     if (s.type === 'youtube' && s.videoId) {
-      // Coba dari cache lokal dulu
+      // 1. Cache lokal
       try {
         const cached = await ytCacheGet(s.videoId);
-        if (isBlobValid(cached, 10000)) {
-          downloadBlobToDevice(cached, `${name}.mp3`);
-          return;
-        }
-      } catch { /* cache miss */ }
-
-      // Cache miss / corrupt → download via Piped (simpan ke cache sekaligus)
-      await new Promise((resolve, reject) => {
-        downloadYtAudio(
-          s.videoId,
-          null, // tidak perlu track progress untuk download ke perangkat
-          null
-        ).then(async () => {
-          // Setelah tersimpan ke cache, ambil dan kirim ke perangkat
-          const blob = await ytCacheGet(s.videoId);
-          if (isBlobValid(blob, 10000)) {
-            downloadBlobToDevice(blob, `${name}.mp3`);
-            resolve();
-          } else {
-            reject(new Error('YouTube: gagal menyimpan ke cache'));
-          }
-        }).catch(reject);
-      });
-      return;
-    }
-
-    // ── Lagu dari Stream (Audius, Jamendo, FMA, CCMixter, dll.) ──────────────
-    if (s._wsSource && s.src) {
-      const raw = s.src.split('?')[0];
-      const ext = raw.includes('.') ? raw.split('.').pop().toLowerCase() : 'mp3';
-      const safeExt = ['mp3','ogg','opus','flac','wav','aac','m4a'].includes(ext) ? ext : 'mp3';
+        if (isBlobValid(cached, 10000)) { downloadBlobToDevice(cached, `${name}.mp3`); return; }
+      } catch {}
+      // 2-4. downloadYtAudio sudah pakai fallback Piped→Invidious→Cobalt di dalamnya
       try {
-        await downloadToDevice(s.src, `${name}.${safeExt}`);
-      } catch {
-        // CORS block → buka di tab baru agar user bisa save manual
-        const a = document.createElement('a');
-        a.href = s.src;
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      }
+        await downloadYtAudio(s.videoId, null, null);
+        const blob = await ytCacheGet(s.videoId);
+        if (isBlobValid(blob, 10000)) { downloadBlobToDevice(blob, `${name}.mp3`); return; }
+      } catch {}
+      // 5. Buka halaman YouTube di browser
+      openUrlFallback(`https://www.youtube.com/watch?v=${s.videoId}`);
       return;
     }
 
-    // ── favSong (SC/Spotify preview dll.) ────────────────────────────────────
-    if (s.id && s.type !== 'youtube') {
+    // ═══════════════════════════════════════════════════════
+    // Audius
+    // Fallback: src langsung → cobalt → buka di browser
+    // ═══════════════════════════════════════════════════════
+    if (s._wsSource === 'audius' && s.src) {
+      // 1. Fetch langsung (Audius punya CORS header)
+      try { await downloadToDevice(s.src, `${name}.mp3`); return; } catch {}
+      // 2. Cobalt (extract via page URL jika tersedia)
+      if (s.externalUrl) {
+        try {
+          const url = await cobaltAudioUrl(s.externalUrl);
+          await downloadToDevice(url, `${name}.mp3`);
+          return;
+        } catch {}
+      }
+      // 3. Buka di tab baru
+      openUrlFallback(s.src);
+      return;
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // Jamendo
+    // Fallback: src → URL /download/{id} → cobalt → tab baru
+    // ═══════════════════════════════════════════════════════
+    if (s._wsSource === 'jamendo' && s.src) {
+      const jamId = s.id?.replace(/^ws_jamendo_/, '');
+      // 1. Direct stream URL
+      try { await downloadToDevice(s.src, `${name}.mp3`); return; } catch {}
+      // 2. Jamendo direct download URL (tidak perlu key)
+      if (jamId) {
+        try {
+          await downloadToDevice(
+            `https://storage.jamendo.com/?trackid=${jamId}&format=mp31&from=app-devsite`,
+            `${name}.mp3`
+          );
+          return;
+        } catch {}
+      }
+      // 3. Cobalt
+      if (s.externalUrl) {
+        try { const url = await cobaltAudioUrl(s.externalUrl); await downloadToDevice(url, `${name}.mp3`); return; } catch {}
+      }
+      // 4. Tab baru
+      openUrlFallback(s.src);
+      return;
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // FMA (Free Music Archive)
+    // Fallback: src → direct .mp3 URL → cobalt → tab baru
+    // ═══════════════════════════════════════════════════════
+    if (s._wsSource === 'fma' && s.src) {
+      // 1. Direct audio URL
+      try { await downloadToDevice(s.src, `${name}.mp3`); return; } catch {}
+      // 2. Cobalt via externalUrl
+      if (s.externalUrl) {
+        try { const url = await cobaltAudioUrl(s.externalUrl); await downloadToDevice(url, `${name}.mp3`); return; } catch {}
+      }
+      // 3. Tab baru
+      openUrlFallback(s.externalUrl || s.src);
+      return;
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // CCMixter
+    // Fallback: src → externalUrl (download_url) → cobalt → tab baru
+    // ═══════════════════════════════════════════════════════
+    if (s._wsSource === 'ccmixter' && s.src) {
+      const ext = safeExtFromUrl(s.src, 'mp3');
+      // 1. Direct download URL (CCMixter src biasanya sudah download URL)
+      try { await downloadToDevice(s.src, `${name}.${ext}`); return; } catch {}
+      // 2. Cobalt
+      if (s.externalUrl) {
+        try { const url = await cobaltAudioUrl(s.externalUrl); await downloadToDevice(url, `${name}.mp3`); return; } catch {}
+      }
+      // 3. Tab baru
+      openUrlFallback(s.src);
+      return;
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // Cobalt-extracted (YouTube embed, SoundCloud, dll via cobalt.tools)
+    // src berupa signed URL cobalt yang expire — perlu re-extract
+    // Fallback: src (mungkin masih valid) → cobalt re-extract → tab baru
+    // ═══════════════════════════════════════════════════════
+    if (s._wsSource === 'cobalt') {
+      // 1. Coba src langsung (mungkin masih dalam TTL)
+      if (s.src) {
+        try { await downloadToDevice(s.src, `${name}.mp3`); return; } catch {}
+      }
+      // 2. Re-extract via cobalt jika ada originalUrl atau externalUrl
+      const reExtractUrl = s.originalUrl || s.externalUrl;
+      if (reExtractUrl) {
+        try {
+          const url = await cobaltAudioUrl(reExtractUrl);
+          await downloadToDevice(url, `${name}.mp3`);
+          return;
+        } catch {}
+      }
+      // 3. Tab baru
+      if (s.src) openUrlFallback(s.src);
+      else throw new Error('Cobalt: URL sumber tidak tersedia untuk diunduh ulang.');
+      return;
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // Spotify / Deezer preview (30 detik)
+    // Fallback: favCache → previewUrl langsung → cobalt → tab baru
+    // ═══════════════════════════════════════════════════════
+    if (s._wsSource === 'spotify' || s._wsSource === 'deezer' ||
+        s.type === 'sp_track' || s.previewUrl) {
+      const previewSrc = s.previewUrl || s.src;
+      // 1. Cache lokal
       try {
         const cached = await favCacheGet(s.id);
         if (isBlobValid(cached, 1000)) {
-          const ext = s.src ? (s.src.split('?')[0].split('.').pop() || 'mp3') : 'mp3';
-          downloadBlobToDevice(cached, `${name}.${ext}`);
-          return;
+          const ext = safeExtFromUrl(previewSrc, 'mp3');
+          downloadBlobToDevice(cached, `${name}.${ext}`); return;
         }
-      } catch { /* cache miss */ }
+      } catch {}
+      // 2. Fetch preview URL langsung
+      if (previewSrc) {
+        try {
+          const ext = safeExtFromUrl(previewSrc, 'mp3');
+          await downloadToDevice(previewSrc, `${name}.${ext}`); return;
+        } catch {}
+      }
+      // 3. Tab baru
+      if (previewSrc) openUrlFallback(previewSrc);
+      else throw new Error('Preview URL tidak tersedia.');
+      return;
     }
 
-    // ── Fallback universal: fetch langsung dari src ───────────────────────────
+    // ═══════════════════════════════════════════════════════
+    // favSong generik (SC preview, lainnya) yang punya previewUrl/src
+    // Fallback: favCache → src langsung → cobalt → tab baru
+    // ═══════════════════════════════════════════════════════
+    if (s.id && s.type !== 'youtube') {
+      // 1. Cache lokal
+      try {
+        const cached = await favCacheGet(s.id);
+        if (isBlobValid(cached, 1000)) {
+          const ext = safeExtFromUrl(s.src, 'mp3');
+          downloadBlobToDevice(cached, `${name}.${ext}`); return;
+        }
+      } catch {}
+      // 2. Fetch src atau previewUrl langsung
+      const directUrl = s.previewUrl || s.src;
+      if (directUrl) {
+        try {
+          const ext = safeExtFromUrl(directUrl, 'mp3');
+          await downloadToDevice(directUrl, `${name}.${ext}`); return;
+        } catch {}
+      }
+      // 3. Cobalt (untuk SoundCloud dll yang punya permalink)
+      if (s.permalink || s.externalUrl) {
+        try {
+          const url = await cobaltAudioUrl(s.permalink || s.externalUrl);
+          await downloadToDevice(url, `${name}.mp3`); return;
+        } catch {}
+      }
+      // 4. Tab baru
+      if (directUrl) { openUrlFallback(directUrl); return; }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // Fallback universal terakhir
+    // ═══════════════════════════════════════════════════════
     if (s.src) {
-      const raw = s.src.split('?')[0];
-      const ext = raw.includes('.') ? raw.split('.').pop() : 'mp3';
-      await downloadToDevice(s.src, `${name}.${ext}`);
+      const ext = safeExtFromUrl(s.src, 'mp3');
+      try { await downloadToDevice(s.src, `${name}.${ext}`); return; } catch {}
+      openUrlFallback(s.src);
     } else {
-      throw new Error('Tidak ada sumber audio untuk diunduh.');
+      throw new Error('Tidak ada sumber audio yang bisa diunduh.');
     }
   }, []);  // tokenRef adalah ref — tidak perlu di deps
 
@@ -2385,6 +2539,7 @@ Return ONLY valid JSON, no explanation:
   const [addToSongIds, setAddToSongIds]   = useState([]);
   const [editingPl, setEditingPl]         = useState(null);
   const [plView, setPlView]               = useState('list'); // 'list' | 'detail' | 'form'
+  const [plGlobalSearch, setPlGlobalSearch] = useState('');
   const [mySongsEditMode, setMySongsEditMode] = useState(false);
   const [allSongsEditMode, setAllSongsEditMode] = useState(false);
   const [plSongsEditMode, setPlSongsEditMode] = useState(false);
@@ -5577,15 +5732,16 @@ Format exactly:
   };
 
   // ── LYRICS
-  // Parse LRC format "[mm:ss.xx] text" → [{time: seconds, text}]
+  // Parse LRC format "[mm:ss.xx]" or "[mm:ss]" → [{time: seconds, text, idx}]
   const parseLRC = (lrcStr) => {
     const lines = [];
+    let idx = 0;
     lrcStr.split('\n').forEach(line => {
-      const m = line.match(/^\[(\d+):(\d+\.\d+)\]\s*(.*)/);
+      const m = line.match(/^\[(\d+):(\d+(?:\.\d+)?)\]\s*(.*)/);
       if (m) {
         const time = parseInt(m[1], 10) * 60 + parseFloat(m[2]);
         const text = m[3].trim();
-        if (text) lines.push({ time, text });
+        if (text) lines.push({ time, text, idx: idx++ });
       }
     });
     return lines.sort((a, b) => a.time - b.time);
@@ -8927,6 +9083,19 @@ Format exactly:
                     <div style={{ fontWeight:800, fontSize:15 }}>{t?.musicCollection||'Music Collection'}</div>
                     <span style={{ fontSize:9, fontWeight:800, padding:'2px 7px', borderRadius:999, background:'rgba(99,102,241,0.18)', color:'#a78bfa', letterSpacing:'0.04em' }}>{allSongs.length} {t?.songsCount||'lagu'}</span>
                   </div>
+                  {/* ── Global Search Bar */}
+                  <div style={{ display:'flex', alignItems:'center', gap:7, background:'rgba(0,0,0,0.35)', borderRadius:12, padding:'8px 12px', border:'1px solid rgba(255,255,255,0.1)', marginBottom:10 }}>
+                    <Search size={13} style={{ color:'rgba(255,255,255,0.3)', flexShrink:0 }}/>
+                    <input
+                      value={plGlobalSearch}
+                      onChange={e=>setPlGlobalSearch(e.target.value)}
+                      placeholder={lang==='id' ? 'Cari lagu atau playlist...' : 'Search songs or playlists...'}
+                      style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'white', fontSize:12, minWidth:0 }}
+                    />
+                    {plGlobalSearch && (
+                      <button onClick={()=>setPlGlobalSearch('')} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.35)', cursor:'pointer', padding:0, lineHeight:1, fontSize:16 }}>×</button>
+                    )}
+                  </div>
                   {/* Quick action bar */}
                   <div style={{ display:'flex', gap:6 }}>
                     <button onClick={()=>{ setEditingPl(null); setPlView('form'); }}
@@ -8971,7 +9140,96 @@ Format exactly:
 
                 <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column', gap:10, paddingBottom:16 }}>
 
+                  {/* ── GLOBAL SEARCH RESULTS */}
+                  {plGlobalSearch.trim() && (() => {
+                    const q = plGlobalSearch.trim().toLowerCase();
+                    const matchedSongs = allSongs.filter(s =>
+                      s.title?.toLowerCase().includes(q) || s.artist?.toLowerCase().includes(q)
+                    );
+                    const matchedPl = playlists.filter(pl => pl.name.toLowerCase().includes(q));
+                    const totalMatches = matchedSongs.length + matchedPl.length;
+                    return (
+                      <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                        {/* Summary pill */}
+                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.3)', paddingLeft:2 }}>
+                          {totalMatches === 0
+                            ? (lang==='id' ? 'Tidak ada hasil untuk ' : 'No results for ') + `"${plGlobalSearch}"`
+                            : `${totalMatches} ${lang==='id' ? 'hasil untuk' : 'results for'} "${plGlobalSearch}"`}
+                        </div>
+
+                        {/* Matched Playlists */}
+                        {matchedPl.length > 0 && (
+                          <div>
+                            <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.25)', textTransform:'uppercase', letterSpacing:'0.15em', marginBottom:6 }}>
+                              {lang==='id' ? 'Playlist' : 'Playlists'} ({matchedPl.length})
+                            </div>
+                            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                              {matchedPl.map(pl => {
+                                const songs = allSongs.filter(s=>pl.songIds.includes(s.id));
+                                const covers = songs.slice(0,4).map(s=>s.cover).filter(Boolean);
+                                const isActivePl = activePl===pl.id;
+                                return (
+                                  <div key={pl.id} onClick={()=>{ setActivePl(pl.id); setPlView('detail'); setPlGlobalSearch(''); }}
+                                    style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:13, cursor:'pointer', background: isActivePl?'rgba(99,102,241,0.12)':'rgba(255,255,255,0.04)', border:`1px solid ${isActivePl?'rgba(99,102,241,0.35)':'rgba(255,255,255,0.09)'}` }}
+                                    onMouseEnter={e=>e.currentTarget.style.background='rgba(99,102,241,0.1)'}
+                                    onMouseLeave={e=>e.currentTarget.style.background=isActivePl?'rgba(99,102,241,0.12)':'rgba(255,255,255,0.04)'}>
+                                    <div style={{ width:36, height:36, borderRadius:9, overflow:'hidden', flexShrink:0, display:'grid', gridTemplateColumns:'1fr 1fr', gap:1, background:'rgba(99,102,241,0.15)' }}>
+                                      {covers.length>0 ? covers.slice(0,4).map((c,idx)=>(
+                                        <img key={idx} src={c} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                                      )) : <Music size={15} style={{color:'#a78bfa',margin:'auto',gridColumn:'span 2'}}/>}
+                                    </div>
+                                    <div style={{ flex:1, minWidth:0 }}>
+                                      <div style={{ fontWeight:700, fontSize:13, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'white' }}>{pl.name}</div>
+                                      <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{songs.length} {t?.songsCount||'lagu'}</div>
+                                    </div>
+                                    <ChevronRight size={14} style={{color:'rgba(255,255,255,0.25)', flexShrink:0}}/>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Matched Songs */}
+                        {matchedSongs.length > 0 && (
+                          <div>
+                            <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.25)', textTransform:'uppercase', letterSpacing:'0.15em', marginBottom:6 }}>
+                              {lang==='id' ? 'Lagu' : 'Songs'} ({matchedSongs.length})
+                            </div>
+                            <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                              {matchedSongs.map(s => (
+                                <div key={s.id} onClick={()=>{ activePlRef.current=allSongs; play(s); setTab('player'); }}
+                                  style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 10px', borderRadius:12, cursor:'pointer', background: track?.id===s.id ? 'rgba(99,102,241,0.12)' : 'rgba(255,255,255,0.03)', border:`1px solid ${track?.id===s.id?'rgba(99,102,241,0.35)':'rgba(255,255,255,0.07)'}` }}
+                                  onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.07)'}
+                                  onMouseLeave={e=>e.currentTarget.style.background=track?.id===s.id?'rgba(99,102,241,0.12)':'rgba(255,255,255,0.03)'}>
+                                  {isLite
+                                    ? <div style={{ width:34, height:34, borderRadius:8, background:s.bg||'rgba(255,255,255,0.07)', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={13} color={s.color}/></div>
+                                    : <img src={s.cover} loading="lazy" decoding="async" style={{ width:34, height:34, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>}
+                                  <div style={{ flex:1, minWidth:0 }}>
+                                    <div style={{ fontWeight:700, fontSize:12, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color: track?.id===s.id ? '#a78bfa' : 'white' }}>{s.title}</div>
+                                    <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{s.artist}</div>
+                                  </div>
+                                  <Play size={12} fill="currentColor" style={{ color:'rgba(255,255,255,0.2)', flexShrink:0 }}/>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* No results */}
+                        {totalMatches === 0 && (
+                          <div style={{ textAlign:'center', padding:'32px 20px', borderRadius:14, background:'rgba(255,255,255,0.02)', border:'1px dashed rgba(255,255,255,0.1)' }}>
+                            <Search size={32} style={{color:'rgba(255,255,255,0.1)',display:'block',margin:'0 auto 10px'}}/>
+                            <div style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.3)' }}>{lang==='id'?'Tidak ada hasil':'No results found'}</div>
+                            <div style={{ fontSize:11, color:'rgba(255,255,255,0.2)', marginTop:4 }}>"{plGlobalSearch}"</div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   {/* ── KOLEKSI section — same look as Stream platform cards */}
+                  {!plGlobalSearch.trim() && <>
                   <div>
                     <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.25)', textTransform:'uppercase', letterSpacing:'0.15em', marginBottom:7 }}>{t?.musicCollection||'Koleksi'}</div>
                     <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
@@ -9118,6 +9376,7 @@ Format exactly:
                     </div>
                   </div>
 
+                  </>}
                 </div>
               </div>
             )}
@@ -10120,10 +10379,10 @@ Format exactly:
                 {/* ── Live Caption Bar — only shown when synced LRC is available */}
                 {lrcLines.length > 0 && lyrics && !lyrics.startsWith('⚡') && (() => {
                   const now = embedTrack?.type === 'youtube' ? ytProgress : progress;
-                  // Find current line: last line whose time <= now
+                  // Find current line: last line whose time <= now (scan all, no break)
                   let activeIdx = -1;
                   for (let i = 0; i < lrcLines.length; i++) {
-                    if (lrcLines[i].time <= now) activeIdx = i; else break;
+                    if (lrcLines[i].time <= now) activeIdx = i;
                   }
                   const currentLine = activeIdx >= 0 ? lrcLines[activeIdx].text : null;
                   const nextLine = activeIdx >= 0 && activeIdx + 1 < lrcLines.length ? lrcLines[activeIdx + 1].text : null;
@@ -10203,13 +10462,25 @@ Format exactly:
                         let activeIdx = -1;
                         if (lrcLines.length > 0) {
                           for (let i = 0; i < lrcLines.length; i++) {
-                            if (lrcLines[i].time <= now) activeIdx = i; else break;
+                            if (lrcLines[i].time <= now) activeIdx = i;
                           }
                         }
-                        const activeText = activeIdx >= 0 ? lrcLines[activeIdx].text : null;
+                        const activeLrcIdx = activeIdx >= 0 ? lrcLines[activeIdx].idx : -1;
+                        // Build a map from lrc idx → line index in lyrics text for accurate highlighting
+                        let lrcCounter = 0;
+                        const lineToLrcIdx = [];
+                        lyrics.split('\n').forEach((line) => {
+                          const isTag = line.startsWith('[') && line.endsWith(']');
+                          if (!isTag && line.trim() && lrcLines.length > 0 && lrcCounter < lrcLines.length) {
+                            lineToLrcIdx.push(lrcLines[lrcCounter].idx);
+                            lrcCounter++;
+                          } else {
+                            lineToLrcIdx.push(-1);
+                          }
+                        });
                         return lyrics.split('\n').map((line, i) => {
                           const isTag = line.startsWith('[') && line.endsWith(']');
-                          const isActive = !isTag && activeText && line.trim() === activeText.trim() && lrcLines.length > 0;
+                          const isActive = !isTag && lrcLines.length > 0 && activeLrcIdx >= 0 && lineToLrcIdx[i] === activeLrcIdx;
                           return (
                             <div key={i} style={{ fontSize:isTag?11:15, fontWeight:isTag?800:(isActive?700:400), color:isTag?track.color:isActive?'white':'rgba(255,255,255,0.9)', marginTop:isTag&&i>0?18:0, marginBottom:isTag?6:0, textTransform:isTag?'uppercase':'none', letterSpacing:isTag?'0.12em':0, background:isActive?`${track.color}22`:undefined, borderLeft:isActive?`3px solid ${track.color}`:'3px solid transparent', paddingLeft:isActive?9:9, borderRadius:isActive?6:0, transition:'all 0.3s ease' }}>
                               {line || <br/>}

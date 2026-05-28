@@ -170,7 +170,7 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
             strokeDasharray={`${circ*0.35} ${circ*0.65}`} strokeLinecap="round"
             style={{ filter:isLite?'none':`drop-shadow(0 0 6px ${color})` }}>
             {isPlaying && <animateTransform attributeName="transform" type="rotate"
-              from={`0 ${cx} ${cy}`} to={`360 ${cx} ${cy}`} dur="36s" repeatCount="indefinite"/>}
+              from={`0 ${cx} ${cy}`} to={`360 ${cx} ${cy}`} dur="12s" repeatCount="indefinite"/>}
           </circle>
         ) : (
           <circle className="progress-arc" cx={cx} cy={cy} r={ringR} stroke={color} strokeWidth="4.5" fill="none"
