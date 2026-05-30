@@ -1,6 +1,66 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Loader2, Music, Radio } from 'lucide-react';
 import { btn, fmt } from '../constants.js';
+
+// ── Hook: center-crop URL gambar eksternal ke 1:1 via canvas ─────────────────
+// Mengembalikan blob URL yang sudah di-crop. Untuk data: URL (upload lokal)
+// yang sudah diproses di SettingsPanel, langsung dikembalikan apa adanya.
+function useCroppedCover(src) {
+  const [cropped, setCropped] = useState(src);
+  const prevBlobRef = useRef(null);
+
+  useEffect(() => {
+    // Revoke blob URL sebelumnya untuk bebaskan memori
+    if (prevBlobRef.current) {
+      URL.revokeObjectURL(prevBlobRef.current);
+      prevBlobRef.current = null;
+    }
+
+    if (!src) { setCropped(''); return; }
+
+    // data: URL sudah di-crop di SettingsPanel — pakai langsung
+    if (src.startsWith('data:')) { setCropped(src); return; }
+
+    // Tampilkan sumber asli dulu (agar tidak blank saat load)
+    setCropped(src);
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const { naturalWidth: w, naturalHeight: h } = img;
+      // Sudah square — tidak perlu crop
+      if (w === h) return;
+
+      const side = Math.min(w, h);
+      const sx   = Math.floor((w - side) / 2);
+      const sy   = Math.floor((h - side) / 2);
+      // Cap ukuran canvas agar tidak terlalu besar
+      const dim  = Math.min(side, 600);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = dim;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, sx, sy, side, side, 0, 0, dim, dim);
+
+      canvas.toBlob(blob => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        prevBlobRef.current = url;
+        setCropped(url);
+      }, 'image/jpeg', 0.92);
+    };
+    // Gagal load (CORS, 404) — tetap pakai src asli
+    img.onerror = () => setCropped(src);
+    img.src = src;
+
+    return () => {
+      img.onload = null;
+      img.onerror = null;
+    };
+  }, [src]);
+
+  return cropped;
+}
 
 function AppLogo({ size = 32 }) {
   return (
@@ -35,20 +95,103 @@ function AppLogo({ size = 32 }) {
   );
 }
 
+// ── Radio ring: CSS animation di SVG foreignObject trick via wrapper div ─────
+// SVG tidak bisa pakai CSS animation pada transform secara lintas-browser,
+// jadi kita wrap <svg> kecil berisi arc di dalam <g> + gunakan CSS pada <g>
+// dengan transformOrigin di tengah.
+function RadioRing({ cx, cy, ringR, circ, color, isLite, isPlaying }) {
+  const arcRef = useRef(null);
+
+  const getCurrentAngle = (el) => {
+    const st = window.getComputedStyle(el);
+    const tr = st.transform || st.webkitTransform;
+    if (!tr || tr === 'none') return 0;
+    const [a, b] = tr.replace('matrix(','').split(',').map(parseFloat);
+    return Math.round(Math.atan2(b, a) * (180 / Math.PI));
+  };
+
+  useEffect(() => {
+    const el = arcRef.current;
+    if (!el) return;
+    if (isPlaying) {
+      const angle = getCurrentAngle(el);
+      const delay = -((((angle % 360) + 360) % 360) / 360) * 9;
+      el.style.transform = '';
+      el.style.animation = `spin20 9s linear ${delay}s infinite`;
+    } else {
+      const angle = getCurrentAngle(el);
+      el.style.animation = 'none';
+      el.style.transform = `rotate(${angle}deg)`;
+    }
+  }, [isPlaying]);
+
+  return (
+    <g ref={arcRef} style={{ transformOrigin:`${cx}px ${cy}px`, willChange:'transform' }}>
+      <circle cx={cx} cy={cy} r={ringR} stroke={color} strokeWidth="4.5" fill="none"
+        strokeDasharray={`${circ*0.35} ${circ*0.65}`} strokeLinecap="round"
+        style={{ filter:isLite?'none':`drop-shadow(0 0 6px ${color})` }}/>
+    </g>
+  );
+}
+
 // ═══════════════════════════════════════════════════════
 //  ORBITAL RING  — tap OR drag to seek
 // ═══════════════════════════════════════════════════════
 function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, title, onSeek, isLite, isRadio, downloadProg, isDownloading, drivePhase, ytDownloading, ytDlProg, coverSpin }) {
   const cx=size/2, cy=size/2, artR=size/2-36, ringR=artR+18, circ=2*Math.PI*ringR;
+  const croppedCover = useCroppedCover(cover);
+  const [imgError, setImgError] = useState(false);
+  const prevCoverRef = useRef(cover);
+  if (prevCoverRef.current !== cover) { prevCoverRef.current = cover; if (imgError) setImgError(false); }
   const deg=pct*360-90, rad=deg*Math.PI/180;
   const dotX=cx+Math.cos(rad)*ringR, dotY=cy+Math.sin(rad)*ringR;
   const lblR=ringR+22, lblX=cx+Math.cos(rad)*lblR, lblY=cy+Math.sin(rad)*lblR;
   // Duration label: inside SVG bounds (bottom of ring, pulled inward)
   const durY=cy+ringR+16;
 
-  const svgRef  = useRef(null);
+  const svgRef   = useRef(null);
+  const coverRef = useRef(null);
   const dragging = useRef(false);
-  const [isDragging, setIsDragging] = useState(false); // mirrors dragging ref; triggers re-render for transition toggle
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Apakah cover seharusnya berputar
+  const shouldSpin = !isLite && coverSpin && (!isRadio || !!cover) && !imgError;
+
+  // Ambil sudut rotasi saat ini dari matrix transform yang dihitung browser
+  const getCurrentAngle = (el) => {
+    const st = window.getComputedStyle(el);
+    const tr = st.transform || st.webkitTransform;
+    if (!tr || tr === 'none') return 0;
+    const [a, b] = tr.replace('matrix(','').split(',').map(parseFloat);
+    return Math.round(Math.atan2(b, a) * (180 / Math.PI));
+  };
+
+  useEffect(() => {
+    const el = coverRef.current;
+    if (!el) return;
+
+    if (!shouldSpin) {
+      // Nonaktifkan: freeze di posisi 0
+      el.style.animation = 'none';
+      el.style.transform = '';
+      return;
+    }
+
+    if (isPlaying) {
+      // Ambil sudut saat ini (bisa dari freeze sebelumnya atau dari animasi)
+      const angle = getCurrentAngle(el);
+      // Hitung delay negatif agar animasi CSS mulai dari sudut tersebut
+      // 36s = 1 putaran penuh, jadi delay = -(angle/360)*36s
+      const delay = -((((angle % 360) + 360) % 360) / 360) * 36;
+      el.style.transform = '';
+      el.style.animation = `spin20 36s linear ${delay}s infinite`;
+    } else {
+      // Freeze: baca posisi dari compositor, hentikan animasi CSS
+      const angle = getCurrentAngle(el);
+      el.style.animation = 'none';
+      el.style.transform = `rotate(${angle}deg)`;
+    }
+  }, [isPlaying, shouldSpin]); // eslint-disable-line
 
   const getPct = (clientX, clientY) => {
     const rect = svgRef.current.getBoundingClientRect();
@@ -88,7 +231,9 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
   return (
     <div style={{ position:'relative', width:size, height:size, flexShrink:0 }}>
       {/* Album art */}
-      <div style={{ position:'absolute', top:cy-artR, left:cx-artR, width:artR*2, height:artR*2, borderRadius:'50%', overflow:'hidden', border:`3px solid ${(isRadio&&!cover)?color+'60':'rgba(255,255,255,0.13)'}`, boxShadow:isLite?'none':`0 0 40px -8px ${color}90`, animation:(!isLite && coverSpin && isPlaying && (!isRadio||!!cover))?'spin20 36s linear infinite':'none', zIndex:2 }}>
+      <div
+        ref={coverRef}
+        style={{ position:'absolute', top:cy-artR, left:cx-artR, width:artR*2, height:artR*2, borderRadius:'50%', overflow:'hidden', border:`3px solid ${(isRadio&&!cover)?color+'60':'rgba(255,255,255,0.13)'}`, boxShadow:isLite?'none':`0 0 40px -8px ${color}90`, zIndex:2, willChange:'transform' }}>
         {(isRadio && !cover)
           ? <div style={{ width:'100%', height:'100%', background:`linear-gradient(135deg,${color}30,${color}18)`, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:6, position:'relative' }}>
               <Radio size={artR*0.45} color={color}/>
@@ -97,7 +242,9 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
             </div>
           : isLite
             ? <div style={{ width:'100%', height:'100%', background:color+'33', display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={artR*0.6} color={color}/></div>
-            : <img src={cover} alt={title} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>}
+            : (cover && !imgError)
+              ? <img src={croppedCover || cover} alt={title} style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={() => setImgError(true)}/>
+              : <div style={{ width:'100%', height:'100%', background:`linear-gradient(135deg,${color}28,${color}10)`, display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={artR*0.5} color={color} opacity={0.7}/></div>}
         {/* ── Fase CHECK — scanning overlay, audio sudah diputar via stream */}
         {drivePhase === 'check' && (
           <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:artR*0.1, background:'rgba(7,7,26,0.75)', ...(isLite?{}:{backdropFilter:'blur(3px)'}) }}>
@@ -166,12 +313,7 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
         <circle cx={cx} cy={cy} r={ringR} stroke="rgba(255,255,255,0.09)" strokeWidth="3.5" fill="none"/>
         {/* Radio: spinning dashed ring. Normal: progress arc */}
         {isRadio ? (
-          <circle cx={cx} cy={cy} r={ringR} stroke={color} strokeWidth="4.5" fill="none"
-            strokeDasharray={`${circ*0.35} ${circ*0.65}`} strokeLinecap="round"
-            style={{ filter:isLite?'none':`drop-shadow(0 0 6px ${color})` }}>
-            {isPlaying && <animateTransform attributeName="transform" type="rotate"
-              from={`0 ${cx} ${cy}`} to={`360 ${cx} ${cy}`} dur="9s" repeatCount="indefinite"/>}
-          </circle>
+          <RadioRing cx={cx} cy={cy} ringR={ringR} circ={circ} color={color} isLite={isLite} isPlaying={isPlaying}/>
         ) : (
           <circle className="progress-arc" cx={cx} cy={cy} r={ringR} stroke={color} strokeWidth="4.5" fill="none"
             strokeDasharray={circ} strokeDashoffset={circ-circ*pct} strokeLinecap="round"

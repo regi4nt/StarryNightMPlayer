@@ -1401,7 +1401,7 @@ export async function downloadFavAudio(songId, previewUrl, onProgress, signal) {
 
 // ── Helper: download blob dari URL dengan tracking progress ──────────────────
 async function _fetchAudioBlob(url, onProgress, signal, mimeType = 'audio/mpeg') {
-  const res = await fetch(url, { signal, mode: 'cors' });
+  const res = await fetch(url, { signal });
   if (!res.ok) throw new Error(`Audio fetch ${res.status}`);
   const total = parseInt(res.headers.get('content-length') || '0', 10);
   const reader = res.body.getReader();
@@ -1457,43 +1457,24 @@ async function _ytAudioUrlViaInvidious(videoId, signal) {
 }
 
 // ── Method 3: Cobalt.tools (public API — tidak butuh key) ────────────────────
-// Instance cobalt publik — dicoba berurutan jika instance sebelumnya gagal/butuh auth
-const COBALT_INSTANCES = [
-  'https://api.cobalt.tools/',
-  'https://cobalt.api.timelessnesses.me/',
-  'https://cobalt.esmBot.net/',
-];
-
-async function _callCobaltInstance(instanceUrl, body, signal) {
-  const res = await fetch(instanceUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-    body: JSON.stringify(body),
-    signal,
-  });
-  if (!res.ok) return null;
-  const data = await res.json();
-  // cobalt v10 response: { status, url } or { status, picker }
-  // status: 'redirect'|'tunnel'|'stream'|'picker'|'error'
-  if (data.status === 'error') return null; // auth error, unsupported, etc
-  const url = data.url || (Array.isArray(data.picker) ? data.picker[0]?.url : null);
-  if (!url) return null;
-  return { url, mime: 'audio/mpeg' };
-}
-
 async function _ytAudioUrlViaCobalt(videoId, signal) {
-  const body = {
-    url: `https://www.youtube.com/watch?v=${videoId}`,
-    downloadMode: 'audio',
-    audioFormat: 'mp3',  // mp3: cobalt transcodes + proxies (CORS-safe, universally supported)
-  };
-  for (const instance of COBALT_INSTANCES) {
-    try {
-      const result = await _callCobaltInstance(instance, body, signal);
-      if (result?.url) return result;
-    } catch { continue; }
-  }
-  return null;
+  try {
+    const res = await fetch('https://api.cobalt.tools/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({
+        url: `https://www.youtube.com/watch?v=${videoId}`,
+        downloadMode: 'audio',
+        audioFormat: 'best',
+      }),
+      signal,
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const audioUrl = data.url || (Array.isArray(data.picker) ? data.picker[0]?.url : null);
+    if (!audioUrl) return null;
+    return { url: audioUrl, mime: 'audio/mpeg' };
+  } catch { return null; }
 }
 
 // Download audio YouTube → simpan ke cache
@@ -1528,36 +1509,16 @@ export async function downloadYtAudio(videoId, onProgress, signal) {
 
 // ── Unduh file audio ke perangkat (bukan cache browser) — memicu dialog Save As
 export async function downloadToDevice(url, filename, headers = {}) {
-  const hasCustomHeaders = Object.keys(headers).length > 0;
-  if (!hasCustomHeaders) {
-    // Tanpa custom headers: coba fetch dulu, jika CORS gagal gunakan anchor[download] langsung
-    try {
-      const res = await fetch(url, { mode: 'cors' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = blobUrl; a.download = filename;
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
-      return;
-    } catch (corsErr) {
-      // CORS atau network error — fallback ke anchor[download] langsung
-      // Browser akan mengunduh langsung tanpa melewati fetch (tidak ada blob URL)
-      const a = document.createElement('a');
-      a.href = url; a.download = filename; a.target = '_blank'; a.rel = 'noopener noreferrer';
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      return;
-    }
-  }
-  // Ada custom headers (mis. Drive API): harus lewat fetch
   const res = await fetch(url, { headers });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const blob = await res.blob();
   const blobUrl = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = blobUrl; a.download = filename;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  a.href = blobUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
 }
 
@@ -1659,10 +1620,11 @@ export const AUDIO_MIME_EXTRAS = new Set([
 // Ambil file audio HANYA dari folder "Starry Night Music" di Google Drive
 export async function driveListSongs(token, forceRefresh = false) {
   const now = Date.now();
-  // Cache hanya berdasarkan TTL — token berubah saat refresh tapi daftar lagu sama
-  if (!forceRefresh && _driveCache.songs && (now - _driveCache.ts) < DRIVE_CACHE_TTL) {
+  if (!forceRefresh && _driveCache.token === token && _driveCache.songs
+      && (now - _driveCache.ts) < DRIVE_CACHE_TTL) {
     return _driveCache.songs;
   }
+  if (_driveCache.token && _driveCache.token !== token) forceRefresh = true;
 
   const fields = 'nextPageToken,files(id,name,mimeType,appProperties,size)';
 
@@ -1779,7 +1741,7 @@ export function guessMime(contentType) {
 export async function driveStreamBlob(driveId, token) {
   // Cache key: driveId saja (token bisa expired, tapi file-nya sama)
   const cacheKey = driveId;
-  const memKey = driveId;
+  const memKey   = `${driveId}:${token.slice(-12)}`;
 
   // 1. Cek in-memory cache (paling cepat)
   if (_blobCache.has(memKey)) return _blobCache.get(memKey);
@@ -1858,7 +1820,7 @@ export async function driveStreamBlob(driveId, token) {
 // Hemat data + hemat storage. AbortController dikirim agar bisa dibatalkan saat skip.
 export const _liteAbortMap = new Map(); // driveId → AbortController
 export async function driveStreamLite(driveId, token, audioElRef) {
-  const memKey = `${driveId}:lite`;
+  const memKey = `${driveId}:${token.slice(-12)}:lite`;
 
   // 1. In-memory URL dari sesi ini (MediaSource URL yang sudah dibuat)
   if (_blobCache.has(memKey)) return _blobCache.get(memKey);
@@ -1960,7 +1922,7 @@ export async function driveStreamLite(driveId, token, audioElRef) {
 // forceDownload: skip cache check (dipakai saat melanjutkan cache parsial)
 export async function driveDownloadBlob(driveId, token, onProgress, onComplete, forceDownload = false) {
   const cacheKey = driveId;
-  const memKey = driveId;
+  const memKey   = `${driveId}:${token.slice(-12)}`;
 
   if (!forceDownload && _blobCache.has(memKey)) {
     onProgress && onProgress(100); onComplete && onComplete();
@@ -2063,7 +2025,7 @@ export async function driveDownloadBlob(driveId, token, onProgress, onComplete, 
 
 // Pre-fetch lagu berikutnya di background agar instant saat diklik
 export async function drivePrefetch(driveId, token) {
-  if (!driveId || !token || _blobCache.has(driveId)) return;
+  if (!driveId || !token || _blobCache.has(`${driveId}:${token.slice(-12)}`)) return;
   try { await driveStreamBlob(driveId, token); } catch { /* silent fail */ }
 }
 // ── Playlist Cloud Sync ─────────────────────────────────────────────────────

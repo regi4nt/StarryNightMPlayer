@@ -639,6 +639,7 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
                   if (!f) return;
 
                   const MAX_BYTES = 1_048_576; // 1 MB
+                  const MAX_DIM   = 1200;      // px sisi terpanjang setelah crop
 
                   const saveDataUrl = (dataUrl) => {
                     setGlobalCover(dataUrl);
@@ -649,53 +650,47 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
                     }
                   };
 
-                  // Jika sudah <= 1 MB, langsung pakai tanpa kompresi
-                  if (f.size <= MAX_BYTES) {
-                    const reader = new FileReader();
-                    reader.onload = ev => saveDataUrl(ev.target.result);
-                    reader.readAsDataURL(f);
-                    return;
-                  }
+                  // Helper: center-crop 1:1 + resize + compress → dataUrl
+                  const processImage = (img) => {
+                    // ── Center-crop: ambil sisi terkecil sebagai ukuran kotak ──
+                    const side = Math.min(img.naturalWidth, img.naturalHeight);
+                    const sx   = Math.floor((img.naturalWidth  - side) / 2);
+                    const sy   = Math.floor((img.naturalHeight - side) / 2);
 
-                  // Gambar > 1 MB: compress via Canvas
-                  const img = new Image();
-                  const objectUrl = URL.createObjectURL(f);
-                  img.onload = () => {
-                    URL.revokeObjectURL(objectUrl);
-                    const canvas = document.createElement('canvas');
-                    let { width, height } = img;
+                    // ── Target dimensi: max MAX_DIM px ──
+                    let dim = Math.min(side, MAX_DIM);
 
-                    // Turunkan dimensi ke max 1200px proporsional
-                    const MAX_DIM = 1200;
-                    if (width > MAX_DIM || height > MAX_DIM) {
-                      const ratio = Math.min(MAX_DIM / width, MAX_DIM / height);
-                      width = Math.round(width * ratio);
-                      height = Math.round(height * ratio);
-                    }
+                    let quality  = 0.85;
+                    let dataUrl  = '';
 
-                    let quality = 0.85;
-                    let dataUrl = '';
-
-                    // Loop: turunkan kualitas lalu dimensi sampai raw bytes <= 1 MB
+                    // Loop: turunkan kualitas lalu dimensi sampai <= 1 MB
                     for (let attempt = 0; attempt < 8; attempt++) {
-                      canvas.width = width;
-                      canvas.height = height;
+                      const canvas = document.createElement('canvas');
+                      canvas.width  = dim;
+                      canvas.height = dim;
                       const ctx = canvas.getContext('2d');
-                      ctx.drawImage(img, 0, 0, width, height);
+                      // Gambar hanya area cropped (center square) ke canvas persegi
+                      ctx.drawImage(img, sx, sy, side, side, 0, 0, dim, dim);
                       dataUrl = canvas.toDataURL('image/jpeg', quality);
-                      const b64 = dataUrl.split(',')[1] || '';
-                      const rawBytes = b64.length * 0.75;
+                      const rawBytes = (dataUrl.split(',')[1] || '').length * 0.75;
                       if (rawBytes <= MAX_BYTES) break;
                       if (quality > 0.4) {
                         quality -= 0.1;
                       } else {
-                        width = Math.round(width * 0.8);
-                        height = Math.round(height * 0.8);
+                        dim     = Math.round(dim * 0.8);
                         quality = 0.7;
                       }
                     }
 
-                    saveDataUrl(dataUrl);
+                    return dataUrl;
+                  };
+
+                  // Load gambar → proses (crop + compress) → simpan
+                  const img       = new Image();
+                  const objectUrl = URL.createObjectURL(f);
+                  img.onload = () => {
+                    URL.revokeObjectURL(objectUrl);
+                    saveDataUrl(processImage(img));
                   };
                   img.onerror = () => {
                     URL.revokeObjectURL(objectUrl);

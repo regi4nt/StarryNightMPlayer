@@ -1588,19 +1588,23 @@ Return ONLY valid JSON, no explanation:
     // Stop Spotify preview — selalu hentikan saat beralih ke sumber lain
     if (spPreviewRef.current) { spPreviewRef.current.pause(); spPreviewRef.current = null; }
     setSpPlaying(false);
-    // Stop audio jika sedang radio dan incoming bukan radio
-    if (incomingMode !== 'radio' && trackRef.current?.isRadio) {
+    // Stop radio jika incoming bukan radio — tanpa syarat trackRef.isRadio karena
+    // radioAudioRef/HLS bisa aktif bahkan ketika track sudah beralih ke sumber lain
+    if (incomingMode !== 'radio') {
       if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
       if (radioReconnectRef.current) { clearTimeout(radioReconnectRef.current); radioReconnectRef.current = null; }
       radioReconnectCount.current = 0;
       setStreamBuffering(false);
       setRadioPlaying(false);
+      setRadioStation(null); // wajib: bersihkan state station agar tombol X radio tidak ghost
     }
-    // Stop audio Drive jika incoming bukan local (misal: user tekan lagu YT atau radio)
-    if (incomingMode !== 'local' && trackRef.current?.isDrive) {
+    // Stop Drive jika incoming bukan local — tanpa syarat trackRef.isDrive (konsisten dengan fix radio)
+    if (incomingMode !== 'local') {
       if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
       setPlaying(false);
+      // Reset track ke default agar tombol X Drive tidak ghost saat embedTrack aktif
+      if (trackRef.current?.isDrive) setTrack(SONGS[0]);
     }
     // Stop audio jika incoming adalah radio/embed (bukan lokal)
     // Khusus embed-to-embed (YT next/prev): jangan setPlaying(false) — biarkan playYouTube yang set
@@ -1657,20 +1661,29 @@ Return ONLY valid JSON, no explanation:
     cobaltErrorSet.current.delete(key);
     cobaltTick();
     try {
-      const res = await fetch('https://api.cobalt.tools/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({
-          url: sourceUrl,
-          downloadMode: 'audio',
-          audioFormat: 'best',
-        }),
-      });
-      if (!res.ok) throw new Error(`cobalt HTTP ${res.status}`);
-      const data = await res.json();
-      const audioUrl = data.url
-        || (Array.isArray(data.picker) ? data.picker[0]?.url : null);
-      if (!audioUrl) throw new Error(data.error?.code || 'No audio URL returned');
+      const _COBALT_INSTANCES = [
+        'https://api.cobalt.tools/',
+        'https://cobalt.api.timelessnesses.me/',
+        'https://cobalt.esmBot.net/',
+      ];
+      const _cobaltBody = { url: sourceUrl, downloadMode: 'audio', audioFormat: 'mp3' };
+      let audioUrl = null;
+      let lastCobaltErr = null;
+      for (const _inst of _COBALT_INSTANCES) {
+        try {
+          const res = await fetch(_inst, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(_cobaltBody),
+          });
+          if (!res.ok) { lastCobaltErr = new Error(`cobalt HTTP ${res.status}`); continue; }
+          const data = await res.json();
+          if (data.status === 'error') { lastCobaltErr = new Error(data.error?.code || 'cobalt error'); continue; }
+          audioUrl = data.url || (Array.isArray(data.picker) ? data.picker[0]?.url : null);
+          if (audioUrl) break;
+        } catch (e) { lastCobaltErr = e; continue; }
+      }
+      if (!audioUrl) throw lastCobaltErr || new Error('cobalt: all instances failed');
 
       // FIX Bug #6: hapus key dari Set (benar-benar tidak ada memori sisa)
       cobaltLoadingSet.current.delete(key);
@@ -2007,16 +2020,29 @@ Return ONLY valid JSON, no explanation:
 
   // ── Helper: cobalt fallback — ambil audio URL untuk URL apapun ───────────
   const cobaltAudioUrl = async (pageUrl) => {
-    const res = await fetch('https://api.cobalt.tools/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ url: pageUrl, downloadMode: 'audio', audioFormat: 'best' }),
-    });
-    if (!res.ok) throw new Error(`cobalt ${res.status}`);
-    const data = await res.json();
-    const url = data.url || (Array.isArray(data.picker) ? data.picker[0]?.url : null);
-    if (!url) throw new Error('cobalt: no url');
-    return url;
+    const COBALT_INSTANCES_APP = [
+      'https://api.cobalt.tools/',
+      'https://cobalt.api.timelessnesses.me/',
+      'https://cobalt.esmBot.net/',
+    ];
+    const body = { url: pageUrl, downloadMode: 'audio', audioFormat: 'mp3' };
+    let lastErr = null;
+    for (const instance of COBALT_INSTANCES_APP) {
+      try {
+        const res = await fetch(instance, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) { lastErr = new Error(`cobalt ${res.status}`); continue; }
+        const data = await res.json();
+        if (data.status === 'error') { lastErr = new Error(data.error?.code || 'cobalt error'); continue; }
+        const url = data.url || (Array.isArray(data.picker) ? data.picker[0]?.url : null);
+        if (url) return url;
+        lastErr = new Error('cobalt: no url');
+      } catch (e) { lastErr = e; continue; }
+    }
+    throw lastErr || new Error('cobalt: all instances failed');
   };
 
   // ── unduh lagu ke perangkat — pakai cache offline, fallback berlapis ─────
@@ -2051,7 +2077,7 @@ Return ONLY valid JSON, no explanation:
 
     // ═══════════════════════════════════════════════════════
     // YouTube
-    // Fallback: cache → Piped → Invidious → Cobalt → buka YouTube
+    // Fallback: cache → Piped → Invidious → Cobalt fetch → Cobalt anchor → YT
     // ═══════════════════════════════════════════════════════
     if (s.type === 'youtube' && s.videoId) {
       // 1. Cache lokal
@@ -2059,13 +2085,22 @@ Return ONLY valid JSON, no explanation:
         const cached = await ytCacheGet(s.videoId);
         if (isBlobValid(cached, 10000)) { downloadBlobToDevice(cached, `${name}.mp3`); return; }
       } catch {}
-      // 2-4. downloadYtAudio sudah pakai fallback Piped→Invidious→Cobalt di dalamnya
+      // 2-4. downloadYtAudio: Piped → Invidious → Cobalt, simpan ke cache lalu unduh
       try {
         await downloadYtAudio(s.videoId, null, null);
         const blob = await ytCacheGet(s.videoId);
         if (isBlobValid(blob, 10000)) { downloadBlobToDevice(blob, `${name}.mp3`); return; }
       } catch {}
-      // 5. Buka halaman YouTube di browser
+      // 5. Cobalt: minta URL langsung lalu picu anchor download
+      //    (jika blob fetch kena CORS, anchor[download] tetap bisa mengunduh dari cobalt URL)
+      try {
+        const cobaltUrl = await cobaltAudioUrl(`https://www.youtube.com/watch?v=${s.videoId}`);
+        if (cobaltUrl) {
+          await downloadToDevice(cobaltUrl, `${name}.mp3`);
+          return;
+        }
+      } catch {}
+      // 6. Last resort: buka YouTube di browser (redirect)
       openUrlFallback(`https://www.youtube.com/watch?v=${s.videoId}`);
       return;
     }
@@ -2283,8 +2318,10 @@ Return ONLY valid JSON, no explanation:
   const [lyricsGenerating, setLyricsGenerating] = useState(false);
   const [lyricsRomanized, setLyricsRomanized] = useState('');
   const [lyricsRomanizing, setLyricsRomanizing] = useState(false);
+  const [romanizedLrcLines, setRomanizedLrcLines] = useState([]); // lrcLines dengan teks romanisasi, untuk live caption
   // ── Synced LRC lines: [{time: seconds, text: string}]
   const [lrcLines, setLrcLines]       = useState([]);
+  const [captionTick, setCaptionTick]   = useState(0); // FIX Bug #9: ticker khusus live caption
   // Cache in-memory lirik: key = "title|artist", value = { text, generated }
   // FIX Bug #8: lyricsCacheRef dibatasi maksimum 100 entry (LRU sederhana).
   // Sebelumnya Map tumbuh tanpa batas — sesi panjang dengan ratusan lagu mengakumulasi
@@ -2356,20 +2393,35 @@ Return ONLY valid JSON, no explanation:
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Resume audio saat halaman kembali visible (tab/app foreground)
+  // ── Resume audio/video saat halaman kembali visible (tab/app foreground)
   // Browser kadang suspend/interrupt audio saat tab di-background atau layar dikunci.
   // Saat visibility kembali, coba resume jika seharusnya sedang play.
   useEffect(() => {
     const onResume = () => {
       if (document.visibilityState !== 'visible') return;
+      if (!playingRef.current) return;
+
+      const et = embedTrackRef.current;
+
+      // ── YouTube iframe: kirim playVideo karena browser sering auto-pause iframe
+      if (et?.type === 'youtube' && ytIframeRef.current) {
+        const sendPlay = () => {
+          try { ytIframeRef.current?.contentWindow.postMessage(JSON.stringify({ event:'command', func:'playVideo', args:'' }), '*'); } catch(_) {}
+        };
+        // Retry beberapa kali — iframe mungkin butuh waktu setelah kembali foreground
+        sendPlay();
+        setTimeout(sendPlay, 500);
+        setTimeout(sendPlay, 1500);
+        return;
+      }
+
+      // ── Audio biasa (stream, Jamendo, SoundCloud proxy, dll)
       const a = audioRef.current;
-      if (!a || !playingRef.current) return;
-      // Audio terinterrupt atau stalled saat background → coba resume
+      if (!a) return;
       if (a.paused && !a.ended) {
         a.play().catch(() => {});
       } else if (!a.paused && a.readyState < 3) {
-        // FIX: Audio tidak ter-pause tapi stalled karena background throttle.
-        // Perlu reload dari posisi saat ini agar buffer kembali jalan.
+        // Stalled karena background throttle — reload dari posisi saat ini
         const pos = a.currentTime;
         a.load();
         a.addEventListener('canplay', () => { a.currentTime = pos; a.play().catch(() => {}); }, { once: true });
@@ -2530,6 +2582,7 @@ Return ONLY valid JSON, no explanation:
   const [plSyncError, setPlSyncError]     = useState('');
   const [plSyncedAt, setPlSyncedAt]       = useState(null);   // timestamp terakhir sync berhasil
   const plSyncTimerRef                    = useRef(null);
+  const playlistsRef                      = useRef([]); // always-fresh ref untuk menghindari stale closure di setTimeout
   const [activePl, setActivePl]           = useState(null); // null = all songs, else playlist id
   const [showPlModal, setShowPlModal]     = useState(false);
   const [plPrefillName, setPlPrefillName] = useState('');
@@ -2725,7 +2778,7 @@ Return ONLY valid JSON, no explanation:
   useEffect(() => { try { localStorage.setItem('sn_shuffle', shuffle); } catch {} }, [shuffle]);
   useEffect(() => { try { localStorage.setItem('sn_repeat', repeat); } catch {} }, [repeat]);
   useEffect(() => { try { localStorage.setItem('sn_liked', JSON.stringify(liked)); } catch {} }, [liked]);
-  useEffect(() => { try { localStorage.setItem('sn_playlists', JSON.stringify(playlists)); } catch {} }, [playlists]);
+  useEffect(() => { try { localStorage.setItem('sn_playlists', JSON.stringify(playlists)); } catch {} playlistsRef.current = playlists; }, [playlists]);
 
   // ── Auto-sync playlists ke Google Drive (debounce 3 detik setelah perubahan)
   const syncPlaylistsToCloud = useCallback(async (token, pls, silent = false) => {
@@ -2748,7 +2801,10 @@ Return ONLY valid JSON, no explanation:
     if (!accessToken) return; // hanya sync jika login
     if (plSyncTimerRef.current) clearTimeout(plSyncTimerRef.current);
     plSyncTimerRef.current = setTimeout(() => {
-      syncPlaylistsToCloud(accessToken, playlists, true);
+      // Gunakan ref agar selalu pakai nilai terbaru saat setTimeout fires (hindari stale closure)
+      const tok = tokenRef.current;
+      const pls = playlistsRef.current;
+      if (tok && pls) syncPlaylistsToCloud(tok, pls, true);
     }, 3000);
     return () => { if (plSyncTimerRef.current) clearTimeout(plSyncTimerRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3107,15 +3163,22 @@ Return ONLY valid JSON, no explanation:
       const saved = (() => {
         try { return JSON.parse(localStorage.getItem('sn_google_token')||'null'); } catch { return null; }
       })();
-      // Token hampir/sudah expired (<2 menit) → silent refresh dulu
-      if (saved && saved.expiry - Date.now() < 2 * 60 * 1000) {
+      // Token hampir/sudah expired (<10 menit, konsisten dengan proactive refresh) → silent refresh dulu
+      // Jika refresh gagal tapi token masih ada, tetap gunakan token lama (silent fail — jangan tampilkan error)
+      if (saved && saved.expiry - Date.now() < 10 * 60 * 1000) {
         silentRefreshToken()
-          .then(newTok => loadDriveSongs(newTok, true))
-          .catch(() => setDriveError('Google session expired. Tap Login to continue.'));
-      } else {
-        // Selalu reload ulang saat halaman aktif kembali (tangkap perubahan file di Drive)
-        loadDriveSongs(tok, true);
+          .then(newTok => loadDriveSongs(newTok, false))
+          .catch(() => {
+            // Refresh gagal — jika token masih belum expired, lanjutkan dengan token lama (silent)
+            if (saved.expiry > Date.now()) {
+              loadDriveSongs(tok, false);
+            }
+            // Jika benar-benar sudah expired, biarkan saja — jangan tampilkan error saat ini
+            // Error akan muncul saat user benar-benar mencoba melakukan aksi (play/load)
+          });
       }
+      // Jika token masih segar: TIDAK paksa reload Drive, cukup biarkan data yang ada
+      // (loadDriveSongs akan dipanggil lagi jika user membuka tab Drive atau menekan ↻)
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
@@ -3355,6 +3418,9 @@ Return ONLY valid JSON, no explanation:
     };
     const onError = () => {
       const err = a.error;
+      // src='' saat ganti lagu atau stop disengaja → error code 4 (MEDIA_ERR_SRC_NOT_SUPPORTED) tanpa src
+      // Jangan proses sebagai error nyata
+      if (!a.src || a.src === window.location.href) return;
       if (track.isRadio) {
         console.warn('[Radio] Stream error, scheduling reconnect. code:', err?.code);
         scheduleRadioReconnect(track);
@@ -3365,19 +3431,29 @@ Return ONLY valid JSON, no explanation:
         if (tok) {
           const savedPos = a.currentTime;
           console.warn('[Drive] Audio error, retrying from', savedPos, 'err:', err.code);
+          // Bersihkan cache hanya untuk driveId ini (bukan berdasarkan token)
           for (const [k, v] of _blobCache) {
-            if (k.startsWith(track.driveId + ':')) { URL.revokeObjectURL(v); _blobCache.delete(k); }
+            if (k === track.driveId || k === `${track.driveId}:lite`) { URL.revokeObjectURL(v); _blobCache.delete(k); }
           }
-          silentRefreshToken().catch(() => tok).then(newTok => {
+          // Coba dengan token saat ini dulu, refresh hanya jika benar-benar 401/403
+          const tryWithToken = (useTok) => {
             const fn = isLite ? driveStreamLite : driveStreamBlob;
-            return fn(track.driveId, newTok, audioRef);
-          }).then(url => {
-            if (!url || !audioRef.current) return;
-            const newA = audioRef.current;
-            newA.src = url;
-            newA.currentTime = savedPos;
-            newA.play().catch(() => setPlaying(false));
-          }).catch(() => { setPlaying(false); setLoadingTrack(false); });
+            return fn(track.driveId, useTok, audioRef);
+          };
+          tryWithToken(tok)
+            .catch(e => {
+              if (e.message.includes('401') || e.message.includes('403')) {
+                return silentRefreshToken().then(tryWithToken);
+              }
+              throw e;
+            })
+            .then(url => {
+              if (!url || !audioRef.current) return;
+              const newA = audioRef.current;
+              newA.src = url;
+              newA.currentTime = savedPos;
+              newA.play().catch(() => setPlaying(false));
+            }).catch(() => { setPlaying(false); setLoadingTrack(false); });
           return;
         }
       }
@@ -3477,6 +3553,8 @@ Return ONLY valid JSON, no explanation:
   // ── Sync playingRef
   useEffect(() => { playingRef.current = playing; }, [playing]);
   useEffect(() => { trackRef.current = track; }, [track]);
+  const embedTrackRef = useRef(embedTrack);
+  useEffect(() => { embedTrackRef.current = embedTrack; }, [embedTrack]);
 
   // ── Media Session API — lock screen controls & background playback on mobile
   useEffect(() => {
@@ -3672,7 +3750,7 @@ Return ONLY valid JSON, no explanation:
   // ── Track history + prefetch lagu berikutnya
   useEffect(() => {
     setHistory(prev => { const f=prev.filter(s=>s.id!==track.id); return [track,...f].slice(0,15); });
-    setLyrics(''); setInsight(''); setLyricsRomanized(''); setLyricsRomanizing(false); setLyricsNeedGenerate(false); setLyricsGenerated(false); setLrcLines([]);
+    setLyrics(''); setInsight(''); setLyricsRomanized(''); setLyricsRomanizing(false); setLyricsNeedGenerate(false); setLyricsGenerated(false); setLrcLines([]); setRomanizedLrcLines([]);
     // Prefetch lagu berikutnya di background
     const allSongs = [...builtinSongs, ...customSongs];
     const idx = allSongs.findIndex(s => s.id === track.id);
@@ -3691,6 +3769,26 @@ Return ONLY valid JSON, no explanation:
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [track.id, embedTrack?.videoId, aiSubView]);
+
+  // ── FIX Bug #10: Auto-romanisation — trigger romanizeLyrics otomatis saat lirik non-Latin berhasil dimuat
+  // Sebelumnya hanya manual via tombol, padahal ada komentar "Auto-romanisation" di kode.
+  useEffect(() => {
+    if (!lyrics || isLite) return;
+    if (lyrics.startsWith('⚡') || lyrics === ('' || 'Lyrics not found')) return;
+    if (hasNonLatin(lyrics) && !lyricsRomanized && !lyricsRomanizing) {
+      romanizeLyrics(lyrics);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lyrics]);
+
+  // ── FIX Bug #9: Caption ticker — interval 250ms hanya aktif saat tab lyrics terbuka dan ada lrcLines
+  // Tanpa ini, live caption tidak bergerak karena progress hanya update 1x/detik dan React
+  // tidak re-render lyrics view lebih sering dari perubahan state.
+  useEffect(() => {
+    if (aiSubView !== 'lyrics' || lrcLines.length === 0) return;
+    const id = setInterval(() => setCaptionTick(t => t + 1), 250);
+    return () => clearInterval(id);
+  }, [aiSubView, lrcLines.length]);
 
   // ── Wawasan Kosmik: manual — dipanggil via tombol ✨ di area chat ──
   const cosmicInsightRef = useRef(null);
@@ -5338,8 +5436,12 @@ Format exactly:
         duration: t.duration || t.durationSecs || 0,
         durationSecs: t.duration || t.durationSecs || 0,
       };
-      // Build queue from all liked YT songs so next/prev works
-      const ytQueue = ytSongs
+      // Gunakan playlist aktif jika ada dan mengandung lagu YT — jangan hardcode ke ytSongs
+      // agar next/prev menghormati konteks playlist yang sedang dibuka user
+      const plSongs = activePlRef.current && activePlRef.current.length > 0
+        ? activePlRef.current
+        : ytSongs;
+      const ytQueue = plSongs
         .filter(s => s.type === 'youtube' && s.videoId)
         .map(s => ({
           videoId: s.videoId,
@@ -5351,7 +5453,7 @@ Format exactly:
           durationSecs: s.duration || s.durationSecs || 0,
         }));
       const queueIdx = ytQueue.findIndex(v => v.videoId === t.videoId);
-      playYouTube(ytItem, ytQueue, queueIdx >= 0 ? queueIdx : 0);
+      playYouTube(ytItem, ytQueue.length > 0 ? ytQueue : [ytItem], queueIdx >= 0 ? queueIdx : 0);
       setTab('player');
       return;
     }
@@ -5792,6 +5894,7 @@ Format exactly:
     setLyricsRomanized('');
     setLyricsRomanizing(false);
     setLrcLines([]);
+    setRomanizedLrcLines([]);
 
     // Resolve active track info
     const activeTitle  = embedTrack ? (embedTrack.title  || track.title)  : track.title;
@@ -5827,26 +5930,54 @@ Format exactly:
     };
 
     // ── Source 1: lrclib.net
-    const fetchLrclib = async () => {
-      const q = encodeURIComponent(`${cleanTitle} ${cleanArtist}`);
-      const resp = await fetchWithTimeout(`https://lrclib.net/api/search?q=${q}`);
-      if (!resp.ok) return null;
-      const results = await resp.json();
-      if (!Array.isArray(results) || results.length === 0) return null;
-      const best = results.find(r =>
-        (r.plainLyrics || r.syncedLyrics) &&
-        (r.trackName?.toLowerCase().includes(cleanTitle.toLowerCase().slice(0,8)) ||
-         cleanTitle.toLowerCase().includes((r.trackName||'').toLowerCase().slice(0,8)))
-      ) || results.find(r => r.plainLyrics && r.plainLyrics.trim().length > 20);
-      // Prefer synced lyrics for live caption
-      if (best?.syncedLyrics && best.syncedLyrics.trim().length > 20) {
+    // FIX Bug #10: untuk judul non-Latin (Korea, Jepang, Arab, dll) coba /api/get dulu
+    // (exact artist+track match) sebelum /api/search — search sering gagal match karena
+    // lrclib menyimpan judul dalam bentuk romanized ("Spring Day") sementara kita kirim
+    // huruf asli (름날), dan matching includes() tidak bisa menemukan kecocokan.
+    const parseBest = (best) => {
+      if (!best) return null;
+      if (best.syncedLyrics && best.syncedLyrics.trim().length > 20) {
         const parsed = parseLRC(best.syncedLyrics);
         const plain = stripLRC(best.syncedLyrics);
         const text = plain.length > 20 ? plain.trim() : (best.plainLyrics?.trim() || null);
         if (text) return { text, lrcLines: parsed };
       }
-      if (best?.plainLyrics && best.plainLyrics.trim().length > 20) return { text: best.plainLyrics.trim(), lrcLines: [] };
+      if (best.plainLyrics && best.plainLyrics.trim().length > 20) return { text: best.plainLyrics.trim(), lrcLines: [] };
       return null;
+    };
+    const fetchLrclib = async () => {
+      // Try 1: exact get (most reliable, works for non-latin titles stored as-is)
+      if (cleanArtist) {
+        try {
+          const getResp = await fetchWithTimeout(
+            `https://lrclib.net/api/get?artist_name=${encodeURIComponent(cleanArtist)}&track_name=${encodeURIComponent(cleanTitle)}`
+          );
+          if (getResp.ok) {
+            const exact = await getResp.json();
+            const r = parseBest(exact);
+            if (r) return r;
+          }
+        } catch (_) { /* fall through */ }
+      }
+      // Try 2: search (broader, good for romanized titles)
+      const q = encodeURIComponent(`${cleanTitle} ${cleanArtist}`);
+      const resp = await fetchWithTimeout(`https://lrclib.net/api/search?q=${q}`);
+      if (!resp.ok) return null;
+      const results = await resp.json();
+      if (!Array.isArray(results) || results.length === 0) return null;
+      // FIX Bug #10: lenient matching — handle non-latin where includes() breaks
+      // Try: exact match first, then partial, then any result with lyrics
+      const titleLow = cleanTitle.toLowerCase();
+      const best =
+        results.find(r => (r.plainLyrics || r.syncedLyrics) && r.trackName?.toLowerCase() === titleLow) ||
+        results.find(r =>
+          (r.plainLyrics || r.syncedLyrics) &&
+          (r.trackName?.toLowerCase().includes(titleLow.slice(0, 8)) ||
+           titleLow.includes((r.trackName || '').toLowerCase().slice(0, 8)))
+        ) ||
+        results.find(r => r.syncedLyrics && r.syncedLyrics.trim().length > 20) ||
+        results.find(r => r.plainLyrics && r.plainLyrics.trim().length > 20);
+      return parseBest(best);
     };
 
     // ── Source 2: lyrics.ovh
@@ -5991,12 +6122,30 @@ Format exactly:
     if (isLite) return;
     setLyricsRomanizing(true);
     setLyricsRomanized('');
+    setRomanizedLrcLines([]);
     const r = await askAIRace(
       `Romanize the following song lyrics into Latin alphabet. Keep ALL section tags like [Verse 1], [Chorus], etc. exactly as-is. For each non-Latin line, write the romanized pronunciation (romanji for Japanese, pinyin for Chinese, romanized for Korean/Arabic/etc). Keep blank lines. Output ONLY the romanized lyrics, no explanations.\n\nLyrics:\n${lyricsText}`,
       'You are a professional romanization expert. Romanize lyrics to Latin script. Keep structure/tags. Output only romanized lyrics.'
     ).catch(() => null);
-    if (r && r.trim().length > 10) {
+    // FIX Bug #10: abaikan error string dari provider (tidak ada key, dll)
+    if (r && r.trim().length > 10 && !r.startsWith('⚠️') && !r.startsWith('Semua provider')) {
       setLyricsRomanized(r.trim());
+
+      // ── Build romanizedLrcLines: petakan baris romanisasi ke lrcLines supaya
+      // live caption bisa menampilkan teks Latin (bukan non-Latin asli).
+      // Strategi: filter baris non-kosong & non-section-tag dari hasil romanisasi,
+      // lalu pasangkan satu-per-satu dengan lrcLines berdasarkan urutan.
+      if (lrcLines.length > 0) {
+        const romanizedContentLines = r.trim().split('\n').filter(line => {
+          const trimmed = line.trim();
+          return trimmed && !(trimmed.startsWith('[') && trimmed.endsWith(']'));
+        });
+        const mapped = lrcLines.map((lrcLine, i) => ({
+          ...lrcLine,
+          text: romanizedContentLines[i] ?? lrcLine.text, // fallback ke asli jika index lewat
+        }));
+        setRomanizedLrcLines(mapped);
+      }
     }
     setLyricsRomanizing(false);
   };
@@ -6006,14 +6155,24 @@ Format exactly:
   // ── Translate lyrics to Bahasa Indonesia
   const translateLyrics = async () => {
     if (!lyrics || lyricsTranslating) return;
+    // FIX Bug #7: guard isLite — sama seperti romanizeLyrics, terjemahan butuh AI
+    if (isLite) return;
     setLyricsTranslating(true);
     setLyricsTranslation('');
+    // FIX Bug #translate: Gunakan lyricsRomanized jika tersedia (sudah Latin),
+    // karena menerjemahkan teks non-Latin (Korea/Jepang/Arab) langsung ke BI
+    // lebih rentan error dibanding dari romanisasi Latin.
+    // Jika belum diromanisasi tapi non-Latin, tetap kirim lyrics asli — AI tetap bisa menerjemahkan.
+    const sourceText = lyricsRomanized && lyricsRomanized.trim().length > 10 ? lyricsRomanized : lyrics;
     const r = await askAIRace(
-      `Terjemahkan lirik lagu berikut ke Bahasa Indonesia yang natural dan puitis. Pertahankan format section tag seperti [Verse 1], [Chorus], dll. Terjemahkan HANYA teks liriknya, bukan tag. Jika sudah dalam Bahasa Indonesia, kembalikan teks aslinya.\n\nLirik:\n${lyrics}`,
+      `Terjemahkan lirik lagu berikut ke Bahasa Indonesia yang natural dan puitis. Pertahankan format section tag seperti [Verse 1], [Chorus], dll. Terjemahkan HANYA teks liriknya, bukan tag. Jika sudah dalam Bahasa Indonesia, kembalikan teks aslinya.\n\nLirik:\n${sourceText}`,
       'Kamu adalah penerjemah lirik profesional. Terjemahkan ke Bahasa Indonesia yang natural dan puitis. Pertahankan semua section tag. Output HANYA terjemahan lirik tanpa penjelasan.'
-    );
-    setLyricsTranslation(r);
-    setActiveModelLabel(activeModel());
+    ).catch(() => null);
+    // FIX Bug #7: abaikan jika null / error string (tidak ada key, provider error)
+    if (r && r.trim().length > 10 && !r.startsWith('⚠️') && !r.startsWith('Semua provider')) {
+      setLyricsTranslation(r.trim());
+      setActiveModelLabel(activeModel());
+    }
     setLyricsTranslating(false);
   };
 
@@ -6161,14 +6320,18 @@ Format exactly:
     // mimeType yang tidak valid ke MediaRecorder — itu melempar NotSupportedError dan crash.
     // Biarkan browser memilih format default-nya sendiri dengan tidak menyertakan opsi mimeType.
     const mimeType = ['audio/webm', 'audio/ogg', 'audio/mp4'].find(m => MediaRecorder.isTypeSupported(m));
-    const ext = !mimeType ? 'webm'
-      : mimeType.includes('webm') ? 'webm'
-      : mimeType.includes('ogg')  ? 'ogg'
-      : 'mp4';
 
     const recorder = mimeType
       ? new MediaRecorder(stream, { mimeType })
       : new MediaRecorder(stream); // tanpa mimeType → biarkan browser pilih default
+
+    // FIX Bug #6: gunakan mimeType AKTUAL dari recorder (bukan asumsi 'webm').
+    // Saat mimeType=undefined, browser bisa memilih format apapun (Safari → mp4, dll).
+    // Kalau ext tidak cocok dengan isi audio, server pengenal lagu pasti gagal.
+    const actualMime = recorder.mimeType || mimeType || 'audio/webm';
+    const ext = actualMime.includes('ogg') ? 'ogg'
+      : actualMime.includes('mp4')  ? 'mp4'
+      : 'webm';
     shazamMediaRef.current = recorder;
     shazamStreamRef.current = stream; // FIX Bug #5: simpan stream terpisah
     shazamCancelledRef.current = false; // reset flag cancel
@@ -6212,7 +6375,7 @@ Format exactly:
       return;
     }
 
-    const blob = new Blob(chunks, { type: mimeType });
+    const blob = new Blob(chunks, { type: actualMime });
 
     // Konversi ke base64
     const base64 = await new Promise((resolve, reject) => {
@@ -6468,6 +6631,9 @@ Format exactly:
   const handleGoogleLogin = useCallback(() => {
     if (!window.google) return setDriveError('Google API belum siap, coba lagi.');
     if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes('GANTI_DENGAN')) return setDriveError('⚙️ Set GOOGLE_CLIENT_ID di environment variable terlebih dahulu!');
+    // FIX: simpan state playing sebelum popup OAuth muncul.
+    // Browser dapat meng-interrupt audio saat popup/focus hilang — kita resume setelah login selesai.
+    const wasPlayingBeforeLogin = playingRef.current;
     const client = window.google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID, scope: GOOGLE_SCOPES,
       callback: async resp => {
@@ -6503,6 +6669,10 @@ Format exactly:
         } catch {}
         // Gunakan loadDriveSongs agar error handling konsisten
         await loadDriveSongs(tok, true);
+        // FIX: resume playback jika sedang diputar sebelum popup login muncul
+        if (wasPlayingBeforeLogin && audioRef.current && audioRef.current.paused) {
+          audioRef.current.play().catch(() => {});
+        }
       }
     });
     client.requestAccessToken();
@@ -9693,7 +9863,7 @@ Format exactly:
                   { id:'foryou', label:'🎯 For You' },
                   { id:'lyrics', label:`🎵 ${t?.lyricsTab||'Lyrics'}` },
                 ].map(({id, label})=>(
-                  <button key={id} onClick={()=>setAiSubView(id)}
+                  <button key={id} onClick={()=>{ setAiSubView(id); if(id==='lyrics' && aiSubView==='lyrics') getLyricsRef.current?.(); }}
                     style={{ padding:'9px 22px', borderRadius:0, border:'none', background:'none', color:aiSubView===id?'white':'rgba(255,255,255,0.4)', fontSize:13, fontWeight:aiSubView===id?800:600, cursor:'pointer', borderBottom:aiSubView===id?`2px solid ${track.color}`:'2px solid transparent', marginBottom:-1, flexShrink:0, whiteSpace:'nowrap' }}>
                     {label}
                   </button>
@@ -10385,15 +10555,19 @@ Format exactly:
               /* ── LYRICS VIEW inside AI tab */
               <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'16px 20px 24px' }}>
                 {/* ── Live Caption Bar — only shown when synced LRC is available */}
+                {/* captionTick forces re-render every 250ms so caption stays in sync (FIX Bug #9) */}
                 {lrcLines.length > 0 && lyrics && !lyrics.startsWith('⚡') && (() => {
+                  void captionTick; // eslint-disable-line no-unused-expressions
                   const now = embedTrack?.type === 'youtube' ? ytProgress : progress;
+                  // Gunakan romanizedLrcLines jika tersedia (non-Latin → tampilkan Latin)
+                  const activeLrc = romanizedLrcLines.length > 0 ? romanizedLrcLines : lrcLines;
                   // Find current line: last line whose time <= now (scan all, no break)
                   let activeIdx = -1;
-                  for (let i = 0; i < lrcLines.length; i++) {
-                    if (lrcLines[i].time <= now) activeIdx = i;
+                  for (let i = 0; i < activeLrc.length; i++) {
+                    if (activeLrc[i].time <= now) activeIdx = i;
                   }
-                  const currentLine = activeIdx >= 0 ? lrcLines[activeIdx].text : null;
-                  const nextLine = activeIdx >= 0 && activeIdx + 1 < lrcLines.length ? lrcLines[activeIdx + 1].text : null;
+                  const currentLine = activeIdx >= 0 ? activeLrc[activeIdx].text : null;
+                  const nextLine = activeIdx >= 0 && activeIdx + 1 < activeLrc.length ? activeLrc[activeIdx + 1].text : null;
                   if (!currentLine) return null;
                   return (
                     <div style={{ marginBottom: 14, borderRadius: 14, overflow: 'hidden', background: `linear-gradient(135deg, ${track.color}22, ${track.color}10)`, border: `1px solid ${track.color}40`, padding: '12px 16px' }}>
@@ -10408,23 +10582,23 @@ Format exactly:
                     </div>
                   );
                 })()}
-                <div style={{ display:'flex', justifyContent:'flex-end', gap:8, marginBottom:14 }}>
+                <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'flex-end', gap:6, marginBottom:14 }}>
                   {lyrics && (
-                    <button onClick={()=>{ setLyrics(''); setLyricsTranslation(''); setLyricsRomanized(''); setLyricsNeedGenerate(false); }} title="Tutup Lirik" style={{ padding:'7px 10px', borderRadius:999, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.07)', color:'rgba(255,255,255,0.5)', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:5, marginRight:'auto' }}>
+                    <button onClick={()=>{ setLyrics(''); setLyricsTranslation(''); setLyricsRomanized(''); setRomanizedLrcLines([]); setLyricsNeedGenerate(false); }} title="Tutup Lirik" style={{ padding:'7px 10px', borderRadius:999, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.07)', color:'rgba(255,255,255,0.5)', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:5, marginRight:'auto' }}>
                       <X size={13}/> Tutup
                     </button>
                   )}
                   {lyrics && !lyrics.startsWith('⚡') && hasNonLatin(lyrics) && !isLite && (
-                    <button onClick={lyricsRomanized ? ()=>setLyricsRomanized('') : ()=>romanizeLyrics(lyrics)} disabled={lyricsRomanizing} style={{ padding:'7px 14px', borderRadius:999, border:`1px solid ${track.color}50`, background:`${track.color}18`, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', opacity:lyricsRomanizing?0.6:1, display:'flex', alignItems:'center', gap:6 }}>
+                    <button onClick={lyricsRomanized ? ()=>{ setLyricsRomanized(''); setRomanizedLrcLines([]); } : ()=>romanizeLyrics(lyrics)} disabled={lyricsRomanizing} style={{ padding:'6px 11px', borderRadius:999, border:`1px solid ${track.color}50`, background:`${track.color}18`, color:'white', fontSize:11, fontWeight:700, cursor:'pointer', opacity:lyricsRomanizing?0.6:1, display:'flex', alignItems:'center', gap:5, flexShrink:0 }}>
                       {lyricsRomanizing ? <><Loader2 size={13} style={{ animation:'spin 1s linear infinite' }}/>Romanisasi…</> : lyricsRomanized ? <>🔤 Sembunyikan</> : <>🔤 Romanisasi</>}
                     </button>
                   )}
-                  {lyrics && !lyrics.startsWith('⚡') && (
-                    <button onClick={lyricsTranslation ? ()=>setLyricsTranslation('') : translateLyrics} disabled={lyricsTranslating} style={{ padding:'7px 14px', borderRadius:999, border:`1px solid ${track.color}50`, background:`${track.color}18`, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', opacity:lyricsTranslating?0.6:1, display:'flex', alignItems:'center', gap:6 }}>
+                  {lyrics && !lyrics.startsWith('⚡') && !isLite && (
+                    <button onClick={lyricsTranslation ? ()=>setLyricsTranslation('') : translateLyrics} disabled={lyricsTranslating} style={{ padding:'6px 11px', borderRadius:999, border:`1px solid ${track.color}50`, background:`${track.color}18`, color:'white', fontSize:11, fontWeight:700, cursor:'pointer', opacity:lyricsTranslating?0.6:1, display:'flex', alignItems:'center', gap:5, flexShrink:0 }}>
                       {lyricsTranslating ? <><Loader2 size={13} style={{ animation:'spin 1s linear infinite' }}/>Menerjemahkan…</> : lyricsTranslation ? <>🌐 Sembunyikan</> : <>🌐 Terjemahkan</>}
                     </button>
                   )}
-                  <button onClick={getLyrics} disabled={lyricsLoading||lyricsGenerating} style={{ padding:'7px 14px', borderRadius:999, border:'none', background:track.color, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', opacity:(lyricsLoading||lyricsGenerating)?0.6:1, display:'flex', alignItems:'center', gap:6 }}>
+                  <button onClick={getLyrics} disabled={lyricsLoading||lyricsGenerating} style={{ padding:'6px 11px', borderRadius:999, border:'none', background:track.color, color:'white', fontSize:11, fontWeight:700, cursor:'pointer', opacity:(lyricsLoading||lyricsGenerating)?0.6:1, display:'flex', alignItems:'center', gap:5, flexShrink:0 }}>
                     {lyricsLoading?<><Loader2 size={13} style={{ animation:'spin 1s linear infinite' }}/>{t?.lyricsSearchBtn||'Search...'}</>:<><Sparkles size={13}/>{lyrics?(t?.lyricsRefresh||'Refresh'):(t?.lyricsShow||'Show Lyrics')}</>}
                   </button>
                 </div>
@@ -10466,6 +10640,7 @@ Format exactly:
                     <>
                     <div style={{ lineHeight:1.9 }}>
                       {(() => {
+                        void captionTick; // eslint-disable-line no-unused-expressions — FIX Bug #9
                         const now = embedTrack?.type === 'youtube' ? ytProgress : progress;
                         let activeIdx = -1;
                         if (lrcLines.length > 0) {
@@ -11101,7 +11276,7 @@ Format exactly:
           /* Kurangi paint area: hilangkan gradients dekoratif */
           .lite-mode [data-gradient]{background:rgba(255,255,255,0.04)!important}
           /* Pause semua animasi saat tab tidak aktif (hemat baterai background tab) */
-          .page-hidden *{animation-play-state:paused!important}
+          .page-hidden *:not(iframe){animation-play-state:paused!important}
 
           /* ══ PRO MODE: kurangi animasi dekoratif yang tidak perlu ══ */
           /* Bintang twinkle — boros GPU */

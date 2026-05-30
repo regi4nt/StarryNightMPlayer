@@ -99,6 +99,9 @@ input[type='range']::-webkit-slider-thumb {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+
+
 @keyframes bounce {
   0%, 100% { transform: scaleY(0.5); }
   50% { transform: scaleY(1.2); }
