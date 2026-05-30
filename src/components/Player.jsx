@@ -95,41 +95,48 @@ function AppLogo({ size = 32 }) {
   );
 }
 
-// ── Radio ring: CSS animation di SVG foreignObject trick via wrapper div ─────
-// SVG tidak bisa pakai CSS animation pada transform secara lintas-browser,
-// jadi kita wrap <svg> kecil berisi arc di dalam <g> + gunakan CSS pada <g>
-// dengan transformOrigin di tengah.
+// ── Radio ring: gunakan SVG-native animateTransform agar rotasi di tengah
+// bekerja di semua browser tanpa masalah transform-origin pada elemen SVG.
 function RadioRing({ cx, cy, ringR, circ, color, isLite, isPlaying }) {
-  const arcRef = useRef(null);
-
-  const getCurrentAngle = (el) => {
-    const st = window.getComputedStyle(el);
-    const tr = st.transform || st.webkitTransform;
-    if (!tr || tr === 'none') return 0;
-    const [a, b] = tr.replace('matrix(','').split(',').map(parseFloat);
-    return Math.round(Math.atan2(b, a) * (180 / Math.PI));
-  };
+  const animRef = useRef(null);
 
   useEffect(() => {
-    const el = arcRef.current;
-    if (!el) return;
-    if (isPlaying) {
-      const angle = getCurrentAngle(el);
-      const delay = -((((angle % 360) + 360) % 360) / 360) * 9;
-      el.style.transform = '';
-      el.style.animation = `spin20 9s linear ${delay}s infinite`;
-    } else {
-      const angle = getCurrentAngle(el);
-      el.style.animation = 'none';
-      el.style.transform = `rotate(${angle}deg)`;
-    }
+    const anim = animRef.current;
+    if (!anim) return;
+    try {
+      if (isPlaying) {
+        anim.beginElement();
+      } else {
+        anim.endElement();
+      }
+    } catch (_) {}
   }, [isPlaying]);
 
+  // Saat pertama mount, langsung mulai jika sudah playing
+  useEffect(() => {
+    if (!isPlaying) return;
+    const anim = animRef.current;
+    if (!anim) return;
+    try { anim.beginElement(); } catch (_) {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
-    <g ref={arcRef} style={{ transformOrigin:`${cx}px ${cy}px`, willChange:'transform' }}>
+    <g>
       <circle cx={cx} cy={cy} r={ringR} stroke={color} strokeWidth="4.5" fill="none"
         strokeDasharray={`${circ*0.35} ${circ*0.65}`} strokeLinecap="round"
-        style={{ filter:isLite?'none':`drop-shadow(0 0 6px ${color})` }}/>
+        style={{ filter:isLite?'none':`drop-shadow(0 0 6px ${color})` }}>
+        <animateTransform
+          ref={animRef}
+          attributeName="transform"
+          type="rotate"
+          from={`0 ${cx} ${cy}`}
+          to={`360 ${cx} ${cy}`}
+          dur="9s"
+          repeatCount="indefinite"
+          begin="indefinite"
+        />
+      </circle>
     </g>
   );
 }
