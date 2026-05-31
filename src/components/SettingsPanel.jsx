@@ -527,7 +527,7 @@ function CacheManager({ lang, t }) {
   );
 }
 
-function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t, userSpId, setUserSpId, userSpSecret, setUserSpSecret, userScId, setUserScId, userAiKey, setUserAiKey, userYtKey, setUserYtKey, userCfKey, setUserCfKey, userSnKey, setUserSnKey, setTab, setFullscreen, googleUser, handleGoogleLogin, syncPlaylistsToCloud, accessToken, plSyncStatus, plSyncError, plSyncedAt }) {
+function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t, userSpId, setUserSpId, userSpSecret, setUserSpSecret, userScId, setUserScId, userAiKey, setUserAiKey, userYtKey, setUserYtKey, userCfKey, setUserCfKey, userSnKey, setUserSnKey, setTab, setFullscreen, googleUser, handleGoogleLogin, syncPlaylistsToCloud, accessToken, plSyncStatus, plSyncError, plSyncedAt, appTheme, changeTheme, APP_THEMES }) {
   const coverRef = useRef(null);
   const [apiKeyTab, setApiKeyTab] = React.useState('spotify');
   // Local state untuk DNS input agar tidak terganggu re-render parent
@@ -542,12 +542,45 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
   }, [customDns]);
   return (
     <div style={{ position:'absolute', inset:0, zIndex:150, background:'rgba(0,0,0,0.6)', ...(isLite?{}:{backdropFilter:'blur(4px)'}), display:'flex', alignItems:'stretch' }} onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="scrollbar-hide" style={{ width:'100%', height:'100%', overflowY:'auto', overflowX:'hidden', background:'#0d0d24', border:'none', borderRadius:0, padding:'0 0 env(safe-area-inset-bottom, 24px)' }}>
+      <div className="scrollbar-hide" style={{ width:'100%', height:'100%', overflowY:'auto', overflowX:'hidden', background:'var(--theme-bg2, #0d0d24)', border:'none', borderRadius:0, padding:'0 0 env(safe-area-inset-bottom, 24px)' }}>
         {/* Header */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 18px 0', marginBottom:6 }}>
           <div style={{ fontWeight:900, fontSize:15, letterSpacing:'-0.02em' }}>{t ? t.settings : 'Pengaturan'}</div>
           <button onClick={onClose} style={{ width:28, height:28, borderRadius:999, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.7)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:14 }}>×</button>
         </div>
+
+        {/* ── TEMA APLIKASI */}
+        {APP_THEMES && (
+          <div style={{ padding:'16px 18px 18px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+              <span style={{ fontSize:16 }}>🎨</span>
+              <div>
+                <div style={{ fontWeight:800, fontSize:14 }}>Tema Tampilan</div>
+                <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>Pilih warna latar belakang aplikasi</div>
+              </div>
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:8 }}>
+              {Object.values(APP_THEMES).map(th => {
+                const active = appTheme === th.id;
+                return (
+                  <button key={th.id} onClick={() => changeTheme(th.id)}
+                    style={{ display:'flex', alignItems:'center', gap:9, padding:'9px 12px', borderRadius:12,
+                      border: active ? `1.5px solid ${th.accent}` : '1.5px solid rgba(255,255,255,0.08)',
+                      background: active ? `${th.accent}18` : 'rgba(255,255,255,0.03)',
+                      cursor:'pointer', textAlign:'left', transition:'all 0.18s' }}>
+                    <div style={{ width:22, height:22, borderRadius:6, background:th.bg, border:`2px solid ${th.accent}`, flexShrink:0,
+                      boxShadow: active ? `0 0 8px ${th.accent}60` : 'none' }}/>
+                    <span style={{ fontSize:11, fontWeight: active ? 700 : 500,
+                      color: active ? th.accent : 'rgba(255,255,255,0.6)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                      {th.label}
+                    </span>
+                    {active && <div style={{ marginLeft:'auto', width:6, height:6, borderRadius:999, background:th.accent, flexShrink:0 }}/>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ── GOOGLE DRIVE */}
         <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>

@@ -80,6 +80,23 @@ export default function App() {
   const dataSaver = isLite; // alias untuk backward compat semua referensi lama
   const toggleDataSaver = toggleMode; // backward compat
 
+  // ── App Themes ─────────────────────────────────────────
+  const APP_THEMES = {
+    starry:   { id:'starry',   label:'🌌 Starry Night', bg:'#07071a', bgSecondary:'#0d0d24', star:'rgba(255,255,255,0.85)', accent:'#60a5fa', nebula:'rgba(96,165,250,0.12)' },
+    aurora:   { id:'aurora',   label:'🌿 Aurora',       bg:'#03150f', bgSecondary:'#081c14', star:'rgba(180,255,200,0.8)',  accent:'#34d399', nebula:'rgba(52,211,153,0.12)' },
+    nebula:   { id:'nebula',   label:'🟣 Nebula',       bg:'#0f0520', bgSecondary:'#170830', star:'rgba(230,180,255,0.8)',  accent:'#c084fc', nebula:'rgba(192,132,252,0.14)' },
+    sunset:   { id:'sunset',   label:'🌅 Sunset',       bg:'#180a04', bgSecondary:'#20100a', star:'rgba(255,200,150,0.8)',  accent:'#fb923c', nebula:'rgba(251,146,60,0.12)'  },
+    oceanic:  { id:'oceanic',  label:'🌊 Oceanic',      bg:'#030d1a', bgSecondary:'#05142a', star:'rgba(150,220,255,0.8)',  accent:'#38bdf8', nebula:'rgba(56,189,248,0.12)'  },
+    midnight: { id:'midnight', label:'🖤 Midnight',     bg:'#080808', bgSecondary:'#111111', star:'rgba(255,255,255,0.6)',  accent:'#a3a3a3', nebula:'rgba(163,163,163,0.08)' },
+    rosewood: { id:'rosewood', label:'🌸 Rosewood',     bg:'#160709', bgSecondary:'#1f0b10', star:'rgba(255,180,200,0.8)',  accent:'#f472b6', nebula:'rgba(244,114,182,0.12)' },
+  };
+  const [appTheme, setAppTheme] = useState(() => {
+    const saved = localStorage.getItem('sn_theme');
+    return APP_THEMES[saved] ? saved : 'starry';
+  });
+  const theme = APP_THEMES[appTheme] || APP_THEMES.starry;
+  const changeTheme = (id) => { setAppTheme(id); localStorage.setItem('sn_theme', id); };
+
   // ── Language: 'id' (Indonesia) | 'en' (English)
   const [lang, setLang] = useState(() => localStorage.getItem('sn_lang') || 'id');
   const toggleLang = () => setLang(v => { const n = v === 'id' ? 'en' : 'id'; localStorage.setItem('sn_lang', n); return n; });
@@ -6853,7 +6870,7 @@ Format exactly:
   ];
 
   return (
-    <div className={`${isLite ? 'lite-mode' : 'pro-mode'} layout-${layoutMode}`} style={{ position:'fixed', inset:0, overflow:'hidden', background:'#07071a', color:'#f1f5f9', fontFamily:"'Segoe UI',system-ui,sans-serif", display:'flex', flexDirection:'column', userSelect:'none', WebkitTapHighlightColor:'transparent' }}>
+    <div className={`${isLite ? 'lite-mode' : 'pro-mode'} layout-${layoutMode}`} style={{ position:'fixed', inset:0, overflow:'hidden', background:theme.bg, color:'#f1f5f9', fontFamily:"'Segoe UI',system-ui,sans-serif", display:'flex', flexDirection:'column', userSelect:'none', WebkitTapHighlightColor:'transparent', '--theme-bg':theme.bg, '--theme-bg2':theme.bgSecondary, '--theme-accent':theme.accent, '--theme-nebula':theme.nebula, '--theme-star':theme.star }}>
 
       {/* ══ PWA INSTALL BANNER — floating bottom, appears when installable ══ */}
       {!pwaInstalled && !pwaBannerDismissed && pwaBannerVisible && pwaPrompt && (
@@ -7060,7 +7077,7 @@ Format exactly:
 
         {/* ── SETTINGS PANEL — menutup semua tab di desktop & landscape, hanya player di portrait */}
         {showSettings && (isDesktop || layoutMode === 'mobile-landscape' || tab === 'player') && (
-          <Suspense fallback={<Spinner/>}><SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userScId={userScId} setUserScId={setUserScId} userAiKey={userAiKey} setUserAiKey={setUserAiKey} userYtKey={userYtKey} setUserYtKey={setUserYtKey} userCfKey={userCfKey} setUserCfKey={setUserCfKey} userSnKey={userSnKey} setUserSnKey={setUserSnKey} setTab={setTab} setFullscreen={setFullscreen} googleUser={googleUser||null} handleGoogleLogin={handleGoogleLogin} syncPlaylistsToCloud={syncPlaylistsToCloud} accessToken={accessToken||null} plSyncStatus={plSyncStatus} plSyncError={plSyncError||null} plSyncedAt={plSyncedAt||null}/></Suspense>
+          <Suspense fallback={<Spinner/>}><SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userScId={userScId} setUserScId={setUserScId} userAiKey={userAiKey} setUserAiKey={setUserAiKey} userYtKey={userYtKey} setUserYtKey={setUserYtKey} userCfKey={userCfKey} setUserCfKey={setUserCfKey} userSnKey={userSnKey} setUserSnKey={setUserSnKey} setTab={setTab} setFullscreen={setFullscreen} googleUser={googleUser||null} handleGoogleLogin={handleGoogleLogin} syncPlaylistsToCloud={syncPlaylistsToCloud} accessToken={accessToken||null} plSyncStatus={plSyncStatus} plSyncError={plSyncError||null} plSyncedAt={plSyncedAt||null} appTheme={appTheme} changeTheme={changeTheme} APP_THEMES={APP_THEMES}/></Suspense>
         )}
 
         {/* ─── PLAYER TAB */}
@@ -11206,8 +11223,8 @@ Format exactly:
         @keyframes twinkleB{0%,100%{opacity:0.55}50%{opacity:1}}
         @keyframes twinkleC{0%,100%{opacity:0.7}40%{opacity:0.2}80%{opacity:0.9}}
         .stars,.starsB,.starsC{position:absolute;inset:0;will-change:opacity}
-        .stars{background-image:radial-gradient(1px 1px at 8% 12%,rgba(255,255,255,0.7),transparent),radial-gradient(1.5px 1.5px at 31% 45%,rgba(255,255,255,0.5),transparent),radial-gradient(1px 1px at 62% 23%,rgba(255,255,255,0.6),transparent),radial-gradient(2px 2px at 78% 67%,rgba(255,255,255,0.35),transparent),radial-gradient(1px 1px at 14% 71%,rgba(255,255,255,0.5),transparent),radial-gradient(1px 1px at 88% 18%,rgba(255,255,255,0.45),transparent),radial-gradient(1.5px 1.5px at 47% 89%,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 55% 55%,rgba(255,255,255,0.3),transparent);animation:twinkle 4s ease-in-out infinite}
-        .starsB{background-image:radial-gradient(1px 1px at 23% 6%,rgba(255,255,255,0.5),transparent),radial-gradient(1.5px 1.5px at 70% 38%,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 5% 52%,rgba(255,255,255,0.55),transparent),radial-gradient(2px 2px at 91% 81%,rgba(255,255,255,0.3),transparent),radial-gradient(1px 1px at 38% 77%,rgba(255,255,255,0.45),transparent),radial-gradient(1px 1px at 66% 9%,rgba(255,255,255,0.35),transparent),radial-gradient(1.5px 1.5px at 18% 93%,rgba(255,255,255,0.3),transparent);animation:twinkleB 5.5s ease-in-out 1.8s infinite}
+        .stars{background-image:radial-gradient(1px 1px at 8% 12%,var(--theme-star,rgba(255,255,255,0.7)),transparent),radial-gradient(1.5px 1.5px at 31% 45%,rgba(255,255,255,0.5),transparent),radial-gradient(1px 1px at 62% 23%,rgba(255,255,255,0.6),transparent),radial-gradient(2px 2px at 78% 67%,rgba(255,255,255,0.35),transparent),radial-gradient(1px 1px at 14% 71%,rgba(255,255,255,0.5),transparent),radial-gradient(1px 1px at 88% 18%,rgba(255,255,255,0.45),transparent),radial-gradient(1.5px 1.5px at 47% 89%,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 55% 55%,rgba(255,255,255,0.3),transparent);animation:twinkle 4s ease-in-out infinite}
+        .starsB{background-image:radial-gradient(1px 1px at 23% 6%,var(--theme-star,rgba(255,255,255,0.5)),transparent),radial-gradient(1.5px 1.5px at 70% 38%,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 5% 52%,rgba(255,255,255,0.55),transparent),radial-gradient(2px 2px at 91% 81%,rgba(255,255,255,0.3),transparent),radial-gradient(1px 1px at 38% 77%,rgba(255,255,255,0.45),transparent),radial-gradient(1px 1px at 66% 9%,rgba(255,255,255,0.35),transparent),radial-gradient(1.5px 1.5px at 18% 93%,rgba(255,255,255,0.3),transparent);animation:twinkleB 5.5s ease-in-out 1.8s infinite}
         .starsC{background-image:radial-gradient(1px 1px at 42% 31%,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 83% 54%,rgba(255,255,255,0.5),transparent),radial-gradient(1.5px 1.5px at 11% 28%,rgba(255,255,255,0.35),transparent),radial-gradient(1px 1px at 75% 92%,rgba(255,255,255,0.3),transparent),radial-gradient(2px 2px at 29% 63%,rgba(255,255,255,0.25),transparent),radial-gradient(1px 1px at 58% 4%,rgba(255,255,255,0.5),transparent);animation:twinkleC 7s ease-in-out 3.2s infinite}
         .scrollbar-hide::-webkit-scrollbar{display:none}
         .scrollbar-hide{-ms-overflow-style:none;scrollbar-width:none}

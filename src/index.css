@@ -13,7 +13,7 @@ html, body, #root {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background: #07071a;
+  background: var(--theme-bg, #07071a);
 }
 
 .stars-layer {
@@ -136,12 +136,7 @@ input[type='range']::-webkit-slider-thumb {
   app-region: drag;
 
   /* Visual: semi-transparent starry night gradient */
-  background: linear-gradient(
-    90deg,
-    rgba(7, 7, 26, 0.92) 0%,
-    rgba(15, 10, 40, 0.92) 50%,
-    rgba(7, 7, 26, 0.92) 100%
-  );
+  background: linear-gradient(90deg, color-mix(in srgb, var(--theme-bg, #07071a) 92%, transparent) 0%, color-mix(in srgb, var(--theme-bg, #07071a) 85%, transparent) 50%, color-mix(in srgb, var(--theme-bg, #07071a) 92%, transparent) 100%);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(96, 165, 250, 0.12);
