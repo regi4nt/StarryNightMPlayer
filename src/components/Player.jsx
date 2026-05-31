@@ -254,7 +254,7 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
               : <div style={{ width:'100%', height:'100%', background:`linear-gradient(135deg,${color}28,${color}10)`, display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={artR*0.5} color={color} opacity={0.7}/></div>}
         {/* ── Fase CHECK — scanning overlay, audio sudah diputar via stream */}
         {drivePhase === 'check' && (
-          <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:artR*0.1, background:'var(--theme-bg, rgba(7,7,26,0.75))', ...(isLite?{}:{backdropFilter:'blur(3px)'}) }}>
+          <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:artR*0.1, background:'rgba(7,7,26,0.75)', ...(isLite?{}:{backdropFilter:'blur(3px)'}) }}>
             {/* Pulse rings — hanya Lite yang pakai ikon statis; Pro tanpa pulse-ring */}
             <div style={{ position:'relative', width:artR*0.7, height:artR*0.7, display:'flex', alignItems:'center', justifyContent:'center' }}>
               <div style={{ width:artR*0.22, height:artR*0.22, borderRadius:'50%', background:`${color}33`, border:`2px solid ${color}88`, display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -266,7 +266,7 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
         )}
         {/* ── Fase DOWNLOAD — circular progress bar */}
         {drivePhase === 'download' && (
-          <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:artR*0.1, background:'var(--theme-bg, rgba(7,7,26,0.62))', ...(isLite ? {} : { backdropFilter:'blur(3px)' }) }}>
+          <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:artR*0.1, background:'rgba(7,7,26,0.62)', ...(isLite ? {} : { backdropFilter:'blur(3px)' }) }}>
             <svg width={artR*0.85} height={artR*0.85} style={{ flexShrink:0 }}>
               {(() => {
                 const r = artR*0.34, c = artR*0.425, circ2 = 2*Math.PI*r;
@@ -291,7 +291,7 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
         )}
         {/* ── YT Audio Download — overlay kecil di pojok kanan bawah cover saat download audio love */}
         {ytDownloading && drivePhase === 'idle' && (
-          <div style={{ position:'absolute', bottom:6, right:6, display:'flex', alignItems:'center', gap:4, background:'var(--theme-bg, rgba(7,7,26,0.82))', borderRadius:999, padding:'3px 7px 3px 5px' }}>
+          <div style={{ position:'absolute', bottom:6, right:6, display:'flex', alignItems:'center', gap:4, background:'rgba(7,7,26,0.82)', borderRadius:999, padding:'3px 7px 3px 5px' }}>
             <svg width={artR*0.28} height={artR*0.28} style={{ flexShrink:0 }}>
               {(() => {
                 const r2 = artR*0.1, c2 = artR*0.14, ci = 2*Math.PI*r2;

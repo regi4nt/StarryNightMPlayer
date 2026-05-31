@@ -80,281 +80,6 @@ export default function App() {
   const dataSaver = isLite; // alias untuk backward compat semua referensi lama
   const toggleDataSaver = toggleMode; // backward compat
 
-  // ── App Themes ─────────────────────────────────────────
-  const APP_THEMES = {
-    starry: {
-      id:'starry', label:'🌌 Starry Night',
-      bg:'#07071a', bgSecondary:'#0d0d24',
-      star:'rgba(200,220,255,0.85)', accent:'#60a5fa', nebula:'rgba(96,165,250,0.12)',
-      // bg layer: deep space dengan tiga nebula biru-ungu
-      bgLayer: `radial-gradient(ellipse 80% 60% at 15% 20%, rgba(30,20,80,0.9) 0%, transparent 70%),
-                radial-gradient(ellipse 60% 50% at 85% 75%, rgba(15,10,60,0.85) 0%, transparent 65%),
-                radial-gradient(ellipse 100% 100% at 50% 50%, rgba(7,7,26,1) 0%, rgba(10,8,30,1) 100%)`,
-      // layer khusus aurora-ish faint di atas bg
-      nebulaLayer: `radial-gradient(ellipse 55% 35% at 30% 15%, rgba(96,165,250,0.08) 0%, transparent 70%),
-                    radial-gradient(ellipse 45% 40% at 75% 80%, rgba(192,132,252,0.07) 0%, transparent 65%)`,
-    },
-    aurora: {
-      id:'aurora', label:'🌿 Aurora',
-      bg:'#021209', bgSecondary:'#051a0e',
-      star:'rgba(180,255,210,0.8)', accent:'#34d399', nebula:'rgba(52,211,153,0.12)',
-      // bg layer: gelap hutan dengan tirai aurora hijau
-      bgLayer: `radial-gradient(ellipse 90% 50% at 50% 0%, rgba(10,60,30,0.95) 0%, transparent 60%),
-                radial-gradient(ellipse 70% 80% at 20% 80%, rgba(2,30,15,0.9) 0%, transparent 70%),
-                radial-gradient(ellipse 100% 100% at 50% 50%, rgba(2,18,9,1) 0%, rgba(3,15,8,1) 100%)`,
-      nebulaLayer: `linear-gradient(180deg, rgba(52,211,153,0.12) 0%, transparent 40%),
-                    radial-gradient(ellipse 80% 30% at 50% 5%, rgba(34,197,94,0.10) 0%, transparent 80%),
-                    radial-gradient(ellipse 40% 20% at 70% 12%, rgba(16,185,129,0.08) 0%, transparent 60%)`,
-    },
-    nebula: {
-      id:'nebula', label:'🟣 Nebula',
-      bg:'#0a0315', bgSecondary:'#130525',
-      star:'rgba(230,180,255,0.9)', accent:'#c084fc', nebula:'rgba(192,132,252,0.15)',
-      // bg layer: nebula ungu-merah muda seperti Pillars of Creation
-      bgLayer: `radial-gradient(ellipse 70% 60% at 20% 30%, rgba(80,20,100,0.9) 0%, transparent 65%),
-                radial-gradient(ellipse 60% 50% at 80% 70%, rgba(100,10,80,0.85) 0%, transparent 60%),
-                radial-gradient(ellipse 50% 40% at 55% 15%, rgba(60,0,90,0.8) 0%, transparent 55%),
-                radial-gradient(ellipse 100% 100% at 50% 50%, rgba(10,3,21,1) 0%, rgba(14,4,28,1) 100%)`,
-      nebulaLayer: `radial-gradient(ellipse 60% 45% at 25% 35%, rgba(192,132,252,0.12) 0%, transparent 70%),
-                    radial-gradient(ellipse 50% 40% at 75% 65%, rgba(244,114,182,0.08) 0%, transparent 65%),
-                    radial-gradient(ellipse 35% 25% at 60% 10%, rgba(167,139,250,0.10) 0%, transparent 60%)`,
-    },
-    sunset: {
-      id:'sunset', label:'🌅 Sunset',
-      bg:'#100502', bgSecondary:'#1a0a04',
-      star:'rgba(255,210,150,0.75)', accent:'#fb923c', nebula:'rgba(251,146,60,0.12)',
-      // bg layer: langit senja — biru gelap atas, oranye-merah di bawah
-      bgLayer: `linear-gradient(180deg, rgba(8,5,20,1) 0%, rgba(30,10,5,1) 40%, rgba(60,15,5,1) 65%, rgba(80,25,5,1) 100%),
-                radial-gradient(ellipse 100% 60% at 50% 90%, rgba(220,60,10,0.5) 0%, transparent 70%),
-                radial-gradient(ellipse 60% 40% at 50% 85%, rgba(255,120,20,0.35) 0%, transparent 60%)`,
-      nebulaLayer: `radial-gradient(ellipse 80% 30% at 50% 100%, rgba(251,146,60,0.15) 0%, transparent 60%),
-                    radial-gradient(ellipse 40% 20% at 30% 75%, rgba(239,68,68,0.08) 0%, transparent 50%)`,
-    },
-    oceanic: {
-      id:'oceanic', label:'🌊 Oceanic',
-      bg:'#020b14', bgSecondary:'#041222',
-      star:'rgba(150,230,255,0.8)', accent:'#38bdf8', nebula:'rgba(56,189,248,0.12)',
-      // bg layer: kedalaman laut — gradasi biru gelap dengan cahaya dari dalam
-      bgLayer: `radial-gradient(ellipse 80% 60% at 50% 100%, rgba(0,40,80,0.9) 0%, transparent 65%),
-                radial-gradient(ellipse 60% 50% at 20% 40%, rgba(0,20,50,0.8) 0%, transparent 60%),
-                radial-gradient(ellipse 100% 100% at 50% 50%, rgba(2,11,20,1) 0%, rgba(3,10,22,1) 100%)`,
-      nebulaLayer: `radial-gradient(ellipse 70% 40% at 50% 90%, rgba(56,189,248,0.10) 0%, transparent 70%),
-                    radial-gradient(ellipse 40% 30% at 75% 50%, rgba(14,165,233,0.07) 0%, transparent 60%),
-                    radial-gradient(ellipse 30% 20% at 25% 25%, rgba(6,182,212,0.06) 0%, transparent 55%)`,
-    },
-    midnight: {
-      id:'midnight', label:'🖤 Midnight',
-      bg:'#050505', bgSecondary:'#0c0c0c',
-      star:'rgba(255,255,255,0.55)', accent:'#737373', nebula:'rgba(115,115,115,0.07)',
-      // bg layer: hitam murni, sangat minim
-      bgLayer: `radial-gradient(ellipse 60% 50% at 30% 20%, rgba(20,20,20,0.9) 0%, transparent 65%),
-                radial-gradient(ellipse 100% 100% at 50% 50%, rgba(5,5,5,1) 0%, rgba(8,8,8,1) 100%)`,
-      nebulaLayer: `radial-gradient(ellipse 50% 35% at 60% 30%, rgba(115,115,115,0.06) 0%, transparent 65%)`,
-    },
-    rosewood: {
-      id:'rosewood', label:'🌸 Rosewood',
-      bg:'#110407', bgSecondary:'#1c060f',
-      star:'rgba(255,180,210,0.8)', accent:'#f472b6', nebula:'rgba(244,114,182,0.12)',
-      bgLayer: `radial-gradient(ellipse 75% 55% at 20% 25%, rgba(80,5,30,0.9) 0%, transparent 65%),
-                radial-gradient(ellipse 55% 50% at 80% 75%, rgba(60,5,25,0.85) 0%, transparent 60%),
-                radial-gradient(ellipse 100% 100% at 50% 50%, rgba(17,4,7,1) 0%, rgba(20,5,10,1) 100%)`,
-      nebulaLayer: `radial-gradient(ellipse 55% 40% at 25% 30%, rgba(244,114,182,0.09) 0%, transparent 65%),
-                    radial-gradient(ellipse 45% 35% at 75% 70%, rgba(251,113,133,0.07) 0%, transparent 60%),
-                    radial-gradient(ellipse 30% 20% at 55% 10%, rgba(236,72,153,0.08) 0%, transparent 55%)`,
-    },
-
-    // ── KAMAR & HUJAN ──────────────────────────────────────
-    rainy_room: {
-      id:'rainy_room', label:'🌧️ Kamar Hujan',
-      bg:'#080c10', bgSecondary:'#0d1318',
-      star:'rgba(180,210,240,0.5)', accent:'#7dd3fc', nebula:'rgba(125,211,252,0.10)',
-      // bg: jendela kamar remang-remang, hujan di luar — biru keabu-abuan, cahaya jalan dari bawah
-      bgLayer: `linear-gradient(180deg, rgba(5,8,14,1) 0%, rgba(8,12,20,1) 55%, rgba(12,18,28,1) 100%),
-                radial-gradient(ellipse 120% 40% at 50% 100%, rgba(30,60,100,0.55) 0%, transparent 60%),
-                radial-gradient(ellipse 40% 60% at 15% 50%, rgba(20,40,70,0.4) 0%, transparent 55%),
-                radial-gradient(ellipse 30% 80% at 85% 40%, rgba(15,35,60,0.35) 0%, transparent 55%)`,
-      nebulaLayer: `radial-gradient(ellipse 80% 20% at 50% 0%, rgba(125,211,252,0.05) 0%, transparent 60%),
-                    radial-gradient(ellipse 60% 30% at 20% 60%, rgba(96,165,250,0.06) 0%, transparent 55%),
-                    radial-gradient(ellipse 50% 25% at 80% 80%, rgba(56,189,248,0.05) 0%, transparent 50%)`,
-    },
-    cozy_room: {
-      id:'cozy_room', label:'🕯️ Kamar Hangat',
-      bg:'#0d0804', bgSecondary:'#160f06',
-      star:'rgba(255,220,160,0.65)', accent:'#f59e0b', nebula:'rgba(245,158,11,0.12)',
-      // bg: lampu kuning remang kamar nyaman, dinding bata terasa
-      bgLayer: `radial-gradient(ellipse 70% 80% at 50% 50%, rgba(60,30,5,0.85) 0%, transparent 70%),
-                radial-gradient(ellipse 50% 50% at 50% 50%, rgba(40,18,3,0.9) 0%, transparent 60%),
-                radial-gradient(ellipse 100% 100% at 50% 50%, rgba(13,8,4,1) 0%, rgba(18,10,5,1) 100%)`,
-      nebulaLayer: `radial-gradient(ellipse 60% 60% at 50% 40%, rgba(245,158,11,0.12) 0%, transparent 65%),
-                    radial-gradient(ellipse 35% 35% at 50% 50%, rgba(251,146,60,0.08) 0%, transparent 55%),
-                    radial-gradient(ellipse 25% 20% at 30% 70%, rgba(217,119,6,0.06) 0%, transparent 50%)`,
-    },
-
-    // ── PERJALANAN, HUTAN, PEGUNUNGAN ──────────────────────
-    deep_forest: {
-      id:'deep_forest', label:'🌲 Hutan Dalam',
-      bg:'#020d06', bgSecondary:'#041209',
-      star:'rgba(160,255,180,0.55)', accent:'#4ade80', nebula:'rgba(74,222,128,0.10)',
-      // bg: hutan lebat malam, lampu kunang-kunang, kabut hijau kegelapan
-      bgLayer: `radial-gradient(ellipse 100% 70% at 50% 100%, rgba(5,30,10,0.95) 0%, transparent 55%),
-                radial-gradient(ellipse 60% 90% at 10% 50%, rgba(3,20,8,0.9) 0%, transparent 60%),
-                radial-gradient(ellipse 60% 90% at 90% 50%, rgba(2,18,7,0.85) 0%, transparent 60%),
-                radial-gradient(ellipse 100% 100% at 50% 50%, rgba(2,13,6,1) 0%, rgba(3,10,5,1) 100%)`,
-      nebulaLayer: `radial-gradient(ellipse 70% 40% at 50% 80%, rgba(74,222,128,0.07) 0%, transparent 60%),
-                    radial-gradient(ellipse 40% 30% at 20% 50%, rgba(34,197,94,0.06) 0%, transparent 55%),
-                    radial-gradient(ellipse 35% 25% at 80% 30%, rgba(16,185,129,0.05) 0%, transparent 50%)`,
-    },
-    mountain_dawn: {
-      id:'mountain_dawn', label:'⛰️ Fajar Pegunungan',
-      bg:'#07060f', bgSecondary:'#0e0d1a',
-      star:'rgba(220,210,255,0.75)', accent:'#a78bfa', nebula:'rgba(167,139,250,0.11)',
-      // bg: puncak gunung sebelum fajar — ungu biru gelap di langit, siluet bukit di bawah
-      bgLayer: `linear-gradient(180deg, rgba(5,4,15,1) 0%, rgba(15,10,35,1) 35%, rgba(30,20,55,1) 60%, rgba(20,12,40,1) 100%),
-                radial-gradient(ellipse 100% 30% at 50% 60%, rgba(40,20,80,0.5) 0%, transparent 60%),
-                radial-gradient(ellipse 60% 40% at 20% 70%, rgba(25,15,60,0.4) 0%, transparent 55%)`,
-      nebulaLayer: `radial-gradient(ellipse 80% 30% at 50% 30%, rgba(167,139,250,0.09) 0%, transparent 65%),
-                    radial-gradient(ellipse 50% 20% at 30% 45%, rgba(139,92,246,0.07) 0%, transparent 55%),
-                    radial-gradient(ellipse 40% 20% at 70% 50%, rgba(196,181,253,0.06) 0%, transparent 50%)`,
-    },
-    road_trip: {
-      id:'road_trip', label:'🛣️ Road Trip Malam',
-      bg:'#060709', bgSecondary:'#0c0e12',
-      star:'rgba(255,240,200,0.7)', accent:'#fbbf24', nebula:'rgba(251,191,36,0.09)',
-      // bg: jalan aspal malam hari, cahaya lampu jalan kuning memanjang ke horizon
-      bgLayer: `linear-gradient(180deg, rgba(5,6,10,1) 0%, rgba(8,9,14,1) 40%, rgba(12,10,8,1) 70%, rgba(6,5,4,1) 100%),
-                radial-gradient(ellipse 20% 80% at 50% 100%, rgba(80,60,10,0.6) 0%, transparent 55%),
-                radial-gradient(ellipse 80% 20% at 50% 65%, rgba(40,30,5,0.35) 0%, transparent 50%)`,
-      nebulaLayer: `radial-gradient(ellipse 15% 60% at 50% 90%, rgba(251,191,36,0.10) 0%, transparent 55%),
-                    radial-gradient(ellipse 60% 10% at 50% 70%, rgba(245,158,11,0.07) 0%, transparent 45%)`,
-    },
-
-    // ── LAUT, LANGIT, PANTAI ───────────────────────────────
-    deep_ocean: {
-      id:'deep_ocean', label:'🐋 Laut Dalam',
-      bg:'#010810', bgSecondary:'#021018',
-      star:'rgba(100,200,255,0.6)', accent:'#22d3ee', nebula:'rgba(34,211,238,0.10)',
-      // bg: kedalaman laut gelap dengan cahaya bioluminescence dari bawah
-      bgLayer: `radial-gradient(ellipse 70% 80% at 50% 110%, rgba(0,50,100,0.8) 0%, transparent 55%),
-                radial-gradient(ellipse 40% 50% at 15% 70%, rgba(0,30,70,0.6) 0%, transparent 50%),
-                radial-gradient(ellipse 40% 50% at 85% 60%, rgba(0,25,65,0.55) 0%, transparent 50%),
-                radial-gradient(ellipse 100% 100% at 50% 50%, rgba(1,8,16,1) 0%, rgba(2,8,18,1) 100%)`,
-      nebulaLayer: `radial-gradient(ellipse 80% 40% at 50% 100%, rgba(34,211,238,0.08) 0%, transparent 60%),
-                    radial-gradient(ellipse 30% 30% at 30% 80%, rgba(6,182,212,0.07) 0%, transparent 50%),
-                    radial-gradient(ellipse 25% 25% at 75% 65%, rgba(14,165,233,0.06) 0%, transparent 50%)`,
-    },
-    beach_dusk: {
-      id:'beach_dusk', label:'🏖️ Pantai Senja',
-      bg:'#0c0804', bgSecondary:'#150e07',
-      star:'rgba(255,200,120,0.7)', accent:'#f97316', nebula:'rgba(249,115,22,0.11)',
-      // bg: langit senja pantai — gradasi oranye kemerahan ke biru tua, garis cakrawala tipis
-      bgLayer: `linear-gradient(175deg, rgba(5,5,18,1) 0%, rgba(20,10,8,1) 30%, rgba(50,20,5,1) 55%, rgba(70,25,5,1) 75%, rgba(40,15,3,1) 100%),
-                radial-gradient(ellipse 100% 50% at 50% 80%, rgba(200,70,10,0.45) 0%, transparent 60%),
-                radial-gradient(ellipse 50% 30% at 50% 72%, rgba(255,140,20,0.30) 0%, transparent 50%)`,
-      nebulaLayer: `radial-gradient(ellipse 80% 30% at 50% 75%, rgba(249,115,22,0.12) 0%, transparent 55%),
-                    radial-gradient(ellipse 40% 20% at 70% 60%, rgba(234,88,12,0.08) 0%, transparent 45%)`,
-    },
-    open_sky: {
-      id:'open_sky', label:'☁️ Langit Terbuka',
-      bg:'#030c1a', bgSecondary:'#061525',
-      star:'rgba(210,235,255,0.8)', accent:'#93c5fd', nebula:'rgba(147,197,253,0.10)',
-      // bg: langit malam cerah, biru tua dalam dengan lapisan tipis awan bercahaya bulan
-      bgLayer: `linear-gradient(180deg, rgba(2,8,20,1) 0%, rgba(4,12,28,1) 50%, rgba(6,15,32,1) 100%),
-                radial-gradient(ellipse 90% 40% at 50% 20%, rgba(15,30,70,0.5) 0%, transparent 60%),
-                radial-gradient(ellipse 50% 30% at 75% 30%, rgba(20,35,80,0.35) 0%, transparent 50%)`,
-      nebulaLayer: `radial-gradient(ellipse 80% 25% at 50% 15%, rgba(147,197,253,0.08) 0%, transparent 60%),
-                    radial-gradient(ellipse 40% 20% at 25% 40%, rgba(96,165,250,0.06) 0%, transparent 50%),
-                    radial-gradient(ellipse 35% 15% at 80% 55%, rgba(186,230,253,0.05) 0%, transparent 45%)`,
-    },
-
-    // ── FANTASY DUNIA LAIN ────────────────────────────────
-    enchanted: {
-      id:'enchanted', label:'🧚 Negeri Sihir',
-      bg:'#06020f', bgSecondary:'#0c0520',
-      star:'rgba(255,240,100,0.9)', accent:'#fde047', nebula:'rgba(253,224,71,0.13)',
-      // bg: hutan sihir malam dengan cahaya sihir emas-ungu bercahaya dari tanah
-      bgLayer: `radial-gradient(ellipse 80% 70% at 50% 100%, rgba(50,10,80,0.85) 0%, transparent 55%),
-                radial-gradient(ellipse 50% 60% at 15% 60%, rgba(30,5,60,0.75) 0%, transparent 55%),
-                radial-gradient(ellipse 50% 60% at 85% 55%, rgba(25,5,55,0.7) 0%, transparent 55%),
-                radial-gradient(ellipse 100% 100% at 50% 50%, rgba(6,2,15,1) 0%, rgba(9,3,22,1) 100%)`,
-      nebulaLayer: `radial-gradient(ellipse 70% 40% at 50% 90%, rgba(253,224,71,0.10) 0%, transparent 60%),
-                    radial-gradient(ellipse 40% 30% at 25% 70%, rgba(250,204,21,0.07) 0%, transparent 50%),
-                    radial-gradient(ellipse 30% 25% at 75% 65%, rgba(217,119,6,0.08) 0%, transparent 50%)`,
-    },
-    void_realm: {
-      id:'void_realm', label:'🌀 Dunia Kekosongan',
-      bg:'#020109', bgSecondary:'#050212',
-      star:'rgba(180,150,255,0.75)', accent:'#818cf8', nebula:'rgba(129,140,248,0.12)',
-      // bg: dimensi lain — hitam mutlak dengan celah-celah cahaya ungu biru memecah kegelapan
-      bgLayer: `radial-gradient(ellipse 50% 70% at 50% 50%, rgba(20,5,50,0.9) 0%, transparent 55%),
-                radial-gradient(ellipse 30% 80% at 10% 50%, rgba(15,3,40,0.8) 0%, transparent 50%),
-                radial-gradient(ellipse 30% 80% at 90% 50%, rgba(12,2,35,0.75) 0%, transparent 50%),
-                radial-gradient(ellipse 100% 100% at 50% 50%, rgba(2,1,9,1) 0%, rgba(4,2,14,1) 100%)`,
-      nebulaLayer: `radial-gradient(ellipse 60% 50% at 50% 50%, rgba(129,140,248,0.10) 0%, transparent 65%),
-                    radial-gradient(ellipse 20% 60% at 5% 50%, rgba(99,102,241,0.08) 0%, transparent 50%),
-                    radial-gradient(ellipse 20% 60% at 95% 50%, rgba(139,92,246,0.07) 0%, transparent 50%)`,
-    },
-    crystal_cave: {
-      id:'crystal_cave', label:'💎 Gua Kristal',
-      bg:'#020b0e', bgSecondary:'#041418',
-      star:'rgba(150,255,240,0.8)', accent:'#2dd4bf', nebula:'rgba(45,212,191,0.12)',
-      // bg: gua bawah tanah, stalaktit bercahaya, refleksi air teal biru hijau
-      bgLayer: `radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,40,45,0.9) 0%, transparent 60%),
-                radial-gradient(ellipse 60% 50% at 20% 50%, rgba(0,30,38,0.75) 0%, transparent 55%),
-                radial-gradient(ellipse 60% 50% at 80% 50%, rgba(0,25,35,0.7) 0%, transparent 55%),
-                radial-gradient(ellipse 100% 100% at 50% 50%, rgba(2,11,14,1) 0%, rgba(3,12,16,1) 100%)`,
-      nebulaLayer: `radial-gradient(ellipse 70% 35% at 50% 5%, rgba(45,212,191,0.10) 0%, transparent 60%),
-                    radial-gradient(ellipse 40% 25% at 25% 40%, rgba(20,184,166,0.07) 0%, transparent 50%),
-                    radial-gradient(ellipse 35% 25% at 75% 60%, rgba(6,182,212,0.08) 0%, transparent 50%)`,
-    },
-
-    // ── KOTA MASA DEPAN ───────────────────────────────────
-    cybercity: {
-      id:'cybercity', label:'🌆 Cybercity',
-      bg:'#030309', bgSecondary:'#060612',
-      star:'rgba(255,60,120,0.75)', accent:'#f43f5e', nebula:'rgba(244,63,94,0.12)',
-      // bg: kota cyber malam — neon merah-pink di bawah, langit hitam di atas
-      bgLayer: `linear-gradient(180deg, rgba(3,3,9,1) 0%, rgba(5,4,14,1) 45%, rgba(10,5,18,1) 70%, rgba(20,5,15,1) 100%),
-                radial-gradient(ellipse 100% 40% at 50% 100%, rgba(80,5,30,0.7) 0%, transparent 55%),
-                radial-gradient(ellipse 40% 30% at 20% 85%, rgba(60,3,25,0.5) 0%, transparent 45%),
-                radial-gradient(ellipse 35% 30% at 80% 80%, rgba(50,2,40,0.5) 0%, transparent 45%)`,
-      nebulaLayer: `radial-gradient(ellipse 80% 30% at 50% 100%, rgba(244,63,94,0.12) 0%, transparent 55%),
-                    radial-gradient(ellipse 30% 20% at 20% 85%, rgba(251,113,133,0.08) 0%, transparent 45%),
-                    radial-gradient(ellipse 25% 20% at 80% 78%, rgba(217,70,239,0.07) 0%, transparent 45%)`,
-    },
-    neon_tokyo: {
-      id:'neon_tokyo', label:'🗼 Neon Tokyo',
-      bg:'#03070d', bgSecondary:'#060e18',
-      star:'rgba(100,220,255,0.7)', accent:'#06b6d4', nebula:'rgba(6,182,212,0.11)',
-      // bg: malam Tokyo — campuran cyan neon dan ungu dalam kegelapan kota
-      bgLayer: `linear-gradient(180deg, rgba(2,5,12,1) 0%, rgba(4,8,18,1) 50%, rgba(6,10,22,1) 100%),
-                radial-gradient(ellipse 100% 35% at 50% 100%, rgba(0,40,70,0.75) 0%, transparent 55%),
-                radial-gradient(ellipse 35% 40% at 25% 75%, rgba(0,35,65,0.5) 0%, transparent 50%),
-                radial-gradient(ellipse 30% 40% at 75% 70%, rgba(20,5,50,0.45) 0%, transparent 45%)`,
-      nebulaLayer: `radial-gradient(ellipse 70% 30% at 50% 100%, rgba(6,182,212,0.10) 0%, transparent 55%),
-                    radial-gradient(ellipse 30% 25% at 25% 75%, rgba(14,165,233,0.07) 0%, transparent 50%),
-                    radial-gradient(ellipse 25% 20% at 78% 68%, rgba(139,92,246,0.07) 0%, transparent 45%)`,
-    },
-    solarpunk: {
-      id:'solarpunk', label:'🌿 Solarpunk 2150',
-      bg:'#030a04', bgSecondary:'#051208',
-      star:'rgba(180,255,200,0.65)', accent:'#86efac', nebula:'rgba(134,239,172,0.10)',
-      // bg: kota hijau masa depan — bangunan tertutup tumbuhan, cahaya matahari buatan
-      bgLayer: `radial-gradient(ellipse 90% 60% at 50% 0%, rgba(10,40,15,0.9) 0%, transparent 55%),
-                radial-gradient(ellipse 60% 70% at 10% 50%, rgba(5,25,10,0.8) 0%, transparent 55%),
-                radial-gradient(ellipse 60% 70% at 90% 50%, rgba(5,20,8,0.75) 0%, transparent 55%),
-                radial-gradient(ellipse 100% 100% at 50% 50%, rgba(3,10,4,1) 0%, rgba(4,12,5,1) 100%)`,
-      nebulaLayer: `radial-gradient(ellipse 80% 35% at 50% 10%, rgba(134,239,172,0.09) 0%, transparent 60%),
-                    radial-gradient(ellipse 40% 30% at 15% 40%, rgba(74,222,128,0.07) 0%, transparent 50%),
-                    radial-gradient(ellipse 35% 25% at 85% 55%, rgba(52,211,153,0.06) 0%, transparent 50%)`,
-    },
-  };
-  const [appTheme, setAppTheme] = useState(() => {
-    const saved = localStorage.getItem('sn_theme');
-    return APP_THEMES[saved] ? saved : 'starry';
-  });
-  const theme = APP_THEMES[appTheme] || APP_THEMES.starry;
-  const changeTheme = (id) => { setAppTheme(id); localStorage.setItem('sn_theme', id); };
-
   // ── Language: 'id' (Indonesia) | 'en' (English)
   const [lang, setLang] = useState(() => localStorage.getItem('sn_lang') || 'id');
   const toggleLang = () => setLang(v => { const n = v === 'id' ? 'en' : 'id'; localStorage.setItem('sn_lang', n); return n; });
@@ -7128,7 +6853,7 @@ Format exactly:
   ];
 
   return (
-    <div className={`${isLite ? 'lite-mode' : 'pro-mode'} layout-${layoutMode}`} style={{ position:'fixed', inset:0, overflow:'hidden', background:theme.bg, color:'#f1f5f9', fontFamily:"'Segoe UI',system-ui,sans-serif", display:'flex', flexDirection:'column', userSelect:'none', WebkitTapHighlightColor:'transparent', '--theme-bg':theme.bg, '--theme-bg2':theme.bgSecondary, '--theme-accent':theme.accent, '--theme-nebula':theme.nebula, '--theme-star':theme.star }}>
+    <div className={`${isLite ? 'lite-mode' : 'pro-mode'} layout-${layoutMode}`} style={{ position:'fixed', inset:0, overflow:'hidden', background:'#07071a', color:'#f1f5f9', fontFamily:"'Segoe UI',system-ui,sans-serif", display:'flex', flexDirection:'column', userSelect:'none', WebkitTapHighlightColor:'transparent' }}>
 
       {/* ══ PWA INSTALL BANNER — floating bottom, appears when installable ══ */}
       {!pwaInstalled && !pwaBannerDismissed && pwaBannerVisible && pwaPrompt && (
@@ -7165,13 +6890,8 @@ Format exactly:
         </div>
       )}
 
-      {/* BG — Theme background layer (always visible) */}
-      <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, background:theme.bgLayer, transition:'background 0.6s ease' }}/>
-      {/* BG — Nebula/color layer */}
-      <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, background:theme.nebulaLayer, transition:'background 0.6s ease' }}/>
-      {/* BG — Track color glow (Pro only) */}
-      {!isLite && <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, background:`radial-gradient(ellipse at 60% 10%,${track.color}18 0%,transparent 55%)` }}/>}
-      {/* Stars */}
+      {/* BG — Pro only */}
+      {!isLite && <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, background:`radial-gradient(ellipse at 60% 10%,${track.color}20 0%,transparent 60%)` }}/>}
       {!isLite && <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, overflow:'hidden' }}><div className="stars"/><div className="starsB"/><div className="starsC"/></div>}
 
       {/* ══ HEADER */}
@@ -7340,7 +7060,7 @@ Format exactly:
 
         {/* ── SETTINGS PANEL — menutup semua tab di desktop & landscape, hanya player di portrait */}
         {showSettings && (isDesktop || layoutMode === 'mobile-landscape' || tab === 'player') && (
-          <Suspense fallback={<Spinner/>}><SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userScId={userScId} setUserScId={setUserScId} userAiKey={userAiKey} setUserAiKey={setUserAiKey} userYtKey={userYtKey} setUserYtKey={setUserYtKey} userCfKey={userCfKey} setUserCfKey={setUserCfKey} userSnKey={userSnKey} setUserSnKey={setUserSnKey} setTab={setTab} setFullscreen={setFullscreen} googleUser={googleUser||null} handleGoogleLogin={handleGoogleLogin} syncPlaylistsToCloud={syncPlaylistsToCloud} accessToken={accessToken||null} plSyncStatus={plSyncStatus} plSyncError={plSyncError||null} plSyncedAt={plSyncedAt||null} appTheme={appTheme} changeTheme={changeTheme} APP_THEMES={APP_THEMES}/></Suspense>
+          <Suspense fallback={<Spinner/>}><SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userScId={userScId} setUserScId={setUserScId} userAiKey={userAiKey} setUserAiKey={setUserAiKey} userYtKey={userYtKey} setUserYtKey={setUserYtKey} userCfKey={userCfKey} setUserCfKey={setUserCfKey} userSnKey={userSnKey} setUserSnKey={setUserSnKey} setTab={setTab} setFullscreen={setFullscreen} googleUser={googleUser||null} handleGoogleLogin={handleGoogleLogin} syncPlaylistsToCloud={syncPlaylistsToCloud} accessToken={accessToken||null} plSyncStatus={plSyncStatus} plSyncError={plSyncError||null} plSyncedAt={plSyncedAt||null}/></Suspense>
         )}
 
         {/* ─── PLAYER TAB */}
@@ -11483,14 +11203,12 @@ Format exactly:
         @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.6;transform:scale(0.9)}}
         @keyframes pulse-ring{0%{transform:scale(0.6);opacity:0.8}100%{transform:scale(1.3);opacity:0}}
         @keyframes twinkle{0%,100%{opacity:0.9}50%{opacity:0.35}}
-        @keyframes auroraFloat{0%,100%{opacity:0.7;transform:scaleX(1) translateY(0)}33%{opacity:1;transform:scaleX(1.05) translateY(-8px)}66%{opacity:0.6;transform:scaleX(0.97) translateY(4px)}}
-        .theme-aurora-glow{animation:auroraFloat 8s ease-in-out infinite}
         @keyframes twinkleB{0%,100%{opacity:0.55}50%{opacity:1}}
         @keyframes twinkleC{0%,100%{opacity:0.7}40%{opacity:0.2}80%{opacity:0.9}}
         .stars,.starsB,.starsC{position:absolute;inset:0;will-change:opacity}
-        .stars{background-image:radial-gradient(1px 1px at 8% 12%,var(--theme-star),transparent),radial-gradient(1.5px 1.5px at 31% 45%,var(--theme-star),transparent),radial-gradient(1px 1px at 62% 23%,var(--theme-star),transparent),radial-gradient(2px 2px at 78% 67%,var(--theme-star),transparent),radial-gradient(1px 1px at 14% 71%,var(--theme-star),transparent),radial-gradient(1px 1px at 88% 18%,var(--theme-star),transparent),radial-gradient(1.5px 1.5px at 47% 89%,var(--theme-star),transparent),radial-gradient(1px 1px at 55% 55%,var(--theme-star),transparent),radial-gradient(1px 1px at 3% 88%,var(--theme-star),transparent),radial-gradient(1.5px 1.5px at 92% 43%,var(--theme-star),transparent);animation:twinkle 4s ease-in-out infinite}
-        .starsB{background-image:radial-gradient(1px 1px at 23% 6%,var(--theme-star),transparent),radial-gradient(1.5px 1.5px at 70% 38%,var(--theme-star),transparent),radial-gradient(1px 1px at 5% 52%,var(--theme-star),transparent),radial-gradient(2px 2px at 91% 81%,var(--theme-star),transparent),radial-gradient(1px 1px at 38% 77%,var(--theme-star),transparent),radial-gradient(1px 1px at 66% 9%,var(--theme-star),transparent),radial-gradient(1.5px 1.5px at 18% 93%,var(--theme-star),transparent),radial-gradient(1px 1px at 82% 22%,var(--theme-star),transparent);animation:twinkleB 5.5s ease-in-out 1.8s infinite}
-        .starsC{background-image:radial-gradient(1px 1px at 42% 31%,var(--theme-star),transparent),radial-gradient(1px 1px at 83% 54%,var(--theme-star),transparent),radial-gradient(1.5px 1.5px at 11% 28%,var(--theme-star),transparent),radial-gradient(1px 1px at 75% 92%,var(--theme-star),transparent),radial-gradient(2px 2px at 29% 63%,var(--theme-star),transparent),radial-gradient(1px 1px at 58% 4%,var(--theme-star),transparent),radial-gradient(1px 1px at 47% 72%,var(--theme-star),transparent);animation:twinkleC 7s ease-in-out 3.2s infinite}
+        .stars{background-image:radial-gradient(1px 1px at 8% 12%,rgba(255,255,255,0.7),transparent),radial-gradient(1.5px 1.5px at 31% 45%,rgba(255,255,255,0.5),transparent),radial-gradient(1px 1px at 62% 23%,rgba(255,255,255,0.6),transparent),radial-gradient(2px 2px at 78% 67%,rgba(255,255,255,0.35),transparent),radial-gradient(1px 1px at 14% 71%,rgba(255,255,255,0.5),transparent),radial-gradient(1px 1px at 88% 18%,rgba(255,255,255,0.45),transparent),radial-gradient(1.5px 1.5px at 47% 89%,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 55% 55%,rgba(255,255,255,0.3),transparent);animation:twinkle 4s ease-in-out infinite}
+        .starsB{background-image:radial-gradient(1px 1px at 23% 6%,rgba(255,255,255,0.5),transparent),radial-gradient(1.5px 1.5px at 70% 38%,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 5% 52%,rgba(255,255,255,0.55),transparent),radial-gradient(2px 2px at 91% 81%,rgba(255,255,255,0.3),transparent),radial-gradient(1px 1px at 38% 77%,rgba(255,255,255,0.45),transparent),radial-gradient(1px 1px at 66% 9%,rgba(255,255,255,0.35),transparent),radial-gradient(1.5px 1.5px at 18% 93%,rgba(255,255,255,0.3),transparent);animation:twinkleB 5.5s ease-in-out 1.8s infinite}
+        .starsC{background-image:radial-gradient(1px 1px at 42% 31%,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 83% 54%,rgba(255,255,255,0.5),transparent),radial-gradient(1.5px 1.5px at 11% 28%,rgba(255,255,255,0.35),transparent),radial-gradient(1px 1px at 75% 92%,rgba(255,255,255,0.3),transparent),radial-gradient(2px 2px at 29% 63%,rgba(255,255,255,0.25),transparent),radial-gradient(1px 1px at 58% 4%,rgba(255,255,255,0.5),transparent);animation:twinkleC 7s ease-in-out 3.2s infinite}
         .scrollbar-hide::-webkit-scrollbar{display:none}
         .scrollbar-hide{-ms-overflow-style:none;scrollbar-width:none}
         input::placeholder{color:rgba(148,163,184,0.35)}
