@@ -82,13 +82,87 @@ export default function App() {
 
   // ── App Themes ─────────────────────────────────────────
   const APP_THEMES = {
-    starry:   { id:'starry',   label:'🌌 Starry Night', bg:'#07071a', bgSecondary:'#0d0d24', star:'rgba(255,255,255,0.85)', accent:'#60a5fa', nebula:'rgba(96,165,250,0.12)' },
-    aurora:   { id:'aurora',   label:'🌿 Aurora',       bg:'#03150f', bgSecondary:'#081c14', star:'rgba(180,255,200,0.8)',  accent:'#34d399', nebula:'rgba(52,211,153,0.12)' },
-    nebula:   { id:'nebula',   label:'🟣 Nebula',       bg:'#0f0520', bgSecondary:'#170830', star:'rgba(230,180,255,0.8)',  accent:'#c084fc', nebula:'rgba(192,132,252,0.14)' },
-    sunset:   { id:'sunset',   label:'🌅 Sunset',       bg:'#180a04', bgSecondary:'#20100a', star:'rgba(255,200,150,0.8)',  accent:'#fb923c', nebula:'rgba(251,146,60,0.12)'  },
-    oceanic:  { id:'oceanic',  label:'🌊 Oceanic',      bg:'#030d1a', bgSecondary:'#05142a', star:'rgba(150,220,255,0.8)',  accent:'#38bdf8', nebula:'rgba(56,189,248,0.12)'  },
-    midnight: { id:'midnight', label:'🖤 Midnight',     bg:'#080808', bgSecondary:'#111111', star:'rgba(255,255,255,0.6)',  accent:'#a3a3a3', nebula:'rgba(163,163,163,0.08)' },
-    rosewood: { id:'rosewood', label:'🌸 Rosewood',     bg:'#160709', bgSecondary:'#1f0b10', star:'rgba(255,180,200,0.8)',  accent:'#f472b6', nebula:'rgba(244,114,182,0.12)' },
+    starry: {
+      id:'starry', label:'🌌 Starry Night',
+      bg:'#07071a', bgSecondary:'#0d0d24',
+      star:'rgba(200,220,255,0.85)', accent:'#60a5fa', nebula:'rgba(96,165,250,0.12)',
+      // bg layer: deep space dengan tiga nebula biru-ungu
+      bgLayer: `radial-gradient(ellipse 80% 60% at 15% 20%, rgba(30,20,80,0.9) 0%, transparent 70%),
+                radial-gradient(ellipse 60% 50% at 85% 75%, rgba(15,10,60,0.85) 0%, transparent 65%),
+                radial-gradient(ellipse 100% 100% at 50% 50%, rgba(7,7,26,1) 0%, rgba(10,8,30,1) 100%)`,
+      // layer khusus aurora-ish faint di atas bg
+      nebulaLayer: `radial-gradient(ellipse 55% 35% at 30% 15%, rgba(96,165,250,0.08) 0%, transparent 70%),
+                    radial-gradient(ellipse 45% 40% at 75% 80%, rgba(192,132,252,0.07) 0%, transparent 65%)`,
+    },
+    aurora: {
+      id:'aurora', label:'🌿 Aurora',
+      bg:'#021209', bgSecondary:'#051a0e',
+      star:'rgba(180,255,210,0.8)', accent:'#34d399', nebula:'rgba(52,211,153,0.12)',
+      // bg layer: gelap hutan dengan tirai aurora hijau
+      bgLayer: `radial-gradient(ellipse 90% 50% at 50% 0%, rgba(10,60,30,0.95) 0%, transparent 60%),
+                radial-gradient(ellipse 70% 80% at 20% 80%, rgba(2,30,15,0.9) 0%, transparent 70%),
+                radial-gradient(ellipse 100% 100% at 50% 50%, rgba(2,18,9,1) 0%, rgba(3,15,8,1) 100%)`,
+      nebulaLayer: `linear-gradient(180deg, rgba(52,211,153,0.12) 0%, transparent 40%),
+                    radial-gradient(ellipse 80% 30% at 50% 5%, rgba(34,197,94,0.10) 0%, transparent 80%),
+                    radial-gradient(ellipse 40% 20% at 70% 12%, rgba(16,185,129,0.08) 0%, transparent 60%)`,
+    },
+    nebula: {
+      id:'nebula', label:'🟣 Nebula',
+      bg:'#0a0315', bgSecondary:'#130525',
+      star:'rgba(230,180,255,0.9)', accent:'#c084fc', nebula:'rgba(192,132,252,0.15)',
+      // bg layer: nebula ungu-merah muda seperti Pillars of Creation
+      bgLayer: `radial-gradient(ellipse 70% 60% at 20% 30%, rgba(80,20,100,0.9) 0%, transparent 65%),
+                radial-gradient(ellipse 60% 50% at 80% 70%, rgba(100,10,80,0.85) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 40% at 55% 15%, rgba(60,0,90,0.8) 0%, transparent 55%),
+                radial-gradient(ellipse 100% 100% at 50% 50%, rgba(10,3,21,1) 0%, rgba(14,4,28,1) 100%)`,
+      nebulaLayer: `radial-gradient(ellipse 60% 45% at 25% 35%, rgba(192,132,252,0.12) 0%, transparent 70%),
+                    radial-gradient(ellipse 50% 40% at 75% 65%, rgba(244,114,182,0.08) 0%, transparent 65%),
+                    radial-gradient(ellipse 35% 25% at 60% 10%, rgba(167,139,250,0.10) 0%, transparent 60%)`,
+    },
+    sunset: {
+      id:'sunset', label:'🌅 Sunset',
+      bg:'#100502', bgSecondary:'#1a0a04',
+      star:'rgba(255,210,150,0.75)', accent:'#fb923c', nebula:'rgba(251,146,60,0.12)',
+      // bg layer: langit senja — biru gelap atas, oranye-merah di bawah
+      bgLayer: `linear-gradient(180deg, rgba(8,5,20,1) 0%, rgba(30,10,5,1) 40%, rgba(60,15,5,1) 65%, rgba(80,25,5,1) 100%),
+                radial-gradient(ellipse 100% 60% at 50% 90%, rgba(220,60,10,0.5) 0%, transparent 70%),
+                radial-gradient(ellipse 60% 40% at 50% 85%, rgba(255,120,20,0.35) 0%, transparent 60%)`,
+      nebulaLayer: `radial-gradient(ellipse 80% 30% at 50% 100%, rgba(251,146,60,0.15) 0%, transparent 60%),
+                    radial-gradient(ellipse 40% 20% at 30% 75%, rgba(239,68,68,0.08) 0%, transparent 50%)`,
+    },
+    oceanic: {
+      id:'oceanic', label:'🌊 Oceanic',
+      bg:'#020b14', bgSecondary:'#041222',
+      star:'rgba(150,230,255,0.8)', accent:'#38bdf8', nebula:'rgba(56,189,248,0.12)',
+      // bg layer: kedalaman laut — gradasi biru gelap dengan cahaya dari dalam
+      bgLayer: `radial-gradient(ellipse 80% 60% at 50% 100%, rgba(0,40,80,0.9) 0%, transparent 65%),
+                radial-gradient(ellipse 60% 50% at 20% 40%, rgba(0,20,50,0.8) 0%, transparent 60%),
+                radial-gradient(ellipse 100% 100% at 50% 50%, rgba(2,11,20,1) 0%, rgba(3,10,22,1) 100%)`,
+      nebulaLayer: `radial-gradient(ellipse 70% 40% at 50% 90%, rgba(56,189,248,0.10) 0%, transparent 70%),
+                    radial-gradient(ellipse 40% 30% at 75% 50%, rgba(14,165,233,0.07) 0%, transparent 60%),
+                    radial-gradient(ellipse 30% 20% at 25% 25%, rgba(6,182,212,0.06) 0%, transparent 55%)`,
+    },
+    midnight: {
+      id:'midnight', label:'🖤 Midnight',
+      bg:'#050505', bgSecondary:'#0c0c0c',
+      star:'rgba(255,255,255,0.55)', accent:'#737373', nebula:'rgba(115,115,115,0.07)',
+      // bg layer: hitam murni, sangat minim
+      bgLayer: `radial-gradient(ellipse 60% 50% at 30% 20%, rgba(20,20,20,0.9) 0%, transparent 65%),
+                radial-gradient(ellipse 100% 100% at 50% 50%, rgba(5,5,5,1) 0%, rgba(8,8,8,1) 100%)`,
+      nebulaLayer: `radial-gradient(ellipse 50% 35% at 60% 30%, rgba(115,115,115,0.06) 0%, transparent 65%)`,
+    },
+    rosewood: {
+      id:'rosewood', label:'🌸 Rosewood',
+      bg:'#110407', bgSecondary:'#1c060f',
+      star:'rgba(255,180,210,0.8)', accent:'#f472b6', nebula:'rgba(244,114,182,0.12)',
+      // bg layer: seperti kebun bunga malam — merah mawar gelap
+      bgLayer: `radial-gradient(ellipse 75% 55% at 20% 25%, rgba(80,5,30,0.9) 0%, transparent 65%),
+                radial-gradient(ellipse 55% 50% at 80% 75%, rgba(60,5,25,0.85) 0%, transparent 60%),
+                radial-gradient(ellipse 100% 100% at 50% 50%, rgba(17,4,7,1) 0%, rgba(20,5,10,1) 100%)`,
+      nebulaLayer: `radial-gradient(ellipse 55% 40% at 25% 30%, rgba(244,114,182,0.09) 0%, transparent 65%),
+                    radial-gradient(ellipse 45% 35% at 75% 70%, rgba(251,113,133,0.07) 0%, transparent 60%),
+                    radial-gradient(ellipse 30% 20% at 55% 10%, rgba(236,72,153,0.08) 0%, transparent 55%)`,
+    },
   };
   const [appTheme, setAppTheme] = useState(() => {
     const saved = localStorage.getItem('sn_theme');
@@ -6907,8 +6981,13 @@ Format exactly:
         </div>
       )}
 
-      {/* BG — Pro only */}
-      {!isLite && <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, background:`radial-gradient(ellipse at 60% 10%,${track.color}20 0%,transparent 60%)` }}/>}
+      {/* BG — Theme background layer (always visible) */}
+      <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, background:theme.bgLayer, transition:'background 0.6s ease' }}/>
+      {/* BG — Nebula/color layer */}
+      <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, background:theme.nebulaLayer, transition:'background 0.6s ease' }}/>
+      {/* BG — Track color glow (Pro only) */}
+      {!isLite && <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, background:`radial-gradient(ellipse at 60% 10%,${track.color}18 0%,transparent 55%)` }}/>}
+      {/* Stars */}
       {!isLite && <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, overflow:'hidden' }}><div className="stars"/><div className="starsB"/><div className="starsC"/></div>}
 
       {/* ══ HEADER */}
@@ -11220,12 +11299,14 @@ Format exactly:
         @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.6;transform:scale(0.9)}}
         @keyframes pulse-ring{0%{transform:scale(0.6);opacity:0.8}100%{transform:scale(1.3);opacity:0}}
         @keyframes twinkle{0%,100%{opacity:0.9}50%{opacity:0.35}}
+        @keyframes auroraFloat{0%,100%{opacity:0.7;transform:scaleX(1) translateY(0)}33%{opacity:1;transform:scaleX(1.05) translateY(-8px)}66%{opacity:0.6;transform:scaleX(0.97) translateY(4px)}}
+        .theme-aurora-glow{animation:auroraFloat 8s ease-in-out infinite}
         @keyframes twinkleB{0%,100%{opacity:0.55}50%{opacity:1}}
         @keyframes twinkleC{0%,100%{opacity:0.7}40%{opacity:0.2}80%{opacity:0.9}}
         .stars,.starsB,.starsC{position:absolute;inset:0;will-change:opacity}
-        .stars{background-image:radial-gradient(1px 1px at 8% 12%,var(--theme-star,rgba(255,255,255,0.7)),transparent),radial-gradient(1.5px 1.5px at 31% 45%,rgba(255,255,255,0.5),transparent),radial-gradient(1px 1px at 62% 23%,rgba(255,255,255,0.6),transparent),radial-gradient(2px 2px at 78% 67%,rgba(255,255,255,0.35),transparent),radial-gradient(1px 1px at 14% 71%,rgba(255,255,255,0.5),transparent),radial-gradient(1px 1px at 88% 18%,rgba(255,255,255,0.45),transparent),radial-gradient(1.5px 1.5px at 47% 89%,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 55% 55%,rgba(255,255,255,0.3),transparent);animation:twinkle 4s ease-in-out infinite}
-        .starsB{background-image:radial-gradient(1px 1px at 23% 6%,var(--theme-star,rgba(255,255,255,0.5)),transparent),radial-gradient(1.5px 1.5px at 70% 38%,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 5% 52%,rgba(255,255,255,0.55),transparent),radial-gradient(2px 2px at 91% 81%,rgba(255,255,255,0.3),transparent),radial-gradient(1px 1px at 38% 77%,rgba(255,255,255,0.45),transparent),radial-gradient(1px 1px at 66% 9%,rgba(255,255,255,0.35),transparent),radial-gradient(1.5px 1.5px at 18% 93%,rgba(255,255,255,0.3),transparent);animation:twinkleB 5.5s ease-in-out 1.8s infinite}
-        .starsC{background-image:radial-gradient(1px 1px at 42% 31%,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 83% 54%,rgba(255,255,255,0.5),transparent),radial-gradient(1.5px 1.5px at 11% 28%,rgba(255,255,255,0.35),transparent),radial-gradient(1px 1px at 75% 92%,rgba(255,255,255,0.3),transparent),radial-gradient(2px 2px at 29% 63%,rgba(255,255,255,0.25),transparent),radial-gradient(1px 1px at 58% 4%,rgba(255,255,255,0.5),transparent);animation:twinkleC 7s ease-in-out 3.2s infinite}
+        .stars{background-image:radial-gradient(1px 1px at 8% 12%,var(--theme-star),transparent),radial-gradient(1.5px 1.5px at 31% 45%,var(--theme-star),transparent),radial-gradient(1px 1px at 62% 23%,var(--theme-star),transparent),radial-gradient(2px 2px at 78% 67%,var(--theme-star),transparent),radial-gradient(1px 1px at 14% 71%,var(--theme-star),transparent),radial-gradient(1px 1px at 88% 18%,var(--theme-star),transparent),radial-gradient(1.5px 1.5px at 47% 89%,var(--theme-star),transparent),radial-gradient(1px 1px at 55% 55%,var(--theme-star),transparent),radial-gradient(1px 1px at 3% 88%,var(--theme-star),transparent),radial-gradient(1.5px 1.5px at 92% 43%,var(--theme-star),transparent);animation:twinkle 4s ease-in-out infinite}
+        .starsB{background-image:radial-gradient(1px 1px at 23% 6%,var(--theme-star),transparent),radial-gradient(1.5px 1.5px at 70% 38%,var(--theme-star),transparent),radial-gradient(1px 1px at 5% 52%,var(--theme-star),transparent),radial-gradient(2px 2px at 91% 81%,var(--theme-star),transparent),radial-gradient(1px 1px at 38% 77%,var(--theme-star),transparent),radial-gradient(1px 1px at 66% 9%,var(--theme-star),transparent),radial-gradient(1.5px 1.5px at 18% 93%,var(--theme-star),transparent),radial-gradient(1px 1px at 82% 22%,var(--theme-star),transparent);animation:twinkleB 5.5s ease-in-out 1.8s infinite}
+        .starsC{background-image:radial-gradient(1px 1px at 42% 31%,var(--theme-star),transparent),radial-gradient(1px 1px at 83% 54%,var(--theme-star),transparent),radial-gradient(1.5px 1.5px at 11% 28%,var(--theme-star),transparent),radial-gradient(1px 1px at 75% 92%,var(--theme-star),transparent),radial-gradient(2px 2px at 29% 63%,var(--theme-star),transparent),radial-gradient(1px 1px at 58% 4%,var(--theme-star),transparent),radial-gradient(1px 1px at 47% 72%,var(--theme-star),transparent);animation:twinkleC 7s ease-in-out 3.2s infinite}
         .scrollbar-hide::-webkit-scrollbar{display:none}
         .scrollbar-hide{-ms-overflow-style:none;scrollbar-width:none}
         input::placeholder{color:rgba(148,163,184,0.35)}

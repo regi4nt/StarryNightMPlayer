@@ -552,29 +552,41 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
         {/* ── TEMA APLIKASI */}
         {APP_THEMES && (
           <div style={{ padding:'16px 18px 18px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14 }}>
               <span style={{ fontSize:16 }}>🎨</span>
               <div>
                 <div style={{ fontWeight:800, fontSize:14 }}>Tema Tampilan</div>
-                <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>Pilih warna latar belakang aplikasi</div>
+                <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>Ubah latar belakang &amp; suasana aplikasi</div>
               </div>
             </div>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:8 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10 }}>
               {Object.values(APP_THEMES).map(th => {
                 const active = appTheme === th.id;
                 return (
                   <button key={th.id} onClick={() => changeTheme(th.id)}
-                    style={{ display:'flex', alignItems:'center', gap:9, padding:'9px 12px', borderRadius:12,
-                      border: active ? `1.5px solid ${th.accent}` : '1.5px solid rgba(255,255,255,0.08)',
-                      background: active ? `${th.accent}18` : 'rgba(255,255,255,0.03)',
-                      cursor:'pointer', textAlign:'left', transition:'all 0.18s' }}>
-                    <div style={{ width:22, height:22, borderRadius:6, background:th.bg, border:`2px solid ${th.accent}`, flexShrink:0,
-                      boxShadow: active ? `0 0 8px ${th.accent}60` : 'none' }}/>
-                    <span style={{ fontSize:11, fontWeight: active ? 700 : 500,
-                      color: active ? th.accent : 'rgba(255,255,255,0.6)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                      {th.label}
-                    </span>
-                    {active && <div style={{ marginLeft:'auto', width:6, height:6, borderRadius:999, background:th.accent, flexShrink:0 }}/>}
+                    style={{ display:'flex', flexDirection:'column', gap:0, padding:0, borderRadius:14, overflow:'hidden',
+                      border: active ? `2px solid ${th.accent}` : '2px solid rgba(255,255,255,0.07)',
+                      background:'transparent', cursor:'pointer', textAlign:'left', transition:'all 0.2s',
+                      boxShadow: active ? `0 0 14px ${th.accent}40` : 'none' }}>
+                    {/* Preview bg thumbnail */}
+                    <div style={{ width:'100%', height:54, background:th.bgLayer, position:'relative', overflow:'hidden', flexShrink:0 }}>
+                      {/* Nebula overlay */}
+                      <div style={{ position:'absolute', inset:0, background:th.nebulaLayer }}/>
+                      {/* Fake tiny stars */}
+                      <div style={{ position:'absolute', inset:0,
+                        backgroundImage:`radial-gradient(1px 1px at 15% 25%,${th.star},transparent),radial-gradient(1px 1px at 50% 60%,${th.star},transparent),radial-gradient(1.5px 1.5px at 80% 20%,${th.star},transparent),radial-gradient(1px 1px at 35% 80%,${th.star},transparent),radial-gradient(1px 1px at 70% 50%,${th.star},transparent),radial-gradient(1px 1px at 90% 75%,${th.star},transparent)` }}/>
+                      {/* Active checkmark */}
+                      {active && <div style={{ position:'absolute', top:5, right:5, width:16, height:16, borderRadius:999,
+                        background:th.accent, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:900, color:'#000' }}>✓</div>}
+                    </div>
+                    {/* Label */}
+                    <div style={{ padding:'7px 10px', background: active ? `${th.accent}12` : 'rgba(255,255,255,0.03)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                      <span style={{ fontSize:11, fontWeight: active ? 700 : 500,
+                        color: active ? th.accent : 'rgba(255,255,255,0.55)' }}>
+                        {th.label}
+                      </span>
+                      {active && <div style={{ width:5, height:5, borderRadius:999, background:th.accent, flexShrink:0 }}/>}
+                    </div>
                   </button>
                 );
               })}
