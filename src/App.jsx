@@ -155,13 +155,197 @@ export default function App() {
       id:'rosewood', label:'🌸 Rosewood',
       bg:'#110407', bgSecondary:'#1c060f',
       star:'rgba(255,180,210,0.8)', accent:'#f472b6', nebula:'rgba(244,114,182,0.12)',
-      // bg layer: seperti kebun bunga malam — merah mawar gelap
       bgLayer: `radial-gradient(ellipse 75% 55% at 20% 25%, rgba(80,5,30,0.9) 0%, transparent 65%),
                 radial-gradient(ellipse 55% 50% at 80% 75%, rgba(60,5,25,0.85) 0%, transparent 60%),
                 radial-gradient(ellipse 100% 100% at 50% 50%, rgba(17,4,7,1) 0%, rgba(20,5,10,1) 100%)`,
       nebulaLayer: `radial-gradient(ellipse 55% 40% at 25% 30%, rgba(244,114,182,0.09) 0%, transparent 65%),
                     radial-gradient(ellipse 45% 35% at 75% 70%, rgba(251,113,133,0.07) 0%, transparent 60%),
                     radial-gradient(ellipse 30% 20% at 55% 10%, rgba(236,72,153,0.08) 0%, transparent 55%)`,
+    },
+
+    // ── KAMAR & HUJAN ──────────────────────────────────────
+    rainy_room: {
+      id:'rainy_room', label:'🌧️ Kamar Hujan',
+      bg:'#080c10', bgSecondary:'#0d1318',
+      star:'rgba(180,210,240,0.5)', accent:'#7dd3fc', nebula:'rgba(125,211,252,0.10)',
+      // bg: jendela kamar remang-remang, hujan di luar — biru keabu-abuan, cahaya jalan dari bawah
+      bgLayer: `linear-gradient(180deg, rgba(5,8,14,1) 0%, rgba(8,12,20,1) 55%, rgba(12,18,28,1) 100%),
+                radial-gradient(ellipse 120% 40% at 50% 100%, rgba(30,60,100,0.55) 0%, transparent 60%),
+                radial-gradient(ellipse 40% 60% at 15% 50%, rgba(20,40,70,0.4) 0%, transparent 55%),
+                radial-gradient(ellipse 30% 80% at 85% 40%, rgba(15,35,60,0.35) 0%, transparent 55%)`,
+      nebulaLayer: `radial-gradient(ellipse 80% 20% at 50% 0%, rgba(125,211,252,0.05) 0%, transparent 60%),
+                    radial-gradient(ellipse 60% 30% at 20% 60%, rgba(96,165,250,0.06) 0%, transparent 55%),
+                    radial-gradient(ellipse 50% 25% at 80% 80%, rgba(56,189,248,0.05) 0%, transparent 50%)`,
+    },
+    cozy_room: {
+      id:'cozy_room', label:'🕯️ Kamar Hangat',
+      bg:'#0d0804', bgSecondary:'#160f06',
+      star:'rgba(255,220,160,0.65)', accent:'#f59e0b', nebula:'rgba(245,158,11,0.12)',
+      // bg: lampu kuning remang kamar nyaman, dinding bata terasa
+      bgLayer: `radial-gradient(ellipse 70% 80% at 50% 50%, rgba(60,30,5,0.85) 0%, transparent 70%),
+                radial-gradient(ellipse 50% 50% at 50% 50%, rgba(40,18,3,0.9) 0%, transparent 60%),
+                radial-gradient(ellipse 100% 100% at 50% 50%, rgba(13,8,4,1) 0%, rgba(18,10,5,1) 100%)`,
+      nebulaLayer: `radial-gradient(ellipse 60% 60% at 50% 40%, rgba(245,158,11,0.12) 0%, transparent 65%),
+                    radial-gradient(ellipse 35% 35% at 50% 50%, rgba(251,146,60,0.08) 0%, transparent 55%),
+                    radial-gradient(ellipse 25% 20% at 30% 70%, rgba(217,119,6,0.06) 0%, transparent 50%)`,
+    },
+
+    // ── PERJALANAN, HUTAN, PEGUNUNGAN ──────────────────────
+    deep_forest: {
+      id:'deep_forest', label:'🌲 Hutan Dalam',
+      bg:'#020d06', bgSecondary:'#041209',
+      star:'rgba(160,255,180,0.55)', accent:'#4ade80', nebula:'rgba(74,222,128,0.10)',
+      // bg: hutan lebat malam, lampu kunang-kunang, kabut hijau kegelapan
+      bgLayer: `radial-gradient(ellipse 100% 70% at 50% 100%, rgba(5,30,10,0.95) 0%, transparent 55%),
+                radial-gradient(ellipse 60% 90% at 10% 50%, rgba(3,20,8,0.9) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 90% at 90% 50%, rgba(2,18,7,0.85) 0%, transparent 60%),
+                radial-gradient(ellipse 100% 100% at 50% 50%, rgba(2,13,6,1) 0%, rgba(3,10,5,1) 100%)`,
+      nebulaLayer: `radial-gradient(ellipse 70% 40% at 50% 80%, rgba(74,222,128,0.07) 0%, transparent 60%),
+                    radial-gradient(ellipse 40% 30% at 20% 50%, rgba(34,197,94,0.06) 0%, transparent 55%),
+                    radial-gradient(ellipse 35% 25% at 80% 30%, rgba(16,185,129,0.05) 0%, transparent 50%)`,
+    },
+    mountain_dawn: {
+      id:'mountain_dawn', label:'⛰️ Fajar Pegunungan',
+      bg:'#07060f', bgSecondary:'#0e0d1a',
+      star:'rgba(220,210,255,0.75)', accent:'#a78bfa', nebula:'rgba(167,139,250,0.11)',
+      // bg: puncak gunung sebelum fajar — ungu biru gelap di langit, siluet bukit di bawah
+      bgLayer: `linear-gradient(180deg, rgba(5,4,15,1) 0%, rgba(15,10,35,1) 35%, rgba(30,20,55,1) 60%, rgba(20,12,40,1) 100%),
+                radial-gradient(ellipse 100% 30% at 50% 60%, rgba(40,20,80,0.5) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 40% at 20% 70%, rgba(25,15,60,0.4) 0%, transparent 55%)`,
+      nebulaLayer: `radial-gradient(ellipse 80% 30% at 50% 30%, rgba(167,139,250,0.09) 0%, transparent 65%),
+                    radial-gradient(ellipse 50% 20% at 30% 45%, rgba(139,92,246,0.07) 0%, transparent 55%),
+                    radial-gradient(ellipse 40% 20% at 70% 50%, rgba(196,181,253,0.06) 0%, transparent 50%)`,
+    },
+    road_trip: {
+      id:'road_trip', label:'🛣️ Road Trip Malam',
+      bg:'#060709', bgSecondary:'#0c0e12',
+      star:'rgba(255,240,200,0.7)', accent:'#fbbf24', nebula:'rgba(251,191,36,0.09)',
+      // bg: jalan aspal malam hari, cahaya lampu jalan kuning memanjang ke horizon
+      bgLayer: `linear-gradient(180deg, rgba(5,6,10,1) 0%, rgba(8,9,14,1) 40%, rgba(12,10,8,1) 70%, rgba(6,5,4,1) 100%),
+                radial-gradient(ellipse 20% 80% at 50% 100%, rgba(80,60,10,0.6) 0%, transparent 55%),
+                radial-gradient(ellipse 80% 20% at 50% 65%, rgba(40,30,5,0.35) 0%, transparent 50%)`,
+      nebulaLayer: `radial-gradient(ellipse 15% 60% at 50% 90%, rgba(251,191,36,0.10) 0%, transparent 55%),
+                    radial-gradient(ellipse 60% 10% at 50% 70%, rgba(245,158,11,0.07) 0%, transparent 45%)`,
+    },
+
+    // ── LAUT, LANGIT, PANTAI ───────────────────────────────
+    deep_ocean: {
+      id:'deep_ocean', label:'🐋 Laut Dalam',
+      bg:'#010810', bgSecondary:'#021018',
+      star:'rgba(100,200,255,0.6)', accent:'#22d3ee', nebula:'rgba(34,211,238,0.10)',
+      // bg: kedalaman laut gelap dengan cahaya bioluminescence dari bawah
+      bgLayer: `radial-gradient(ellipse 70% 80% at 50% 110%, rgba(0,50,100,0.8) 0%, transparent 55%),
+                radial-gradient(ellipse 40% 50% at 15% 70%, rgba(0,30,70,0.6) 0%, transparent 50%),
+                radial-gradient(ellipse 40% 50% at 85% 60%, rgba(0,25,65,0.55) 0%, transparent 50%),
+                radial-gradient(ellipse 100% 100% at 50% 50%, rgba(1,8,16,1) 0%, rgba(2,8,18,1) 100%)`,
+      nebulaLayer: `radial-gradient(ellipse 80% 40% at 50% 100%, rgba(34,211,238,0.08) 0%, transparent 60%),
+                    radial-gradient(ellipse 30% 30% at 30% 80%, rgba(6,182,212,0.07) 0%, transparent 50%),
+                    radial-gradient(ellipse 25% 25% at 75% 65%, rgba(14,165,233,0.06) 0%, transparent 50%)`,
+    },
+    beach_dusk: {
+      id:'beach_dusk', label:'🏖️ Pantai Senja',
+      bg:'#0c0804', bgSecondary:'#150e07',
+      star:'rgba(255,200,120,0.7)', accent:'#f97316', nebula:'rgba(249,115,22,0.11)',
+      // bg: langit senja pantai — gradasi oranye kemerahan ke biru tua, garis cakrawala tipis
+      bgLayer: `linear-gradient(175deg, rgba(5,5,18,1) 0%, rgba(20,10,8,1) 30%, rgba(50,20,5,1) 55%, rgba(70,25,5,1) 75%, rgba(40,15,3,1) 100%),
+                radial-gradient(ellipse 100% 50% at 50% 80%, rgba(200,70,10,0.45) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 30% at 50% 72%, rgba(255,140,20,0.30) 0%, transparent 50%)`,
+      nebulaLayer: `radial-gradient(ellipse 80% 30% at 50% 75%, rgba(249,115,22,0.12) 0%, transparent 55%),
+                    radial-gradient(ellipse 40% 20% at 70% 60%, rgba(234,88,12,0.08) 0%, transparent 45%)`,
+    },
+    open_sky: {
+      id:'open_sky', label:'☁️ Langit Terbuka',
+      bg:'#030c1a', bgSecondary:'#061525',
+      star:'rgba(210,235,255,0.8)', accent:'#93c5fd', nebula:'rgba(147,197,253,0.10)',
+      // bg: langit malam cerah, biru tua dalam dengan lapisan tipis awan bercahaya bulan
+      bgLayer: `linear-gradient(180deg, rgba(2,8,20,1) 0%, rgba(4,12,28,1) 50%, rgba(6,15,32,1) 100%),
+                radial-gradient(ellipse 90% 40% at 50% 20%, rgba(15,30,70,0.5) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 30% at 75% 30%, rgba(20,35,80,0.35) 0%, transparent 50%)`,
+      nebulaLayer: `radial-gradient(ellipse 80% 25% at 50% 15%, rgba(147,197,253,0.08) 0%, transparent 60%),
+                    radial-gradient(ellipse 40% 20% at 25% 40%, rgba(96,165,250,0.06) 0%, transparent 50%),
+                    radial-gradient(ellipse 35% 15% at 80% 55%, rgba(186,230,253,0.05) 0%, transparent 45%)`,
+    },
+
+    // ── FANTASY DUNIA LAIN ────────────────────────────────
+    enchanted: {
+      id:'enchanted', label:'🧚 Negeri Sihir',
+      bg:'#06020f', bgSecondary:'#0c0520',
+      star:'rgba(255,240,100,0.9)', accent:'#fde047', nebula:'rgba(253,224,71,0.13)',
+      // bg: hutan sihir malam dengan cahaya sihir emas-ungu bercahaya dari tanah
+      bgLayer: `radial-gradient(ellipse 80% 70% at 50% 100%, rgba(50,10,80,0.85) 0%, transparent 55%),
+                radial-gradient(ellipse 50% 60% at 15% 60%, rgba(30,5,60,0.75) 0%, transparent 55%),
+                radial-gradient(ellipse 50% 60% at 85% 55%, rgba(25,5,55,0.7) 0%, transparent 55%),
+                radial-gradient(ellipse 100% 100% at 50% 50%, rgba(6,2,15,1) 0%, rgba(9,3,22,1) 100%)`,
+      nebulaLayer: `radial-gradient(ellipse 70% 40% at 50% 90%, rgba(253,224,71,0.10) 0%, transparent 60%),
+                    radial-gradient(ellipse 40% 30% at 25% 70%, rgba(250,204,21,0.07) 0%, transparent 50%),
+                    radial-gradient(ellipse 30% 25% at 75% 65%, rgba(217,119,6,0.08) 0%, transparent 50%)`,
+    },
+    void_realm: {
+      id:'void_realm', label:'🌀 Dunia Kekosongan',
+      bg:'#020109', bgSecondary:'#050212',
+      star:'rgba(180,150,255,0.75)', accent:'#818cf8', nebula:'rgba(129,140,248,0.12)',
+      // bg: dimensi lain — hitam mutlak dengan celah-celah cahaya ungu biru memecah kegelapan
+      bgLayer: `radial-gradient(ellipse 50% 70% at 50% 50%, rgba(20,5,50,0.9) 0%, transparent 55%),
+                radial-gradient(ellipse 30% 80% at 10% 50%, rgba(15,3,40,0.8) 0%, transparent 50%),
+                radial-gradient(ellipse 30% 80% at 90% 50%, rgba(12,2,35,0.75) 0%, transparent 50%),
+                radial-gradient(ellipse 100% 100% at 50% 50%, rgba(2,1,9,1) 0%, rgba(4,2,14,1) 100%)`,
+      nebulaLayer: `radial-gradient(ellipse 60% 50% at 50% 50%, rgba(129,140,248,0.10) 0%, transparent 65%),
+                    radial-gradient(ellipse 20% 60% at 5% 50%, rgba(99,102,241,0.08) 0%, transparent 50%),
+                    radial-gradient(ellipse 20% 60% at 95% 50%, rgba(139,92,246,0.07) 0%, transparent 50%)`,
+    },
+    crystal_cave: {
+      id:'crystal_cave', label:'💎 Gua Kristal',
+      bg:'#020b0e', bgSecondary:'#041418',
+      star:'rgba(150,255,240,0.8)', accent:'#2dd4bf', nebula:'rgba(45,212,191,0.12)',
+      // bg: gua bawah tanah, stalaktit bercahaya, refleksi air teal biru hijau
+      bgLayer: `radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,40,45,0.9) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 50% at 20% 50%, rgba(0,30,38,0.75) 0%, transparent 55%),
+                radial-gradient(ellipse 60% 50% at 80% 50%, rgba(0,25,35,0.7) 0%, transparent 55%),
+                radial-gradient(ellipse 100% 100% at 50% 50%, rgba(2,11,14,1) 0%, rgba(3,12,16,1) 100%)`,
+      nebulaLayer: `radial-gradient(ellipse 70% 35% at 50% 5%, rgba(45,212,191,0.10) 0%, transparent 60%),
+                    radial-gradient(ellipse 40% 25% at 25% 40%, rgba(20,184,166,0.07) 0%, transparent 50%),
+                    radial-gradient(ellipse 35% 25% at 75% 60%, rgba(6,182,212,0.08) 0%, transparent 50%)`,
+    },
+
+    // ── KOTA MASA DEPAN ───────────────────────────────────
+    cybercity: {
+      id:'cybercity', label:'🌆 Cybercity',
+      bg:'#030309', bgSecondary:'#060612',
+      star:'rgba(255,60,120,0.75)', accent:'#f43f5e', nebula:'rgba(244,63,94,0.12)',
+      // bg: kota cyber malam — neon merah-pink di bawah, langit hitam di atas
+      bgLayer: `linear-gradient(180deg, rgba(3,3,9,1) 0%, rgba(5,4,14,1) 45%, rgba(10,5,18,1) 70%, rgba(20,5,15,1) 100%),
+                radial-gradient(ellipse 100% 40% at 50% 100%, rgba(80,5,30,0.7) 0%, transparent 55%),
+                radial-gradient(ellipse 40% 30% at 20% 85%, rgba(60,3,25,0.5) 0%, transparent 45%),
+                radial-gradient(ellipse 35% 30% at 80% 80%, rgba(50,2,40,0.5) 0%, transparent 45%)`,
+      nebulaLayer: `radial-gradient(ellipse 80% 30% at 50% 100%, rgba(244,63,94,0.12) 0%, transparent 55%),
+                    radial-gradient(ellipse 30% 20% at 20% 85%, rgba(251,113,133,0.08) 0%, transparent 45%),
+                    radial-gradient(ellipse 25% 20% at 80% 78%, rgba(217,70,239,0.07) 0%, transparent 45%)`,
+    },
+    neon_tokyo: {
+      id:'neon_tokyo', label:'🗼 Neon Tokyo',
+      bg:'#03070d', bgSecondary:'#060e18',
+      star:'rgba(100,220,255,0.7)', accent:'#06b6d4', nebula:'rgba(6,182,212,0.11)',
+      // bg: malam Tokyo — campuran cyan neon dan ungu dalam kegelapan kota
+      bgLayer: `linear-gradient(180deg, rgba(2,5,12,1) 0%, rgba(4,8,18,1) 50%, rgba(6,10,22,1) 100%),
+                radial-gradient(ellipse 100% 35% at 50% 100%, rgba(0,40,70,0.75) 0%, transparent 55%),
+                radial-gradient(ellipse 35% 40% at 25% 75%, rgba(0,35,65,0.5) 0%, transparent 50%),
+                radial-gradient(ellipse 30% 40% at 75% 70%, rgba(20,5,50,0.45) 0%, transparent 45%)`,
+      nebulaLayer: `radial-gradient(ellipse 70% 30% at 50% 100%, rgba(6,182,212,0.10) 0%, transparent 55%),
+                    radial-gradient(ellipse 30% 25% at 25% 75%, rgba(14,165,233,0.07) 0%, transparent 50%),
+                    radial-gradient(ellipse 25% 20% at 78% 68%, rgba(139,92,246,0.07) 0%, transparent 45%)`,
+    },
+    solarpunk: {
+      id:'solarpunk', label:'🌿 Solarpunk 2150',
+      bg:'#030a04', bgSecondary:'#051208',
+      star:'rgba(180,255,200,0.65)', accent:'#86efac', nebula:'rgba(134,239,172,0.10)',
+      // bg: kota hijau masa depan — bangunan tertutup tumbuhan, cahaya matahari buatan
+      bgLayer: `radial-gradient(ellipse 90% 60% at 50% 0%, rgba(10,40,15,0.9) 0%, transparent 55%),
+                radial-gradient(ellipse 60% 70% at 10% 50%, rgba(5,25,10,0.8) 0%, transparent 55%),
+                radial-gradient(ellipse 60% 70% at 90% 50%, rgba(5,20,8,0.75) 0%, transparent 55%),
+                radial-gradient(ellipse 100% 100% at 50% 50%, rgba(3,10,4,1) 0%, rgba(4,12,5,1) 100%)`,
+      nebulaLayer: `radial-gradient(ellipse 80% 35% at 50% 10%, rgba(134,239,172,0.09) 0%, transparent 60%),
+                    radial-gradient(ellipse 40% 30% at 15% 40%, rgba(74,222,128,0.07) 0%, transparent 50%),
+                    radial-gradient(ellipse 35% 25% at 85% 55%, rgba(52,211,153,0.06) 0%, transparent 50%)`,
     },
   };
   const [appTheme, setAppTheme] = useState(() => {
