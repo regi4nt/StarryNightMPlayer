@@ -42,11 +42,18 @@ import { PlatformLogo } from './components/PlatformLogo.jsx'; // eager — used 
 // Stale-chunk guard: if a dynamic import fails (e.g. after a new deployment invalidates
 // old content-hashed filenames), reload the page so the browser fetches fresh assets.
 const reloadOnStalChunk = (err) => {
-  if (err?.message?.includes('Failed to fetch dynamically imported module') ||
-      err?.message?.includes('Importing a module script failed')) {
+  const msg = err?.message || '';
+  const isStaleChunk =
+    msg.includes('Failed to fetch dynamically imported module') ||
+    msg.includes('Importing a module script failed') ||
+    msg.includes('error loading dynamically imported module');
+  if (isStaleChunk) {
     window.location.reload();
+    return new Promise(() => {});
   }
-  return new Promise(() => {}); // prevent React rendering broken state
+  // Error lain (runtime error di dalam komponen) — lempar ulang agar
+  // ditangani normal oleh error boundary, bukan reload paksa
+  throw err;
 };
 
 const PlaylistFormView    = lazy(() => import('./components/PlaylistViews.jsx').then(m => ({ default: m.PlaylistFormView })).catch(reloadOnStalChunk));
@@ -3844,11 +3851,11 @@ Return ONLY valid JSON, no explanation:
   const callProviderJSON = async (prov, prompt, maxTok) => {
     try {
       const body = prov.isOpenAI
-        ? { model:prov.model, max_tokens:maxTok, messages:[{role:'user',content:prompt}], ...prov.extra }
+        ? { model:prov.model, max_tokens:maxTok, messages:[{role:'user',content:prompt}] }
         : { model:prov.model, max_tokens:maxTok, messages:[{role:'user',content:[{type:'text',text:prompt}]}] };
       const resp = await fetch(prov.endpoint, {
         method:'POST',
-        headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${prov.key}`, ...(prov.extra||{}) },
+        headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${prov.key}` },
         body:JSON.stringify(body)
       });
       if (!resp.ok) { console.warn(`[ForYou] ${prov.provider}/${prov.model} HTTP ${resp.status}`); return null; }
@@ -4112,9 +4119,9 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       for (const prov of providers) {
         try {
           const body = prov.isOpenAI
-            ? { model: prov.model, max_tokens: 2000, messages: [{ role: 'user', content: prompt }], ...prov.extra }
+            ? { model: prov.model, max_tokens: 2000, messages: [{ role: 'user', content: prompt }] }
             : { model: prov.model, max_tokens: 1200, messages: [{ role: 'user', content: [{ type: 'text', text: prompt }] }] };
-          const resp = await fetch(prov.endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${prov.key}`, ...(prov.extra || {}) }, body: JSON.stringify(body) });
+          const resp = await fetch(prov.endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${prov.key}` }, body: JSON.stringify(body) });
           const data = await resp.json();
           const text = prov.isOpenAI ? data?.choices?.[0]?.message?.content : data?.content?.[0]?.text;
           if (text) {

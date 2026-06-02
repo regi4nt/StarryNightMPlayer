@@ -975,9 +975,9 @@ export function getProviders() {
     // ── EXTERNAL FALLBACK (no key required — public free endpoints)
     // Digunakan otomatis jika SEMUA provider di atas gagal / sibuk
     // Pollinations AI — free, no key, OpenAI-compatible
-    { provider:'Pollinations', key:'__nokey__', model:'openai', endpoint:'https://text.pollinations.ai/openai', isOpenAI:true, extra:{ 'Referer':'https://starrynight.app' } },
-    { provider:'Pollinations', key:'__nokey__', model:'phi-4', endpoint:'https://text.pollinations.ai/openai', isOpenAI:true, extra:{ 'Referer':'https://starrynight.app' } },
-    { provider:'Pollinations', key:'__nokey__', model:'llama', endpoint:'https://text.pollinations.ai/openai', isOpenAI:true, extra:{ 'Referer':'https://starrynight.app' } },
+    { provider:'Pollinations', key:'__nokey__', model:'openai', endpoint:'https://text.pollinations.ai/openai', isOpenAI:true, extra:{} },
+    { provider:'Pollinations', key:'__nokey__', model:'phi-4', endpoint:'https://text.pollinations.ai/openai', isOpenAI:true, extra:{} },
+    { provider:'Pollinations', key:'__nokey__', model:'llama', endpoint:'https://text.pollinations.ai/openai', isOpenAI:true, extra:{} },
   ];
 }
 
