@@ -527,7 +527,7 @@ function CacheManager({ lang, t }) {
   );
 }
 
-function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t, userSpId, setUserSpId, userSpSecret, setUserSpSecret, userScId, setUserScId, userAiKey, setUserAiKey, userYtKey, setUserYtKey, userCfKey, setUserCfKey, userSnKey, setUserSnKey, setTab, setFullscreen, googleUser, handleGoogleLogin, syncPlaylistsToCloud, accessToken, plSyncStatus, plSyncError, plSyncedAt }) {
+function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t, userSpId, setUserSpId, userSpSecret, setUserSpSecret, userScId, setUserScId, userAiKey, setUserAiKey, userYtKey, setUserYtKey, userCfKey, setUserCfKey, userSnKey, setUserSnKey, setTab, setFullscreen, googleUser, handleGoogleLogin, syncPlaylistsToCloud, accessToken, plSyncStatus, plSyncError, plSyncedAt, bgTheme, setBgTheme }) {
   const coverRef = useRef(null);
   const [apiKeyTab, setApiKeyTab] = React.useState('spotify');
   // Local state untuk DNS input agar tidak terganggu re-render parent
@@ -592,6 +592,64 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
             </div>
           )}
         </div>
+
+        {/* ── BACKGROUND THEME */}
+        {!isLite && setBgTheme && (
+        <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14 }}>
+            <span style={{ fontSize:16 }}>🌌</span>
+            <div>
+              <div style={{ fontWeight:800, fontSize:14 }}>{lang==='id'?'Tema Latar Belakang':'Background Theme'}</div>
+              <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{lang==='id'?'Suasana visual malam hari':'Night atmosphere visual style'}</div>
+            </div>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+            {[
+              { id:'starry', emoji:'✨', label: lang==='id'?'Langit Berbintang':'Starry Night', sub: lang==='id'?'Klasik bintang-bintang':'Classic starfield', colors:['#07071a','#1a1040','#2d1b69'] },
+              { id:'bedroom', emoji:'🛏️', label: lang==='id'?'Kamar Malam':'Night Bedroom', sub: lang==='id'?'Hujan & lampu hangat':'Rain & warm lamp', colors:['#0a0810','#1a0a2e','#2d0f3f'] },
+              { id:'journey', emoji:'🏔️', label: lang==='id'?'Perjalanan':'Night Journey', sub: lang==='id'?'Hutan & pegunungan':'Forest & mountains', colors:['#060d0a','#0a1f10','#0d2e18'] },
+              { id:'ocean', emoji:'🌊', label: lang==='id'?'Laut & Pantai':'Ocean & Beach', sub: lang==='id'?'Pantai malam hari':'Midnight seashore', colors:['#040d12','#061828','#083050'] },
+              { id:'fantasy', emoji:'🔮', label: lang==='id'?'Dunia Fantasy':'Fantasy World', sub: lang==='id'?'Alam semesta lain':'Other realm vibes', colors:['#090614','#180830','#2d1060'] },
+              { id:'futurecity', emoji:'🌆', label: lang==='id'?'Kota Masa Depan':'Future City', sub: lang==='id'?'Neon cyberpunk malam':'Neon cyberpunk night', colors:['#050c10','#051520','#073040'] },
+            ].map(({ id, emoji, label, sub, colors }) => {
+              const isActive = (bgTheme || 'starry') === id;
+              return (
+                <button
+                  key={id}
+                  onClick={() => setBgTheme(id)}
+                  style={{
+                    display:'flex', alignItems:'center', gap:10,
+                    padding:'10px 12px', borderRadius:14,
+                    border: isActive ? `1.5px solid ${color}80` : '1.5px solid rgba(255,255,255,0.08)',
+                    background: isActive
+                      ? `linear-gradient(135deg, ${color}25, ${color}10)`
+                      : 'rgba(255,255,255,0.03)',
+                    cursor:'pointer', textAlign:'left',
+                    boxShadow: isActive ? `0 0 18px ${color}25` : 'none',
+                    transition:'all 0.2s',
+                  }}
+                >
+                  {/* Mini preview */}
+                  <div style={{
+                    width:36, height:36, borderRadius:10, flexShrink:0, overflow:'hidden',
+                    background:`linear-gradient(135deg, ${colors[0]}, ${colors[1]}, ${colors[2]})`,
+                    display:'flex', alignItems:'center', justifyContent:'center', fontSize:16,
+                    boxShadow: isActive ? `0 0 10px ${color}40` : '0 2px 6px rgba(0,0,0,0.4)',
+                    border: isActive ? `1px solid ${color}50` : '1px solid rgba(255,255,255,0.08)',
+                  }}>
+                    {emoji}
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:11.5, fontWeight:700, color: isActive ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.75)', lineHeight:1.2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label}</div>
+                    <div style={{ fontSize:9.5, color:'rgba(255,255,255,0.35)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{sub}</div>
+                  </div>
+                  {isActive && <div style={{ width:7, height:7, borderRadius:'50%', background:color, flexShrink:0, boxShadow:`0 0 6px ${color}` }}/>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        )}
 
         {/* ── SLEEP TIMER */}
         <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>

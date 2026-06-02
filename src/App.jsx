@@ -2415,6 +2415,7 @@ Return ONLY valid JSON, no explanation:
   const [showSettings, setShowSettings] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [coverSpin, setCoverSpin] = useState(() => localStorage.getItem('sn_cover_spin') !== 'false');
+  const [bgTheme, setBgTheme] = useState(() => localStorage.getItem('sn_bg_theme') || 'starry');
   const fullscreenRef = useRef(false);
 
 
@@ -6949,7 +6950,7 @@ Format exactly:
   ];
 
   return (
-    <div className={`${isLite ? 'lite-mode' : 'pro-mode'} layout-${layoutMode}`} style={{ position:'fixed', inset:0, overflow:'hidden', background:'#07071a', color:'#f1f5f9', fontFamily:"'Segoe UI',system-ui,sans-serif", display:'flex', flexDirection:'column', userSelect:'none', WebkitTapHighlightColor:'transparent' }}>
+    <div className={`${isLite ? 'lite-mode' : 'pro-mode'} layout-${layoutMode}`} style={{ position:'fixed', inset:0, overflow:'hidden', background: isLite ? '#07071a' : ({starry:'#07071a',bedroom:'#0a0810',journey:'#060d0a',ocean:'#040d12',fantasy:'#090614',futurecity:'#050c10'}[bgTheme]||'#07071a'), color:'#f1f5f9', fontFamily:"'Segoe UI',system-ui,sans-serif", display:'flex', flexDirection:'column', userSelect:'none', WebkitTapHighlightColor:'transparent' }}>
 
       {/* ══ PWA INSTALL BANNER — floating bottom, appears when installable ══ */}
       {!pwaInstalled && !pwaBannerDismissed && pwaBannerVisible && pwaPrompt && (
@@ -6986,9 +6987,116 @@ Format exactly:
         </div>
       )}
 
-      {/* BG — Pro only */}
-      {!isLite && <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, background:`radial-gradient(ellipse at 60% 10%,${track.color}20 0%,transparent 60%)` }}/>}
-      {!isLite && <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, overflow:'hidden' }}><div className="stars"/><div className="starsB"/><div className="starsC"/></div>}
+      {/* BG — Pro only, theme-aware */}
+      {!isLite && (() => {
+        const th = bgTheme || 'starry';
+        // Base solid background
+        const baseBg = {
+          starry:   '#07071a',
+          bedroom:  '#0a0810',
+          journey:  '#060d0a',
+          ocean:    '#040d12',
+          fantasy:  '#090614',
+          futurecity:'#050c10',
+        }[th] || '#07071a';
+
+        // Overlay gradients per theme
+        const overlays = {
+          starry: [
+            `radial-gradient(ellipse at 60% 10%,${track.color}20 0%,transparent 60%)`,
+          ],
+          bedroom: [
+            'radial-gradient(ellipse at 30% 70%, rgba(180,80,200,0.18) 0%, transparent 55%)',
+            'radial-gradient(ellipse at 75% 20%, rgba(255,140,60,0.10) 0%, transparent 45%)',
+          ],
+          journey: [
+            'radial-gradient(ellipse at 50% 80%, rgba(30,120,60,0.20) 0%, transparent 60%)',
+            'radial-gradient(ellipse at 20% 30%, rgba(60,100,180,0.12) 0%, transparent 50%)',
+          ],
+          ocean: [
+            'radial-gradient(ellipse at 50% 30%, rgba(20,180,220,0.18) 0%, transparent 55%)',
+            'radial-gradient(ellipse at 80% 85%, rgba(10,80,160,0.22) 0%, transparent 50%)',
+          ],
+          fantasy: [
+            'radial-gradient(ellipse at 40% 40%, rgba(160,60,230,0.22) 0%, transparent 55%)',
+            'radial-gradient(ellipse at 70% 75%, rgba(255,100,180,0.14) 0%, transparent 50%)',
+          ],
+          futurecity: [
+            'radial-gradient(ellipse at 60% 20%, rgba(0,220,180,0.18) 0%, transparent 55%)',
+            'radial-gradient(ellipse at 20% 80%, rgba(0,120,255,0.16) 0%, transparent 50%)',
+          ],
+        }[th] || [`radial-gradient(ellipse at 60% 10%,${track.color}20 0%,transparent 60%)`];
+
+        // Animated overlay elements per theme
+        const ThemeOverlay = () => {
+          if (th === 'starry') return <><div className="stars"/><div className="starsB"/><div className="starsC"/></>;
+          if (th === 'bedroom') return (
+            <>
+              <div className="stars" style={{ opacity:0.3 }}/><div className="starsB" style={{ opacity:0.2 }}/>
+              {/* Rain streaks */}
+              <div className="rain-layer"/>
+              {/* Warm lamp glow */}
+              <div style={{ position:'absolute', bottom:'15%', left:'18%', width:120, height:120, borderRadius:'50%', background:'radial-gradient(circle, rgba(255,160,60,0.18) 0%, transparent 70%)', animation:'pulse-lamp 3s ease-in-out infinite' }}/>
+              {/* Window frame light */}
+              <div style={{ position:'absolute', top:'10%', right:'12%', width:70, height:90, border:'2px solid rgba(255,180,80,0.12)', borderRadius:4, boxShadow:'0 0 30px rgba(255,160,60,0.08) inset' }}/>
+            </>
+          );
+          if (th === 'journey') return (
+            <>
+              <div className="stars" style={{ opacity:0.5 }}/><div className="starsB" style={{ opacity:0.35 }}/>
+              {/* Mountain silhouette */}
+              <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'30%', background:'linear-gradient(to top, rgba(20,40,20,0.7) 0%, transparent 100%)', clipPath:'polygon(0% 100%, 10% 55%, 22% 70%, 35% 30%, 48% 60%, 60% 20%, 73% 50%, 85% 35%, 100% 55%, 100% 100%)' }}/>
+              {/* Forest fog */}
+              <div style={{ position:'absolute', bottom:'10%', left:0, right:0, height:'18%', background:'linear-gradient(to top, rgba(40,80,50,0.25), transparent)', animation:'drift 8s ease-in-out infinite alternate' }}/>
+            </>
+          );
+          if (th === 'ocean') return (
+            <>
+              <div className="stars" style={{ opacity:0.55 }}/><div className="starsB" style={{ opacity:0.4 }}/>
+              {/* Moon reflection on water */}
+              <div style={{ position:'absolute', bottom:'18%', left:'35%', right:'35%', height:3, background:'rgba(200,230,255,0.18)', borderRadius:4, filter:'blur(6px)', animation:'shimmer 4s ease-in-out infinite' }}/>
+              {/* Wave layers */}
+              <div className="wave-layer"/>
+              {/* Aurora/moon glow */}
+              <div style={{ position:'absolute', top:'8%', right:'25%', width:100, height:100, borderRadius:'50%', background:'radial-gradient(circle, rgba(200,230,255,0.22) 0%, transparent 70%)', animation:'pulse-moon 6s ease-in-out infinite' }}/>
+            </>
+          );
+          if (th === 'fantasy') return (
+            <>
+              <div className="stars"/><div className="starsB"/><div className="starsC"/>
+              {/* Floating orbs */}
+              <div style={{ position:'absolute', top:'20%', left:'15%', width:60, height:60, borderRadius:'50%', background:'radial-gradient(circle, rgba(200,80,255,0.28) 0%, transparent 70%)', animation:'float-orb 5s ease-in-out infinite' }}/>
+              <div style={{ position:'absolute', top:'55%', right:'20%', width:40, height:40, borderRadius:'50%', background:'radial-gradient(circle, rgba(255,80,180,0.24) 0%, transparent 70%)', animation:'float-orb 7s ease-in-out 2s infinite' }}/>
+              <div style={{ position:'absolute', top:'35%', right:'40%', width:28, height:28, borderRadius:'50%', background:'radial-gradient(circle, rgba(100,200,255,0.22) 0%, transparent 70%)', animation:'float-orb 6s ease-in-out 1s infinite' }}/>
+              {/* Sparkles */}
+              <div className="sparkle-layer"/>
+            </>
+          );
+          if (th === 'futurecity') return (
+            <>
+              <div className="stars" style={{ opacity:0.4 }}/><div className="starsB" style={{ opacity:0.25 }}/>
+              {/* City grid lines */}
+              <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'35%', background:'linear-gradient(to top, rgba(0,30,40,0.6) 0%, transparent 100%)' }}/>
+              {/* Neon building outlines */}
+              <div className="city-layer"/>
+              {/* Scan line */}
+              <div className="scan-line"/>
+            </>
+          );
+          return <><div className="stars"/><div className="starsB"/><div className="starsC"/></>;
+        };
+
+        return (
+          <>
+            {overlays.map((g, i) => (
+              <div key={i} style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, background:g }}/>
+            ))}
+            <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, overflow:'hidden' }}>
+              <ThemeOverlay/>
+            </div>
+          </>
+        );
+      })()}
 
       {/* ══ HEADER */}
       {!fullscreen && <header style={{ position: 'sticky', top: 0, zIndex:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'space-between', minHeight: layoutMode === 'mobile-landscape' ? HEADER_H_LANDSCAPE : HEADER_H_NORMAL, padding: layoutMode === 'mobile-landscape' ? '5px 14px' : '9px 14px', boxSizing:'border-box', borderBottom: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.18)' }}>
@@ -7156,7 +7264,7 @@ Format exactly:
 
         {/* ── SETTINGS PANEL — menutup semua tab di desktop & landscape, hanya player di portrait */}
         {showSettings && (isDesktop || layoutMode === 'mobile-landscape' || tab === 'player') && (
-          <Suspense fallback={<Spinner/>}><SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userScId={userScId} setUserScId={setUserScId} userAiKey={userAiKey} setUserAiKey={setUserAiKey} userYtKey={userYtKey} setUserYtKey={setUserYtKey} userCfKey={userCfKey} setUserCfKey={setUserCfKey} userSnKey={userSnKey} setUserSnKey={setUserSnKey} setTab={setTab} setFullscreen={setFullscreen} googleUser={googleUser||null} handleGoogleLogin={handleGoogleLogin} syncPlaylistsToCloud={syncPlaylistsToCloud} accessToken={accessToken||null} plSyncStatus={plSyncStatus} plSyncError={plSyncError||null} plSyncedAt={plSyncedAt||null}/></Suspense>
+          <Suspense fallback={<Spinner/>}><SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userScId={userScId} setUserScId={setUserScId} userAiKey={userAiKey} setUserAiKey={setUserAiKey} userYtKey={userYtKey} setUserYtKey={setUserYtKey} userCfKey={userCfKey} setUserCfKey={setUserCfKey} userSnKey={userSnKey} setUserSnKey={setUserSnKey} setTab={setTab} setFullscreen={setFullscreen} googleUser={googleUser||null} handleGoogleLogin={handleGoogleLogin} syncPlaylistsToCloud={syncPlaylistsToCloud} accessToken={accessToken||null} plSyncStatus={plSyncStatus} plSyncError={plSyncError||null} plSyncedAt={plSyncedAt||null} bgTheme={bgTheme} setBgTheme={(v)=>{ setBgTheme(v); localStorage.setItem('sn_bg_theme', v); }}/></Suspense>
         )}
 
         {/* ─── PLAYER TAB */}
@@ -11305,6 +11413,21 @@ Format exactly:
         .stars{background-image:radial-gradient(1px 1px at 8% 12%,rgba(255,255,255,0.7),transparent),radial-gradient(1.5px 1.5px at 31% 45%,rgba(255,255,255,0.5),transparent),radial-gradient(1px 1px at 62% 23%,rgba(255,255,255,0.6),transparent),radial-gradient(2px 2px at 78% 67%,rgba(255,255,255,0.35),transparent),radial-gradient(1px 1px at 14% 71%,rgba(255,255,255,0.5),transparent),radial-gradient(1px 1px at 88% 18%,rgba(255,255,255,0.45),transparent),radial-gradient(1.5px 1.5px at 47% 89%,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 55% 55%,rgba(255,255,255,0.3),transparent);animation:twinkle 4s ease-in-out infinite}
         .starsB{background-image:radial-gradient(1px 1px at 23% 6%,rgba(255,255,255,0.5),transparent),radial-gradient(1.5px 1.5px at 70% 38%,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 5% 52%,rgba(255,255,255,0.55),transparent),radial-gradient(2px 2px at 91% 81%,rgba(255,255,255,0.3),transparent),radial-gradient(1px 1px at 38% 77%,rgba(255,255,255,0.45),transparent),radial-gradient(1px 1px at 66% 9%,rgba(255,255,255,0.35),transparent),radial-gradient(1.5px 1.5px at 18% 93%,rgba(255,255,255,0.3),transparent);animation:twinkleB 5.5s ease-in-out 1.8s infinite}
         .starsC{background-image:radial-gradient(1px 1px at 42% 31%,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 83% 54%,rgba(255,255,255,0.5),transparent),radial-gradient(1.5px 1.5px at 11% 28%,rgba(255,255,255,0.35),transparent),radial-gradient(1px 1px at 75% 92%,rgba(255,255,255,0.3),transparent),radial-gradient(2px 2px at 29% 63%,rgba(255,255,255,0.25),transparent),radial-gradient(1px 1px at 58% 4%,rgba(255,255,255,0.5),transparent);animation:twinkleC 7s ease-in-out 3.2s infinite}
+        @keyframes pulse-lamp{0%,100%{opacity:0.7;transform:scale(1)}50%{opacity:1;transform:scale(1.08)}}
+        @keyframes pulse-moon{0%,100%{opacity:0.7;transform:scale(1) translateY(0)}50%{opacity:1;transform:scale(1.04) translateY(-3px)}}
+        @keyframes shimmer{0%,100%{opacity:0.4;transform:scaleX(0.7)}50%{opacity:0.8;transform:scaleX(1.2)}}
+        @keyframes drift{0%{transform:translateX(-10px)}100%{transform:translateX(10px)}}
+        @keyframes float-orb{0%,100%{transform:translateY(0) scale(1);opacity:0.7}50%{transform:translateY(-18px) scale(1.1);opacity:1}}
+        @keyframes rain-fall{0%{transform:translateY(-100%)}100%{transform:translateY(100vh)}}
+        @keyframes wave-move{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+        @keyframes scan-move{0%{top:-2px;opacity:0}5%{opacity:0.6}95%{opacity:0.3}100%{top:100%;opacity:0}}
+        @keyframes city-flicker{0%,100%{opacity:1}48%{opacity:1}50%{opacity:0.5}52%{opacity:1}80%{opacity:1}82%{opacity:0.7}84%{opacity:1}}
+        @keyframes sparkle-twinkle{0%,100%{opacity:0;transform:scale(0.5)}50%{opacity:1;transform:scale(1)}}
+        .rain-layer{position:absolute;inset:0;background-image:repeating-linear-gradient(to bottom right,transparent 0px,transparent 6px,rgba(180,210,255,0.07) 6px,rgba(180,210,255,0.07) 7px);animation:none;pointer-events:none;opacity:0.7}
+        .wave-layer{position:absolute;bottom:0;left:0;right:0;height:22%;background:linear-gradient(180deg,transparent 0%,rgba(10,60,100,0.35) 100%);overflow:hidden}
+        .city-layer{position:absolute;bottom:0;left:0;right:0;height:38%;background:linear-gradient(to top,rgba(0,15,25,0.85) 0%,transparent 100%);pointer-events:none}
+        .scan-line{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(0,220,180,0.18),transparent);animation:scan-move 5s linear infinite;pointer-events:none}
+        .sparkle-layer{position:absolute;inset:0;background-image:radial-gradient(1.5px 1.5px at 15% 25%,rgba(255,180,255,0.7),transparent),radial-gradient(1px 1px at 55% 15%,rgba(180,255,255,0.6),transparent),radial-gradient(2px 2px at 80% 40%,rgba(255,200,100,0.5),transparent),radial-gradient(1px 1px at 30% 70%,rgba(200,100,255,0.7),transparent),radial-gradient(1.5px 1.5px at 70% 80%,rgba(255,100,200,0.5),transparent);animation:sparkle-twinkle 3s ease-in-out infinite}
         .scrollbar-hide::-webkit-scrollbar{display:none}
         .scrollbar-hide{-ms-overflow-style:none;scrollbar-width:none}
         input::placeholder{color:rgba(148,163,184,0.35)}
