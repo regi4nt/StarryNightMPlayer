@@ -143,6 +143,7 @@ export default function App() {
   const ytProgressRef   = useRef(0);   // mirror of ytProgress for use in intervals
   const ytDurationRef   = useRef(0);   // mirror of ytDuration for use in intervals
   const playYouTubeRef  = useRef(null); // always-fresh ref to playYouTube
+  const ytDlTriggerRef  = useRef(null); // forward-ref ke triggerYtDownload (di-set setelah didefinisikan)
   const ytEndedFiredRef = useRef(false); // prevent double-fire of ytNext on video end
   const ytRepeatSeekingRef = useRef(false); // true selama seekTo(0) untuk repeat-one (blokir ended palsu)
   const [ytSongs, setYtSongs]         = useState(() => {
@@ -1552,7 +1553,7 @@ Return ONLY valid JSON, no explanation:
     if (allItems.length > 0) ytSearchCacheSet(query + '_' + mode, allItems);
   };
 
-  const playYouTube = (item, queue, queueIdx) => {
+  const playYouTube = async (item, queue, queueIdx) => {
     // Support Piped format (url), Invidious format (videoId), or direct videoId
     let videoId = item.videoId || null;
     if (!videoId) {
@@ -1564,11 +1565,56 @@ Return ONLY valid JSON, no explanation:
     const dur   = secs > 0 ? `${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}` : '';
     const thumb = item.thumbnail || `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
     const ytTrack = { type:'youtube', videoId, title:item.title, artist:item.uploaderName||item.author||'YouTube', thumbnail:thumb, duration:dur, durationSecs:secs };
+
+    // ── Update queue refs (untuk next/prev) sebelum switch ──
+    if (queue) {
+      const queueChanged = queue !== ytQueueRef.current;
+      ytQueueRef.current = queue;
+      ytQueueIdxRef.current = queueIdx ?? queue.findIndex(v => (v.videoId || v.url?.includes(videoId)) === videoId);
+      if (queueChanged) ytShufflePlayedRef.current = null;
+    }
+
+    // ── Cache-first: cek cache audio dulu (hanya di Pro mode) ──
+    if (!isLite) {
+      try {
+        const cachedBlob = await ytCacheGet(videoId);
+        if (cachedBlob && cachedBlob.size > 10000) {
+          // Cache hit → putar via native audio player (hemat data, bisa seek penuh)
+          const blobUrl = URL.createObjectURL(cachedBlob);
+          const nativeTrack = {
+            id: `yt_${videoId}`,
+            type: 'youtube',
+            videoId,
+            title: item.title,
+            artist: item.uploaderName || item.author || 'YouTube',
+            album: 'YouTube',
+            cover: thumb,
+            src: blobUrl,
+            color: '#ff4444',
+            bg: 'rgba(255,68,68,0.15)',
+            mood: 'youtube',
+            thumbnail: thumb,
+            duration: secs,
+            durationSecs: secs,
+            _ytCached: true, // marker: sedang diputar dari cache
+          };
+          stopAllMedia('local');
+          setEmbedTrack(null);
+          setCustomSongs(prev => { const ex = prev.find(s => s.id === nativeTrack.id); return ex ? prev.map(s => s.id === nativeTrack.id ? { ...s, src: blobUrl } : s) : [nativeTrack, ...prev]; });
+          setTrack(nativeTrack);
+          setProgress(0); setDuration(secs || 0);
+          setPlaying(true);
+          setTab('player');
+          return;
+        }
+      } catch (_) { /* cache miss atau error → lanjut ke iframe */ }
+    }
+
+    // ── Tidak ada cache / Lite mode → putar via iframe seperti biasa ──
     const doSwitch = () => {
       stopAllMedia('embed');
       setEmbedTrack(ytTrack);
       setYtProgress(0); setYtDuration(secs||0); ytProgressRef.current = 0; ytDurationRef.current = secs||0; ytEndedFiredRef.current = false;
-      if (queue) { const queueChanged = queue !== ytQueueRef.current; ytQueueRef.current = queue; ytQueueIdxRef.current = queueIdx ?? queue.findIndex(v=>(v.videoId||v.url?.includes(videoId))===videoId); if (queueChanged) ytShufflePlayedRef.current = null; }
       setEmbedMinimized(false);
       if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
@@ -1581,6 +1627,14 @@ Return ONLY valid JSON, no explanation:
       setTab('player');
     };
     doSwitch();
+
+    // ── Background download: simpan audio ke cache setelah iframe mulai putar ──
+    // (hanya Pro mode & belum ada cache; tidak blokir playback)
+    if (!isLite) {
+      setTimeout(() => {
+        if (ytDlTriggerRef.current) ytDlTriggerRef.current(videoId);
+      }, 1500);
+    }
   };
   // Keep ref always pointing to latest playYouTube (avoids stale closure in ytNext/ytPrev)
   playYouTubeRef.current = playYouTube;
@@ -1993,6 +2047,7 @@ Return ONLY valid JSON, no explanation:
   const likedYtPendingRef  = useRef(likedYtPending);
   const cachedYtIdsRef     = useRef(cachedYtIds);
   const triggerYtDownloadRef = useRef(triggerYtDownload);
+  ytDlTriggerRef.current = triggerYtDownload; // sync agar playYouTube selalu punya versi terbaru
   useEffect(() => { likedYtPendingRef.current    = likedYtPending;    }, [likedYtPending]);
   useEffect(() => { cachedYtIdsRef.current       = cachedYtIds;       }, [cachedYtIds]);
   useEffect(() => { triggerYtDownloadRef.current = triggerYtDownload; }, [triggerYtDownload]);
@@ -2429,6 +2484,7 @@ Return ONLY valid JSON, no explanation:
         sendPlay();
         setTimeout(sendPlay, 500);
         setTimeout(sendPlay, 1500);
+        setTimeout(sendPlay, 3000);
         return;
       }
 
@@ -2446,6 +2502,29 @@ Return ONLY valid JSON, no explanation:
     };
     document.addEventListener('visibilitychange', onResume);
     return () => document.removeEventListener('visibilitychange', onResume);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── YouTube background heartbeat
+  // Chrome/Android men-throttle iframe saat tab di-background.
+  // Solusi: kirim postMessage 'listening' setiap 10 detik agar browser tahu ada
+  // aktivitas media aktif — sama seperti audio <element> yang terus "streaming".
+  useEffect(() => {
+    const tick = () => {
+      const et = embedTrackRef.current;
+      if (!et || et.type !== 'youtube') return;
+      if (!playingRef.current) return;
+      if (!ytIframeRef.current) return;
+      try {
+        // 'listening' memberi tahu YT Player API bahwa kita aktif memantau event
+        ytIframeRef.current.contentWindow.postMessage(JSON.stringify({ event:'listening' }), '*');
+        // Jika tab di background dan YT ter-pause oleh browser, paksa play lagi
+        if (document.visibilityState === 'hidden') {
+          ytIframeRef.current.contentWindow.postMessage(JSON.stringify({ event:'command', func:'playVideo', args:'' }), '*');
+        }
+      } catch(_) {}
+    };
+    const id = setInterval(tick, 10000);
+    return () => clearInterval(id);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
 
@@ -3580,7 +3659,7 @@ Return ONLY valid JSON, no explanation:
     const title  = activeTrack?.title  || 'Starry Night MPlayer';
     const artist = activeTrack?.artist || '';
     const album  = activeTrack?.album  || (track.isRadio ? 'Live Radio' : '');
-    const cover  = globalCover || getCover(track) || '/icon-512.png';
+    const cover  = globalCover || (embedTrack?.type === 'youtube' ? (embedTrack?.thumbnail || getCover(track)) : getCover(track)) || '/icon-512.png';
     navigator.mediaSession.metadata = new MediaMetadata({
       title, artist, album,
       artwork: [
@@ -11204,7 +11283,7 @@ Format exactly:
           key={embedTrack.videoId}
           src={`https://www.youtube.com/embed/${embedTrack.videoId}?autoplay=1&enablejsapi=1&rel=0&modestbranding=1&playsinline=1&origin=${encodeURIComponent(window.location.origin)}`}
           title={embedTrack.title}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; background-fetch"
           style={{ position:'fixed', top:'-9999px', left:'-9999px', width:320, height:180, pointerEvents:'none', border:'none', zIndex:-1 }}
         />
       )}
