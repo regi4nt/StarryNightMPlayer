@@ -39,17 +39,27 @@ import {
 
 // ── Lazy-loaded components ────────────────────────────────
 import { PlatformLogo } from './components/PlatformLogo.jsx'; // eager — used in stream tab
-const PlaylistFormView    = lazy(() => import('./components/PlaylistViews.jsx').then(m => ({ default: m.PlaylistFormView })));
-const PlaylistModal       = lazy(() => import('./components/PlaylistViews.jsx').then(m => ({ default: m.PlaylistModal })));
+// Stale-chunk guard: if a dynamic import fails (e.g. after a new deployment invalidates
+// old content-hashed filenames), reload the page so the browser fetches fresh assets.
+const reloadOnStalChunk = (err) => {
+  if (err?.message?.includes('Failed to fetch dynamically imported module') ||
+      err?.message?.includes('Importing a module script failed')) {
+    window.location.reload();
+  }
+  return new Promise(() => {}); // prevent React rendering broken state
+};
+
+const PlaylistFormView    = lazy(() => import('./components/PlaylistViews.jsx').then(m => ({ default: m.PlaylistFormView })).catch(reloadOnStalChunk));
+const PlaylistModal       = lazy(() => import('./components/PlaylistViews.jsx').then(m => ({ default: m.PlaylistModal })).catch(reloadOnStalChunk));
 // Error Boundaries MUST be eagerly imported — React.lazy() can't wrap them because
 // the boundary must be synchronously available when a child throws during render.
 import { PlaylistErrorBoundary } from './components/PlaylistViews.jsx';
 // AppLogo & OrbitalRing are critical player UI — eager import
 import { AppLogo, OrbitalRing } from './components/Player.jsx';
 // SongRow hanya muncul di tab Library/Playlist (bukan initial render) — lazy aman
-const SongRow = lazy(() => import('./components/SongRow.jsx').then(m => ({ default: m.SongRow })));
-const SettingsPanel  = lazy(() => import('./components/SettingsPanel.jsx').then(m => ({ default: m.SettingsPanel })));
-const UploadModal    = lazy(() => import('./components/UploadModal.jsx').then(m => ({ default: m.UploadModal })));
+const SongRow        = lazy(() => import('./components/SongRow.jsx').then(m => ({ default: m.SongRow })).catch(reloadOnStalChunk));
+const SettingsPanel  = lazy(() => import('./components/SettingsPanel.jsx').then(m => ({ default: m.SettingsPanel })).catch(reloadOnStalChunk));
+const UploadModal    = lazy(() => import('./components/UploadModal.jsx').then(m => ({ default: m.UploadModal })).catch(reloadOnStalChunk));
 
 // ── Suspense fallback ─────────────────────────────────────
 const Spinner = () => (
