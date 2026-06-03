@@ -2666,7 +2666,10 @@ Return ONLY valid JSON, no explanation:
   const [uploadProgress, setUploadProg] = useState(0);
   const [loadingTrack, setLoadingTrack] = useState(false);
   const [streamBuffering, setStreamBuffering] = useState(false); // buffering indicator untuk radio/stream
-  const [streamingPlatformsLoaded, setStreamingPlatformsLoaded] = useState(false); // trigger re-render setelah lazy load
+  const [streamingPlatformsLoaded, setStreamingPlatformsLoaded] = useState(() => {
+    // Cek apakah sudah di-cache sebelumnya (mis. kalau App re-render)
+    return !!getStreamingPlatformsSync().length;
+  }); // trigger re-render setelah lazy load
   const [driveDownProg, setDriveDownProg] = useState(0);   // 0-100, only in Pro mode
   const [drivePhase, setDrivePhase]       = useState('idle'); // 'idle' | 'check' | 'download'
   const [driveError, setDriveError]     = useState('');
@@ -3772,14 +3775,14 @@ Return ONLY valid JSON, no explanation:
   // ── Fetch YT trending when stream tab opens (once per session, refreshable)
   useEffect(() => { if (tab === 'stream') fetchYtTrending(); }, [tab]); // eslint-disable-line
 
-  // ── Lazy-load STREAMING_PLATFORMS saat tab stream pertama kali dibuka
+  // ── Lazy-load STREAMING_PLATFORMS segera saat app mount (bukan nunggu tab stream)
   useEffect(() => {
-    if (tab === 'stream' && !streamingPlatformsLoaded) {
+    if (!streamingPlatformsLoaded) {
       getStreamingPlatforms().then(() => {
         setStreamingPlatformsLoaded(true);
       });
     }
-  }, [tab, streamingPlatformsLoaded]); // eslint-disable-line
+  }, []); // eslint-disable-line
 
   // ── Volume/mute
   useEffect(() => {
@@ -8360,7 +8363,7 @@ Format exactly:
               {/* ── Unified search bar */}
               {(() => {
                 const searchPlatforms = STREAMING_PLATFORMS.filter(p => ['ytmusic','websearch'].includes(p.id));
-                const activePlat = searchPlatforms.find(p => p.id === unifiedPlatform) || searchPlatforms[0];
+                const activePlat = searchPlatforms.find(p => p.id === unifiedPlatform) || searchPlatforms[0] || { id:'ytmusic', color:'#ff0000', name:'YouTube Music', hint:'Cari lagu, artis…' };
                 const handleUnifiedSearch = () => {
                   if (!unifiedQuery.trim()) return;
                   if (unifiedPlatform === 'ytmusic') {
