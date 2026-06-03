@@ -1530,6 +1530,11 @@ input[type='range']::-webkit-slider-thumb {
   width:2px;
   right:22%;
 }
+/* Desktop: geser garis tepi agar tidak tumpang tindih sidebar */
+.layout-desktop-portrait .hw-lane-edge-l  { left: calc(160px + 22% * (1 - 160px/100vw)); }
+.layout-desktop-landscape .hw-lane-edge-l { left: calc(196px + 22% * (1 - 196px/100vw)); }
+.layout-desktop-portrait .hw-lane-edge-r  { right: 22%; }
+.layout-desktop-landscape .hw-lane-edge-r { right: 22%; }
 /* Pantulan lampu di aspal — lebih berwarna */
 .hw-reflect {
   position:absolute; bottom:0; left:0; right:0; height:26%;
@@ -1838,6 +1843,25 @@ input[type='range']::-webkit-slider-thumb {
 /* Landscape hw-road-cap ikut bottom:50% */
 .layout-mobile-landscape .hw-road-cap,
 .layout-desktop-landscape .hw-road-cap   { bottom:50%; }
+
+/* Mobile portrait: perbesar road-cap agar transisi jalan-ke-langit lebih halus */
+.layout-mobile-portrait .hw-road-cap {
+  height: 5%;
+  background: linear-gradient(to top, #0a1222 0%, rgba(10,18,34,0.5) 50%, rgba(10,18,34,0) 100%);
+}
+
+/* ── MOBILE PORTRAIT: highway adjustments ── */
+/* Di layar portrait sempit, jalan sedikit lebih tinggi agar tidak sesak */
+.layout-mobile-portrait .hw-lane-edge-l { left: 8%; }
+.layout-mobile-portrait .hw-lane-edge-r { right: 8%; }
+/* Garis marka tengah lebih lebar di mobile agar terlihat */
+.layout-mobile-portrait .hw-lane-center::before {
+  clip-path: polygon(44% 0%, 56% 0%, 60% 100%, 40% 100%);
+}
+/* Horizon glow di mobile portrait sedikit lebih pendek */
+.layout-mobile-portrait .hw-horizon { height: 10%; }
+/* City silhouette di mobile portrait lebih rendah */
+.layout-mobile-portrait .hw-city-bg { height: 16%; }
 
 /* ── HAPUS SEMUA ANIMASI TEMA DEKORATIF ── */
 .wave-layer, .wave-layer2,

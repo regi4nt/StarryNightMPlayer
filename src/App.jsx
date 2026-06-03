@@ -7346,6 +7346,7 @@ Format exactly:
           }
           if (th === 'nighthighway') {
             const ls = layoutMode.includes('landscape');
+            const isMob = layoutMode.includes('mobile');
             const roadH = ls ? 50 : 42;
             // Mobil berada di jalur dalam area jalan (bottom:0, height=roadH%)
             // Jalur kiri  (headlight, datang dari kiri): bottom rendah = dekat pengemudi
@@ -7395,24 +7396,28 @@ Format exactly:
                 {(() => {
                   const isDesk = layoutMode.includes('desktop');
                   const sbW = isDesk ? (ls ? SIDEBAR_W_LANDSCAPE : SIDEBAR_W_PORTRAIT) : 0;
-                  const vw = typeof window !== 'undefined' ? window.innerWidth : 1280;
-                  // Lebar area konten (tidak termasuk sidebar)
-                  const contentW = vw - sbW;
-                  // Posisi tiang: dihitung dari tepi kiri konten (setelah sidebar)
-                  // Kedua tiang menggunakan left, agar translateX(-50%) konsisten
-                  // Tiang kiri: left = sbW + frac% * contentW
-                  // Tiang kanan: left = sbW + contentW - frac% * contentW (mirror dari kiri)
-                  const poleL = (frac) => `calc(${sbW}px + ${frac * contentW / 100}px)`;
-                  const poleR = (frac) => `calc(${sbW}px + ${contentW - frac * contentW / 100}px)`;
+                  // Posisi tiang: persentase dari lebar konten (area setelah sidebar)
+                  // Tiang kiri: sbW + frac% * (100vw - sbW)
+                  // Tiang kanan: 100vw - frac% * (100vw - sbW)
+                  // Mobile tidak ada sidebar jadi sbW=0, jadi left = frac%
+                  const fracL1 = isMob ? 4  : 3;   // tiang kiri paling dekat (sangat ke tepi)
+                  const fracL2 = isMob ? 11 : 9;   // tiang kiri tengah
+                  const fracL3 = isMob ? 18 : 15;  // tiang kiri jauh
+                  const poleL = (frac) => isDesk
+                    ? `calc(${sbW}px + ${frac / 100} * (100vw - ${sbW}px))`
+                    : `${frac}%`;
+                  const poleR = (frac) => isDesk
+                    ? `calc(100vw - ${frac / 100} * (100vw - ${sbW}px))`
+                    : `${100 - frac}%`;
                   const poles = [
-                    // Kiri: 3 tiang (dekat→jauh) — makin besar = makin ke tengah = makin jauh
-                    { posVal: poleL(3),  armH: ls?110:100, opacity:1.0,  headS:16 },
-                    { posVal: poleL(9),  armH: ls? 80: 75, opacity:0.60, headS:12, scale:0.85 },
-                    { posVal: poleL(14), armH: ls? 55: 52, opacity:0.35, headS: 9, scale:0.70 },
-                    // Kanan: mirror sempurna dari kiri terhadap tengah konten
-                    { posVal: poleR(3),  armH: ls?110:100, opacity:1.0,  headS:16 },
-                    { posVal: poleR(9),  armH: ls? 80: 75, opacity:0.60, headS:12, scale:0.85 },
-                    { posVal: poleR(14), armH: ls? 55: 52, opacity:0.35, headS: 9, scale:0.70 },
+                    // Kiri: 3 tiang (dekat→jauh)
+                    { posVal: poleL(fracL1), armH: ls?110:100, opacity:1.0,  headS: isMob?14:16 },
+                    { posVal: poleL(fracL2), armH: ls? 80: 75, opacity:0.60, headS: isMob?10:12, scale:0.85 },
+                    { posVal: poleL(fracL3), armH: ls? 55: 52, opacity:0.35, headS: isMob? 7: 9, scale:0.70 },
+                    // Kanan: mirror
+                    { posVal: poleR(fracL1), armH: ls?110:100, opacity:1.0,  headS: isMob?14:16 },
+                    { posVal: poleR(fracL2), armH: ls? 80: 75, opacity:0.60, headS: isMob?10:12, scale:0.85 },
+                    { posVal: poleR(fracL3), armH: ls? 55: 52, opacity:0.35, headS: isMob? 7: 9, scale:0.70 },
                   ];
                   return poles.map((p,i) => (
                   <div key={i} className="hw-pole" style={{
