@@ -9953,8 +9953,8 @@ Format exactly:
               </div>
 
             </div>
-          </div>
           </>}
+          </div>
         )}
 
         {/* ─── PLAYLIST TAB */}
