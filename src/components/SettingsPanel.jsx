@@ -155,6 +155,7 @@ function CacheManager({ lang, t }) {
   const [cleared, setCleared] = React.useState(false);
   const [clearDone, setClearDone] = React.useState(null); // null | 'quick' | 'all'
   const [confirmClearAll, setConfirmClearAll] = React.useState(false);
+  const [confirmClearQuick, setConfirmClearQuick] = React.useState(false);
 
   // ── Keys yang PENTING (jangan hapus saat Quick Clean)
   const KEEP_KEYS = new Set([
@@ -437,37 +438,60 @@ function CacheManager({ lang, t }) {
           {/* ── Tombol Quick & All berdampingan */}
           <div style={{ display:'flex', gap:8 }}>
 
-            {/* Quick Clean */}
-            <button
-              onClick={handleQuickClear}
-              disabled={isClearing || !hasQuickCache}
-              style={{
-                flex:1, padding:'11px 0', borderRadius:12, border:'none',
-                background: clearDone==='quick'
-                  ? 'linear-gradient(135deg,#22c55e,#16a34a)'
-                  : hasQuickCache
-                    ? (clearing==='quick' ? 'rgba(245,158,11,0.4)' : 'linear-gradient(135deg,#f59e0b,#d97706)')
-                    : 'rgba(255,255,255,0.06)',
-                color: hasQuickCache ? 'white' : 'rgba(255,255,255,0.2)',
-                fontSize:12, fontWeight:800, cursor: hasQuickCache && !isClearing ? 'pointer' : 'default',
-                display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3,
-                transition:'all 0.3s', opacity: isClearing && clearing!=='quick' ? 0.5 : 1,
-              }}
-            >
-              <span style={{ fontSize:15 }}>
-                {clearing==='quick' ? '⏳' : clearDone==='quick' ? '✅' : '⚡'}
-              </span>
-              <span style={{ fontSize:11, fontWeight:800, lineHeight:1 }}>
-                {clearing==='quick'
-                  ? (lang==='id'?'Membersihkan...':'Cleaning...')
-                  : clearDone==='quick'
-                    ? (lang==='id'?'Selesai!':'Done!')
-                    : 'Quick Clean'}
-              </span>
-              <span style={{ fontSize:9, fontWeight:600, opacity:0.75, lineHeight:1 }}>
-                {lang==='id' ? 'Jaga data penting' : 'Keeps your data'}
-              </span>
-            </button>
+            {/* Quick Clean — dengan konfirmasi */}
+            {!confirmClearQuick ? (
+              <button
+                onClick={()=>{ if(hasQuickCache && !isClearing) setConfirmClearQuick(true); }}
+                disabled={isClearing || !hasQuickCache}
+                style={{
+                  flex:1, padding:'11px 0', borderRadius:12, border:'none',
+                  background: clearDone==='quick'
+                    ? 'linear-gradient(135deg,#22c55e,#16a34a)'
+                    : hasQuickCache
+                      ? (clearing==='quick' ? 'rgba(245,158,11,0.4)' : 'linear-gradient(135deg,#f59e0b,#d97706)')
+                      : 'rgba(255,255,255,0.06)',
+                  color: hasQuickCache ? 'white' : 'rgba(255,255,255,0.2)',
+                  fontSize:12, fontWeight:800, cursor: hasQuickCache && !isClearing ? 'pointer' : 'default',
+                  display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3,
+                  transition:'all 0.3s', opacity: isClearing && clearing!=='quick' ? 0.5 : 1,
+                }}
+              >
+                <span style={{ fontSize:15 }}>
+                  {clearing==='quick' ? '⏳' : clearDone==='quick' ? '✅' : '⚡'}
+                </span>
+                <span style={{ fontSize:11, fontWeight:800, lineHeight:1 }}>
+                  {clearing==='quick'
+                    ? (lang==='id'?'Membersihkan...':'Cleaning...')
+                    : clearDone==='quick'
+                      ? (lang==='id'?'Selesai!':'Done!')
+                      : 'Quick Clean'}
+                </span>
+                <span style={{ fontSize:9, fontWeight:600, opacity:0.75, lineHeight:1 }}>
+                  {lang==='id' ? 'Jaga data penting' : 'Keeps your data'}
+                </span>
+              </button>
+            ) : (
+              /* Konfirmasi Quick Clean */
+              <div style={{ flex:1, display:'flex', flexDirection:'column', gap:5, padding:'8px 6px', borderRadius:12, background:'rgba(245,158,11,0.1)', border:'1.5px solid rgba(245,158,11,0.4)' }}>
+                <div style={{ fontSize:10, fontWeight:700, color:'#fde68a', textAlign:'center', lineHeight:1.3 }}>
+                  {lang==='id' ? '⚡ Yakin bersihkan cache?' : '⚡ Clean cache?'}
+                </div>
+                <div style={{ display:'flex', gap:4 }}>
+                  <button
+                    onClick={()=>setConfirmClearQuick(false)}
+                    style={{ flex:1, padding:'6px 0', borderRadius:8, border:'none', background:'rgba(255,255,255,0.08)', color:'rgba(255,255,255,0.6)', fontSize:11, fontWeight:700, cursor:'pointer' }}
+                  >
+                    {lang==='id' ? 'Batal' : 'Cancel'}
+                  </button>
+                  <button
+                    onClick={()=>{ setConfirmClearQuick(false); handleQuickClear(); }}
+                    style={{ flex:1, padding:'6px 0', borderRadius:8, border:'none', background:'linear-gradient(135deg,#f59e0b,#d97706)', color:'white', fontSize:11, fontWeight:800, cursor:'pointer' }}
+                  >
+                    {lang==='id' ? 'Ya, bersihkan' : 'Yes, clean'}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Clear All — dengan konfirmasi */}
             {!confirmClearAll ? (

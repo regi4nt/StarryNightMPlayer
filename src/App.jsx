@@ -6950,7 +6950,7 @@ Format exactly:
   ];
 
   return (
-    <div className={`${isLite ? 'lite-mode' : 'pro-mode'} layout-${layoutMode}`} style={{ position:'fixed', inset:0, overflow:'hidden', background: isLite ? '#07071a' : ({starry:'#07071a',bedroom:'#080614',journey:'#05100a',ocean:'#040e18',fantasy:'#06041a',futurecity:'#040c10'}[bgTheme]||'#07071a'), color:'#f1f5f9', fontFamily:"'Segoe UI',system-ui,sans-serif", display:'flex', flexDirection:'column', userSelect:'none', WebkitTapHighlightColor:'transparent' }}>
+    <div className={`${isLite ? 'lite-mode' : 'pro-mode'} layout-${layoutMode}`} style={{ position:'fixed', inset:0, overflow:'hidden', background: isLite ? '#07071a' : ({starry:'#07071a',bedroom:'#07051a',journey:'#05100a',ocean:'#040e18',fantasy:'#06041a',futurecity:'#020810'}[bgTheme]||'#07071a'), color:'#f1f5f9', fontFamily:"'Segoe UI',system-ui,sans-serif", display:'flex', flexDirection:'column', userSelect:'none', WebkitTapHighlightColor:'transparent' }}>
 
       {/* ══ PWA INSTALL BANNER — floating bottom, appears when installable ══ */}
       {!pwaInstalled && !pwaBannerDismissed && pwaBannerVisible && pwaPrompt && (
@@ -6993,11 +6993,11 @@ Format exactly:
         // Base solid background
         const baseBg = {
           starry:    '#07071a',
-          bedroom:   '#080614',
+          bedroom:   '#07051a',
           journey:   '#05100a',
           ocean:     '#040e18',
           fantasy:   '#06041a',
-          futurecity:'#040c10',
+          futurecity:'#020810',
         }[th] || '#07071a';
 
         // Overlay gradients per theme
@@ -7006,12 +7006,14 @@ Format exactly:
             `radial-gradient(ellipse at 60% 10%,${track.color}20 0%,transparent 60%)`,
           ],
           bedroom: [
-            // Cahaya lampu tidur kuning hangat dari kiri bawah
-            'radial-gradient(ellipse at 15% 85%, rgba(255,140,30,0.22) 0%, rgba(200,80,10,0.10) 35%, transparent 60%)',
-            // Sinar bulan dingin dari kanan atas (jendela)
-            'radial-gradient(ellipse at 82% 8%, rgba(140,170,255,0.18) 0%, rgba(100,130,220,0.08) 35%, transparent 55%)',
-            // Ambient malam biru gelap
-            'radial-gradient(ellipse at 50% 40%, rgba(20,15,50,0.30) 0%, transparent 70%)',
+            // Cahaya lampu tidur kuning-oranye hangat dari kiri bawah (lebih kuat & natural)
+            'radial-gradient(ellipse at 12% 92%, rgba(255,150,30,0.32) 0%, rgba(210,90,10,0.16) 30%, transparent 58%)',
+            // Sinar bulan dingin dari kanan atas masuk lewat jendela (lebih nyata)
+            'radial-gradient(ellipse at 88% 5%, rgba(160,185,255,0.22) 0%, rgba(120,150,230,0.10) 30%, transparent 52%)',
+            // Ambient malam biru gelap keunguan di tengah
+            'radial-gradient(ellipse at 50% 50%, rgba(18,12,48,0.28) 0%, transparent 65%)',
+            // Cahaya bulan di lantai (dari jendela)
+            'radial-gradient(ellipse at 80% 100%, rgba(140,165,255,0.10) 0%, transparent 40%)',
           ],
           journey: [
             // Green forest floor glow
@@ -7040,12 +7042,15 @@ Format exactly:
             'radial-gradient(ellipse at 50% 100%, rgba(80,20,140,0.30) 0%, rgba(50,10,100,0.15) 40%, transparent 65%)',
           ],
           futurecity: [
-            // Cyan neon horizon glow
-            'radial-gradient(ellipse at 50% 90%, rgba(0,220,200,0.28) 0%, rgba(0,150,180,0.14) 40%, transparent 65%)',
-            // Blue neon left pillar
-            'radial-gradient(ellipse at 10% 50%, rgba(0,120,255,0.20) 0%, transparent 50%)',
-            // Purple haze top-right
-            'radial-gradient(ellipse at 85% 10%, rgba(160,0,255,0.15) 0%, transparent 45%)',
+            // Cyan-teal horizon glow — neon bawah kota (lebih kuat)
+            'radial-gradient(ellipse at 50% 95%, rgba(0,230,210,0.32) 0%, rgba(0,160,190,0.16) 38%, transparent 62%)',
+            // Blue neon pillar kiri
+            'radial-gradient(ellipse at 8%  55%, rgba(0,130,255,0.24) 0%, transparent 48%)',
+            // Purple haze kanan atas
+            'radial-gradient(ellipse at 88% 8%,  rgba(170,0,255,0.18) 0%, transparent 42%)',
+            // Pantulan neon di langit rendah
+            'radial-gradient(ellipse at 30% 70%, rgba(0,180,255,0.10) 0%, transparent 35%)',
+            'radial-gradient(ellipse at 70% 65%, rgba(140,0,255,0.10) 0%, transparent 35%)',
           ],
         }[th] || [`radial-gradient(ellipse at 60% 10%,${track.color}20 0%,transparent 60%)`];
 
@@ -7055,12 +7060,12 @@ Format exactly:
           if (th === 'bedroom') return (
             <>
               {/* Langit malam via jendela — bintang sangat redup */}
-              <div className="starsB" style={{ opacity:0.18 }}/>
-              {/* Bulan di dalam jendela */}
+              <div className="starsB" style={{ opacity:0.20 }}/>
+              {/* Bulan di dalam jendela — lebih besar & bercahaya */}
               {(() => {
                 const ls = layoutMode.includes('landscape');
                 return (
-                  <div style={{ position:'absolute', top: ls ? '7%' : '11%', right: ls ? '7.5%' : '9.5%', width: ls ? 22 : 28, height: ls ? 22 : 28, borderRadius:'50%', background:'radial-gradient(circle, rgba(220,230,255,0.80) 35%, rgba(180,200,255,0.35) 65%, transparent 85%)', boxShadow:'0 0 14px rgba(180,200,255,0.28)', animation:'pulse-moon 9s ease-in-out infinite', willChange:'opacity', zIndex:1 }}/>
+                  <div style={{ position:'absolute', top: ls ? '6%' : '9%', right: ls ? '6.5%' : '8.5%', width: ls ? 26 : 34, height: ls ? 26 : 34, borderRadius:'50%', background:'radial-gradient(circle, rgba(230,240,255,0.90) 30%, rgba(190,210,255,0.45) 60%, transparent 82%)', boxShadow:'0 0 18px rgba(190,210,255,0.40), 0 0 6px rgba(210,225,255,0.60)', animation:'pulse-moon 8s ease-in-out infinite', willChange:'opacity', zIndex:1 }}/>
                 );
               })()}
               {/* Jendela frame */}
@@ -7072,50 +7077,56 @@ Format exactly:
               <div className="curtain-right"/>
               {/* Sinar bulan masuk lewat jendela */}
               <div className="moonbeam"/>
-              {/* Lampu tidur — nightstand kiri bawah */}
+              {/* Lampu tidur — nightstand kiri bawah, lebih natural */}
               {(() => {
                 const ls = layoutMode.includes('landscape');
-                const isDesktop = layoutMode.includes('desktop');
-                const sbW = isDesktop ? (ls ? SIDEBAR_W_LANDSCAPE : SIDEBAR_W_PORTRAIT) : 0;
-                // Offset semua elemen lampu agar tidak tertutup sidebar
-                const lampBase = `calc(${sbW}px + 2%)`;
-                const tableLeft = `calc(${sbW}px + 1.5%)`;
-                const tableWidth = '13%';
-                const kapLeft = `calc(${sbW}px + 5%)`;
-                const tiangLeft = `calc(${sbW}px + 5% + 23px)`;
-                const floorLeft = `calc(${sbW}px + 0%)`;
+                const isDesk = layoutMode.includes('desktop');
+                const sbW = isDesk ? (ls ? SIDEBAR_W_LANDSCAPE : SIDEBAR_W_PORTRAIT) : 0;
+                const base   = `calc(${sbW}px + 2.5%)`;
+                const kapL   = `calc(${sbW}px + 5.5%)`;
+                const tiangL = `calc(${sbW}px + 5.5% + 24px)`;
+                const tableL = `calc(${sbW}px + 2%)`;
+                const floorL = `calc(${sbW}px + 0%)`;
+                const haloW  = ls ? 100 : 130;
+                const haloH  = ls ? 100 : 130;
+                const haloB  = ls ? '36%' : '28%';
+                const kapB   = ls ? '48%' : '38%';
+                const tiangB = ls ? '41%' : '31%';
+                const tableB = ls ? '38%' : '28%';
                 return (<>
-                  <div className="lamp-halo" style={{ bottom: ls ? '38%' : '30%', left: lampBase, width: ls ? 90 : 120, height: ls ? 90 : 120, background:'radial-gradient(circle, rgba(255,210,100,0.60) 0%, rgba(255,170,60,0.25) 22%, rgba(255,120,20,0.10) 55%, transparent 75%)' }}/>
+                  {/* Halo cahaya lampu — dua lapis agar lebih lembut */}
+                  <div className="lamp-halo" style={{ bottom: haloB, left: base, width: haloW, height: haloH, background:'radial-gradient(circle, rgba(255,200,80,0.75) 0%, rgba(255,160,40,0.35) 22%, rgba(255,110,15,0.12) 52%, transparent 72%)' }}/>
+                  <div style={{ position:'absolute', bottom: haloB, left: base, width: haloW*0.6, height: haloH*0.6, borderRadius:'50%', background:'radial-gradient(circle, rgba(255,230,140,0.35) 0%, transparent 70%)', pointerEvents:'none', transform:'translate(20%, 20%)' }}/>
                   {/* Kap lampu */}
-                  <div style={{ position:'absolute', bottom: ls ? '50%' : '40%', left: kapLeft, width:50, height:22, background:'rgba(180,100,30,0.55)', clipPath:'polygon(10% 0%, 90% 0%, 100% 100%, 0% 100%)', borderRadius:'0 0 3px 3px', pointerEvents:'none' }}/>
+                  <div style={{ position:'absolute', bottom: kapB, left: kapL, width:52, height:24, background:'linear-gradient(to bottom, rgba(200,120,35,0.65) 0%, rgba(160,80,20,0.80) 100%)', clipPath:'polygon(8% 0%, 92% 0%, 100% 100%, 0% 100%)', borderRadius:'0 0 4px 4px', pointerEvents:'none', boxShadow:'0 -2px 6px rgba(255,200,80,0.25)' }}/>
                   {/* Tiang lampu */}
-                  <div style={{ position:'absolute', bottom: ls ? '43%' : '33%', left: tiangLeft, width:4, height:'8%', background:'rgba(140,80,25,0.50)', pointerEvents:'none' }}/>
+                  <div style={{ position:'absolute', bottom: tiangB, left: tiangL, width:4, height:'9%', background:'rgba(150,90,30,0.60)', borderRadius:2, pointerEvents:'none' }}/>
                   {/* Meja samping */}
-                  <div style={{ position:'absolute', bottom: ls ? '40%' : '30%', left: tableLeft, width: tableWidth, height:'4%', background:'rgba(80,45,15,0.55)', borderRadius:'3px 3px 0 0', pointerEvents:'none' }}/>
+                  <div style={{ position:'absolute', bottom: tableB, left: tableL, width:'14%', height:'3.5%', background:'linear-gradient(to bottom, rgba(100,60,20,0.65) 0%, rgba(75,42,14,0.80) 100%)', borderRadius:'3px 3px 0 0', pointerEvents:'none', boxShadow:'0 3px 10px rgba(0,0,0,0.30)' }}/>
                   {/* Cahaya lampu di lantai */}
-                  <div style={{ position:'absolute', bottom:0, left: floorLeft, width:'20%', height:'28%', background:'radial-gradient(ellipse at 40% 0%, rgba(255,140,30,0.10) 0%, transparent 70%)', pointerEvents:'none' }}/>
+                  <div style={{ position:'absolute', bottom:0, left: floorL, width:'22%', height:'30%', background:'radial-gradient(ellipse at 38% 0%, rgba(255,155,35,0.14) 0%, rgba(255,120,20,0.06) 40%, transparent 72%)', pointerEvents:'none' }}/>
                 </>);
               })()}
-              {/* Kasur & headboard — clip-path disesuaikan agar headboard kiri tidak tertutup sidebar */}
+              {/* Kasur & headboard — lebih realistis */}
               {(() => {
                 const ls = layoutMode.includes('landscape');
-                const isDesktop = layoutMode.includes('desktop');
-                const sbW = isDesktop ? (ls ? SIDEBAR_W_LANDSCAPE : SIDEBAR_W_PORTRAIT) : 0;
-                // Hitung left post headboard sebagai % viewport (sidebar + 20px margin)
+                const isDesk = layoutMode.includes('desktop');
+                const sbW = isDesk ? (ls ? SIDEBAR_W_LANDSCAPE : SIDEBAR_W_PORTRAIT) : 0;
                 const vw = typeof window !== 'undefined' ? window.innerWidth : 1280;
-                const leftPost = Math.round(((sbW + 20) / vw) * 100);
-                const lp = `${leftPost}%`;
-                const lpIn = `${leftPost + 2}%`; // inner edge headboard post
+                const leftPost = Math.round(((sbW + 18) / vw) * 100);
+                const lp   = `${leftPost}%`;
+                const lpIn = `${leftPost + 1.8}%`;
                 return (
                   <div style={{
-                    position:'absolute', bottom:0, left:0, right:0, height:'28%',
+                    position:'absolute', bottom:0, left:0, right:0, height: ls ? '34%' : '30%',
                     pointerEvents:'none',
                     background: [
-                      `radial-gradient(ellipse 10% 6% at 36% 28%, rgba(200,180,160,0.18) 0%, transparent 100%)`,
-                      `radial-gradient(ellipse 10% 6% at 58% 28%, rgba(200,180,160,0.18) 0%, transparent 100%)`,
-                      `linear-gradient(to top, rgba(80,40,20,0.55) 0%, rgba(100,55,30,0.40) 30%, rgba(90,50,25,0.25) 60%, transparent 100%)`
+                      `radial-gradient(ellipse 9% 5% at 35% 26%, rgba(220,200,175,0.22) 0%, transparent 100%)`,
+                      `radial-gradient(ellipse 9% 5% at 57% 26%, rgba(220,200,175,0.22) 0%, transparent 100%)`,
+                      `linear-gradient(to top, rgba(90,48,18,0.65) 0%, rgba(110,60,28,0.48) 28%, rgba(95,52,22,0.30) 58%, transparent 100%)`,
+                      `linear-gradient(180deg, transparent 38%, rgba(255,200,140,0.06) 40%, transparent 42%)`,
                     ].join(', '),
-                    clipPath: `polygon(0% 100%, 0% 40%, ${lp} 32%, ${lpIn} 22%, 92% 22%, 92% 32%, 100% 40%, 100% 100%)`
+                    clipPath: `polygon(0% 100%, 0% 42%, ${lp} 34%, ${lpIn} 20%, 91% 20%, 92% 34%, 100% 42%, 100% 100%)`
                   }}/>
                 );
               })()}
@@ -7126,8 +7137,53 @@ Format exactly:
           if (th === 'journey') return (
             <>
               <div className="stars" style={{ opacity:0.55 }}/><div className="starsB" style={{ opacity:0.40 }}/><div className="starsC" style={{ opacity:0.25 }}/>
-              {/* Moon */}
-              <div style={{ position:'absolute', top:'8%', right:'20%', width:65, height:65, borderRadius:'50%', background:'radial-gradient(circle, rgba(240,240,200,0.50) 30%, rgba(200,220,180,0.22) 60%, transparent 80%)', boxShadow:'0 0 25px rgba(220,240,180,0.20)', animation:'pulse-moon 8s ease-in-out infinite', willChange:'opacity' }}/>
+              {/* Moon — positioned behind album cover (cover acts as the moon) */}
+              {(() => {
+                const isLs = layoutMode.includes('landscape');
+                const isDesk = layoutMode.includes('desktop');
+                const moonSize = Math.round(ringSize * 1.35);
+                // Horizontal center: desktop shifts right of sidebar, mobile is full-width
+                let centerX, centerY;
+                if (isDesk && isLs) {
+                  // Desktop landscape: ring centered in (viewport - sidebar) area
+                  centerX = SIDEBAR_W_LANDSCAPE + (window.innerWidth - SIDEBAR_W_LANDSCAPE) / 2;
+                  centerY = window.innerHeight / 2;
+                } else if (isDesk) {
+                  // Desktop portrait
+                  centerX = SIDEBAR_W_PORTRAIT + (window.innerWidth - SIDEBAR_W_PORTRAIT) / 2;
+                  centerY = window.innerHeight / 2;
+                } else if (isLs) {
+                  // Mobile landscape: ring in left ~42% column
+                  const sideNavW = 52;
+                  const mainW = window.innerWidth - sideNavW;
+                  const lsColW = ringSize + 20;
+                  centerX = sideNavW + lsColW / 2;
+                  centerY = window.innerHeight / 2;
+                } else {
+                  // Mobile portrait: ring centered horizontally
+                  centerX = window.innerWidth / 2;
+                  // Ring is in upper portion, roughly header + clockRow + badge + half-ring
+                  const headerH = HEADER_H_NORMAL;
+                  const aboveRing = headerH + 38 + 20; // clock + badge rows
+                  centerY = aboveRing + ringSize / 2 + 8;
+                }
+                return (
+                  <div style={{
+                    position:'absolute',
+                    left: centerX - moonSize / 2,
+                    top: centerY - moonSize / 2,
+                    width: moonSize,
+                    height: moonSize,
+                    borderRadius:'50%',
+                    background:'radial-gradient(circle, rgba(240,240,200,0.38) 25%, rgba(210,230,180,0.18) 55%, transparent 78%)',
+                    boxShadow:`0 0 ${Math.round(moonSize * 0.4)}px rgba(220,240,180,0.22), 0 0 ${Math.round(moonSize * 0.7)}px rgba(200,230,160,0.10)`,
+                    animation:'pulse-moon 8s ease-in-out infinite',
+                    willChange:'opacity',
+                    pointerEvents:'none',
+                    zIndex: 0,
+                  }}/>
+                );
+              })()}
               {/* Mountain silhouette — back range */}
               <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'35%', background:'rgba(15,35,20,0.48)', clipPath:'polygon(0% 100%, 0% 65%, 8% 48%, 16% 62%, 24% 38%, 32% 58%, 38% 42%, 44% 55%, 50% 30%, 56% 50%, 63% 35%, 70% 55%, 76% 44%, 83% 58%, 90% 40%, 96% 60%, 100% 52%, 100% 100%)' }}/>
               {/* Mountain silhouette — front range */}
@@ -7139,8 +7195,45 @@ Format exactly:
           if (th === 'ocean') return (
             <>
               <div className="stars" style={{ opacity:0.60 }}/><div className="starsB" style={{ opacity:0.45 }}/><div className="starsC" style={{ opacity:0.20 }}/>
-              {/* Large moon over ocean */}
-              <div style={{ position:'absolute', top:'7%', left:'30%', width:85, height:85, borderRadius:'50%', background:'radial-gradient(circle, rgba(220,235,255,0.55) 35%, rgba(180,210,255,0.22) 65%, transparent 80%)', boxShadow:'0 0 35px rgba(180,210,255,0.25)', animation:'pulse-moon 7s ease-in-out infinite', willChange:'opacity' }}/>
+              {/* Large moon — positioned behind album cover (cover acts as the moon) */}
+              {(() => {
+                const isLs = layoutMode.includes('landscape');
+                const isDesk = layoutMode.includes('desktop');
+                const moonSize = Math.round(ringSize * 1.38);
+                let centerX, centerY;
+                if (isDesk && isLs) {
+                  centerX = SIDEBAR_W_LANDSCAPE + (window.innerWidth - SIDEBAR_W_LANDSCAPE) / 2;
+                  centerY = window.innerHeight / 2;
+                } else if (isDesk) {
+                  centerX = SIDEBAR_W_PORTRAIT + (window.innerWidth - SIDEBAR_W_PORTRAIT) / 2;
+                  centerY = window.innerHeight / 2;
+                } else if (isLs) {
+                  const sideNavW = 52;
+                  const lsColW = ringSize + 20;
+                  centerX = sideNavW + lsColW / 2;
+                  centerY = window.innerHeight / 2;
+                } else {
+                  centerX = window.innerWidth / 2;
+                  const aboveRing = HEADER_H_NORMAL + 38 + 20;
+                  centerY = aboveRing + ringSize / 2 + 8;
+                }
+                return (
+                  <div style={{
+                    position:'absolute',
+                    left: centerX - moonSize / 2,
+                    top: centerY - moonSize / 2,
+                    width: moonSize,
+                    height: moonSize,
+                    borderRadius:'50%',
+                    background:'radial-gradient(circle, rgba(220,235,255,0.42) 28%, rgba(180,210,255,0.18) 58%, transparent 78%)',
+                    boxShadow:`0 0 ${Math.round(moonSize * 0.45)}px rgba(180,210,255,0.28), 0 0 ${Math.round(moonSize * 0.8)}px rgba(160,200,255,0.12)`,
+                    animation:'pulse-moon 7s ease-in-out infinite',
+                    willChange:'opacity',
+                    pointerEvents:'none',
+                    zIndex: 0,
+                  }}/>
+                );
+              })()}
               {/* Moon shimmer trail — satu line saja */}
               <div style={{ position:'absolute', bottom:'23%', left:'28%', right:'28%', height:3, background:'rgba(200,230,255,0.20)', borderRadius:4, filter:'blur(4px)', animation:'shimmer 7s ease-in-out infinite', willChange:'opacity' }}/>
               {/* Wave layers */}
@@ -7156,8 +7249,45 @@ Format exactly:
               <div className="starsB" style={{ opacity:0.55 }}/>
               {/* Aurora borealis ribbon */}
               <div className="aurora-layer"/>
-              {/* Bulan besar keemasan */}
-              <div className="fantasy-moon"/>
+              {/* Bulan besar keemasan — positioned behind album cover (cover acts as the moon) */}
+              {(() => {
+                const isLs = layoutMode.includes('landscape');
+                const isDesk = layoutMode.includes('desktop');
+                const moonSize = Math.round(ringSize * 1.40);
+                let centerX, centerY;
+                if (isDesk && isLs) {
+                  centerX = SIDEBAR_W_LANDSCAPE + (window.innerWidth - SIDEBAR_W_LANDSCAPE) / 2;
+                  centerY = window.innerHeight / 2;
+                } else if (isDesk) {
+                  centerX = SIDEBAR_W_PORTRAIT + (window.innerWidth - SIDEBAR_W_PORTRAIT) / 2;
+                  centerY = window.innerHeight / 2;
+                } else if (isLs) {
+                  const sideNavW = 52;
+                  const lsColW = ringSize + 20;
+                  centerX = sideNavW + lsColW / 2;
+                  centerY = window.innerHeight / 2;
+                } else {
+                  centerX = window.innerWidth / 2;
+                  const aboveRing = HEADER_H_NORMAL + 38 + 20;
+                  centerY = aboveRing + ringSize / 2 + 8;
+                }
+                return (
+                  <div style={{
+                    position:'absolute',
+                    left: centerX - moonSize / 2,
+                    top: centerY - moonSize / 2,
+                    width: moonSize,
+                    height: moonSize,
+                    borderRadius:'50%',
+                    background:'radial-gradient(circle, rgba(255,240,200,0.60) 18%, rgba(240,210,160,0.30) 48%, transparent 72%)',
+                    boxShadow:`0 0 ${Math.round(moonSize * 0.42)}px rgba(255,230,150,0.32), 0 0 ${Math.round(moonSize * 0.75)}px rgba(255,200,100,0.16)`,
+                    animation:'pulse-moon 8s ease-in-out infinite',
+                    willChange:'opacity',
+                    pointerEvents:'none',
+                    zIndex: 0,
+                  }}/>
+                );
+              })()}
               {/* Kunang-kunang / firefly melayang — 1 saja */}
               <div style={{ position:'absolute', top:'42%', left:'28%', width:3, height:3, borderRadius:'50%', background:'rgba(120,255,180,0.90)', boxShadow:'0 0 6px rgba(100,255,160,0.70)', animation:'float-orb 9s ease-in-out infinite', willChange:'transform, opacity' }}/>
               {/* Kastil siluet */}
@@ -7170,26 +7300,31 @@ Format exactly:
           );
           if (th === 'futurecity') return (
             <>
-              {/* Minimal stars (light-polluted sky) */}
-              <div className="stars" style={{ opacity:0.20 }}/><div className="starsB" style={{ opacity:0.12 }}/>
+              {/* Minimal stars — langit polusi cahaya kota */}
+              <div className="stars" style={{ opacity:0.18 }}/><div className="starsB" style={{ opacity:0.10 }}/>
               {/* City building silhouettes with neon */}
               <div className="city-layer"/>
               {/* Neon window blinks on buildings */}
-              <div className={`city-windows`} style={{ height: layoutMode.includes('landscape') ? '55%' : '40%' }}/>
-              {/* Neon skyline line — posisi sinkron dengan top of city-layer */}
+              <div className="city-windows" style={{ height: layoutMode.includes('landscape') ? '58%' : '42%' }}/>
+              {/* Neon skyline line — tepat di atap skyline */}
               {(() => {
                 const ls = layoutMode.includes('landscape');
-                const cityH = ls ? 55 : 40;
-                return <div className="neon-skyline" style={{ bottom: `${cityH}%`, filter:'blur(1px)' }}/>;
+                const cityH = ls ? 58 : 42;
+                return <div className="neon-skyline" style={{ bottom: `${cityH}%` }}/>;
               })()}
-              {/* Ground — gradasi gelap di bawah gedung */}
-              <div style={{ position:'absolute', bottom:0, left:0, right:0, height: layoutMode.includes('landscape') ? '45%' : '32%', background:'linear-gradient(to top, rgba(0,15,30,0.75) 0%, rgba(0,25,45,0.40) 45%, transparent 100%)' }}/>
-              {/* Pantulan neon di tanah */}
-              <div style={{ position:'absolute', bottom:0, left:'15%', right:'15%', height:'18%', background:'linear-gradient(to top, rgba(0,180,160,0.08) 0%, transparent 100%)', filter:'blur(8px)' }}/>
+              {/* Ground — aspal gelap berkilap neon */}
+              <div style={{ position:'absolute', bottom:0, left:0, right:0, height: layoutMode.includes('landscape') ? '48%' : '35%', background:'linear-gradient(to top, rgba(0,10,22,0.88) 0%, rgba(0,20,40,0.55) 35%, transparent 100%)' }}/>
+              {/* Pantulan neon di aspal — multi-warna lebih hidup */}
+              <div style={{ position:'absolute', bottom:0, left:'10%', right:'10%', height:'20%', background:'linear-gradient(to top, rgba(0,210,190,0.12) 0%, rgba(0,150,255,0.07) 50%, transparent 100%)', filter:'blur(10px)' }}/>
+              <div style={{ position:'absolute', bottom:0, left:'35%', right:'35%', height:'14%', background:'linear-gradient(to top, rgba(170,0,255,0.10) 0%, transparent 100%)', filter:'blur(8px)' }}/>
               {/* Scan line — disembunyikan di landscape via CSS */}
               <div className="scan-line"/>
-              {/* Flying vehicle */}
-              <div style={{ position:'absolute', top: layoutMode.includes('landscape') ? '15%' : '22%', left:'8%', width:8, height:3, borderRadius:2, background:'rgba(0,220,200,0.90)', boxShadow:'0 0 8px 2px rgba(0,220,200,0.60), -6px 0 6px rgba(0,180,255,0.40)', animation:'float-orb 14s ease-in-out infinite', willChange:'transform, opacity' }}/>
+              {/* Kendaraan terbang 1 — cyan, dari kiri ke kanan */}
+              <div style={{ position:'absolute', top: layoutMode.includes('landscape') ? '14%' : '20%', left:'6%', width:10, height:3, borderRadius:2, background:'rgba(0,220,200,0.95)', boxShadow:'0 0 10px 3px rgba(0,220,200,0.65), -8px 0 8px rgba(0,180,255,0.45)', animation:'float-orb 16s ease-in-out infinite', willChange:'transform, opacity' }}/>
+              {/* Kendaraan terbang 2 — ungu, lebih tinggi */}
+              <div style={{ position:'absolute', top: layoutMode.includes('landscape') ? '8%' : '13%', right:'18%', width:7, height:2, borderRadius:2, background:'rgba(180,50,255,0.90)', boxShadow:'0 0 8px 2px rgba(160,0,255,0.60), 6px 0 6px rgba(200,100,255,0.35)', animation:'float-orb 22s ease-in-out 3s infinite', willChange:'transform, opacity' }}/>
+              {/* Beacon / lampu menara — merah berkedip di puncak gedung */}
+              <div style={{ position:'absolute', top: layoutMode.includes('landscape') ? '5%' : '9%', left:'46.5%', width:5, height:5, borderRadius:'50%', background:'rgba(255,60,60,0.95)', boxShadow:'0 0 10px 4px rgba(255,40,40,0.60)', animation:'pulse-moon 1.4s ease-in-out infinite', willChange:'opacity' }}/>
             </>
           );
           return <><div className="stars"/><div className="starsB"/><div className="starsC"/></>;
