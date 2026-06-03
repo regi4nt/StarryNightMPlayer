@@ -6990,132 +6990,144 @@ Format exactly:
       {/* BG — Pro only, theme-aware */}
       {!isLite && (() => {
         const th = bgTheme || 'starry';
+        // Base solid background
+        const baseBg = {
+          starry:    '#07071a',
+          bedroom:   '#0d0814',
+          journey:   '#05100a',
+          ocean:     '#040e18',
+          fantasy:   '#0b0515',
+          futurecity:'#040c10',
+        }[th] || '#07071a';
 
-        /* ── Overlay gradients (fixed, rendered as separate divs) ── */
+        // Overlay gradients per theme
         const overlays = {
           starry: [
-            `radial-gradient(ellipse at 60% 10%, ${track.color}22 0%, transparent 62%)`,
+            `radial-gradient(ellipse at 60% 10%,${track.color}20 0%,transparent 60%)`,
           ],
           bedroom: [
-            'radial-gradient(ellipse at 18% 92%, rgba(255,135,25,0.32) 0%, rgba(190,70,8,0.14) 38%, transparent 66%)',
-            'radial-gradient(ellipse at 82% 4%,  rgba(150,170,255,0.16) 0%, transparent 40%)',
-            'radial-gradient(ellipse at 50% 52%, rgba(75,15,115,0.20)  0%, transparent 72%)',
+            // Warm candlelight from bottom-left corner
+            'radial-gradient(ellipse at 20% 90%, rgba(255,140,30,0.28) 0%, rgba(200,80,10,0.12) 35%, transparent 65%)',
+            // Cool moonlight through window top-right
+            'radial-gradient(ellipse at 80% 5%, rgba(160,180,255,0.15) 0%, transparent 40%)',
+            // Deep purple night ambiance
+            'radial-gradient(ellipse at 50% 50%, rgba(80,20,120,0.18) 0%, transparent 70%)',
           ],
           journey: [
-            'radial-gradient(ellipse at 50% 102%, rgba(18,110,36,0.38) 0%, rgba(8,50,16,0.20) 42%, transparent 66%)',
-            'radial-gradient(ellipse at 38%   0%, rgba(175,205,255,0.20) 0%, transparent 46%)',
-            'radial-gradient(ellipse at 82%  58%, rgba(16,72,52,0.16)  0%, transparent 52%)',
+            // Green forest floor glow
+            'radial-gradient(ellipse at 50% 100%, rgba(20,120,40,0.35) 0%, rgba(10,60,20,0.18) 40%, transparent 65%)',
+            // Moonlight from top
+            'radial-gradient(ellipse at 40% 0%, rgba(180,210,255,0.18) 0%, transparent 45%)',
+            // Misty mountain teal
+            'radial-gradient(ellipse at 80% 60%, rgba(20,80,60,0.15) 0%, transparent 50%)',
           ],
           ocean: [
-            'radial-gradient(ellipse at 50% 102%, rgba(0,75,155,0.48) 0%, rgba(0,38,95,0.26) 42%, transparent 66%)',
-            'radial-gradient(ellipse at 50%   8%, rgba(155,215,255,0.22) 0%, transparent 52%)',
-            'radial-gradient(ellipse at 22%  58%, rgba(0,190,170,0.12)  0%, transparent 46%)',
+            // Deep sea from bottom
+            'radial-gradient(ellipse at 50% 100%, rgba(0,80,160,0.45) 0%, rgba(0,40,100,0.25) 40%, transparent 65%)',
+            // Moonlit surface shimmer top
+            'radial-gradient(ellipse at 50% 10%, rgba(160,220,255,0.20) 0%, transparent 50%)',
+            // Bioluminescent teal mid
+            'radial-gradient(ellipse at 25% 60%, rgba(0,200,180,0.10) 0%, transparent 45%)',
           ],
           fantasy: [
-            'radial-gradient(ellipse at 28% 46%, rgba(175,35,255,0.32)  0%, rgba(115,15,195,0.14) 42%, transparent 66%)',
-            'radial-gradient(ellipse at 76% 66%, rgba(255,55,175,0.24)  0%, transparent 52%)',
-            'radial-gradient(ellipse at 62%  4%, rgba(75,195,255,0.16)  0%, transparent 42%)',
+            // Magenta portal glow center-left
+            'radial-gradient(ellipse at 30% 45%, rgba(180,40,255,0.30) 0%, rgba(120,20,200,0.12) 40%, transparent 65%)',
+            // Pink energy right
+            'radial-gradient(ellipse at 75% 65%, rgba(255,60,180,0.22) 0%, transparent 50%)',
+            // Cyan arcane accent top
+            'radial-gradient(ellipse at 60% 5%, rgba(80,200,255,0.15) 0%, transparent 40%)',
           ],
           futurecity: [
-            'radial-gradient(ellipse at 50% 92%, rgba(0,215,195,0.30)  0%, rgba(0,145,175,0.15) 42%, transparent 66%)',
-            'radial-gradient(ellipse at  8% 52%, rgba(0,115,250,0.22)  0%, transparent 52%)',
-            'radial-gradient(ellipse at 86%  8%, rgba(155,0,250,0.16)  0%, transparent 46%)',
+            // Cyan neon horizon glow
+            'radial-gradient(ellipse at 50% 90%, rgba(0,220,200,0.28) 0%, rgba(0,150,180,0.14) 40%, transparent 65%)',
+            // Blue neon left pillar
+            'radial-gradient(ellipse at 10% 50%, rgba(0,120,255,0.20) 0%, transparent 50%)',
+            // Purple haze top-right
+            'radial-gradient(ellipse at 85% 10%, rgba(160,0,255,0.15) 0%, transparent 45%)',
           ],
-        }[th] || [`radial-gradient(ellipse at 60% 10%, ${track.color}22 0%, transparent 62%)`];
+        }[th] || [`radial-gradient(ellipse at 60% 10%,${track.color}20 0%,transparent 60%)`];
 
-        /* ── Animated elements per theme ── */
+        // Animated overlay elements per theme
         const ThemeOverlay = () => {
-          if (th === 'starry') {
-            return (
-              <>
-                <div className="stars"/>
-                <div className="starsB"/>
-                <div className="starsC"/>
-              </>
-            );
-          }
-          if (th === 'bedroom') {
-            return (
-              <>
-                <div className="stars"  style={{ opacity:0.12 }}/>
-                <div className="starsB" style={{ opacity:0.08 }}/>
-                <div className="sn-rain"/>
-                <div className="sn-lamp"/>
-                <div className="sn-window"/>
-                <div className="sn-floor-warm"/>
-              </>
-            );
-          }
-          if (th === 'journey') {
-            return (
-              <>
-                <div className="stars"  style={{ opacity:0.60 }}/>
-                <div className="starsB" style={{ opacity:0.44 }}/>
-                <div className="starsC" style={{ opacity:0.28 }}/>
-                <div className="sn-moon"/>
-                <div className="sn-mountain-far"/>
-                <div className="sn-mountain-near"/>
-                <div className="sn-fog"/>
-                <div className="sn-fog2"/>
-              </>
-            );
-          }
-          if (th === 'ocean') {
-            return (
-              <>
-                <div className="stars"  style={{ opacity:0.62 }}/>
-                <div className="starsB" style={{ opacity:0.48 }}/>
-                <div className="starsC" style={{ opacity:0.22 }}/>
-                <div className="sn-ocean-moon"/>
-                <div className="sn-reflection"/>
-                <div className="sn-reflection2"/>
-                <div className="sn-wave-wrap">
-                  <div className="sn-wave1"/>
-                  <div className="sn-wave2"/>
-                </div>
-                <div className="sn-horizon-mist"/>
-              </>
-            );
-          }
-          if (th === 'fantasy') {
-            return (
-              <>
-                <div className="stars"/>
-                <div className="starsB"/>
-                <div className="starsC"/>
-                <div className="sn-portal"/>
-                <div className="sn-orb" style={{ top:'20%', left:'10%',  width:72, height:72, background:'radial-gradient(circle, rgba(200,75,255,0.38) 0%, transparent 70%)', animation:'sn-orb-float 5s ease-in-out infinite' }}/>
-                <div className="sn-orb" style={{ top:'50%', right:'16%', width:52, height:52, background:'radial-gradient(circle, rgba(255,75,175,0.32) 0%, transparent 70%)', animation:'sn-orb-float 7s ease-in-out 2s infinite' }}/>
-                <div className="sn-orb" style={{ top:'36%', right:'40%', width:36, height:36, background:'radial-gradient(circle, rgba(95,195,255,0.30) 0%, transparent 70%)', animation:'sn-orb-float 6s ease-in-out 1s infinite' }}/>
-                <div className="sn-orb" style={{ top:'65%', left:'28%',  width:26, height:26, background:'radial-gradient(circle, rgba(255,195,90,0.32) 0%, transparent 70%)',  animation:'sn-orb-float 8s ease-in-out 3s infinite' }}/>
-                <div className="sn-energy-mist"/>
-                <div className="sn-sparkle"/>
-              </>
-            );
-          }
-          if (th === 'futurecity') {
-            return (
-              <>
-                <div className="stars"  style={{ opacity:0.22 }}/>
-                <div className="starsB" style={{ opacity:0.14 }}/>
-                <div className="sn-ground-reflect"/>
-                <div className="sn-city"/>
-                <div className="sn-city-lights"/>
-                <div className="sn-neon-horizon"/>
-                <div className="sn-ground-glow"/>
-                <div className="sn-scan"/>
-                <div className="sn-vehicle" style={{ top:'28%', left:'-2%', width:5, height:5, background:'rgba(0,220,200,0.95)', boxShadow:'0 0 10px rgba(0,220,200,1)', animation:'sn-vehicle-fly 18s linear 2s infinite' }}/>
-                <div className="sn-vehicle" style={{ top:'40%', left:'-2%', width:4, height:4, background:'rgba(255,80,105,0.95)', boxShadow:'0 0 8px rgba(255,80,105,1)',  animation:'sn-vehicle-fly 24s linear 8s infinite' }}/>
-              </>
-            );
-          }
-          return (
+          if (th === 'starry') return <><div className="stars"/><div className="starsB"/><div className="starsC"/></>;
+          if (th === 'bedroom') return (
             <>
-              <div className="stars"/>
-              <div className="starsB"/>
-              <div className="starsC"/>
+              {/* Very faint distant stars visible through window */}
+              <div className="stars" style={{ opacity:0.15 }}/><div className="starsB" style={{ opacity:0.1 }}/>
+              {/* Rain streaks */}
+              <div className="rain-layer"/>
+              {/* Warm lamp glow — flickering candle */}
+              <div style={{ position:'absolute', bottom:'12%', left:'15%', width:160, height:160, borderRadius:'50%', background:'radial-gradient(circle, rgba(255,160,40,0.35) 0%, rgba(255,100,10,0.15) 45%, transparent 70%)', animation:'pulse-lamp 2.5s ease-in-out infinite' }}/>
+              <div style={{ position:'absolute', bottom:'12%', left:'22%', width:60, height:60, borderRadius:'50%', background:'radial-gradient(circle, rgba(255,200,80,0.55) 0%, transparent 70%)', animation:'flicker 1.8s ease-in-out infinite' }}/>
+              {/* Window frame with moonlight */}
+              <div style={{ position:'absolute', top:'8%', right:'10%', width:80, height:110, border:'2px solid rgba(160,180,255,0.15)', borderRadius:4, background:'rgba(100,120,200,0.04)', boxShadow:'0 0 40px rgba(160,180,255,0.10) inset' }}/>
+              {/* Warm floor reflection */}
+              <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'20%', background:'linear-gradient(to top, rgba(180,80,10,0.12) 0%, transparent 100%)' }}/>
             </>
           );
+          if (th === 'journey') return (
+            <>
+              <div className="stars" style={{ opacity:0.6 }}/><div className="starsB" style={{ opacity:0.45 }}/><div className="starsC" style={{ opacity:0.3 }}/>
+              {/* Moon */}
+              <div style={{ position:'absolute', top:'8%', right:'20%', width:70, height:70, borderRadius:'50%', background:'radial-gradient(circle, rgba(240,240,200,0.55) 30%, rgba(200,220,180,0.25) 60%, transparent 80%)', boxShadow:'0 0 30px rgba(220,240,180,0.25)', animation:'pulse-moon 7s ease-in-out infinite' }}/>
+              {/* Mountain silhouette — back range lighter */}
+              <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'35%', background:'rgba(15,35,20,0.5)', clipPath:'polygon(0% 100%, 0% 65%, 8% 48%, 16% 62%, 24% 38%, 32% 58%, 38% 42%, 44% 55%, 50% 30%, 56% 50%, 63% 35%, 70% 55%, 76% 44%, 83% 58%, 90% 40%, 96% 60%, 100% 52%, 100% 100%)' }}/>
+              {/* Mountain silhouette — front range darker */}
+              <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'25%', background:'rgba(5,18,10,0.75)', clipPath:'polygon(0% 100%, 0% 80%, 5% 58%, 12% 72%, 20% 50%, 28% 68%, 35% 52%, 42% 70%, 48% 42%, 55% 62%, 62% 45%, 68% 65%, 75% 50%, 82% 70%, 88% 55%, 94% 72%, 100% 60%, 100% 100%)' }}/>
+              {/* Forest fog drifting */}
+              <div style={{ position:'absolute', bottom:'20%', left:0, right:0, height:'14%', background:'linear-gradient(to top, rgba(60,120,70,0.22), transparent)', animation:'drift 9s ease-in-out infinite alternate', filter:'blur(4px)' }}/>
+              <div style={{ position:'absolute', bottom:'18%', left:'-10%', right:'-10%', height:'10%', background:'linear-gradient(to top, rgba(80,160,90,0.15), transparent)', animation:'drift 12s ease-in-out 3s infinite alternate-reverse', filter:'blur(6px)' }}/>
+            </>
+          );
+          if (th === 'ocean') return (
+            <>
+              <div className="stars" style={{ opacity:0.65 }}/><div className="starsB" style={{ opacity:0.5 }}/><div className="starsC" style={{ opacity:0.25 }}/>
+              {/* Large moon over ocean */}
+              <div style={{ position:'absolute', top:'7%', left:'30%', width:90, height:90, borderRadius:'50%', background:'radial-gradient(circle, rgba(220,235,255,0.6) 35%, rgba(180,210,255,0.25) 65%, transparent 80%)', boxShadow:'0 0 40px rgba(180,210,255,0.3)', animation:'pulse-moon 6s ease-in-out infinite' }}/>
+              {/* Moon shimmer trail on water */}
+              <div style={{ position:'absolute', bottom:'20%', left:'25%', right:'25%', height:4, background:'rgba(200,230,255,0.25)', borderRadius:4, filter:'blur(5px)', animation:'shimmer 3s ease-in-out infinite' }}/>
+              <div style={{ position:'absolute', bottom:'18%', left:'35%', right:'35%', height:2, background:'rgba(220,240,255,0.35)', borderRadius:4, filter:'blur(3px)', animation:'shimmer 4s ease-in-out 0.8s infinite' }}/>
+              {/* Wave layers */}
+              <div className="wave-layer"/>
+              {/* Horizon mist */}
+              <div style={{ position:'absolute', bottom:'18%', left:0, right:0, height:'12%', background:'linear-gradient(to top, rgba(10,60,120,0.35) 0%, transparent 100%)', filter:'blur(8px)' }}/>
+            </>
+          );
+          if (th === 'fantasy') return (
+            <>
+              <div className="stars"/><div className="starsB"/><div className="starsC"/>
+              {/* Large arcane portal / moon */}
+              <div style={{ position:'absolute', top:'10%', right:'18%', width:110, height:110, borderRadius:'50%', background:'radial-gradient(circle, rgba(200,80,255,0.45) 25%, rgba(150,40,220,0.20) 55%, transparent 75%)', boxShadow:'0 0 50px rgba(180,60,255,0.35)', animation:'pulse-moon 5s ease-in-out infinite' }}/>
+              {/* Floating orbs */}
+              <div style={{ position:'absolute', top:'22%', left:'12%', width:70, height:70, borderRadius:'50%', background:'radial-gradient(circle, rgba(200,80,255,0.35) 0%, transparent 70%)', animation:'float-orb 5s ease-in-out infinite' }}/>
+              <div style={{ position:'absolute', top:'52%', right:'18%', width:50, height:50, borderRadius:'50%', background:'radial-gradient(circle, rgba(255,80,180,0.30) 0%, transparent 70%)', animation:'float-orb 7s ease-in-out 2s infinite' }}/>
+              <div style={{ position:'absolute', top:'38%', right:'42%', width:35, height:35, borderRadius:'50%', background:'radial-gradient(circle, rgba(100,200,255,0.28) 0%, transparent 70%)', animation:'float-orb 6s ease-in-out 1s infinite' }}/>
+              <div style={{ position:'absolute', top:'65%', left:'30%', width:25, height:25, borderRadius:'50%', background:'radial-gradient(circle, rgba(255,200,100,0.30) 0%, transparent 70%)', animation:'float-orb 8s ease-in-out 3s infinite' }}/>
+              {/* Ground energy mist */}
+              <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'18%', background:'linear-gradient(to top, rgba(120,0,200,0.25) 0%, transparent 100%)', filter:'blur(10px)' }}/>
+              {/* Sparkles */}
+              <div className="sparkle-layer"/>
+            </>
+          );
+          if (th === 'futurecity') return (
+            <>
+              {/* Minimal stars (light-polluted sky) */}
+              <div className="stars" style={{ opacity:0.25 }}/><div className="starsB" style={{ opacity:0.15 }}/>
+              {/* City building silhouettes with neon */}
+              <div className="city-layer"/>
+              {/* Neon horizon bloom */}
+              <div style={{ position:'absolute', bottom:'38%', left:0, right:0, height:3, background:'linear-gradient(90deg, transparent 5%, rgba(0,220,200,0.5) 30%, rgba(0,180,255,0.7) 50%, rgba(0,220,200,0.5) 70%, transparent 95%)', filter:'blur(2px)' }}/>
+              {/* Ground neon reflections */}
+              <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'38%', background:'linear-gradient(to top, rgba(0,40,60,0.7) 0%, rgba(0,20,40,0.3) 50%, transparent 100%)' }}/>
+              <div style={{ position:'absolute', bottom:0, left:'15%', right:'15%', height:'8%', background:'linear-gradient(to top, rgba(0,200,180,0.15) 0%, transparent 100%)', filter:'blur(12px)' }}/>
+              {/* Scan line */}
+              <div className="scan-line"/>
+              {/* Flying vehicle dots */}
+              <div style={{ position:'absolute', top:'25%', left:'5%', width:4, height:4, borderRadius:'50%', background:'rgba(0,220,200,0.9)', boxShadow:'0 0 8px rgba(0,220,200,1)', animation:'float-orb 12s ease-in-out infinite' }}/>
+              <div style={{ position:'absolute', top:'35%', right:'10%', width:3, height:3, borderRadius:'50%', background:'rgba(255,80,100,0.9)', boxShadow:'0 0 6px rgba(255,80,100,1)', animation:'float-orb 15s ease-in-out 4s infinite' }}/>
+            </>
+          );
+          return <><div className="stars"/><div className="starsB"/><div className="starsC"/></>;
         };
 
         return (
