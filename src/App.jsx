@@ -7056,8 +7056,13 @@ Format exactly:
             <>
               {/* Langit malam via jendela — bintang sangat redup */}
               <div className="starsB" style={{ opacity:0.18 }}/>
-              {/* Bulan dari luar jendela */}
-              <div style={{ position:'absolute', top:'14%', right:'11%', width:32, height:32, borderRadius:'50%', background:'radial-gradient(circle, rgba(220,230,255,0.80) 35%, rgba(180,200,255,0.35) 65%, transparent 85%)', boxShadow:'0 0 18px rgba(180,200,255,0.30)', animation:'pulse-moon 9s ease-in-out infinite', willChange:'opacity', zIndex:1 }}/>
+              {/* Bulan di dalam jendela */}
+              {(() => {
+                const ls = layoutMode.includes('landscape');
+                return (
+                  <div style={{ position:'absolute', top: ls ? '7%' : '11%', right: ls ? '7.5%' : '9.5%', width: ls ? 22 : 28, height: ls ? 22 : 28, borderRadius:'50%', background:'radial-gradient(circle, rgba(220,230,255,0.80) 35%, rgba(180,200,255,0.35) 65%, transparent 85%)', boxShadow:'0 0 14px rgba(180,200,255,0.28)', animation:'pulse-moon 9s ease-in-out infinite', willChange:'opacity', zIndex:1 }}/>
+                );
+              })()}
               {/* Jendela frame */}
               <div className="bedroom-window"/>
               {/* Hujan di luar jendela */}
@@ -7068,20 +7073,24 @@ Format exactly:
               {/* Sinar bulan masuk lewat jendela */}
               <div className="moonbeam"/>
               {/* Lampu tidur — nightstand kiri bawah */}
-              {/* Glow lampu — satu elemen gabungan (outer halo + inner glow) */}
-              <div className="lamp-halo" style={{ bottom:'24%', left:'6%', width:140, height:140, background:'radial-gradient(circle, rgba(255,210,100,0.65) 0%, rgba(255,170,60,0.28) 20%, rgba(255,120,20,0.12) 55%, transparent 75%)' }}/>
-              {/* Kap lampu — bentuk trapezoid */}
-              <div style={{ position:'absolute', bottom:'37%', left:'13%', width:50, height:22, background:'rgba(180,100,30,0.55)', clipPath:'polygon(10% 0%, 90% 0%, 100% 100%, 0% 100%)', borderRadius:'0 0 3px 3px', pointerEvents:'none' }}/>
-              {/* Tiang lampu */}
-              <div style={{ position:'absolute', bottom:'30%', left:'35px', width:4, height:'8%', background:'rgba(140,80,25,0.50)', left:'calc(13% + 23px)', pointerEvents:'none' }}/>
-              {/* Meja samping / nightstand */}
-              <div style={{ position:'absolute', bottom:'27%', left:'7%', width:'14%', height:'4%', background:'rgba(80,45,15,0.55)', borderRadius:'3px 3px 0 0', pointerEvents:'none' }}/>
+              {(() => {
+                const ls = layoutMode.includes('landscape');
+                return (<>
+                  <div className="lamp-halo" style={{ bottom: ls ? '38%' : '30%', left:'6%', width: ls ? 90 : 120, height: ls ? 90 : 120, background:'radial-gradient(circle, rgba(255,210,100,0.60) 0%, rgba(255,170,60,0.25) 22%, rgba(255,120,20,0.10) 55%, transparent 75%)' }}/>
+                  {/* Kap lampu */}
+                  <div style={{ position:'absolute', bottom: ls ? '50%' : '40%', left:'13%', width:50, height:22, background:'rgba(180,100,30,0.55)', clipPath:'polygon(10% 0%, 90% 0%, 100% 100%, 0% 100%)', borderRadius:'0 0 3px 3px', pointerEvents:'none' }}/>
+                  {/* Tiang lampu */}
+                  <div style={{ position:'absolute', bottom: ls ? '43%' : '33%', left:'calc(13% + 23px)', width:4, height:'8%', background:'rgba(140,80,25,0.50)', pointerEvents:'none' }}/>
+                  {/* Meja samping */}
+                  <div style={{ position:'absolute', bottom: ls ? '40%' : '30%', left:'7%', width:'14%', height:'4%', background:'rgba(80,45,15,0.55)', borderRadius:'3px 3px 0 0', pointerEvents:'none' }}/>
+                </>);
+              })()}
               {/* Kasur & headboard */}
               <div className="bed-layer"/>
               {/* Lantai hangat */}
               <div className="bedroom-floor"/>
               {/* Cahaya lampu di lantai */}
-              <div style={{ position:'absolute', bottom:0, left:'5%', width:'20%', height:'28%', background:'radial-gradient(ellipse at 40% 0%, rgba(255,140,30,0.12) 0%, transparent 70%)', pointerEvents:'none' }}/>
+              <div style={{ position:'absolute', bottom:0, left:'5%', width:'20%', height:'28%', background:'radial-gradient(ellipse at 40% 0%, rgba(255,140,30,0.10) 0%, transparent 70%)', pointerEvents:'none' }}/>
             </>
           );
           if (th === 'journey') return (
@@ -7133,14 +7142,16 @@ Format exactly:
               <div className="stars" style={{ opacity:0.20 }}/><div className="starsB" style={{ opacity:0.12 }}/>
               {/* City building silhouettes with neon */}
               <div className="city-layer"/>
+              {/* Ground — gradasi gelap di bawah gedung */}
+              <div style={{ position:'absolute', bottom:0, left:0, right:0, height: layoutMode.includes('landscape') ? '58%' : '42%', background:'linear-gradient(to top, rgba(0,15,30,0.75) 0%, rgba(0,25,45,0.40) 55%, transparent 100%)' }}/>
               {/* Neon horizon bloom */}
-              <div style={{ position:'absolute', bottom:'38%', left:0, right:0, height:2, background:'linear-gradient(90deg, transparent 5%, rgba(0,220,200,0.45) 30%, rgba(0,180,255,0.60) 50%, rgba(0,220,200,0.45) 70%, transparent 95%)', filter:'blur(2px)' }}/>
-              {/* Ground neon reflections */}
-              <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'38%', background:'linear-gradient(to top, rgba(0,40,60,0.65) 0%, rgba(0,20,40,0.25) 50%, transparent 100%)' }}/>
-              {/* Scan line */}
+              <div style={{ position:'absolute', bottom: layoutMode.includes('landscape') ? '55%' : '40%', left:0, right:0, height:3, background:'linear-gradient(90deg, transparent 5%, rgba(0,220,200,0.50) 30%, rgba(0,180,255,0.70) 50%, rgba(0,220,200,0.50) 70%, transparent 95%)', filter:'blur(2px)' }}/>
+              {/* Pantulan neon di tanah */}
+              <div style={{ position:'absolute', bottom:0, left:'15%', right:'15%', height:'18%', background:'linear-gradient(to top, rgba(0,180,160,0.08) 0%, transparent 100%)', filter:'blur(8px)' }}/>
+              {/* Scan line — disembunyikan di landscape via CSS */}
               <div className="scan-line"/>
-              {/* Flying vehicle — satu titik saja */}
-              <div style={{ position:'absolute', top:'28%', left:'5%', width:3, height:3, borderRadius:'50%', background:'rgba(0,220,200,0.85)', boxShadow:'0 0 6px rgba(0,220,200,0.9)', animation:'float-orb 14s ease-in-out infinite', willChange:'transform, opacity' }}/>
+              {/* Flying vehicle */}
+              <div style={{ position:'absolute', top: layoutMode.includes('landscape') ? '15%' : '22%', left:'8%', width:8, height:3, borderRadius:2, background:'rgba(0,220,200,0.90)', boxShadow:'0 0 8px 2px rgba(0,220,200,0.60), -6px 0 6px rgba(0,180,255,0.40)', animation:'float-orb 14s ease-in-out infinite', willChange:'transform, opacity' }}/>
             </>
           );
           return <><div className="stars"/><div className="starsB"/><div className="starsC"/></>;

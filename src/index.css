@@ -608,7 +608,7 @@ input[type='range']::-webkit-slider-thumb {
 .curtain-left {
   position: absolute;
   top: 5%;
-  right: 6%;
+  right: calc(6% + 72px);
   width: 18px;
   height: 130px;
   pointer-events: none;
@@ -617,7 +617,6 @@ input[type='range']::-webkit-slider-thumb {
     rgba(50,30,70,0.45) 100%
   );
   clip-path: polygon(0% 0%, 100% 0%, 85% 100%, 15% 100%);
-  transform: translateX(-76px);
 }
 
 /* Tirai kanan */
@@ -864,4 +863,83 @@ input[type='range']::-webkit-slider-thumb {
     radial-gradient(2px   2px   at 88% 22%, rgba(180,200,255,0.65), transparent);
   background-size: 500px 500px;
   animation: twinkle-a 7s ease-in-out infinite alternate;
+}
+
+/* ════════════════════════════════════════════════
+   LANDSCAPE OVERRIDES
+   Berlaku untuk mobile-landscape & desktop-landscape
+   (viewport tinggi < ~500px atau orientasi landscape)
+   ════════════════════════════════════════════════ */
+
+/* ── BEDROOM landscape ── */
+.layout-mobile-landscape .bedroom-window,
+.layout-desktop-landscape .bedroom-window {
+  top: 6%;
+  right: 6%;
+  width: 70px;
+  height: 90px;
+}
+.layout-mobile-landscape .window-rain,
+.layout-desktop-landscape .window-rain {
+  top: 6%;
+  right: 6%;
+  width: 70px;
+  height: 90px;
+}
+.layout-mobile-landscape .curtain-left,
+.layout-desktop-landscape .curtain-left {
+  top: 4%;
+  right: calc(6% + 54px);
+  height: 100px;
+}
+.layout-mobile-landscape .curtain-right,
+.layout-desktop-landscape .curtain-right {
+  top: 4%;
+  right: 6%;
+  height: 100px;
+}
+.layout-mobile-landscape .moonbeam,
+.layout-desktop-landscape .moonbeam {
+  top: 6%;
+  right: 6%;
+  width: 70px;
+  height: 150px;
+}
+.layout-mobile-landscape .bed-layer,
+.layout-desktop-landscape .bed-layer {
+  height: 38%;
+}
+.layout-mobile-landscape .bedroom-floor,
+.layout-desktop-landscape .bedroom-floor {
+  height: 10%;
+}
+
+/* ── OCEAN landscape ── */
+.layout-mobile-landscape .wave-layer,
+.layout-desktop-landscape .wave-layer {
+  height: 30%;
+}
+
+/* ── FANTASY landscape ── */
+.layout-mobile-landscape .aurora-layer,
+.layout-desktop-landscape .aurora-layer {
+  height: 45%;
+}
+.layout-mobile-landscape .castle-layer,
+.layout-desktop-landscape .castle-layer {
+  height: 55%;
+}
+.layout-mobile-landscape .castle-mist,
+.layout-desktop-landscape .castle-mist {
+  height: 14%;
+}
+
+/* ── FUTURECITY landscape ── */
+.layout-mobile-landscape .city-layer,
+.layout-desktop-landscape .city-layer {
+  height: 55%;
+}
+.layout-mobile-landscape .scan-line,
+.layout-desktop-landscape .scan-line {
+  display: none;
 }
