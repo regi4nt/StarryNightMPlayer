@@ -1375,7 +1375,7 @@ input[type='range']::-webkit-slider-thumb {
 }
 /* Siluet gedung kota di cakrawala — lebih detail */
 .hw-city-bg {
-  position:absolute; bottom:42%; left:0; right:0; height:18%;
+  position:absolute; bottom:40%; left:0; right:0; height:20%;
   background:
     linear-gradient(to top,
       rgba(8,15,30,0.92) 0%,
@@ -1410,27 +1410,27 @@ input[type='range']::-webkit-slider-thumb {
   );
   pointer-events:none; z-index:0;
 }
-/* Cahaya kota di cakrawala */
+/* Cahaya kota di cakrawala — sedikit overlap ke jalan agar tersambung */
 .hw-horizon {
-  position:absolute; bottom:42%; left:0; right:0; height:8%;
+  position:absolute; bottom:38%; left:0; right:0; height:10%;
   background:
-    radial-gradient(ellipse 50% 100% at 50% 100%,
-      rgba(255,115,5,0.28) 0%,
-      rgba(210,65,0,0.14) 45%,
+    radial-gradient(ellipse 60% 100% at 50% 100%,
+      rgba(255,115,5,0.38) 0%,
+      rgba(210,65,0,0.20) 45%,
       transparent 72%),
-    radial-gradient(ellipse 30% 80% at 28% 100%,
-      rgba(255,80,0,0.12) 0%,
+    radial-gradient(ellipse 35% 80% at 28% 100%,
+      rgba(255,80,0,0.18) 0%,
       transparent 65%),
-    radial-gradient(ellipse 30% 80% at 72% 100%,
-      rgba(255,80,0,0.12) 0%,
+    radial-gradient(ellipse 35% 80% at 72% 100%,
+      rgba(255,80,0,0.18) 0%,
       transparent 65%);
-  filter:blur(6px);
+  filter:blur(8px);
   animation:city-glow-pulse 5s ease-in-out infinite;
   pointer-events:none; z-index:1;
 }
 /* Lampu neon gedung di cakrawala */
 .hw-neon-lights {
-  position:absolute; bottom:42%; left:0; right:0; height:15%;
+  position:absolute; bottom:40%; left:0; right:0; height:15%;
   background-image:
     radial-gradient(2px 2px at 8% 30%, rgba(255,50,50,0.80) 0%, transparent 100%),
     radial-gradient(1.5px 1.5px at 8% 55%, rgba(255,50,50,0.65) 0%, transparent 100%),
@@ -1821,11 +1821,11 @@ input[type='range']::-webkit-slider-thumb {
 .layout-mobile-landscape .hw-sky,
 .layout-desktop-landscape .hw-sky        { bottom:50%; }
 .layout-mobile-landscape .hw-horizon,
-.layout-desktop-landscape .hw-horizon    { bottom:50%; }
+.layout-desktop-landscape .hw-horizon    { bottom:46%; }
 .layout-mobile-landscape .hw-neon-lights,
 .layout-desktop-landscape .hw-neon-lights { bottom:50%; }
 .layout-mobile-landscape .hw-city-bg,
-.layout-desktop-landscape .hw-city-bg    { bottom:50%; }
+.layout-desktop-landscape .hw-city-bg    { bottom:48%; }
 .layout-mobile-landscape .hw-pole,
 .layout-desktop-landscape .hw-pole       { bottom:50%; transform-origin:bottom center; }
 .layout-mobile-landscape .hw-lane-edge-l,
@@ -1834,7 +1834,7 @@ input[type='range']::-webkit-slider-thumb {
 .layout-desktop-landscape .hw-lane-edge-r { height:50%; }
 
 /* Portrait: penyambung jalan ke cakrawala tetap di bottom:42% (default sudah benar) */
-/* Landscape: sesuaikan hw-road-cap ke bottom:50% */
+/* Landscape hw-road-cap ikut bottom:50% */
 .layout-mobile-landscape .hw-road-cap,
 .layout-desktop-landscape .hw-road-cap   { bottom:50%; }
 
