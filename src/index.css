@@ -1530,11 +1530,16 @@ input[type='range']::-webkit-slider-thumb {
   width:2px;
   right:22%;
 }
-/* Desktop: geser garis tepi agar tidak tumpang tindih sidebar */
-.layout-desktop-portrait .hw-lane-edge-l  { left: calc(160px + 22% * (1 - 160px/100vw)); }
-.layout-desktop-landscape .hw-lane-edge-l { left: calc(196px + 22% * (1 - 196px/100vw)); }
-.layout-desktop-portrait .hw-lane-edge-r  { right: 22%; }
-.layout-desktop-landscape .hw-lane-edge-r { right: 22%; }
+/* Desktop: geser garis tepi — kiri & kanan simetris terhadap area konten */
+/* Kiri: 160px (sidebar) + 22% dari lebar konten */
+/* Kanan: 22% dari lebar konten = calc(22% * (1 - 160px/100vw)) dari tepi kanan */
+.layout-desktop-portrait .hw-lane-edge-l  { left:  calc(160px + 0.22 * (100vw - 160px)); }
+.layout-desktop-landscape .hw-lane-edge-l { left:  calc(196px + 0.22 * (100vw - 196px)); }
+.layout-desktop-portrait .hw-lane-edge-r  { right: calc(0.22 * (100vw - 160px)); }
+.layout-desktop-landscape .hw-lane-edge-r { right: calc(0.22 * (100vw - 196px)); }
+/* hw-sky and hw-cloud also offset to not show behind sidebar */
+.layout-desktop-portrait .hw-sky  { left: 160px; }
+.layout-desktop-landscape .hw-sky { left: 196px; }
 
 /* Desktop: geser hw-lane-center agar marka jalan berada di tengah area konten (tidak sidebar) */
 .layout-desktop-portrait .hw-lane-center  { left: 160px; }
@@ -1859,10 +1864,19 @@ input[type='range']::-webkit-slider-thumb {
 .layout-mobile-landscape .hw-lane-edge-r,
 .layout-desktop-landscape .hw-lane-edge-r { height:50%; }
 
-/* Mobile portrait: neon lights lebih tinggi dan z-index lebih tinggi agar tidak terpotong */
+/* Mobile portrait: elemen kota langsung di batas jalan, blur minimal agar tidak bocor ke player */
+.layout-mobile-portrait .hw-horizon {
+  bottom: 42%;
+  height: 6%;
+  filter: blur(3px);
+}
+.layout-mobile-portrait .hw-city-bg {
+  bottom: 42%;
+  height: 12%;
+}
 .layout-mobile-portrait .hw-neon-lights {
-  bottom: 40%;
-  height: 18%;
+  bottom: 42%;
+  height: 12%;
   z-index: 3;
 }
 
