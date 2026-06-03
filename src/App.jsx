@@ -7112,11 +7112,11 @@ Format exactly:
               {/* Large moon over ocean */}
               <div style={{ position:'absolute', top:'7%', left:'30%', width:85, height:85, borderRadius:'50%', background:'radial-gradient(circle, rgba(220,235,255,0.55) 35%, rgba(180,210,255,0.22) 65%, transparent 80%)', boxShadow:'0 0 35px rgba(180,210,255,0.25)', animation:'pulse-moon 7s ease-in-out infinite', willChange:'opacity' }}/>
               {/* Moon shimmer trail — satu line saja */}
-              <div style={{ position:'absolute', bottom:'20%', left:'28%', right:'28%', height:3, background:'rgba(200,230,255,0.20)', borderRadius:4, filter:'blur(4px)', animation:'shimmer 7s ease-in-out infinite', willChange:'opacity' }}/>
+              <div style={{ position:'absolute', bottom:'23%', left:'28%', right:'28%', height:3, background:'rgba(200,230,255,0.20)', borderRadius:4, filter:'blur(4px)', animation:'shimmer 7s ease-in-out infinite', willChange:'opacity' }}/>
               {/* Wave layers */}
               <div className="wave-layer"/>
               {/* Horizon mist */}
-              <div style={{ position:'absolute', bottom:'18%', left:0, right:0, height:'10%', background:'linear-gradient(to top, rgba(10,60,120,0.30) 0%, transparent 100%)', filter:'blur(6px)' }}/>
+              <div style={{ position:'absolute', bottom:'22%', left:0, right:0, height:'10%', background:'linear-gradient(to top, rgba(10,60,120,0.30) 0%, transparent 100%)', filter:'blur(6px)' }}/>
             </>
           );
           if (th === 'fantasy') return (
@@ -7132,6 +7132,8 @@ Format exactly:
               <div style={{ position:'absolute', top:'42%', left:'28%', width:3, height:3, borderRadius:'50%', background:'rgba(120,255,180,0.90)', boxShadow:'0 0 6px rgba(100,255,160,0.70)', animation:'float-orb 9s ease-in-out infinite', willChange:'transform, opacity' }}/>
               {/* Kastil siluet */}
               <div className="castle-layer"/>
+              {/* Sparkle / glitter melayang di langit dongeng */}
+              <div className="sparkle-layer"/>
               {/* Kabut di kaki kastil */}
               <div className="castle-mist"/>
             </>
@@ -7142,6 +7144,8 @@ Format exactly:
               <div className="stars" style={{ opacity:0.20 }}/><div className="starsB" style={{ opacity:0.12 }}/>
               {/* City building silhouettes with neon */}
               <div className="city-layer"/>
+              {/* Neon window blinks on buildings */}
+              <div className={`city-windows`} style={{ height: layoutMode.includes('landscape') ? '55%' : '40%' }}/>
               {/* Neon skyline line — posisi sinkron dengan top of city-layer */}
               {(() => {
                 const ls = layoutMode.includes('landscape');
@@ -7149,7 +7153,7 @@ Format exactly:
                 return <div className="neon-skyline" style={{ bottom: `${cityH}%`, filter:'blur(1px)' }}/>;
               })()}
               {/* Ground — gradasi gelap di bawah gedung */}
-              <div style={{ position:'absolute', bottom:0, left:0, right:0, height: layoutMode.includes('landscape') ? '58%' : '42%', background:'linear-gradient(to top, rgba(0,15,30,0.75) 0%, rgba(0,25,45,0.40) 55%, transparent 100%)' }}/>
+              <div style={{ position:'absolute', bottom:0, left:0, right:0, height: layoutMode.includes('landscape') ? '45%' : '32%', background:'linear-gradient(to top, rgba(0,15,30,0.75) 0%, rgba(0,25,45,0.40) 45%, transparent 100%)' }}/>
               {/* Neon horizon bloom */}
               <div style={{ position:'absolute', bottom: layoutMode.includes('landscape') ? '55%' : '40%', left:0, right:0, height:3, background:'linear-gradient(90deg, transparent 5%, rgba(0,220,200,0.50) 30%, rgba(0,180,255,0.70) 50%, rgba(0,220,200,0.50) 70%, transparent 95%)', filter:'blur(2px)' }}/>
               {/* Pantulan neon di tanah */}
