@@ -1018,240 +1018,558 @@ input[type='range']::-webkit-slider-thumb {
 
 
 /* ══════════════════════════════════════════════════════
-   TAMAN MALAM (nightgarden)
+   TAMAN MALAM (nightgarden) — IMPROVED
 ══════════════════════════════════════════════════════ */
 
-/* Pohon bulat taman — bukan segitiga gunung */
 @keyframes leaf-sway {
-  0%,100% { transform: rotate(-2deg); }
-  50%      { transform: rotate(2deg); }
+  0%,100% { transform: rotate(-2.5deg) translateX(-1px); }
+  33%     { transform: rotate(1.5deg) translateX(2px); }
+  66%     { transform: rotate(-1deg) translateX(1px); }
+}
+@keyframes leaf-sway-slow {
+  0%,100% { transform: rotate(-1.5deg); }
+  50%     { transform: rotate(2.5deg); }
 }
 @keyframes firefly-blink {
-  0%,100% { opacity:0; transform:translate(0,0) scale(1); }
-  20%     { opacity:1; }
-  50%     { opacity:0.8; transform:translate(var(--fx),var(--fy)) scale(1.2); }
-  80%     { opacity:0.4; }
+  0%,100% { opacity:0; transform:translate(0,0) scale(0.8); }
+  15%     { opacity:0.9; }
+  45%     { opacity:0.7; transform:translate(var(--fx),var(--fy)) scale(1.3); }
+  70%     { opacity:0.3; transform:translate(calc(var(--fx)*0.6),calc(var(--fy)*1.4)) scale(1); }
+  85%     { opacity:0.6; }
 }
 @keyframes garden-mist {
-  0%,100% { opacity:0.45; transform:translateX(0); }
-  50%     { opacity:0.25; transform:translateX(12px); }
+  0%,100% { opacity:0.55; transform:translateX(0) scaleX(1); }
+  50%     { opacity:0.30; transform:translateX(18px) scaleX(1.04); }
+}
+@keyframes garden-mist2 {
+  0%,100% { opacity:0.35; transform:translateX(0) scaleX(1); }
+  50%     { opacity:0.18; transform:translateX(-14px) scaleX(0.97); }
+}
+@keyframes pond-ripple {
+  0%,100% { transform:scaleX(1) scaleY(1); opacity:0.5; }
+  50%     { transform:scaleX(1.06) scaleY(0.85); opacity:0.7; }
+}
+@keyframes garden-glow-pulse {
+  0%,100% { opacity:0.45; }
+  50%     { opacity:0.70; }
+}
+@keyframes lantern-sway {
+  0%,100% { transform:rotate(-4deg); }
+  50%     { transform:rotate(4deg); }
+}
+@keyframes lantern-glow {
+  0%,100% { box-shadow:0 0 14px 6px rgba(255,140,30,0.55), 0 0 28px 12px rgba(255,100,10,0.25); }
+  50%     { box-shadow:0 0 20px 9px rgba(255,160,50,0.70), 0 0 40px 18px rgba(255,130,20,0.35); }
+}
+@keyframes moon-glow-garden {
+  0%,100% { box-shadow:0 0 22px 10px rgba(200,220,255,0.30), 0 0 50px 22px rgba(160,190,255,0.12); }
+  50%     { box-shadow:0 0 30px 14px rgba(210,230,255,0.40), 0 0 65px 30px rgba(180,210,255,0.18); }
 }
 
-/* Ground — rumput & tanah */
+/* Sky gradient overlay */
+.garden-sky {
+  position:absolute; top:0; left:0; right:0; bottom:22%;
+  background:linear-gradient(to bottom,
+    #010905 0%,
+    #020e08 35%,
+    #031408 65%,
+    rgba(8,40,18,0.55) 100%);
+  pointer-events:none;
+}
+/* Bulan taman malam */
+.garden-moon {
+  position:absolute; top:7%; right:12%;
+  width:36px; height:36px; border-radius:50%;
+  background:radial-gradient(circle at 38% 35%,
+    rgba(240,248,255,0.96) 0%,
+    rgba(210,228,255,0.80) 40%,
+    rgba(170,200,255,0.40) 70%,
+    transparent 88%);
+  animation:moon-glow-garden 8s ease-in-out infinite;
+  pointer-events:none; z-index:1;
+}
+/* Cincin cahaya bulan */
+.garden-moon-halo {
+  position:absolute; top:7%; right:12%;
+  width:36px; height:36px; border-radius:50%;
+  transform:translate(-30%, -30%);
+  background:radial-gradient(circle,
+    transparent 42%,
+    rgba(180,210,255,0.08) 55%,
+    rgba(160,195,255,0.04) 70%,
+    transparent 85%);
+  pointer-events:none;
+  filter:blur(3px);
+}
+/* Ground — tanah dengan gradien lebih kaya */
 .garden-ground {
   position:absolute; bottom:0; left:0; right:0; height:22%;
   background:linear-gradient(to top,
-    rgba(4,28,12,0.95) 0%,
-    rgba(8,45,18,0.75) 45%,
-    rgba(12,60,22,0.30) 100%);
+    rgba(3,18,8,0.98) 0%,
+    rgba(6,32,14,0.85) 30%,
+    rgba(10,50,20,0.65) 65%,
+    rgba(14,65,26,0.28) 100%);
   pointer-events:none;
 }
-/* Batas rumput bergelombang */
+/* Batas rumput bergelombang — lebih organik */
 .garden-grass {
-  position:absolute; bottom:18%; left:0; right:0; height:6%;
-  background:rgba(10,55,22,0.70);
+  position:absolute; bottom:18%; left:0; right:0; height:7%;
+  background:linear-gradient(to top,
+    rgba(8,50,18,0.90) 0%,
+    rgba(12,70,26,0.75) 50%,
+    rgba(16,85,32,0.50) 100%);
   clip-path:polygon(
-    0% 100%, 0% 60%,
-    2% 20%, 4% 55%, 6% 15%, 8% 50%, 10% 25%, 12% 60%, 14% 30%, 16% 65%,
-    18% 20%, 20% 55%, 22% 30%, 24% 65%, 26% 25%, 28% 60%, 30% 20%, 32% 55%,
-    34% 25%, 36% 65%, 38% 30%, 40% 60%, 42% 20%, 44% 55%, 46% 28%, 48% 62%,
-    50% 18%, 52% 55%, 54% 28%, 56% 62%, 58% 20%, 60% 55%, 62% 25%, 64% 62%,
-    66% 20%, 68% 58%, 70% 28%, 72% 62%, 74% 22%, 76% 58%, 78% 26%, 80% 62%,
-    82% 20%, 84% 56%, 86% 24%, 88% 60%, 90% 22%, 92% 58%, 94% 28%, 96% 62%,
-    98% 30%, 100% 55%, 100% 100%
+    0% 100%, 0% 55%,
+    1% 28%, 2% 18%, 3% 35%, 4% 10%, 5% 30%, 6% 8%, 7% 28%,
+    8% 48%, 9% 20%, 10% 40%, 11% 18%, 12% 38%, 13% 55%, 14% 28%,
+    15% 15%, 16% 42%, 17% 22%, 18% 50%, 19% 18%, 20% 38%,
+    21% 12%, 22% 32%, 23% 50%, 24% 22%, 25% 45%, 26% 20%, 27% 38%,
+    28% 58%, 29% 24%, 30% 16%, 31% 40%, 32% 18%, 33% 36%, 34% 58%,
+    35% 28%, 36% 12%, 37% 35%, 38% 55%, 39% 22%, 40% 42%,
+    41% 18%, 42% 38%, 43% 10%, 44% 32%, 45% 52%, 46% 25%, 47% 45%,
+    48% 15%, 49% 36%, 50% 56%, 51% 22%, 52% 40%, 53% 14%, 54% 34%,
+    55% 58%, 56% 26%, 57% 14%, 58% 38%, 59% 18%, 60% 40%,
+    61% 60%, 62% 28%, 63% 15%, 64% 38%, 65% 22%, 66% 44%,
+    67% 18%, 68% 40%, 69% 12%, 70% 32%, 71% 55%, 72% 25%,
+    73% 45%, 74% 20%, 75% 40%, 76% 60%, 77% 28%, 78% 15%,
+    79% 38%, 80% 18%, 81% 42%, 82% 22%, 83% 50%, 84% 28%,
+    85% 15%, 86% 38%, 87% 58%, 88% 24%, 89% 12%, 90% 35%,
+    91% 55%, 92% 22%, 93% 40%, 94% 18%, 95% 38%, 96% 12%,
+    97% 32%, 98% 52%, 99% 30%, 100% 48%, 100% 100%
   );
   pointer-events:none;
 }
-/* Pohon bulat — batang + tajuk lingkaran */
+/* Lapisan rumput atas — lebih terang */
+.garden-grass2 {
+  position:absolute; bottom:22%; left:0; right:0; height:4%;
+  background:rgba(14,72,28,0.45);
+  clip-path:polygon(
+    0% 100%, 0% 65%, 3% 25%, 6% 55%, 9% 20%, 12% 60%, 16% 30%,
+    20% 70%, 24% 35%, 28% 65%, 32% 22%, 36% 58%, 40% 28%,
+    44% 68%, 48% 32%, 52% 62%, 56% 18%, 60% 52%, 64% 28%,
+    68% 65%, 72% 30%, 76% 62%, 80% 25%, 84% 58%, 88% 30%,
+    92% 62%, 96% 28%, 100% 58%, 100% 100%
+  );
+  pointer-events:none;
+}
+/* Pohon bulat taman — lebih detail */
 .garden-tree {
-  position:absolute; bottom:18%; pointer-events:none;
+  position:absolute; bottom:20%; pointer-events:none;
   display:flex; flex-direction:column; align-items:center;
-  animation:leaf-sway 6s ease-in-out infinite;
   transform-origin:bottom center;
 }
+.garden-tree.sway-a { animation:leaf-sway 7s ease-in-out infinite; }
+.garden-tree.sway-b { animation:leaf-sway-slow 9s ease-in-out infinite; }
+.garden-tree.sway-c { animation:leaf-sway 5.5s ease-in-out 1s infinite; }
 .garden-tree .trunk {
-  width:6px; height:28px;
-  background:linear-gradient(to top, rgba(60,30,10,0.85), rgba(80,45,15,0.65));
-  border-radius:3px;
+  width:6px;
+  background:rgba(8,28,12,0.88);
+  border-radius:2px 2px 1px 1px;
 }
 .garden-tree .crown {
-  position:relative; margin-bottom:-8px;
-  border-radius:50%;
-  background:radial-gradient(circle at 38% 38%,
-    rgba(40,160,60,0.85) 0%,
-    rgba(20,110,35,0.90) 50%,
-    rgba(8,60,18,0.95) 100%);
-  box-shadow:inset -4px -4px 12px rgba(0,0,0,0.40),
-             0 0 18px rgba(10,80,25,0.25);
+  position:relative; margin-bottom:-4px;
+  background:rgba(6,22,10,0.92);
+  clip-path:polygon(
+    50% 0%,
+    62% 18%, 75% 14%, 68% 28%,
+    82% 26%, 72% 38%, 88% 40%,
+    76% 50%, 90% 55%, 74% 60%,
+    85% 70%, 68% 68%, 72% 82%,
+    58% 74%, 55% 90%, 50% 78%,
+    45% 90%, 42% 74%, 28% 82%,
+    32% 68%, 15% 70%, 26% 60%,
+    10% 55%, 24% 50%, 12% 40%,
+    28% 38%, 18% 26%, 32% 28%,
+    25% 14%, 38% 18%
+  );
 }
-/* Kabut tanah */
+/* Semak kecil */
+.garden-bush {
+  position:absolute; bottom:19%; pointer-events:none;
+  background:rgba(6,22,10,0.88);
+  clip-path:polygon(
+    10% 100%, 0% 65%, 8% 45%, 20% 55%, 18% 30%,
+    32% 40%, 38% 15%, 50% 35%, 55% 10%, 65% 32%,
+    72% 20%, 80% 42%, 90% 35%, 100% 60%, 90% 100%
+  );
+}
+/* Kabut tanah berlapis */
 .garden-mist {
-  position:absolute; bottom:16%; left:0; right:0; height:10%;
+  position:absolute; bottom:17%; left:0; right:0; height:12%;
   background:linear-gradient(to top,
-    rgba(180,230,200,0.12) 0%,
-    rgba(140,200,170,0.06) 60%,
+    rgba(180,230,200,0.16) 0%,
+    rgba(150,210,180,0.08) 50%,
     transparent 100%);
-  filter:blur(10px);
-  animation:garden-mist 8s ease-in-out infinite;
+  filter:blur(12px);
+  animation:garden-mist 9s ease-in-out infinite;
   pointer-events:none;
 }
-/* Kolam kecil — pantulan */
+.garden-mist2 {
+  position:absolute; bottom:16%; left:5%; right:5%; height:8%;
+  background:linear-gradient(to top,
+    rgba(160,220,190,0.10) 0%,
+    transparent 100%);
+  filter:blur(16px);
+  animation:garden-mist2 11s ease-in-out 2s infinite;
+  pointer-events:none;
+}
+/* Kolam pantulan — lebih detail & bercahaya */
 .garden-pond {
-  position:absolute; bottom:19%; left:38%; width:24%; height:3%;
-  background:radial-gradient(ellipse,
-    rgba(60,140,180,0.35) 0%,
-    rgba(20,80,120,0.20) 60%,
-    transparent 100%);
+  position:absolute; bottom:19.5%; left:36%; width:28%; height:3.5%;
+  background:
+    radial-gradient(ellipse at 48% 40%,
+      rgba(80,180,220,0.40) 0%,
+      rgba(40,120,170,0.28) 45%,
+      rgba(10,60,100,0.15) 75%,
+      transparent 100%);
   border-radius:50%;
-  filter:blur(2px);
+  box-shadow:
+    0 0 12px 4px rgba(60,150,200,0.18),
+    inset 0 0 8px rgba(100,200,255,0.12);
+  animation:pond-ripple 6s ease-in-out infinite;
   pointer-events:none;
 }
-/* Firefly — 8 titik, tiap satu punya --fx --fy */
-.gfw { position:absolute; width:3px; height:3px; border-radius:50%;
-  background:rgba(160,255,180,0.95);
-  box-shadow:0 0 5px 2px rgba(100,255,140,0.65);
+/* Pantulan bulan di kolam */
+.garden-pond::after {
+  content:''; position:absolute;
+  top:20%; left:42%; width:16%; height:50%;
+  border-radius:50%;
+  background:radial-gradient(ellipse, rgba(220,240,255,0.35) 0%, transparent 70%);
+  filter:blur(2px);
+  animation:garden-glow-pulse 4s ease-in-out infinite;
+}
+/* Lentera taman */
+.garden-lantern {
+  position:absolute; pointer-events:none;
+  display:flex; flex-direction:column; align-items:center;
+  animation:lantern-sway 6s ease-in-out infinite;
+  transform-origin:top center;
+}
+.garden-lantern .lantern-pole {
+  width:2px; height:50px;
+  background:linear-gradient(to bottom, rgba(100,80,50,0.75), rgba(70,55,30,0.60));
+}
+.garden-lantern .lantern-body {
+  width:12px; height:16px; border-radius:3px 3px 4px 4px;
+  background:rgba(255,160,40,0.90);
+  animation:lantern-glow 3s ease-in-out infinite;
+}
+.garden-lantern .lantern-cap {
+  width:16px; height:5px; border-radius:2px 2px 0 0;
+  background:rgba(80,55,25,0.80);
+  margin-bottom:-1px;
+}
+/* Jalan setapak taman */
+.garden-path {
+  position:absolute; bottom:19%; left:42%; width:16%; height:3%;
+  background:radial-gradient(ellipse, rgba(160,140,100,0.20) 0%, transparent 80%);
+  border-radius:50%;
+  pointer-events:none;
+}
+/* Firefly */
+.gfw {
+  position:absolute; width:3px; height:3px; border-radius:50%;
+  background:rgba(170,255,190,0.95);
+  box-shadow:0 0 6px 3px rgba(110,255,150,0.70), 0 0 12px 5px rgba(80,230,120,0.30);
+  pointer-events:none;
+  animation:firefly-blink ease-in-out infinite;
+}
+/* Partikel debu cahaya bulan */
+.garden-dust {
+  position:absolute; width:2px; height:2px; border-radius:50%;
+  background:rgba(200,220,255,0.60);
   pointer-events:none;
   animation:firefly-blink ease-in-out infinite;
 }
 
 /* ══════════════════════════════════════════════════════
-   JALAN RAYA MALAM (nighthighway)
+   JALAN RAYA MALAM (nighthighway) — IMPROVED
 ══════════════════════════════════════════════════════ */
 
 @keyframes lane-dash {
-  from { background-position: 0 0; }
-  to   { background-position: 0 80px; }
+  from { background-position: center 0; }
+  to   { background-position: center 80px; }
 }
 @keyframes car-left {
-  0%   { transform:translateX(-120px); opacity:0; }
-  5%   { opacity:1; }
-  95%  { opacity:1; }
-  100% { transform:translateX(calc(100vw + 120px)); opacity:0; }
+  0%   { transform:translateX(-160px); opacity:0; }
+  4%   { opacity:1; }
+  96%  { opacity:1; }
+  100% { transform:translateX(calc(100vw + 160px)); opacity:0; }
 }
 @keyframes car-right {
-  0%   { transform:translateX(120px); opacity:0; }
-  5%   { opacity:1; }
-  95%  { opacity:1; }
-  100% { transform:translateX(calc(-100vw - 120px)); opacity:0; }
+  0%   { transform:translateX(160px); opacity:0; }
+  4%   { opacity:1; }
+  96%  { opacity:1; }
+  100% { transform:translateX(calc(-100vw - 160px)); opacity:0; }
 }
 @keyframes city-glow-pulse {
-  0%,100% { opacity:0.65; }
-  50%     { opacity:0.90; }
+  0%,100% { opacity:0.60; }
+  50%     { opacity:0.92; }
+}
+@keyframes hw-building-blink {
+  0%,94%,96%,100% { opacity:1; }
+  95%             { opacity:0.3; }
+}
+@keyframes hw-neon-flicker {
+  0%,88%,90%,93%,100% { opacity:0.85; }
+  89%                  { opacity:0.2; }
+  91%,92%             { opacity:0.6; }
+}
+@keyframes rain-fall {
+  from { transform:translateY(-10px); }
+  to   { transform:translateY(calc(100vh + 10px)); }
+}
+@keyframes hw-moon-rise {
+  0%,100% { box-shadow:0 0 18px 8px rgba(200,220,255,0.28), 0 0 40px 18px rgba(170,200,255,0.10); }
+  50%     { box-shadow:0 0 24px 11px rgba(215,230,255,0.36), 0 0 55px 25px rgba(190,215,255,0.15); }
+}
+@keyframes hw-rain-drift {
+  0%   { transform:translateX(-2vw) translateY(-10px); }
+  100% { transform:translateX(2vw)  translateY(calc(100vh + 10px)); }
 }
 
-/* Langit malam gradien */
+/* Langit malam dengan gradien lebih dramatis */
 .hw-sky {
   position:absolute; top:0; left:0; right:0; bottom:42%;
   background:linear-gradient(to bottom,
-    #01030a 0%,
-    #030712 40%,
-    rgba(255,90,10,0.08) 80%,
-    rgba(255,120,0,0.13) 100%);
+    #010208 0%,
+    #020510 30%,
+    #030a18 60%,
+    rgba(240,80,5,0.07) 82%,
+    rgba(255,110,0,0.14) 100%);
   pointer-events:none;
+}
+/* Bulan di langit highway */
+.hw-moon {
+  position:absolute; top:8%; right:16%;
+  width:28px; height:28px; border-radius:50%;
+  background:radial-gradient(circle at 40% 38%,
+    rgba(235,245,255,0.95) 0%,
+    rgba(205,225,255,0.78) 38%,
+    rgba(165,195,255,0.38) 68%,
+    transparent 86%);
+  animation:hw-moon-rise 9s ease-in-out infinite;
+  pointer-events:none; z-index:1;
+}
+/* Awan tipis malam */
+.hw-cloud {
+  position:absolute; pointer-events:none;
+  border-radius:50px;
+  background:rgba(255,255,255,0.04);
+  filter:blur(8px);
+}
+/* Siluet gedung kota di cakrawala — lebih detail */
+.hw-city-bg {
+  position:absolute; bottom:42%; left:0; right:0; height:18%;
+  background:
+    linear-gradient(to top,
+      rgba(8,15,30,0.92) 0%,
+      rgba(6,12,25,0.80) 50%,
+      transparent 100%);
+  clip-path:polygon(
+    0% 100%, 0% 65%,
+    2% 65%, 2% 30%, 4% 30%, 4% 20%, 5% 20%, 5% 28%, 6% 28%,
+    6% 12%, 7% 12%, 7% 8%, 8% 8%, 8% 12%, 9% 12%, 9% 30%,
+    10% 30%, 10% 18%, 11% 18%, 11% 15%, 12% 15%, 12% 22%,
+    14% 22%, 14% 40%, 15% 40%, 15% 35%, 16% 35%, 16% 18%,
+    17% 18%, 17% 12%, 18% 12%, 18% 18%, 19% 18%, 19% 35%,
+    20% 35%, 20% 28%, 21% 28%, 21% 15%, 22% 15%, 22% 25%,
+    24% 25%, 24% 42%, 26% 42%, 26% 22%, 27% 22%, 27% 18%,
+    28% 18%, 28% 28%, 29% 28%, 29% 45%, 30% 45%, 30% 32%,
+    32% 32%, 32% 20%, 33% 20%, 33% 15%, 34% 15%, 34% 18%,
+    35% 18%, 35% 30%, 37% 30%, 37% 42%, 38% 42%, 38% 28%,
+    40% 28%, 40% 18%, 41% 18%, 41% 10%, 42% 10%, 42% 14%,
+    43% 14%, 43% 28%, 44% 28%, 44% 38%, 46% 38%, 46% 22%,
+    47% 22%, 47% 15%, 48% 15%, 48% 22%, 50% 22%, 50% 35%,
+    52% 35%, 52% 45%, 54% 45%, 54% 30%, 55% 30%, 55% 20%,
+    56% 20%, 56% 28%, 58% 28%, 58% 42%, 60% 42%, 60% 30%,
+    61% 30%, 61% 18%, 62% 18%, 62% 12%, 63% 12%, 63% 18%,
+    65% 18%, 65% 32%, 66% 32%, 66% 45%, 68% 45%, 68% 28%,
+    70% 28%, 70% 18%, 71% 18%, 71% 22%, 72% 22%, 72% 38%,
+    74% 38%, 74% 25%, 75% 25%, 75% 15%, 76% 15%, 76% 22%,
+    78% 22%, 78% 35%, 80% 35%, 80% 48%, 82% 48%, 82% 32%,
+    83% 32%, 83% 20%, 84% 20%, 84% 15%, 85% 15%, 85% 25%,
+    87% 25%, 87% 40%, 88% 40%, 88% 28%, 90% 28%, 90% 18%,
+    91% 18%, 91% 12%, 92% 12%, 92% 18%, 94% 18%, 94% 32%,
+    96% 32%, 96% 42%, 98% 42%, 98% 65%, 100% 65%, 100% 100%
+  );
+  pointer-events:none; z-index:0;
 }
 /* Cahaya kota di cakrawala */
 .hw-horizon {
-  position:absolute; bottom:42%; left:0; right:0; height:6%;
-  background:radial-gradient(ellipse at 50% 100%,
-    rgba(255,110,0,0.22) 0%,
-    rgba(200,60,0,0.10) 40%,
-    transparent 70%);
+  position:absolute; bottom:42%; left:0; right:0; height:8%;
+  background:
+    radial-gradient(ellipse 50% 100% at 50% 100%,
+      rgba(255,115,5,0.28) 0%,
+      rgba(210,65,0,0.14) 45%,
+      transparent 72%),
+    radial-gradient(ellipse 30% 80% at 28% 100%,
+      rgba(255,80,0,0.12) 0%,
+      transparent 65%),
+    radial-gradient(ellipse 30% 80% at 72% 100%,
+      rgba(255,80,0,0.12) 0%,
+      transparent 65%);
   filter:blur(6px);
   animation:city-glow-pulse 5s ease-in-out infinite;
-  pointer-events:none;
+  pointer-events:none; z-index:1;
 }
-/* Jalan aspal */
+/* Lampu neon gedung di cakrawala */
+.hw-neon-lights {
+  position:absolute; bottom:42%; left:0; right:0; height:15%;
+  background-image:
+    radial-gradient(2px 2px at 8% 30%, rgba(255,50,50,0.80) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 8% 55%, rgba(255,50,50,0.65) 0%, transparent 100%),
+    radial-gradient(2px 2px at 15% 20%, rgba(0,200,255,0.75) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 15% 45%, rgba(0,200,255,0.60) 0%, transparent 100%),
+    radial-gradient(2px 2px at 18% 25%, rgba(0,200,255,0.70) 0%, transparent 100%),
+    radial-gradient(2px 2px at 27% 18%, rgba(255,80,0,0.75) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 28% 38%, rgba(255,80,0,0.60) 0%, transparent 100%),
+    radial-gradient(2px 2px at 35% 12%, rgba(180,0,255,0.75) 0%, transparent 100%),
+    radial-gradient(2px 2px at 43% 22%, rgba(0,255,180,0.70) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 43% 42%, rgba(0,255,180,0.55) 0%, transparent 100%),
+    radial-gradient(2px 2px at 56% 15%, rgba(255,200,0,0.75) 0%, transparent 100%),
+    radial-gradient(2px 2px at 62% 28%, rgba(0,150,255,0.70) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 62% 48%, rgba(0,150,255,0.55) 0%, transparent 100%),
+    radial-gradient(2px 2px at 70% 18%, rgba(255,50,100,0.75) 0%, transparent 100%),
+    radial-gradient(2px 2px at 76% 10%, rgba(255,50,100,0.80) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 76% 25%, rgba(255,50,100,0.60) 0%, transparent 100%),
+    radial-gradient(2px 2px at 84% 22%, rgba(100,255,200,0.70) 0%, transparent 100%),
+    radial-gradient(2px 2px at 90% 15%, rgba(0,200,255,0.75) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 90% 35%, rgba(0,200,255,0.60) 0%, transparent 100%),
+    radial-gradient(2px 2px at 95% 28%, rgba(255,100,0,0.70) 0%, transparent 100%);
+  pointer-events:none; z-index:2;
+  animation:hw-building-blink 8s ease-in-out 3s infinite;
+}
+/* Jalan aspal — lebih gelap dan berkilat */
 .hw-road {
   position:absolute; bottom:0; left:0; right:0; height:42%;
   background:linear-gradient(to top,
-    #060810 0%,
-    #080c16 50%,
-    #0a1020 100%);
+    #030508 0%,
+    #060810 35%,
+    #08101e 70%,
+    #0a1222 100%);
   pointer-events:none;
 }
-/* Garis putus tengah — CSS background-image trick, no pseudo element width issue */
+/* Tekstur aspal — grain halus */
+.hw-road::before {
+  content:''; position:absolute; inset:0;
+  background-image:
+    repeating-linear-gradient(87deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 8px),
+    repeating-linear-gradient(3deg, rgba(255,255,255,0.010) 0px, rgba(255,255,255,0.010) 1px, transparent 1px, transparent 12px);
+  pointer-events:none;
+}
+/* Garis putus tengah */
 .hw-lane-center {
   position:absolute; bottom:0; left:0; right:0; height:42%;
   background-image:repeating-linear-gradient(
     to bottom,
-    rgba(255,255,180,0.55) 0px,
-    rgba(255,255,180,0.55) 18px,
-    transparent 18px,
-    transparent 40px
+    rgba(255,255,200,0.60) 0px,
+    rgba(255,255,200,0.60) 20px,
+    transparent 20px,
+    transparent 44px
   );
-  background-size:4px 40px;
+  background-size:3px 44px;
   background-position:center 0;
   background-repeat:repeat-y;
-  animation:lane-dash 1.0s linear infinite;
+  animation:lane-dash 0.9s linear infinite;
   pointer-events:none;
-  mask-image:linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.6) 60%, transparent 100%);
-  -webkit-mask-image:linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.6) 60%, transparent 100%);
+  mask-image:linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.65) 55%, transparent 100%);
+  -webkit-mask-image:linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.65) 55%, transparent 100%);
 }
 /* Garis tepi kiri & kanan */
 .hw-lane-edge-l, .hw-lane-edge-r {
   position:absolute; bottom:0; width:2px; height:42%;
   background:linear-gradient(to top,
-    rgba(255,255,200,0.40) 0%,
-    rgba(255,255,200,0.15) 50%,
+    rgba(255,255,210,0.48) 0%,
+    rgba(255,255,210,0.20) 45%,
     transparent 100%);
   pointer-events:none;
 }
 .hw-lane-edge-l { left:22%; }
 .hw-lane-edge-r { right:22%; }
-/* Pantulan lampu di aspal */
+/* Pantulan lampu di aspal — lebih berwarna */
 .hw-reflect {
-  position:absolute; bottom:0; left:0; right:0; height:24%;
+  position:absolute; bottom:0; left:0; right:0; height:26%;
   background:
-    radial-gradient(ellipse 20% 50% at 38% 0%, rgba(255,230,150,0.14) 0%, transparent 70%),
-    radial-gradient(ellipse 20% 50% at 62% 0%, rgba(255,230,150,0.14) 0%, transparent 70%),
-    radial-gradient(ellipse 12% 30% at 75% 0%, rgba(255,50,50,0.10) 0%, transparent 60%);
+    radial-gradient(ellipse 22% 55% at 37% 0%, rgba(255,225,140,0.16) 0%, transparent 72%),
+    radial-gradient(ellipse 22% 55% at 63% 0%, rgba(255,225,140,0.16) 0%, transparent 72%),
+    radial-gradient(ellipse 10% 30% at 74% 0%, rgba(255,40,40,0.12) 0%, transparent 65%),
+    radial-gradient(ellipse 8%  25% at 26% 0%, rgba(255,40,40,0.12) 0%, transparent 65%),
+    radial-gradient(ellipse 15% 40% at 50% 0%, rgba(0,180,255,0.06) 0%, transparent 60%);
   pointer-events:none;
 }
-/* Wrapper mobil — posisi fixed agar tidak geser layout */
+/* Wrapper mobil */
 .hw-cars {
   position:absolute; inset:0; pointer-events:none; overflow:hidden;
 }
-/* Mobil headlight */
 .hw-car {
   position:absolute; border-radius:2px; pointer-events:none;
 }
+/* Mobil headlight — lebih terang dengan corona */
 .hw-car-hl {
-  height:4px; width:20px;
-  background:rgba(255,240,180,0.92);
-  box-shadow:0 0 12px 5px rgba(255,220,120,0.50),
-             -20px 0 10px rgba(255,200,80,0.25);
+  height:4px; width:22px;
+  background:rgba(255,245,200,0.95);
+  box-shadow:
+    0 0 14px 6px rgba(255,230,140,0.55),
+    0 0 28px 12px rgba(255,210,80,0.22),
+    -24px 0 12px rgba(255,200,80,0.18);
 }
 /* Mobil taillight */
 .hw-car-tl {
   height:4px; width:16px;
-  background:rgba(255,40,40,0.90);
-  box-shadow:0 0 10px 4px rgba(255,20,20,0.50),
-             14px 0 8px rgba(200,0,0,0.25);
+  background:rgba(255,30,30,0.92);
+  box-shadow:
+    0 0 12px 5px rgba(255,10,10,0.55),
+    0 0 24px 10px rgba(200,0,0,0.22),
+    18px 0 10px rgba(220,0,0,0.18);
 }
-.hw-c1 { animation:car-left  8s linear 0s   infinite; }
-.hw-c2 { animation:car-left  12s linear 4.5s infinite; }
-.hw-c3 { animation:car-right 10s linear 1.5s infinite; }
-.hw-c4 { animation:car-right 14s linear 7s  infinite; }
+.hw-c1 { animation:car-left  9s linear 0s   infinite; }
+.hw-c2 { animation:car-left  13s linear 5s  infinite; }
+.hw-c3 { animation:car-right 11s linear 2s  infinite; }
+.hw-c4 { animation:car-right 15s linear 8s  infinite; }
 
-/* Tiang lampu jalan */
+/* Tiang lampu jalan — lebih realistis */
 .hw-pole {
   position:absolute; bottom:42%; pointer-events:none;
   display:flex; flex-direction:column; align-items:center;
 }
-.hw-pole .pole-arm  { width:2px; background:rgba(120,130,150,0.55); }
-.hw-pole .pole-head { width:14px; height:5px; border-radius:3px 3px 0 0;
-  background:rgba(255,200,80,0.80);
-  box-shadow:0 0 10px 4px rgba(255,180,50,0.45); }
+.hw-pole .pole-arm {
+  width:2px;
+  background:linear-gradient(to bottom, rgba(130,140,160,0.65), rgba(100,110,130,0.45));
+}
+.hw-pole .pole-head {
+  width:16px; height:6px; border-radius:3px 3px 0 0;
+  background:linear-gradient(to bottom, rgba(255,210,90,0.90), rgba(255,180,50,0.75));
+  box-shadow:0 0 12px 5px rgba(255,190,60,0.50), 0 0 24px 10px rgba(255,160,30,0.22);
+}
 .hw-pole .pole-cone {
   margin-top:-1px;
   width:0; height:0;
-  border-left:18px solid transparent;
-  border-right:18px solid transparent;
-  border-top:22px solid rgba(255,200,80,0.08);
+  border-left:20px solid transparent;
+  border-right:20px solid transparent;
+  border-top:24px solid rgba(255,200,80,0.10);
+}
+/* Cahaya kerucut lampu */
+.hw-pole .pole-light-cone {
+  position:absolute; top:100%; left:50%;
+  width:60px; height:80px;
+  transform:translateX(-50%);
+  background:radial-gradient(ellipse at top, rgba(255,200,80,0.08) 0%, transparent 75%);
+  clip-path:polygon(30% 0%, 70% 0%, 100% 100%, 0% 100%);
+  pointer-events:none;
+}
+/* Hujan halus — efek drizzle malam */
+.hw-rain {
+  position:absolute; inset:0; overflow:hidden; pointer-events:none;
+}
+.hw-rain-drop {
+  position:absolute; width:1px; border-radius:1px;
+  background:linear-gradient(to bottom, transparent, rgba(180,210,255,0.35));
+  animation:hw-rain-drift linear infinite;
 }
 
 /* ══════════════════════════════════════════════════════
-   TATA SURYA (solarsystem)
+   TATA SURYA (solarsystem) — IMPROVED
 ══════════════════════════════════════════════════════ */
 
 @keyframes orbit-planet {
@@ -1259,66 +1577,153 @@ input[type='range']::-webkit-slider-thumb {
   to   { transform:rotate(calc(var(--start) + 360deg)) translateX(var(--r)) rotate(calc(-1*(var(--start)+360deg))); }
 }
 @keyframes sun-pulse {
-  0%,100% { box-shadow: 0 0 30px 12px rgba(255,200,60,0.45), 0 0 70px 30px rgba(255,140,0,0.20); }
-  50%      { box-shadow: 0 0 40px 18px rgba(255,220,80,0.55), 0 0 90px 40px rgba(255,160,0,0.25); }
+  0%,100% {
+    box-shadow:
+      0 0 28px 10px rgba(255,210,70,0.50),
+      0 0 60px 28px rgba(255,150,0,0.22),
+      0 0 100px 50px rgba(255,100,0,0.08);
+  }
+  50% {
+    box-shadow:
+      0 0 38px 16px rgba(255,230,90,0.62),
+      0 0 80px 38px rgba(255,170,10,0.28),
+      0 0 130px 65px rgba(255,120,0,0.12);
+  }
 }
 @keyframes comet-streak {
-  0%   { transform:translate(-10vw, 5vh);  opacity:0; }
-  8%   { opacity:1; }
-  92%  { opacity:0.7; }
-  100% { transform:translate(108vw, -25vh); opacity:0; }
+  0%   { transform:translate(-12vw, 6vh);  opacity:0; }
+  6%   { opacity:1; }
+  90%  { opacity:0.75; }
+  100% { transform:translate(110vw, -28vh); opacity:0; }
+}
+@keyframes comet-streak2 {
+  0%   { transform:translate(-8vw, 3vh);  opacity:0; }
+  8%   { opacity:0.85; }
+  92%  { opacity:0.60; }
+  100% { transform:translate(106vw, -20vh); opacity:0; }
 }
 @keyframes nebula-breathe {
-  0%,100% { opacity:0.12; }
-  50%     { opacity:0.22; }
+  0%,100% { opacity:0.14; transform:scale(1); }
+  50%     { opacity:0.24; transform:scale(1.04); }
 }
-@keyframes planet-spin-glow {
-  0%,100% { filter:brightness(1); }
-  50%     { filter:brightness(1.15); }
+@keyframes planet-pulse {
+  0%,100% { filter:brightness(1) saturate(1); }
+  50%     { filter:brightness(1.18) saturate(1.12); }
+}
+@keyframes asteroid-drift {
+  0%   { transform:translate(0, 0) rotate(0deg); }
+  100% { transform:translate(3px, -5px) rotate(180deg); }
+}
+@keyframes ss-glow-ring {
+  0%,100% { opacity:0.05; }
+  50%     { opacity:0.10; }
+}
+@keyframes shooting-star {
+  0%   { transform:translateX(0) translateY(0); opacity:0; }
+  5%   { opacity:1; }
+  30%  { opacity:0; }
+  100% { transform:translateX(200px) translateY(60px); opacity:0; }
 }
 
-/* Nebula */
+/* Nebula berlapis */
 .ss-nebula {
   position:absolute; border-radius:50%; pointer-events:none;
   animation:nebula-breathe 14s ease-in-out infinite;
+  filter:blur(2px);
 }
-/* Orbit ring */
+/* Orbital ring halus */
 .ss-ring {
   position:absolute; border-radius:50%; pointer-events:none;
-  border:1px solid rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.07);
   transform:translate(-50%,-50%);
+  animation:ss-glow-ring 12s ease-in-out infinite;
 }
-/* Matahari */
+/* Matahari — lebih besar dan bercahaya */
 .ss-sun {
   position:absolute; border-radius:50%; pointer-events:none;
   background:radial-gradient(circle,
-    rgba(255,248,150,0.98) 10%,
-    rgba(255,200,50,0.85)  35%,
-    rgba(255,130,0,0.40)   60%,
+    rgba(255,252,180,0.99) 8%,
+    rgba(255,230,80,0.92)  25%,
+    rgba(255,170,20,0.65)  48%,
+    rgba(255,110,0,0.28)   65%,
     transparent 80%);
   animation:sun-pulse 5s ease-in-out infinite;
   z-index:1;
 }
-/* Planet wrapper — untuk orbit */
+/* Korona matahari */
+.ss-sun::before {
+  content:''; position:absolute; inset:-30%; border-radius:50%;
+  background:radial-gradient(circle,
+    transparent 40%,
+    rgba(255,180,40,0.06) 55%,
+    rgba(255,140,0,0.03) 70%,
+    transparent 85%);
+  animation:sun-pulse 7s ease-in-out 1s infinite;
+}
+/* Planet wrapper */
 .ss-orbit-wrap {
   position:absolute; pointer-events:none;
   transform:translate(-50%,-50%);
   animation:orbit-planet linear infinite;
 }
-/* Planet dot */
+/* Planet — dengan detail permukaan */
 .ss-planet {
   position:absolute; border-radius:50%; pointer-events:none;
-  animation:planet-spin-glow 4s ease-in-out infinite;
+  animation:planet-pulse 4s ease-in-out infinite;
 }
-/* Komet */
+/* Cincin saturnus-like pada planet besar */
+.ss-planet-ring {
+  position:absolute; pointer-events:none;
+  border-radius:50%;
+  border:2px solid rgba(255,210,120,0.35);
+  transform:translate(-50%,-50%) rotateX(70deg);
+}
+/* Komet utama */
 .ss-comet {
   position:fixed; pointer-events:none; z-index:2;
   height:2px; border-radius:2px;
   background:linear-gradient(to right,
     transparent 0%,
-    rgba(180,210,255,0.60) 40%,
-    rgba(255,255,255,0.95) 100%);
+    rgba(160,200,255,0.45) 30%,
+    rgba(210,230,255,0.75) 65%,
+    rgba(255,255,255,0.98) 100%);
+  box-shadow:0 0 4px 1px rgba(200,220,255,0.40);
   animation:comet-streak 22s linear 8s infinite;
+}
+/* Komet kedua */
+.ss-comet2 {
+  position:fixed; pointer-events:none; z-index:2;
+  height:1.5px; border-radius:2px;
+  background:linear-gradient(to right,
+    transparent 0%,
+    rgba(180,210,255,0.35) 35%,
+    rgba(220,235,255,0.65) 70%,
+    rgba(255,255,255,0.90) 100%);
+  animation:comet-streak2 35s linear 18s infinite;
+}
+/* Asteroid kecil */
+.ss-asteroid {
+  position:absolute; border-radius:30%; pointer-events:none;
+  background:radial-gradient(circle at 35% 35%,
+    rgba(160,145,120,0.90) 0%,
+    rgba(110,95,75,0.85) 50%,
+    rgba(70,58,42,0.90) 100%);
+  animation:asteroid-drift 8s ease-in-out infinite alternate;
+}
+/* Bintang jatuh kecil */
+.ss-shooting {
+  position:absolute; pointer-events:none;
+  height:1px; border-radius:1px;
+  background:linear-gradient(to right, transparent, rgba(255,255,255,0.85));
+  animation:shooting-star linear infinite;
+}
+/* Dusty star cluster */
+.ss-cluster {
+  position:absolute; pointer-events:none;
+  border-radius:50%;
+  background:radial-gradient(circle, rgba(200,210,255,0.12) 0%, transparent 75%);
+  filter:blur(3px);
+  animation:nebula-breathe 20s ease-in-out infinite;
 }
 
 /* Landscape adjustments */
@@ -1326,6 +1731,8 @@ input[type='range']::-webkit-slider-thumb {
 .layout-desktop-landscape .garden-ground { height:18%; }
 .layout-mobile-landscape .garden-grass,
 .layout-desktop-landscape .garden-grass  { bottom:14%; }
+.layout-mobile-landscape .garden-grass2,
+.layout-desktop-landscape .garden-grass2 { bottom:18%; }
 .layout-mobile-landscape .hw-road,
 .layout-desktop-landscape .hw-road,
 .layout-mobile-landscape .hw-lane-center,
@@ -1336,6 +1743,10 @@ input[type='range']::-webkit-slider-thumb {
 .layout-desktop-landscape .hw-sky        { bottom:50%; }
 .layout-mobile-landscape .hw-horizon,
 .layout-desktop-landscape .hw-horizon    { bottom:50%; }
+.layout-mobile-landscape .hw-neon-lights,
+.layout-desktop-landscape .hw-neon-lights { bottom:50%; }
+.layout-mobile-landscape .hw-city-bg,
+.layout-desktop-landscape .hw-city-bg    { bottom:50%; }
 .layout-mobile-landscape .hw-pole,
 .layout-desktop-landscape .hw-pole       { bottom:50%; }
 .layout-mobile-landscape .hw-lane-edge-l,
