@@ -1461,6 +1461,7 @@ input[type='range']::-webkit-slider-thumb {
 /* Garis putus tengah */
 .hw-lane-center {
   position:absolute; bottom:0; left:0; right:0; height:42%;
+  overflow:hidden;
   background-image:repeating-linear-gradient(
     to bottom,
     rgba(255,255,200,0.60) 0px,
@@ -1473,8 +1474,8 @@ input[type='range']::-webkit-slider-thumb {
   background-repeat:repeat-y;
   animation:lane-dash 0.9s linear infinite;
   pointer-events:none;
-  mask-image:linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.65) 55%, transparent 100%);
-  -webkit-mask-image:linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.65) 55%, transparent 100%);
+  mask-image:linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.55) 60%, transparent 90%);
+  -webkit-mask-image:linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.55) 60%, transparent 90%);
 }
 /* Garis tepi kiri & kanan */
 .hw-lane-edge-l, .hw-lane-edge-r {
@@ -1531,7 +1532,7 @@ input[type='range']::-webkit-slider-thumb {
 /* Tiang lampu jalan — lebih realistis */
 .hw-pole {
   position:absolute; bottom:42%; pointer-events:none;
-  display:flex; flex-direction:column; align-items:center;
+  display:flex; flex-direction:column-reverse; align-items:center;
 }
 .hw-pole .pole-arm {
   width:2px;
@@ -1610,6 +1611,33 @@ input[type='range']::-webkit-slider-thumb {
   0%,100% { filter:brightness(1) saturate(1); }
   50%     { filter:brightness(1.18) saturate(1.12); }
 }
+@keyframes planet-float-a {
+  0%,100% { transform:translate(0px, 0px); }
+  25%     { transform:translate(6px, -8px); }
+  50%     { transform:translate(10px, -3px); }
+  75%     { transform:translate(4px, 6px); }
+}
+@keyframes planet-float-b {
+  0%,100% { transform:translate(0px, 0px); }
+  33%     { transform:translate(-8px, -6px); }
+  66%     { transform:translate(5px, -10px); }
+}
+@keyframes planet-float-c {
+  0%,100% { transform:translate(0px, 0px); }
+  20%     { transform:translate(5px, 8px); }
+  50%     { transform:translate(-7px, 4px); }
+  80%     { transform:translate(3px, -6px); }
+}
+@keyframes planet-float-d {
+  0%,100% { transform:translate(0px, 0px); }
+  40%     { transform:translate(-5px, -9px); }
+  70%     { transform:translate(8px, -4px); }
+}
+@keyframes planet-float-e {
+  0%,100% { transform:translate(0px, 0px); }
+  30%     { transform:translate(7px, 5px); }
+  60%     { transform:translate(-4px, -7px); }
+}
 @keyframes asteroid-drift {
   0%   { transform:translate(0, 0) rotate(0deg); }
   100% { transform:translate(3px, -5px) rotate(180deg); }
@@ -1669,7 +1697,7 @@ input[type='range']::-webkit-slider-thumb {
 /* Planet — dengan detail permukaan */
 .ss-planet {
   position:absolute; border-radius:50%; pointer-events:none;
-  animation:planet-pulse 4s ease-in-out infinite;
+  will-change: transform, filter;
 }
 /* Cincin saturnus-like pada planet besar */
 .ss-planet-ring {
@@ -1709,6 +1737,7 @@ input[type='range']::-webkit-slider-thumb {
     rgba(110,95,75,0.85) 50%,
     rgba(70,58,42,0.90) 100%);
   animation:asteroid-drift 8s ease-in-out infinite alternate;
+  will-change: transform;
 }
 /* Bintang jatuh kecil */
 .ss-shooting {

@@ -7429,6 +7429,7 @@ Format exactly:
             const sunX = '13%';
             const sunY = '11%';
             // Planet data — lebih bervariasi dengan ukuran & warna lebih kaya
+            const planetFloats = ['planet-float-a','planet-float-b','planet-float-c','planet-float-d','planet-float-e'];
             const planets = [
               { size:11, bg:'radial-gradient(circle at 38% 35%, #6ec0ff 0%, #2a68cc 40%, #0d2870 75%, #050f40 100%)',
                 glow:'rgba(70,145,255,0.60)', top:'20%', left:'30%', dur:'20s', delay:'0s',
@@ -7490,7 +7491,7 @@ Format exactly:
                     background:p.bg,
                     boxShadow:`0 0 10px 4px ${p.glow}, ${p.shadow}`,
                     top:p.top, left:p.left,
-                    animationDuration:p.dur, animationDelay:p.delay,
+                    animation:`planet-pulse 4s ease-in-out ${p.delay} infinite, ${planetFloats[i]} ${p.dur} ease-in-out ${p.delay} infinite`,
                   }}/>
                 ))}
                 {/* Asteroid kecil */}
