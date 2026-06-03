@@ -7127,7 +7127,7 @@ Format exactly:
               <div style={{ position:'absolute', top:'35%', right:'10%', width:3, height:3, borderRadius:'50%', background:'rgba(255,80,100,0.9)', boxShadow:'0 0 6px rgba(255,80,100,1)', animation:'float-orb 15s ease-in-out 4s infinite' }}/>
             </>
           );
-          return <><div className="stars"/><div className="starsB"/><div className="starsC"}/></>;
+          return <><div className="stars"/><div className="starsB"/><div className="starsC"/></>;
         };
 
         return (
