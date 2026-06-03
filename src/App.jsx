@@ -7409,15 +7409,21 @@ Format exactly:
                   const poleR = (frac) => isDesk
                     ? `calc(100vw - ${frac / 100} * (100vw - ${sbW}px))`
                     : `${100 - frac}%`;
+                  // armH menggunakan CSS string dengan vh agar responsif di semua ukuran layar
+                  // roadH% dari viewport = tinggi area jalan
+                  // Tiang dekat: kepala muncul ~82% dari area jalan, makin jauh makin pendek
+                  const armClose = `${(roadH * 0.82).toFixed(1)}vh`;
+                  const armMid   = `${(roadH * 0.58).toFixed(1)}vh`;
+                  const armFar   = `${(roadH * 0.38).toFixed(1)}vh`;
                   const poles = [
                     // Kiri: 3 tiang (dekat→jauh)
-                    { posVal: poleL(fracL1), armH: ls?110:100, opacity:1.0,  headS: isMob?14:16 },
-                    { posVal: poleL(fracL2), armH: ls? 80: 75, opacity:0.60, headS: isMob?10:12, scale:0.85 },
-                    { posVal: poleL(fracL3), armH: ls? 55: 52, opacity:0.35, headS: isMob? 7: 9, scale:0.70 },
+                    { posVal: poleL(fracL1), armH: armClose, opacity:1.0,  headS: isMob?14:16 },
+                    { posVal: poleL(fracL2), armH: armMid,   opacity:0.60, headS: isMob?10:12, scale:0.85 },
+                    { posVal: poleL(fracL3), armH: armFar,   opacity:0.35, headS: isMob? 7: 9, scale:0.70 },
                     // Kanan: mirror
-                    { posVal: poleR(fracL1), armH: ls?110:100, opacity:1.0,  headS: isMob?14:16 },
-                    { posVal: poleR(fracL2), armH: ls? 80: 75, opacity:0.60, headS: isMob?10:12, scale:0.85 },
-                    { posVal: poleR(fracL3), armH: ls? 55: 52, opacity:0.35, headS: isMob? 7: 9, scale:0.70 },
+                    { posVal: poleR(fracL1), armH: armClose, opacity:1.0,  headS: isMob?14:16 },
+                    { posVal: poleR(fracL2), armH: armMid,   opacity:0.60, headS: isMob?10:12, scale:0.85 },
+                    { posVal: poleR(fracL3), armH: armFar,   opacity:0.35, headS: isMob? 7: 9, scale:0.70 },
                   ];
                   return poles.map((p,i) => (
                   <div key={i} className="hw-pole" style={{
