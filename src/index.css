@@ -625,8 +625,8 @@ input[type='range']::-webkit-slider-thumb {
 }
 
 @keyframes lamp-breathe {
-  0%, 100% { opacity: 0.60; transform: scale(1); }
-  50%       { opacity: 1.00; transform: scale(1.08); }
+  0%, 100% { opacity: 0.60; }
+  50%       { opacity: 1.00; }
 }
 
 /* Jendela dengan bulan — kanan atas, lebih besar & kaya detail */
@@ -1287,20 +1287,20 @@ input[type='range']::-webkit-slider-thumb {
 ══════════════════════════════════════════════════════ */
 
 @keyframes lane-dash {
-  from { background-position: center 0; }
-  to   { background-position: center 80px; }
+  from { background-position: center 0px; }
+  to   { background-position: center 44px; }
 }
 @keyframes car-left {
-  0%   { transform:translateX(-160px); opacity:0; }
-  4%   { opacity:1; }
-  96%  { opacity:1; }
-  100% { transform:translateX(calc(100vw + 160px)); opacity:0; }
+  0%   { transform:translateX(-180px); opacity:0; }
+  5%   { opacity:1; }
+  95%  { opacity:1; }
+  100% { transform:translateX(calc(100vw + 180px)); opacity:0; }
 }
 @keyframes car-right {
-  0%   { transform:translateX(160px); opacity:0; }
-  4%   { opacity:1; }
-  96%  { opacity:1; }
-  100% { transform:translateX(calc(-100vw - 160px)); opacity:0; }
+  0%   { transform:translateX(180px); opacity:0; }
+  5%   { opacity:1; }
+  95%  { opacity:1; }
+  100% { transform:translateX(calc(-100vw - 180px)); opacity:0; }
 }
 @keyframes city-glow-pulse {
   0%,100% { opacity:0.60; }
@@ -1459,36 +1459,56 @@ input[type='range']::-webkit-slider-thumb {
   pointer-events:none;
 }
 /* Garis putus tengah */
+/* Garis putus tengah — animasi bergerak dari atas ke bawah */
 .hw-lane-center {
   position:absolute; bottom:0; left:0; right:0; height:42%;
   overflow:hidden;
-  background-image:repeating-linear-gradient(
+  pointer-events:none;
+}
+.hw-lane-center::before {
+  content:'';
+  position:absolute; inset:0;
+  background-image: repeating-linear-gradient(
     to bottom,
-    rgba(255,255,200,0.60) 0px,
-    rgba(255,255,200,0.60) 20px,
+    rgba(255,255,200,0.65) 0px,
+    rgba(255,255,200,0.65) 20px,
     transparent 20px,
     transparent 44px
   );
-  background-size:3px 44px;
-  background-position:center 0;
-  background-repeat:repeat-y;
-  animation:lane-dash 0.9s linear infinite;
-  pointer-events:none;
-  mask-image:linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.8) 40%, rgba(0,0,0,0.2) 75%, transparent 95%);
-  -webkit-mask-image:linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.8) 40%, rgba(0,0,0,0.2) 75%, transparent 95%);
-  clip-path:inset(0);
+  background-size: 4px 44px;
+  background-position: center 0;
+  background-repeat: repeat-y;
+  animation: lane-dash 0.7s linear infinite;
+  /* Perspektif: hanya tampil di jalur tengah yang menyempit ke atas */
+  clip-path: polygon(46% 0%, 54% 0%, 58% 100%, 42% 100%);
+  mask-image: linear-gradient(to top, black 0%, black 40%, transparent 88%);
+  -webkit-mask-image: linear-gradient(to top, black 0%, black 40%, transparent 88%);
 }
-/* Garis tepi kiri & kanan */
-.hw-lane-edge-l, .hw-lane-edge-r {
-  position:absolute; bottom:0; width:2px; height:42%;
-  background:linear-gradient(to top,
-    rgba(255,255,210,0.48) 0%,
-    rgba(255,255,210,0.20) 45%,
+/* Garis tepi kiri */
+.hw-lane-edge-l {
+  position:absolute; bottom:0; height:42%;
+  pointer-events:none;
+  left:0; right:0;
+  background: linear-gradient(to top,
+    rgba(255,255,210,0.55) 0%,
+    rgba(255,255,210,0.25) 40%,
     transparent 100%);
-  pointer-events:none;
+  width:2px;
+  /* Posisi garis tepi kiri di 22% dari kiri */
+  left:22%;
+  clip-path: none;
 }
-.hw-lane-edge-l { left:22%; }
-.hw-lane-edge-r { right:22%; }
+/* Garis tepi kanan */
+.hw-lane-edge-r {
+  position:absolute; bottom:0; height:42%;
+  pointer-events:none;
+  background: linear-gradient(to top,
+    rgba(255,255,210,0.55) 0%,
+    rgba(255,255,210,0.25) 40%,
+    transparent 100%);
+  width:2px;
+  right:22%;
+}
 /* Pantulan lampu di aspal — lebih berwarna */
 .hw-reflect {
   position:absolute; bottom:0; left:0; right:0; height:26%;
@@ -1533,8 +1553,9 @@ input[type='range']::-webkit-slider-thumb {
 /* Tiang lampu jalan — lebih realistis */
 .hw-pole {
   position:absolute; pointer-events:none;
-  display:flex; flex-direction:column; align-items:center;
+  display:flex; flex-direction:column-reverse; align-items:center;
   z-index:3;
+  bottom:42%;
 }
 .hw-pole .pole-arm {
   width:2px;
@@ -1546,7 +1567,7 @@ input[type='range']::-webkit-slider-thumb {
   box-shadow:0 0 12px 5px rgba(255,190,60,0.50), 0 0 24px 10px rgba(255,160,30,0.22);
 }
 .hw-pole .pole-cone {
-  margin-top:-1px;
+  margin-bottom:-1px;
   width:0; height:0;
   border-left:20px solid transparent;
   border-right:20px solid transparent;

@@ -7375,8 +7375,11 @@ Format exactly:
           if (th === 'nighthighway') {
             const ls = layoutMode.includes('landscape');
             const roadH = ls ? 50 : 42;
-            const carBot1 = `${roadH * 0.72}%`;
-            const carBot2 = `${roadH * 0.52}%`;
+            // Mobil di dalam area jalan — bottom relatif terhadap layar
+            // Jalur kiri (headlight): 10%-18% dari bottom layar
+            // Jalur kanan (taillight): 8%-14% dari bottom layar
+            const carBot1 = `${roadH * 0.30}%`;  // ~12.6% dari bawah layar — lane dekat
+            const carBot2 = `${roadH * 0.16}%`;  // ~6.7% dari bawah layar — lane lebih dekat
             // Tetesan hujan
             const rainDrops = Array.from({ length: 18 }, (_, i) => ({
               left: `${(i * 5.5 + Math.sin(i*2.1)*3) % 100}%`,
@@ -7408,32 +7411,34 @@ Format exactly:
                 <div className="hw-lane-edge-l"/><div className="hw-lane-edge-r"/>
                 {/* Pantulan lampu di aspal */}
                 <div className="hw-reflect"/>
-                {/* Tiang lampu — tepat di tepi kiri (22%) & kanan (22%) jalan */}
+                {/* Tiang lampu — tepi kiri & kanan jalan, simulasi perspektif */}
                 {[
-                  // Kiri: 3 tiang di tepi kiri, simulasi kedalaman (dekat→jauh)
-                  { side:'left',  pos:'22%', armH: ls?110:140, opacity:1.0,  headS:16 },
-                  { side:'left',  pos:'22%', armH: ls? 80:105, opacity:0.70, headS:13, bottom: ls?'44%':'44%' },
-                  { side:'left',  pos:'22%', armH: ls? 55: 72, opacity:0.42, headS:10, bottom: ls?'46%':'46%' },
-                  // Kanan: 3 tiang di tepi kanan
-                  { side:'right', pos:'22%', armH: ls?110:140, opacity:1.0,  headS:16 },
-                  { side:'right', pos:'22%', armH: ls? 80:105, opacity:0.70, headS:13, bottom: ls?'44%':'44%' },
-                  { side:'right', pos:'22%', armH: ls? 55: 72, opacity:0.42, headS:10, bottom: ls?'46%':'46%' },
+                  // Kiri: 3 tiang (dekat→jauh) — pos makin besar = makin ke tengah = makin jauh
+                  { side:'left',  pos:'5%',  armH: ls?110:140, opacity:1.0,  headS:16 },
+                  { side:'left',  pos:'12%', armH: ls? 80:105, opacity:0.60, headS:12, scale:0.85 },
+                  { side:'left',  pos:'18%', armH: ls? 55: 72, opacity:0.35, headS: 9, scale:0.70 },
+                  // Kanan: 3 tiang (dekat→jauh) — pos makin besar = makin ke tengah = makin jauh
+                  { side:'right', pos:'5%',  armH: ls?110:140, opacity:1.0,  headS:16 },
+                  { side:'right', pos:'12%', armH: ls? 80:105, opacity:0.60, headS:12, scale:0.85 },
+                  { side:'right', pos:'18%', armH: ls? 55: 72, opacity:0.35, headS: 9, scale:0.70 },
                 ].map((p,i) => (
                   <div key={i} className="hw-pole" style={{
                     [p.side]: p.pos,
-                    bottom: p.bottom || (ls ? '50%' : '42%'),
                     opacity: p.opacity,
-                    transform: p.side==='left' ? 'translateX(-50%)' : 'translateX(50%)',
+                    transform: `${p.side==='left' ? 'translateX(-50%)' : 'translateX(50%)'} ${p.scale ? `scale(${p.scale})` : ''}`,
+                    transformOrigin: 'bottom center',
                   }}>
                     <div className="pole-head" style={{ width:p.headS, height: Math.round(p.headS*0.38) }}/>
                     <div className="pole-cone"/>
                     <div className="pole-arm" style={{ height: p.armH }}/>
                   </div>
                 ))}
-                {/* Mobil bergerak */}
+                {/* Mobil bergerak — berada di dalam area jalan */}
                 <div className="hw-cars">
-                  <div className="hw-car hw-car-hl hw-c1" style={{ bottom:carBot1 }}/>
-                  <div className="hw-car hw-car-hl hw-c2" style={{ bottom:carBot2 }}/>
+                  {/* Headlight (datang dari kiri) — lane kiri */}
+                  <div className="hw-car hw-car-hl hw-c1" style={{ bottom:carBot1, left:0 }}/>
+                  <div className="hw-car hw-car-hl hw-c2" style={{ bottom:carBot2, left:0 }}/>
+                  {/* Taillight (pergi ke kiri) — lane kanan */}
                   <div className="hw-car hw-car-tl hw-c3" style={{ bottom:carBot1, right:0 }}/>
                   <div className="hw-car hw-car-tl hw-c4" style={{ bottom:carBot2, right:0 }}/>
                 </div>
@@ -7546,9 +7551,6 @@ Format exactly:
                     animationDuration:s.dur, animationDelay:s.delay,
                   }}/>
                 ))}
-                {/* Komet utama + komet kedua */}
-                <div className="ss-comet" style={{ top:'16%', width:110 }}/>
-                <div className="ss-comet2" style={{ top:'38%', width:75 }}/>
               </>
             );
           }
