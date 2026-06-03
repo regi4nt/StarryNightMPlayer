@@ -203,3 +203,1732 @@ input[type='range']::-webkit-slider-thumb {
     padding-top: var(--wco-height);
   }
 }
+
+/* ══════════════════════════════════════════════════════
+   THEME BACKGROUND LAYERS
+   ══════════════════════════════════════════════════════ */
+
+/* ── Shared star layers (starry / journey / ocean / fantasy / futurecity) ── */
+.stars, .starsB, .starsC {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  will-change: opacity;
+}
+/* Starry — layer A: white stars, lebih sedikit gradients */
+.stars {
+  background-image:
+    radial-gradient(1px 1px at 10% 15%, rgba(255,255,255,0.85), transparent),
+    radial-gradient(1px 1px at 25% 40%, rgba(255,255,255,0.65), transparent),
+    radial-gradient(1.5px 1.5px at 40% 8%,  rgba(255,255,255,0.75), transparent),
+    radial-gradient(1px 1px at 55% 55%, rgba(255,255,255,0.55), transparent),
+    radial-gradient(1px 1px at 70% 22%, rgba(255,255,255,0.80), transparent),
+    radial-gradient(1.5px 1.5px at 82% 5%,  rgba(255,255,255,0.65), transparent),
+    radial-gradient(1px 1px at 15% 70%, rgba(255,255,255,0.50), transparent),
+    radial-gradient(1px 1px at 62% 65%, rgba(255,255,255,0.55), transparent);
+  background-size: 420px 420px;
+  animation: twinkle-a 6s ease-in-out infinite alternate;
+}
+/* Starry — layer B: blue-tinted stars */
+.starsB {
+  background-image:
+    radial-gradient(1px 1px at 8% 35%, rgba(180,200,255,0.70), transparent),
+    radial-gradient(1px 1px at 33% 60%, rgba(180,200,255,0.55), transparent),
+    radial-gradient(1.5px 1.5px at 52% 18%, rgba(200,220,255,0.65), transparent),
+    radial-gradient(1px 1px at 73% 75%, rgba(180,200,255,0.45), transparent),
+    radial-gradient(1px 1px at 88% 30%, rgba(200,220,255,0.60), transparent),
+    radial-gradient(1px 1px at 20% 88%, rgba(180,200,255,0.50), transparent);
+  background-size: 520px 520px;
+  animation: twinkle-b 9s ease-in-out infinite alternate;
+}
+/* Starry — layer C: warm gold accent stars, hanya saat prefers-reduced-motion:no-preference */
+.starsC {
+  background-image:
+    radial-gradient(1px 1px at 5% 5%,   rgba(255,230,180,0.60), transparent),
+    radial-gradient(1.5px 1.5px at 60% 10%, rgba(255,230,180,0.70), transparent),
+    radial-gradient(1px 1px at 80% 60%, rgba(255,240,200,0.55), transparent),
+    radial-gradient(1px 1px at 45% 90%, rgba(255,230,180,0.45), transparent);
+  background-size: 640px 640px;
+  animation: twinkle-c 12s ease-in-out infinite alternate;
+}
+/* Opacity-only twinkle — tidak pakai transform scale (hemat GPU) */
+@keyframes twinkle-a {
+  0%   { opacity: 0.55; }
+  50%  { opacity: 0.95; }
+  100% { opacity: 0.65; }
+}
+@keyframes twinkle-b {
+  0%   { opacity: 0.40; }
+  60%  { opacity: 0.80; }
+  100% { opacity: 0.35; }
+}
+@keyframes twinkle-c {
+  0%   { opacity: 0.30; }
+  40%  { opacity: 0.70; }
+  100% { opacity: 0.25; }
+}
+/* Matikan layer C di reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .starsC { animation: none; opacity: 0.35; }
+  .stars, .starsB { animation-duration: 15s; }
+}
+
+/* ── pulse-lamp (bedroom warm glow) — opacity only, no scale ── */
+@keyframes pulse-lamp {
+  0%, 100% { opacity: 0.55; }
+  50%       { opacity: 0.85; }
+}
+
+/* ── pulse-moon — opacity only ── */
+@keyframes pulse-moon {
+  0%, 100% { opacity: 0.65; }
+  50%       { opacity: 0.95; }
+}
+
+/* ── shimmer (ocean water reflection) — opacity only ── */
+@keyframes shimmer {
+  0%, 100% { opacity: 0.20; }
+  50%       { opacity: 0.55; }
+}
+
+/* ── drift (journey forest fog) — translateX pada elemen sudah punya will-change ── */
+@keyframes drift {
+  from { transform: translateX(-3%); }
+  to   { transform: translateX(3%); }
+}
+
+/* ── float-orb (fantasy) — translateY saja, no scale ── */
+@keyframes float-orb {
+  0%, 100% { transform: translateY(0); opacity: 0.65; }
+  50%       { transform: translateY(-14px); opacity: 0.90; }
+}
+
+/* ── BEDROOM: Rain streaks ── */
+.rain-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  will-change: background-position;
+  background-image:
+    repeating-linear-gradient(
+      175deg,
+      transparent 0px,
+      transparent 8px,
+      rgba(160,200,255,0.055) 8px,
+      rgba(160,200,255,0.055) 9px
+    );
+  background-size: 60px 60px;
+  animation: rain-fall 1s linear infinite;
+}
+@keyframes rain-fall {
+  from { background-position: 0 0; }
+  to   { background-position: -8px 60px; }
+}
+
+/* ── BEDROOM: Hujan di luar jendela ── */
+.window-rain {
+  position: absolute;
+  top: 8%;
+  right: 8%;
+  width: 90px;
+  height: 120px;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: 6px 6px 0 0;
+}
+
+.window-rain::before {
+  content: '';
+  position: absolute;
+  top: -100%;
+  left: 0;
+  right: 0;
+  height: 200%;
+  background-image:
+    repeating-linear-gradient(
+      175deg,
+      transparent 0px,
+      transparent 5px,
+      rgba(160,200,255,0.13) 5px,
+      rgba(160,200,255,0.13) 6px
+    );
+  background-size: 40px 40px;
+  animation: rain-slide 1.5s linear infinite;
+  will-change: transform;
+}
+
+@keyframes rain-slide {
+  from { transform: translateY(0); }
+  to   { transform: translateY(50%); }
+}
+
+/* Tetesan di kaca jendela */
+.window-rain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 3px at 20% 30%, rgba(180,210,255,0.35), transparent),
+    radial-gradient(1px 4px at 45% 15%, rgba(180,210,255,0.28), transparent),
+    radial-gradient(1px 2px at 70% 55%, rgba(180,210,255,0.32), transparent),
+    radial-gradient(1px 3px at 85% 25%, rgba(180,210,255,0.25), transparent),
+    radial-gradient(1px 2px at 30% 70%, rgba(180,210,255,0.30), transparent),
+    radial-gradient(1px 3px at 60% 80%, rgba(180,210,255,0.22), transparent);
+  background-size: 90px 120px;
+  opacity: 0.7;
+}
+
+
+@keyframes flicker {
+  0%,100% { opacity: 0.50; }
+  30%      { opacity: 0.72; }
+  60%      { opacity: 0.45; }
+  80%      { opacity: 0.68; }
+}
+
+/* ── OCEAN: Wave layers ── */
+.wave-layer {
+  position: absolute;
+  bottom: 0;
+  left: -50%;
+  width: 200%;
+  height: 22%;
+  pointer-events: none;
+}
+.wave-layer::before,
+.wave-layer::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: 100%;
+  border-radius: 50% 50% 0 0 / 30px 30px 0 0;
+  will-change: transform;
+}
+.wave-layer::before {
+  bottom: 6%;
+  height: 60%;
+  background: rgba(10,60,110,0.32);
+  animation: wave-drift 10s ease-in-out infinite alternate;
+}
+.wave-layer::after {
+  bottom: 0;
+  height: 50%;
+  background: rgba(5,40,80,0.40);
+  animation: wave-drift 14s ease-in-out 2s infinite alternate-reverse;
+}
+@keyframes wave-drift {
+  from { transform: translateX(-4%); }
+  to   { transform: translateX(4%); }
+}
+
+/* ── FANTASY: Sparkle/glitter layer ── */
+.sparkle-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  will-change: opacity;
+  background-image:
+    radial-gradient(1.5px 1.5px at 18% 30%, rgba(255,180,255,0.80), transparent),
+    radial-gradient(1px 1px at 35% 12%,  rgba(200,120,255,0.70), transparent),
+    radial-gradient(1.5px 1.5px at 55% 45%,  rgba(255,100,220,0.60), transparent),
+    radial-gradient(1px 1px at 72% 20%,  rgba(180,100,255,0.75), transparent),
+    radial-gradient(1px 1px at 12% 75%,  rgba(200,100,255,0.55), transparent),
+    radial-gradient(1.5px 1.5px at 42% 82%,  rgba(255,80,200,0.65), transparent);
+  background-size: 380px 380px;
+  animation: sparkle-pulse 5s ease-in-out infinite alternate;
+}
+@keyframes sparkle-pulse {
+  0%   { opacity: 0.35; }
+  100% { opacity: 0.80; }
+}
+
+/* ── FUTURECITY: Neon city silhouette — lebih detail & dramatis ── */
+.city-layer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 42%;
+  pointer-events: none;
+  /* Stripe neon vertical di gedung (kisi garis bangunan) */
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0px,
+      transparent 22px,
+      rgba(0,200,180,0.04) 22px,
+      rgba(0,200,180,0.04) 24px
+    );
+  /* Gedung-gedung yang jauh lebih bervariasi tinggi & lebar */
+  clip-path: polygon(
+    0% 100%,
+    /* Blok kiri — gedung pendek lebar */
+    0%  60%, 3%  60%, 3%  44%, 6%  44%, 6%  55%, 9%  55%,
+    /* Gedung tinggi menara antenna */
+    9%  22%, 9.5% 5%, 10% 22%, 11% 22%,
+    /* Gap + gedung medium */
+    11% 48%, 14% 48%, 14% 32%, 17% 32%, 17% 52%,
+    /* Gedung rendah + tinggi bergantian */
+    20% 52%, 20% 18%, 22% 18%, 22% 38%, 25% 38%, 25% 12%,
+    /* Menara tinggi kiri tengah */
+    26.5% 12%, 26.5% 4%, 27.5% 4%, 27.5% 12%,
+    28% 12%, 28% 42%, 31% 42%, 31% 25%,
+    /* Kompleks tengah — bergerigi */
+    33% 25%, 33% 38%, 36% 38%, 36% 20%, 38% 20%,
+    38% 30%, 40% 30%, 40% 15%, 43% 15%, 43% 35%,
+    /* Menara tengah — paling tinggi */
+    46% 35%, 46%  8%, 46.5%  3%, 47%  8%, 48%  8%, 48% 22%,
+    50% 22%, 50% 42%, 53% 42%, 53% 28%,
+    /* Gedung kanan tengah */
+    55% 28%, 55% 18%, 57% 18%, 57% 32%, 60% 32%, 60% 14%,
+    62% 14%, 62% 30%, 64% 30%, 64% 22%, 67% 22%,
+    /* Kluster kanan */
+    67% 40%, 70% 40%, 70% 26%, 72% 26%, 72% 15%,
+    73.5% 15%, 73.5% 8%, 74.5% 8%, 74.5% 15%,
+    75% 15%, 75% 36%, 78% 36%, 78% 50%,
+    /* Gedung kanan — menurun */
+    81% 50%, 81% 32%, 84% 32%, 84% 48%, 87% 48%, 87% 38%,
+    90% 38%, 90% 55%, 93% 55%, 93% 44%, 96% 44%, 96% 58%,
+    100% 58%, 100% 100%
+  );
+}
+
+/* Neon line tepat di atap skyline */
+.neon-skyline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(0,220,200,0.30) 8%,
+    rgba(0,180,255,0.80) 25%,
+    rgba(160,0,255,0.60) 40%,
+    rgba(0,220,200,0.85) 55%,
+    rgba(0,180,255,0.70) 72%,
+    rgba(160,0,255,0.55) 85%,
+    transparent 100%
+  );
+  will-change: opacity;
+  animation: neon-glow 5s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes neon-glow {
+  0%   { opacity: 0.40; filter: blur(0px); }
+  100% { opacity: 1.00; filter: blur(0.5px); }
+}
+
+/* ── FUTURECITY: Scan line effect — lebih lambat & lebih transparan ── */
+.scan-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(0,220,200,0.08), transparent);
+  will-change: transform, opacity;
+  animation: scan 16s linear infinite;
+  pointer-events: none;
+}
+@keyframes scan {
+  from { transform: translateY(0vh);   opacity: 0.5; }
+  to   { transform: translateY(100vh); opacity: 0.0; }
+}
+
+/* ── FUTURECITY: Random neon window blinks ── */
+@keyframes blink-neon {
+  0%,100% { opacity: 0.10; }
+  35%      { opacity: 0.55; }
+  60%      { opacity: 0.20; }
+  80%      { opacity: 0.65; }
+}
+
+/* Neon window lights — posisi sesuai gedung baru */
+.city-windows {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 42%;
+  pointer-events: none;
+  background-image:
+    /* Gedung 9-11% — menara kiri, jendela cyan kolom */
+    radial-gradient(2px 3px at  9.5% 28%, rgba(0,220,200,0.80), transparent),
+    radial-gradient(2px 3px at  9.5% 35%, rgba(0,220,200,0.55), transparent),
+    radial-gradient(2px 3px at  9.5% 42%, rgba(0,220,200,0.70), transparent),
+    radial-gradient(2px 3px at  9.5% 49%, rgba(0,220,200,0.45), transparent),
+    /* Gedung 14-17% — jendela biru */
+    radial-gradient(2px 3px at 14.5% 38%, rgba(0,140,255,0.75), transparent),
+    radial-gradient(2px 3px at 14.5% 45%, rgba(0,140,255,0.55), transparent),
+    radial-gradient(2px 3px at 16%   38%, rgba(0,140,255,0.65), transparent),
+    radial-gradient(2px 3px at 16%   45%, rgba(0,140,255,0.40), transparent),
+    /* Gedung 20-22% — jendela putih */
+    radial-gradient(2px 2px at 21%   24%, rgba(220,230,255,0.70), transparent),
+    radial-gradient(2px 2px at 21%   30%, rgba(220,230,255,0.50), transparent),
+    radial-gradient(2px 2px at 21%   36%, rgba(220,230,255,0.60), transparent),
+    /* Menara 25-28% — paling tinggi, jendela ungu rapat */
+    radial-gradient(2px 3px at 25.5% 16%, rgba(180,0,255,0.85), transparent),
+    radial-gradient(2px 3px at 25.5% 23%, rgba(180,0,255,0.65), transparent),
+    radial-gradient(2px 3px at 25.5% 30%, rgba(180,0,255,0.75), transparent),
+    radial-gradient(2px 3px at 25.5% 37%, rgba(180,0,255,0.55), transparent),
+    radial-gradient(2px 3px at 27%   16%, rgba(180,0,255,0.70), transparent),
+    radial-gradient(2px 3px at 27%   23%, rgba(180,0,255,0.50), transparent),
+    radial-gradient(2px 3px at 27%   30%, rgba(180,0,255,0.60), transparent),
+    /* Gedung 33-36% — jendela cyan baris */
+    radial-gradient(2px 2px at 34%   26%, rgba(0,220,200,0.70), transparent),
+    radial-gradient(2px 2px at 34%   32%, rgba(0,220,200,0.50), transparent),
+    radial-gradient(2px 2px at 35.5% 26%, rgba(0,220,200,0.60), transparent),
+    radial-gradient(2px 2px at 35.5% 32%, rgba(0,220,200,0.40), transparent),
+    /* Menara tengah 46-48% — puncak, lampu beacon merah */
+    radial-gradient(3px 3px at 46.5%  5%, rgba(255,50,50,0.90), transparent),
+    radial-gradient(2px 3px at 46.5% 14%, rgba(0,180,255,0.80), transparent),
+    radial-gradient(2px 3px at 46.5% 20%, rgba(0,180,255,0.60), transparent),
+    radial-gradient(2px 3px at 47.5% 14%, rgba(0,180,255,0.70), transparent),
+    radial-gradient(2px 3px at 47.5% 20%, rgba(0,180,255,0.50), transparent),
+    /* Gedung 55-57% — jendela putih kebiruan */
+    radial-gradient(2px 2px at 55.5% 22%, rgba(180,220,255,0.70), transparent),
+    radial-gradient(2px 2px at 55.5% 28%, rgba(180,220,255,0.50), transparent),
+    radial-gradient(2px 2px at 56.5% 22%, rgba(180,220,255,0.60), transparent),
+    radial-gradient(2px 2px at 56.5% 28%, rgba(180,220,255,0.40), transparent),
+    /* Gedung 60-62% — jendela cyan */
+    radial-gradient(2px 3px at 61%   20%, rgba(0,220,200,0.75), transparent),
+    radial-gradient(2px 3px at 61%   26%, rgba(0,220,200,0.55), transparent),
+    radial-gradient(2px 3px at 61%   32%, rgba(0,220,200,0.65), transparent),
+    /* Menara 72-74.5% — jendela ungu */
+    radial-gradient(2px 3px at 72.5% 12%, rgba(160,0,255,0.85), transparent),
+    radial-gradient(2px 3px at 72.5% 18%, rgba(160,0,255,0.65), transparent),
+    radial-gradient(2px 3px at 72.5% 24%, rgba(160,0,255,0.75), transparent),
+    radial-gradient(2px 3px at 72.5% 30%, rgba(160,0,255,0.50), transparent),
+    radial-gradient(2px 3px at 74%   18%, rgba(160,0,255,0.60), transparent),
+    radial-gradient(2px 3px at 74%   24%, rgba(160,0,255,0.45), transparent),
+    /* Gedung 81-84% — jendela biru */
+    radial-gradient(2px 2px at 82%   36%, rgba(0,160,255,0.70), transparent),
+    radial-gradient(2px 2px at 82%   42%, rgba(0,160,255,0.50), transparent),
+    radial-gradient(2px 2px at 83.5% 36%, rgba(0,160,255,0.60), transparent),
+    radial-gradient(2px 2px at 83.5% 42%, rgba(0,160,255,0.40), transparent);
+  background-size: 100% 100%;
+  animation: blink-neon 4s ease-in-out infinite;
+}
+
+/* ════════════════════════════════════════════════
+   BEDROOM — Kamar tidur malam (IMPROVED)
+   ════════════════════════════════════════════════ */
+
+/* Glow halo dari lampu meja — animasi bernapas */
+.lamp-halo {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+  will-change: opacity;
+  animation: lamp-breathe 3.5s ease-in-out infinite;
+}
+
+@keyframes lamp-breathe {
+  0%, 100% { opacity: 0.60; }
+  50%       { opacity: 1.00; }
+}
+
+/* Jendela dengan bulan — kanan atas, lebih besar & kaya detail */
+.bedroom-window {
+  position: absolute;
+  top: 7%;
+  right: 7%;
+  width: 110px;
+  height: 145px;
+  pointer-events: none;
+}
+
+/* Frame jendela — border lebih tegas, efek kaca bercahaya */
+.bedroom-window::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2.5px solid rgba(170,195,240,0.65);
+  border-radius: 7px 7px 0 0;
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(180,210,255,0.12) 0%, rgba(100,130,220,0.06) 60%, transparent 100%);
+  box-shadow:
+    0 0 22px rgba(140,170,255,0.28) inset,
+    0 0 8px  rgba(180,210,255,0.18);
+}
+
+/* Palang tengah jendela — palang horizontal & vertikal */
+.bedroom-window::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  /* Palang vertikal tengah */
+  background:
+    linear-gradient(90deg,  transparent 49%, rgba(170,195,240,0.50) 49%, rgba(170,195,240,0.50) 51%, transparent 51%),
+    linear-gradient(180deg, transparent 49%, rgba(170,195,240,0.50) 49%, rgba(170,195,240,0.50) 51%, transparent 51%);
+}
+
+/* Tirai kiri — menggantung di sisi kiri jendela */
+.curtain-left {
+  position: absolute;
+  top: 6%;
+  right: calc(7% + 105px);
+  width: 22px;
+  height: 152px;
+  pointer-events: none;
+  background: linear-gradient(to right,
+    rgba(70,45,100,0.70) 0%,
+    rgba(55,35,85,0.55) 60%,
+    rgba(40,25,65,0.30) 100%
+  );
+  clip-path: polygon(0% 0%, 100% 0%, 75% 100%, 0% 100%);
+  border-radius: 2px 0 0 0;
+}
+
+/* Tirai kanan — menggantung di sisi kanan jendela */
+.curtain-right {
+  position: absolute;
+  top: 6%;
+  right: calc(7% - 15px);
+  width: 22px;
+  height: 152px;
+  pointer-events: none;
+  background: linear-gradient(to left,
+    rgba(70,45,100,0.70) 0%,
+    rgba(55,35,85,0.55) 60%,
+    rgba(40,25,65,0.30) 100%
+  );
+  clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 25% 100%);
+  border-radius: 0 2px 0 0;
+}
+
+/* Cahaya bulan masuk lewat jendela — berkas cahaya lebar */
+.moonbeam {
+  position: absolute;
+  top: calc(7% + 145px);
+  right: 7%;
+  width: 110px;
+  height: 220px;
+  pointer-events: none;
+  background: linear-gradient(175deg,
+    rgba(180,200,255,0.10) 0%,
+    rgba(160,185,255,0.06) 40%,
+    transparent 100%
+  );
+  transform-origin: top center;
+  clip-path: polygon(10% 0%, 90% 0%, 120% 100%, -20% 100%);
+  will-change: opacity;
+  animation: moonbeam-sway 10s ease-in-out infinite alternate;
+}
+
+@keyframes moonbeam-sway {
+  0%   { opacity: 0.55; }
+  100% { opacity: 1.00; }
+}
+
+/* Lantai — pantulan hangat lampu + bulan */
+.bedroom-floor {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 18%;
+  pointer-events: none;
+  background: linear-gradient(to top,
+    rgba(65,38,12,0.38) 0%,
+    rgba(50,28,8,0.18) 55%,
+    transparent 100%
+  );
+}
+
+/* ════════════════════════════════════════════════
+   FANTASY — Langit negeri dongeng
+   ════════════════════════════════════════════════ */
+
+/* Aurora borealis — ribbon melayang */
+.aurora-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 55%;
+  pointer-events: none;
+  will-change: opacity;
+  overflow: hidden;
+}
+
+.aurora-layer::before {
+  content: '';
+  position: absolute;
+  top: -30%;
+  left: -20%;
+  right: -20%;
+  height: 160%;
+  background:
+    radial-gradient(ellipse 80% 40% at 30% 30%,
+      rgba(80,220,180,0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 35% at 70% 20%,
+      rgba(120,80,255,0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 30% at 50% 50%,
+      rgba(60,200,255,0.10) 0%, transparent 55%);
+  animation: aurora-shift 10s ease-in-out infinite alternate;
+  will-change: transform, opacity;
+}
+
+.aurora-layer::after {
+  content: '';
+  position: absolute;
+  top: -20%;
+  left: -30%;
+  right: -30%;
+  height: 120%;
+  background:
+    radial-gradient(ellipse 70% 30% at 60% 40%,
+      rgba(200,100,255,0.12) 0%, transparent 55%),
+    radial-gradient(ellipse 55% 25% at 25% 60%,
+      rgba(80,255,200,0.10) 0%, transparent 50%);
+  animation: aurora-shift 14s ease-in-out 3s infinite alternate-reverse;
+  will-change: transform, opacity;
+}
+
+@keyframes aurora-shift {
+  0%   { transform: translateX(-4%); opacity: 0.7; }
+  100% { transform: translateX(4%);  opacity: 1.0; }
+}
+
+/* Kastil siluet */
+.castle-layer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 45%;
+  pointer-events: none;
+  background: rgba(8,5,20,0.82);
+  clip-path: polygon(
+    /* kiri bawah */
+    0% 100%, 0% 85%,
+    /* tower kiri jauh */
+    4% 85%, 4% 60%, 5.5% 55%, 7% 60%, 7% 70%,
+    /* tembok */
+    10% 70%, 10% 78%,
+    /* tower kiri tengah */
+    13% 78%, 13% 52%, 14% 46%, 15.5% 40%, 17% 46%, 17% 52%,
+    /* tembok */
+    20% 52%, 20% 72%,
+    /* tower tengah kiri */
+    24% 72%, 24% 55%, 25.5% 48%, 27% 55%, 27% 72%,
+    /* MAIN TOWER kiri */
+    30% 72%, 30% 30%, 31% 22%, 31.5% 15%, 32.5% 10%, 33% 8%,
+    /* flag spire */
+    33.5% 0%, 34% 8%,
+    /* main tower */
+    34.5% 8%, 35% 15%, 35.5% 22%, 36% 30%,
+    /* battlements */
+    37% 30%, 37% 35%, 38% 35%, 38% 30%, 39% 30%, 39% 35%, 40% 35%, 40% 30%,
+    /* tembok ke MAIN TOWER kanan */
+    41% 30%, 41% 22%, 42% 15%, 43% 8%,
+    43.5% 0%, 44% 8%,
+    44.5% 8%, 45% 15%, 46% 22%, 46.5% 30%,
+    47% 30%, 47% 35%, 48% 35%, 48% 30%, 49% 30%, 49% 35%, 50% 35%, 50% 30%,
+    /* turun ke tower samping */
+    51% 30%, 51% 48%, 52% 55%, 53.5% 48%, 55% 55%, 55% 68%,
+    58% 68%, 58% 58%, 60% 50%, 62% 58%, 62% 68%,
+    65% 68%, 65% 75%,
+    70% 75%, 70% 58%, 72% 50%, 74% 58%, 74% 75%,
+    78% 75%, 78% 80%,
+    82% 80%, 82% 62%, 84% 54%, 85.5% 48%, 87% 54%, 87% 62%,
+    90% 62%, 90% 80%,
+    94% 80%, 94% 68%, 96% 60%, 98% 68%, 98% 80%,
+    100% 80%, 100% 100%
+  );
+}
+
+/* Kastil depan — lebih gelap, lebih tinggi */
+.castle-layer::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  background: rgba(4,2,12,0.70);
+  clip-path: polygon(
+    0% 100%, 0% 90%,
+    5% 90%, 5% 80%,
+    10% 80%, 10% 88%, 15% 88%, 15% 72%,
+    18% 72%, 18% 60%, 20% 52%, 22% 60%, 22% 72%,
+    26% 72%, 26% 85%, 30% 85%, 30% 70%,
+    34% 70%, 34% 55%, 36% 45%, 37.5% 38%, 39% 45%, 39% 55%,
+    43% 55%, 43% 45%, 45% 38%, 47% 45%, 47% 55%,
+    51% 55%, 51% 70%, 55% 70%, 55% 82%,
+    60% 82%, 60% 68%, 63% 60%, 65% 68%, 65% 82%,
+    70% 82%, 70% 75%, 75% 75%, 75% 88%,
+    80% 88%, 80% 78%, 82% 68%, 85% 78%, 85% 88%,
+    90% 88%, 90% 92%, 95% 92%, 95% 85%, 100% 85%, 100% 100%
+  );
+}
+
+/* Bintang besar / bulan di langit fantasy */
+.fantasy-moon {
+  position: absolute;
+  top: 6%;
+  left: 17%;
+  width: 80px;
+  height: 80px;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    rgba(255,240,200,0.75) 20%,
+    rgba(240,210,160,0.40) 50%,
+    transparent 75%
+  );
+  box-shadow:
+    0 0 30px rgba(255,230,150,0.30),
+    0 0 60px rgba(255,200,100,0.15);
+  will-change: opacity;
+  animation: pulse-moon 8s ease-in-out infinite;
+}
+
+/* Kunang-kunang / bintang besar melayang */
+.firefly-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Kabut bawah kastil */
+.castle-mist {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 20%;
+  pointer-events: none;
+  background: linear-gradient(to top,
+    rgba(40,10,80,0.45) 0%,
+    rgba(60,20,100,0.20) 40%,
+    transparent 100%
+  );
+  filter: blur(6px);
+}
+
+/* Stars untuk fantasy — lebih banyak & terang */
+.fantasy-stars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  will-change: opacity;
+  background-image:
+    radial-gradient(1.5px 1.5px at 8%  10%, rgba(255,255,220,0.90), transparent),
+    radial-gradient(2px   2px   at 20% 5%,  rgba(255,240,180,0.85), transparent),
+    radial-gradient(1px   1px   at 35% 18%, rgba(255,255,255,0.75), transparent),
+    radial-gradient(2px   2px   at 50% 8%,  rgba(220,200,255,0.80), transparent),
+    radial-gradient(1.5px 1.5px at 65% 3%,  rgba(255,255,220,0.85), transparent),
+    radial-gradient(1px   1px   at 78% 15%, rgba(200,220,255,0.70), transparent),
+    radial-gradient(2px   2px   at 90% 6%,  rgba(255,240,200,0.80), transparent),
+    radial-gradient(1px   1px   at 12% 28%, rgba(255,255,255,0.65), transparent),
+    radial-gradient(1.5px 1.5px at 42% 32%, rgba(200,180,255,0.75), transparent),
+    radial-gradient(1px   1px   at 72% 25%, rgba(255,220,255,0.70), transparent),
+    radial-gradient(2px   2px   at 88% 22%, rgba(180,200,255,0.65), transparent);
+  background-size: 500px 500px;
+  animation: twinkle-a 7s ease-in-out infinite alternate;
+}
+
+/* ════════════════════════════════════════════════
+   LANDSCAPE OVERRIDES
+   Berlaku untuk mobile-landscape & desktop-landscape
+   (viewport tinggi < ~500px atau orientasi landscape)
+   ════════════════════════════════════════════════ */
+
+/* ── BEDROOM landscape ── */
+.layout-mobile-landscape .bedroom-window,
+.layout-desktop-landscape .bedroom-window {
+  top: 5%;
+  right: 5%;
+  width: 80px;
+  height: 105px;
+}
+.layout-mobile-landscape .window-rain,
+.layout-desktop-landscape .window-rain {
+  top: 5%;
+  right: 5%;
+  width: 80px;
+  height: 105px;
+}
+.layout-mobile-landscape .curtain-left,
+.layout-desktop-landscape .curtain-left {
+  top: 4%;
+  right: calc(5% + 76px);
+  height: 112px;
+  width: 18px;
+}
+.layout-mobile-landscape .curtain-right,
+.layout-desktop-landscape .curtain-right {
+  top: 4%;
+  right: calc(5% - 12px);
+  height: 112px;
+  width: 18px;
+}
+.layout-mobile-landscape .moonbeam,
+.layout-desktop-landscape .moonbeam {
+  top: calc(5% + 105px);
+  right: 5%;
+  width: 80px;
+  height: 160px;
+}
+.layout-mobile-landscape .bed-layer,
+.layout-desktop-landscape .bed-layer {
+  height: 38%;
+}
+.layout-mobile-landscape .bedroom-floor,
+.layout-desktop-landscape .bedroom-floor {
+  height: 12%;
+}
+
+/* ── OCEAN landscape ── */
+.layout-mobile-landscape .wave-layer,
+.layout-desktop-landscape .wave-layer {
+  height: 30%;
+}
+
+/* ── FANTASY landscape ── */
+.layout-mobile-landscape .aurora-layer,
+.layout-desktop-landscape .aurora-layer {
+  height: 45%;
+}
+.layout-mobile-landscape .castle-layer,
+.layout-desktop-landscape .castle-layer {
+  height: 55%;
+}
+.layout-mobile-landscape .castle-mist,
+.layout-desktop-landscape .castle-mist {
+  height: 14%;
+}
+.layout-mobile-landscape .fantasy-stars,
+.layout-desktop-landscape .fantasy-stars {
+  background-size: 380px 300px;
+}
+.layout-mobile-landscape .sparkle-layer,
+.layout-desktop-landscape .sparkle-layer {
+  background-size: 300px 260px;
+}
+.layout-mobile-landscape .fantasy-moon,
+.layout-desktop-landscape .fantasy-moon {
+  width: 56px;
+  height: 56px;
+  top: 8%;
+  left: 12%;
+}
+
+/* ── FUTURECITY landscape ── */
+.layout-mobile-landscape .city-layer,
+.layout-desktop-landscape .city-layer {
+  height: 58%;
+}
+.layout-mobile-landscape .city-windows,
+.layout-desktop-landscape .city-windows {
+  height: 58%;
+}
+.layout-mobile-landscape .scan-line,
+.layout-desktop-landscape .scan-line {
+  display: none;
+}
+
+
+/* ══════════════════════════════════════════════════════
+   TAMAN MALAM (nightgarden) — IMPROVED
+══════════════════════════════════════════════════════ */
+
+@keyframes leaf-sway {
+  0%,100% { transform: rotate(-2.5deg) translateX(-1px); }
+  33%     { transform: rotate(1.5deg) translateX(2px); }
+  66%     { transform: rotate(-1deg) translateX(1px); }
+}
+@keyframes leaf-sway-slow {
+  0%,100% { transform: rotate(-1.5deg); }
+  50%     { transform: rotate(2.5deg); }
+}
+@keyframes firefly-blink {
+  0%,100% { opacity:0; transform:translate(0,0) scale(0.8); }
+  15%     { opacity:0.9; }
+  45%     { opacity:0.7; transform:translate(var(--fx),var(--fy)) scale(1.3); }
+  70%     { opacity:0.3; transform:translate(calc(var(--fx)*0.6),calc(var(--fy)*1.4)) scale(1); }
+  85%     { opacity:0.6; }
+}
+@keyframes garden-mist {
+  0%,100% { opacity:0.55; transform:translateX(0) scaleX(1); }
+  50%     { opacity:0.30; transform:translateX(18px) scaleX(1.04); }
+}
+@keyframes garden-mist2 {
+  0%,100% { opacity:0.35; transform:translateX(0) scaleX(1); }
+  50%     { opacity:0.18; transform:translateX(-14px) scaleX(0.97); }
+}
+@keyframes pond-ripple {
+  0%,100% { transform:scaleX(1) scaleY(1); opacity:0.5; }
+  50%     { transform:scaleX(1.06) scaleY(0.85); opacity:0.7; }
+}
+@keyframes garden-glow-pulse {
+  0%,100% { opacity:0.45; }
+  50%     { opacity:0.70; }
+}
+@keyframes lantern-sway {
+  0%,100% { transform:rotate(-4deg); }
+  50%     { transform:rotate(4deg); }
+}
+@keyframes lantern-glow {
+  0%,100% { box-shadow:0 0 14px 6px rgba(255,140,30,0.55), 0 0 28px 12px rgba(255,100,10,0.25); }
+  50%     { box-shadow:0 0 20px 9px rgba(255,160,50,0.70), 0 0 40px 18px rgba(255,130,20,0.35); }
+}
+@keyframes moon-glow-garden {
+  0%,100% { box-shadow:0 0 22px 10px rgba(200,220,255,0.30), 0 0 50px 22px rgba(160,190,255,0.12); }
+  50%     { box-shadow:0 0 30px 14px rgba(210,230,255,0.40), 0 0 65px 30px rgba(180,210,255,0.18); }
+}
+
+/* Sky gradient overlay */
+.garden-sky {
+  position:absolute; top:0; left:0; right:0; bottom:22%;
+  background:linear-gradient(to bottom,
+    #010905 0%,
+    #020e08 35%,
+    #031408 65%,
+    rgba(8,40,18,0.55) 100%);
+  pointer-events:none;
+}
+/* Bulan taman malam */
+.garden-moon {
+  position:absolute; top:7%; right:12%;
+  width:36px; height:36px; border-radius:50%;
+  background:radial-gradient(circle at 38% 35%,
+    rgba(240,248,255,0.96) 0%,
+    rgba(210,228,255,0.80) 40%,
+    rgba(170,200,255,0.40) 70%,
+    transparent 88%);
+  animation:moon-glow-garden 8s ease-in-out infinite;
+  pointer-events:none; z-index:1;
+}
+/* Cincin cahaya bulan */
+.garden-moon-halo {
+  position:absolute; top:7%; right:12%;
+  width:36px; height:36px; border-radius:50%;
+  transform:translate(-30%, -30%);
+  background:radial-gradient(circle,
+    transparent 42%,
+    rgba(180,210,255,0.08) 55%,
+    rgba(160,195,255,0.04) 70%,
+    transparent 85%);
+  pointer-events:none;
+  filter:blur(3px);
+}
+/* Ground — tanah dengan gradien lebih kaya */
+.garden-ground {
+  position:absolute; bottom:0; left:0; right:0; height:22%;
+  background:linear-gradient(to top,
+    rgba(3,18,8,0.98) 0%,
+    rgba(6,32,14,0.85) 30%,
+    rgba(10,50,20,0.65) 65%,
+    rgba(14,65,26,0.28) 100%);
+  pointer-events:none;
+}
+/* Batas rumput bergelombang — lebih organik */
+.garden-grass {
+  position:absolute; bottom:18%; left:0; right:0; height:7%;
+  background:linear-gradient(to top,
+    rgba(8,50,18,0.90) 0%,
+    rgba(12,70,26,0.75) 50%,
+    rgba(16,85,32,0.50) 100%);
+  clip-path:polygon(
+    0% 100%, 0% 55%,
+    1% 28%, 2% 18%, 3% 35%, 4% 10%, 5% 30%, 6% 8%, 7% 28%,
+    8% 48%, 9% 20%, 10% 40%, 11% 18%, 12% 38%, 13% 55%, 14% 28%,
+    15% 15%, 16% 42%, 17% 22%, 18% 50%, 19% 18%, 20% 38%,
+    21% 12%, 22% 32%, 23% 50%, 24% 22%, 25% 45%, 26% 20%, 27% 38%,
+    28% 58%, 29% 24%, 30% 16%, 31% 40%, 32% 18%, 33% 36%, 34% 58%,
+    35% 28%, 36% 12%, 37% 35%, 38% 55%, 39% 22%, 40% 42%,
+    41% 18%, 42% 38%, 43% 10%, 44% 32%, 45% 52%, 46% 25%, 47% 45%,
+    48% 15%, 49% 36%, 50% 56%, 51% 22%, 52% 40%, 53% 14%, 54% 34%,
+    55% 58%, 56% 26%, 57% 14%, 58% 38%, 59% 18%, 60% 40%,
+    61% 60%, 62% 28%, 63% 15%, 64% 38%, 65% 22%, 66% 44%,
+    67% 18%, 68% 40%, 69% 12%, 70% 32%, 71% 55%, 72% 25%,
+    73% 45%, 74% 20%, 75% 40%, 76% 60%, 77% 28%, 78% 15%,
+    79% 38%, 80% 18%, 81% 42%, 82% 22%, 83% 50%, 84% 28%,
+    85% 15%, 86% 38%, 87% 58%, 88% 24%, 89% 12%, 90% 35%,
+    91% 55%, 92% 22%, 93% 40%, 94% 18%, 95% 38%, 96% 12%,
+    97% 32%, 98% 52%, 99% 30%, 100% 48%, 100% 100%
+  );
+  pointer-events:none;
+}
+/* Lapisan rumput atas — lebih terang */
+.garden-grass2 {
+  position:absolute; bottom:22%; left:0; right:0; height:4%;
+  background:rgba(14,72,28,0.45);
+  clip-path:polygon(
+    0% 100%, 0% 65%, 3% 25%, 6% 55%, 9% 20%, 12% 60%, 16% 30%,
+    20% 70%, 24% 35%, 28% 65%, 32% 22%, 36% 58%, 40% 28%,
+    44% 68%, 48% 32%, 52% 62%, 56% 18%, 60% 52%, 64% 28%,
+    68% 65%, 72% 30%, 76% 62%, 80% 25%, 84% 58%, 88% 30%,
+    92% 62%, 96% 28%, 100% 58%, 100% 100%
+  );
+  pointer-events:none;
+}
+/* Pohon bulat taman — lebih detail */
+.garden-tree {
+  position:absolute; bottom:20%; pointer-events:none;
+  display:flex; flex-direction:column; align-items:center;
+  transform-origin:bottom center;
+}
+.garden-tree.sway-a { animation:leaf-sway 7s ease-in-out infinite; }
+.garden-tree.sway-b { animation:leaf-sway-slow 9s ease-in-out infinite; }
+.garden-tree.sway-c { animation:leaf-sway 5.5s ease-in-out 1s infinite; }
+.garden-tree .trunk {
+  width:6px;
+  background:rgba(8,28,12,0.88);
+  border-radius:2px 2px 1px 1px;
+}
+.garden-tree .crown {
+  position:relative; margin-bottom:-4px;
+  background:rgba(6,22,10,0.92);
+  clip-path:polygon(
+    50% 0%,
+    62% 18%, 75% 14%, 68% 28%,
+    82% 26%, 72% 38%, 88% 40%,
+    76% 50%, 90% 55%, 74% 60%,
+    85% 70%, 68% 68%, 72% 82%,
+    58% 74%, 55% 90%, 50% 78%,
+    45% 90%, 42% 74%, 28% 82%,
+    32% 68%, 15% 70%, 26% 60%,
+    10% 55%, 24% 50%, 12% 40%,
+    28% 38%, 18% 26%, 32% 28%,
+    25% 14%, 38% 18%
+  );
+}
+/* Semak kecil */
+.garden-bush {
+  position:absolute; bottom:19%; pointer-events:none;
+  background:rgba(6,22,10,0.88);
+  clip-path:polygon(
+    10% 100%, 0% 65%, 8% 45%, 20% 55%, 18% 30%,
+    32% 40%, 38% 15%, 50% 35%, 55% 10%, 65% 32%,
+    72% 20%, 80% 42%, 90% 35%, 100% 60%, 90% 100%
+  );
+}
+/* Kabut tanah berlapis */
+.garden-mist {
+  position:absolute; bottom:17%; left:0; right:0; height:12%;
+  background:linear-gradient(to top,
+    rgba(180,230,200,0.16) 0%,
+    rgba(150,210,180,0.08) 50%,
+    transparent 100%);
+  filter:blur(12px);
+  animation:garden-mist 9s ease-in-out infinite;
+  pointer-events:none;
+}
+.garden-mist2 {
+  position:absolute; bottom:16%; left:5%; right:5%; height:8%;
+  background:linear-gradient(to top,
+    rgba(160,220,190,0.10) 0%,
+    transparent 100%);
+  filter:blur(16px);
+  animation:garden-mist2 11s ease-in-out 2s infinite;
+  pointer-events:none;
+}
+/* Kolam pantulan — lebih detail & bercahaya */
+.garden-pond {
+  position:absolute; bottom:19.5%; left:36%; width:28%; height:3.5%;
+  background:
+    radial-gradient(ellipse at 48% 40%,
+      rgba(80,180,220,0.40) 0%,
+      rgba(40,120,170,0.28) 45%,
+      rgba(10,60,100,0.15) 75%,
+      transparent 100%);
+  border-radius:50%;
+  box-shadow:
+    0 0 12px 4px rgba(60,150,200,0.18),
+    inset 0 0 8px rgba(100,200,255,0.12);
+  animation:pond-ripple 6s ease-in-out infinite;
+  pointer-events:none;
+}
+/* Pantulan bulan di kolam */
+.garden-pond::after {
+  content:''; position:absolute;
+  top:20%; left:42%; width:16%; height:50%;
+  border-radius:50%;
+  background:radial-gradient(ellipse, rgba(220,240,255,0.35) 0%, transparent 70%);
+  filter:blur(2px);
+  animation:garden-glow-pulse 4s ease-in-out infinite;
+}
+/* Lentera taman */
+.garden-lantern {
+  position:absolute; pointer-events:none;
+  display:flex; flex-direction:column; align-items:center;
+  animation:lantern-sway 6s ease-in-out infinite;
+  transform-origin:top center;
+}
+.garden-lantern .lantern-pole {
+  width:2px; height:50px;
+  background:linear-gradient(to bottom, rgba(100,80,50,0.75), rgba(70,55,30,0.60));
+}
+.garden-lantern .lantern-body {
+  width:12px; height:16px; border-radius:3px 3px 4px 4px;
+  background:rgba(255,160,40,0.90);
+  animation:lantern-glow 3s ease-in-out infinite;
+}
+.garden-lantern .lantern-cap {
+  width:16px; height:5px; border-radius:2px 2px 0 0;
+  background:rgba(80,55,25,0.80);
+  margin-bottom:-1px;
+}
+/* Jalan setapak taman */
+.garden-path {
+  position:absolute; bottom:19%; left:42%; width:16%; height:3%;
+  background:radial-gradient(ellipse, rgba(160,140,100,0.20) 0%, transparent 80%);
+  border-radius:50%;
+  pointer-events:none;
+}
+/* Firefly */
+.gfw {
+  position:absolute; width:3px; height:3px; border-radius:50%;
+  background:rgba(170,255,190,0.95);
+  box-shadow:0 0 6px 3px rgba(110,255,150,0.70), 0 0 12px 5px rgba(80,230,120,0.30);
+  pointer-events:none;
+  animation:firefly-blink ease-in-out infinite;
+}
+/* Partikel debu cahaya bulan */
+.garden-dust {
+  position:absolute; width:2px; height:2px; border-radius:50%;
+  background:rgba(200,220,255,0.60);
+  pointer-events:none;
+  animation:firefly-blink ease-in-out infinite;
+}
+
+/* ══════════════════════════════════════════════════════
+   JALAN RAYA MALAM (nighthighway) — IMPROVED
+══════════════════════════════════════════════════════ */
+
+@keyframes lane-dash {
+  from { background-position: center 0px; }
+  to   { background-position: center 44px; }
+}
+@keyframes car-left {
+  0%   { transform:translateX(-120%); opacity:0; }
+  6%   { opacity:1; }
+  90%  { opacity:1; }
+  100% { transform:translateX(220%); opacity:0; }
+}
+@keyframes car-right {
+  0%   { transform:translateX(220%); opacity:0; }
+  6%   { opacity:1; }
+  90%  { opacity:1; }
+  100% { transform:translateX(-120%); opacity:0; }
+}
+@keyframes city-glow-pulse {
+  0%,100% { opacity:0.60; }
+  50%     { opacity:0.92; }
+}
+@keyframes hw-building-blink {
+  0%,94%,96%,100% { opacity:1; }
+  95%             { opacity:0.3; }
+}
+@keyframes hw-neon-flicker {
+  0%,88%,90%,93%,100% { opacity:0.85; }
+  89%                  { opacity:0.2; }
+  91%,92%             { opacity:0.6; }
+}
+@keyframes rain-fall {
+  from { transform:translateY(-10px); }
+  to   { transform:translateY(calc(100vh + 10px)); }
+}
+@keyframes hw-moon-rise {
+  0%,100% { box-shadow:0 0 18px 8px rgba(200,220,255,0.28), 0 0 40px 18px rgba(170,200,255,0.10); }
+  50%     { box-shadow:0 0 24px 11px rgba(215,230,255,0.36), 0 0 55px 25px rgba(190,215,255,0.15); }
+}
+@keyframes hw-rain-drift {
+  0%   { transform:translateX(-2vw) translateY(-10px); }
+  100% { transform:translateX(2vw)  translateY(calc(100vh + 10px)); }
+}
+
+/* Langit malam dengan gradien lebih dramatis */
+.hw-sky {
+  position:absolute; top:0; left:0; right:0; bottom:42%;
+  background:linear-gradient(to bottom,
+    #010208 0%,
+    #020510 30%,
+    #030a18 60%,
+    rgba(240,80,5,0.07) 82%,
+    rgba(255,110,0,0.14) 100%);
+  pointer-events:none;
+}
+/* Bulan di langit highway */
+.hw-moon {
+  position:absolute; top:8%; right:16%;
+  width:28px; height:28px; border-radius:50%;
+  background:radial-gradient(circle at 40% 38%,
+    rgba(235,245,255,0.95) 0%,
+    rgba(205,225,255,0.78) 38%,
+    rgba(165,195,255,0.38) 68%,
+    transparent 86%);
+  animation:hw-moon-rise 9s ease-in-out infinite;
+  pointer-events:none; z-index:1;
+}
+/* Awan tipis malam */
+.hw-cloud {
+  position:absolute; pointer-events:none;
+  border-radius:50px;
+  background:rgba(255,255,255,0.04);
+  filter:blur(8px);
+}
+/* Siluet gedung kota di cakrawala — lebih detail */
+.hw-city-bg {
+  position:absolute; bottom:42%; left:0; right:0; height:20%;
+  background:
+    linear-gradient(to top,
+      rgba(8,15,30,0.92) 0%,
+      rgba(6,12,25,0.80) 50%,
+      transparent 100%);
+  clip-path:polygon(
+    0% 100%, 0% 65%,
+    2% 65%, 2% 30%, 4% 30%, 4% 20%, 5% 20%, 5% 28%, 6% 28%,
+    6% 12%, 7% 12%, 7% 8%, 8% 8%, 8% 12%, 9% 12%, 9% 30%,
+    10% 30%, 10% 18%, 11% 18%, 11% 15%, 12% 15%, 12% 22%,
+    14% 22%, 14% 40%, 15% 40%, 15% 35%, 16% 35%, 16% 18%,
+    17% 18%, 17% 12%, 18% 12%, 18% 18%, 19% 18%, 19% 35%,
+    20% 35%, 20% 28%, 21% 28%, 21% 15%, 22% 15%, 22% 25%,
+    24% 25%, 24% 42%, 26% 42%, 26% 22%, 27% 22%, 27% 18%,
+    28% 18%, 28% 28%, 29% 28%, 29% 45%, 30% 45%, 30% 32%,
+    32% 32%, 32% 20%, 33% 20%, 33% 15%, 34% 15%, 34% 18%,
+    35% 18%, 35% 30%, 37% 30%, 37% 42%, 38% 42%, 38% 28%,
+    40% 28%, 40% 18%, 41% 18%, 41% 10%, 42% 10%, 42% 14%,
+    43% 14%, 43% 28%, 44% 28%, 44% 38%, 46% 38%, 46% 22%,
+    47% 22%, 47% 15%, 48% 15%, 48% 22%, 50% 22%, 50% 35%,
+    52% 35%, 52% 45%, 54% 45%, 54% 30%, 55% 30%, 55% 20%,
+    56% 20%, 56% 28%, 58% 28%, 58% 42%, 60% 42%, 60% 30%,
+    61% 30%, 61% 18%, 62% 18%, 62% 12%, 63% 12%, 63% 18%,
+    65% 18%, 65% 32%, 66% 32%, 66% 45%, 68% 45%, 68% 28%,
+    70% 28%, 70% 18%, 71% 18%, 71% 22%, 72% 22%, 72% 38%,
+    74% 38%, 74% 25%, 75% 25%, 75% 15%, 76% 15%, 76% 22%,
+    78% 22%, 78% 35%, 80% 35%, 80% 48%, 82% 48%, 82% 32%,
+    83% 32%, 83% 20%, 84% 20%, 84% 15%, 85% 15%, 85% 25%,
+    87% 25%, 87% 40%, 88% 40%, 88% 28%, 90% 28%, 90% 18%,
+    91% 18%, 91% 12%, 92% 12%, 92% 18%, 94% 18%, 94% 32%,
+    96% 32%, 96% 42%, 98% 42%, 98% 65%, 100% 65%, 100% 100%
+  );
+  pointer-events:none; z-index:0;
+}
+/* Cahaya kota di cakrawala — sedikit overlap ke jalan agar tersambung */
+.hw-horizon {
+  position:absolute; bottom:40%; left:0; right:0; height:12%;
+  background:
+    radial-gradient(ellipse 55% 100% at 50% 100%,
+      rgba(255,115,5,0.22) 0%,
+      rgba(210,65,0,0.10) 50%,
+      transparent 75%),
+    radial-gradient(ellipse 30% 80% at 28% 100%,
+      rgba(255,80,0,0.09) 0%,
+      transparent 65%),
+    radial-gradient(ellipse 30% 80% at 72% 100%,
+      rgba(255,80,0,0.09) 0%,
+      transparent 65%);
+  filter:blur(7px);
+  animation:city-glow-pulse 5s ease-in-out infinite;
+  pointer-events:none; z-index:1;
+}
+/* Lampu neon gedung di cakrawala */
+.hw-neon-lights {
+  position:absolute; bottom:42%; left:0; right:0; height:15%;
+  background-image:
+    radial-gradient(2px 2px at 8% 30%, rgba(255,50,50,0.80) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 8% 55%, rgba(255,50,50,0.65) 0%, transparent 100%),
+    radial-gradient(2px 2px at 15% 20%, rgba(0,200,255,0.75) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 15% 45%, rgba(0,200,255,0.60) 0%, transparent 100%),
+    radial-gradient(2px 2px at 18% 25%, rgba(0,200,255,0.70) 0%, transparent 100%),
+    radial-gradient(2px 2px at 27% 18%, rgba(255,80,0,0.75) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 28% 38%, rgba(255,80,0,0.60) 0%, transparent 100%),
+    radial-gradient(2px 2px at 35% 12%, rgba(180,0,255,0.75) 0%, transparent 100%),
+    radial-gradient(2px 2px at 43% 22%, rgba(0,255,180,0.70) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 43% 42%, rgba(0,255,180,0.55) 0%, transparent 100%),
+    radial-gradient(2px 2px at 56% 15%, rgba(255,200,0,0.75) 0%, transparent 100%),
+    radial-gradient(2px 2px at 62% 28%, rgba(0,150,255,0.70) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 62% 48%, rgba(0,150,255,0.55) 0%, transparent 100%),
+    radial-gradient(2px 2px at 70% 18%, rgba(255,50,100,0.75) 0%, transparent 100%),
+    radial-gradient(2px 2px at 76% 10%, rgba(255,50,100,0.80) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 76% 25%, rgba(255,50,100,0.60) 0%, transparent 100%),
+    radial-gradient(2px 2px at 84% 22%, rgba(100,255,200,0.70) 0%, transparent 100%),
+    radial-gradient(2px 2px at 90% 15%, rgba(0,200,255,0.75) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 90% 35%, rgba(0,200,255,0.60) 0%, transparent 100%),
+    radial-gradient(2px 2px at 95% 28%, rgba(255,100,0,0.70) 0%, transparent 100%);
+  pointer-events:none; z-index:2;
+  animation:hw-building-blink 8s ease-in-out 3s infinite;
+}
+/* Jalan aspal — lebih gelap dan berkilat */
+.hw-road {
+  position:absolute; bottom:0; left:0; right:0; height:42%;
+  background:linear-gradient(to top,
+    #030508 0%,
+    #060810 35%,
+    #08101e 70%,
+    #0d1828 90%,
+    rgba(30,14,8,0.95) 100%);
+  pointer-events:none;
+}
+/* Penyambung jalan ke cakrawala — mengisi celah antara ujung hw-road dan hw-city-bg */
+.hw-road-cap {
+  position:absolute; bottom:42%; left:0; right:0; height:3%;
+  background:linear-gradient(to top,
+    #0a1222 0%,
+    rgba(10,18,34,0) 100%);
+  pointer-events:none; z-index:0;
+}
+/* Tekstur aspal — grain halus */
+.hw-road::before {
+  content:''; position:absolute; inset:0;
+  background-image:
+    repeating-linear-gradient(87deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 8px),
+    repeating-linear-gradient(3deg, rgba(255,255,255,0.010) 0px, rgba(255,255,255,0.010) 1px, transparent 1px, transparent 12px);
+  pointer-events:none;
+}
+/* Garis putus tengah */
+/* Garis putus tengah — animasi bergerak dari atas ke bawah */
+.hw-lane-center {
+  position:absolute; bottom:0; left:0; right:0; height:42%;
+  overflow:hidden;
+  pointer-events:none;
+}
+.hw-lane-center::before {
+  content:'';
+  position:absolute; inset:0;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(255,255,200,0.65) 0px,
+    rgba(255,255,200,0.65) 20px,
+    transparent 20px,
+    transparent 44px
+  );
+  background-size: 4px 44px;
+  background-position: center 0;
+  background-repeat: repeat-y;
+  animation: lane-dash 0.7s linear infinite;
+  /* Perspektif: hanya tampil di jalur tengah yang menyempit ke atas */
+  clip-path: polygon(46% 0%, 54% 0%, 58% 100%, 42% 100%);
+  mask-image: linear-gradient(to top, black 0%, black 30%, transparent 70%);
+  -webkit-mask-image: linear-gradient(to top, black 0%, black 30%, transparent 70%);
+}
+/* Garis tepi kiri */
+.hw-lane-edge-l {
+  position:absolute; bottom:0; height:42%;
+  pointer-events:none;
+  width:2px;
+  left:22%;
+  background: linear-gradient(to top,
+    rgba(255,255,210,0.55) 0%,
+    rgba(255,255,210,0.25) 40%,
+    transparent 100%);
+}
+/* Garis tepi kanan */
+.hw-lane-edge-r {
+  position:absolute; bottom:0; height:42%;
+  pointer-events:none;
+  background: linear-gradient(to top,
+    rgba(255,255,210,0.55) 0%,
+    rgba(255,255,210,0.25) 40%,
+    transparent 100%);
+  width:2px;
+  right:22%;
+}
+/* Desktop: geser garis tepi — kiri & kanan simetris terhadap area konten */
+/* Kiri: 160px (sidebar) + 22% dari lebar konten */
+/* Kanan: 22% dari lebar konten = calc(22% * (1 - 160px/100vw)) dari tepi kanan */
+.layout-desktop-portrait .hw-lane-edge-l  { left:  calc(160px + 0.22 * (100vw - 160px)); }
+.layout-desktop-landscape .hw-lane-edge-l { left:  calc(196px + 0.22 * (100vw - 196px)); }
+.layout-desktop-portrait .hw-lane-edge-r  { right: calc(0.22 * (100vw - 160px)); }
+.layout-desktop-landscape .hw-lane-edge-r { right: calc(0.22 * (100vw - 196px)); }
+/* hw-sky and hw-cloud also offset to not show behind sidebar */
+.layout-desktop-portrait .hw-sky  { left: 160px; }
+.layout-desktop-landscape .hw-sky { left: 196px; }
+
+/* Desktop: geser hw-lane-center agar marka jalan berada di tengah area konten (tidak sidebar) */
+.layout-desktop-portrait .hw-lane-center  { left: 160px; }
+.layout-desktop-landscape .hw-lane-center { left: 196px; }
+
+/* Desktop: geser semua elemen jalan & kota agar mulai dari tepi sidebar, tidak terpotong */
+.layout-desktop-portrait .hw-road,
+.layout-desktop-portrait .hw-road-cap,
+.layout-desktop-portrait .hw-reflect,
+.layout-desktop-portrait .hw-city-bg,
+.layout-desktop-portrait .hw-horizon,
+.layout-desktop-portrait .hw-neon-lights  { left: 160px; }
+.layout-desktop-landscape .hw-road,
+.layout-desktop-landscape .hw-road-cap,
+.layout-desktop-landscape .hw-reflect,
+.layout-desktop-landscape .hw-city-bg,
+.layout-desktop-landscape .hw-horizon,
+.layout-desktop-landscape .hw-neon-lights { left: 196px; }
+
+
+/* Pantulan lampu di aspal — lebih berwarna */
+.hw-reflect {
+  position:absolute; bottom:0; left:0; right:0; height:26%;
+  background:
+    radial-gradient(ellipse 22% 55% at 37% 0%, rgba(255,225,140,0.16) 0%, transparent 72%),
+    radial-gradient(ellipse 22% 55% at 63% 0%, rgba(255,225,140,0.16) 0%, transparent 72%),
+    radial-gradient(ellipse 10% 30% at 74% 0%, rgba(255,40,40,0.12) 0%, transparent 65%),
+    radial-gradient(ellipse 8%  25% at 26% 0%, rgba(255,40,40,0.12) 0%, transparent 65%),
+    radial-gradient(ellipse 15% 40% at 50% 0%, rgba(0,180,255,0.06) 0%, transparent 60%);
+  pointer-events:none;
+}
+/* Wrapper mobil */
+.hw-cars {
+  position:absolute; inset:0; pointer-events:none; overflow:hidden;
+}
+.hw-car {
+  position:absolute; border-radius:2px; pointer-events:none;
+}
+/* Mobil headlight — lebih terang dengan corona */
+.hw-car-hl {
+  height:4px; width:22px;
+  background:rgba(255,245,200,0.95);
+  box-shadow:
+    0 0 14px 6px rgba(255,230,140,0.55),
+    0 0 28px 12px rgba(255,210,80,0.22),
+    -24px 0 12px rgba(255,200,80,0.18);
+}
+/* Mobil taillight */
+.hw-car-tl {
+  height:4px; width:16px;
+  background:rgba(255,30,30,0.92);
+  box-shadow:
+    0 0 12px 5px rgba(255,10,10,0.55),
+    0 0 24px 10px rgba(200,0,0,0.22),
+    18px 0 10px rgba(220,0,0,0.18);
+}
+.hw-c1 { animation:car-left  9s linear 0s   infinite; }
+.hw-c2 { animation:car-left  13s linear 5s  infinite; }
+.hw-c3 { animation:car-right 11s linear 2s  infinite; }
+.hw-c4 { animation:car-right 15s linear 8s  infinite; }
+
+/* Tiang lampu jalan — lebih realistis */
+.hw-pole {
+  position:absolute; pointer-events:none;
+  display:flex; flex-direction:column; align-items:center;
+  z-index:3;
+  bottom:42%;
+  transform-origin:bottom center;
+}
+/* Urutan atas ke bawah: pole-head (kap) -> pole-arm (tiang) */
+.hw-pole .pole-head {
+  width:16px; height:6px; border-radius:3px 3px 0 0;
+  background:linear-gradient(to bottom, rgba(255,210,90,0.90), rgba(255,180,50,0.75));
+  box-shadow:0 0 12px 5px rgba(255,190,60,0.50), 0 0 24px 10px rgba(255,160,30,0.22);
+  flex-shrink:0;
+}
+.hw-pole .pole-arm {
+  width:2px; flex-shrink:0;
+  background:linear-gradient(to bottom, rgba(130,140,160,0.65), rgba(100,110,130,0.45));
+}
+.hw-pole .pole-cone {
+  flex-shrink:0;
+  width:0; height:0;
+  border-left:16px solid transparent;
+  border-right:16px solid transparent;
+  border-top:20px solid rgba(255,200,80,0.12);
+}
+/* Cahaya kerucut lampu */
+.hw-pole .pole-light-cone {
+  position:absolute; top:100%; left:50%;
+  width:60px; height:80px;
+  transform:translateX(-50%);
+  background:radial-gradient(ellipse at top, rgba(255,200,80,0.08) 0%, transparent 75%);
+  clip-path:polygon(30% 0%, 70% 0%, 100% 100%, 0% 100%);
+  pointer-events:none;
+}
+/* Hujan halus — efek drizzle malam */
+.hw-rain {
+  position:absolute; inset:0; overflow:hidden; pointer-events:none;
+}
+.hw-rain-drop {
+  position:absolute; width:1px; border-radius:1px;
+  background:linear-gradient(to bottom, transparent, rgba(180,210,255,0.35));
+  animation:hw-rain-drift linear infinite;
+}
+
+/* ══════════════════════════════════════════════════════
+   TATA SURYA (solarsystem) — IMPROVED
+══════════════════════════════════════════════════════ */
+
+@keyframes orbit-planet {
+  from { transform:rotate(var(--start)) translateX(var(--r)) rotate(calc(-1*var(--start))); }
+  to   { transform:rotate(calc(var(--start) + 360deg)) translateX(var(--r)) rotate(calc(-1*(var(--start)+360deg))); }
+}
+@keyframes sun-pulse {
+  0%,100% {
+    box-shadow:
+      0 0 28px 10px rgba(255,210,70,0.50),
+      0 0 60px 28px rgba(255,150,0,0.22),
+      0 0 100px 50px rgba(255,100,0,0.08);
+  }
+  50% {
+    box-shadow:
+      0 0 38px 16px rgba(255,230,90,0.62),
+      0 0 80px 38px rgba(255,170,10,0.28),
+      0 0 130px 65px rgba(255,120,0,0.12);
+  }
+}
+@keyframes comet-streak {
+  0%   { transform:translate(-12vw, 6vh);  opacity:0; }
+  6%   { opacity:1; }
+  90%  { opacity:0.75; }
+  100% { transform:translate(110vw, -28vh); opacity:0; }
+}
+@keyframes comet-streak2 {
+  0%   { transform:translate(-8vw, 3vh);  opacity:0; }
+  8%   { opacity:0.85; }
+  92%  { opacity:0.60; }
+  100% { transform:translate(106vw, -20vh); opacity:0; }
+}
+@keyframes nebula-breathe {
+  0%,100% { opacity:0.14; transform:scale(1); }
+  50%     { opacity:0.24; transform:scale(1.04); }
+}
+@keyframes planet-pulse {
+  0%,100% { filter:brightness(1) saturate(1); }
+  50%     { filter:brightness(1.18) saturate(1.12); }
+}
+@keyframes planet-float-a {
+  0%,100% { transform:translate(0px, 0px); }
+  25%     { transform:translate(14px, -18px); }
+  50%     { transform:translate(22px, -6px); }
+  75%     { transform:translate(8px, 14px); }
+}
+@keyframes planet-float-b {
+  0%,100% { transform:translate(0px, 0px); }
+  33%     { transform:translate(-18px, -14px); }
+  66%     { transform:translate(12px, -22px); }
+}
+@keyframes planet-float-c {
+  0%,100% { transform:translate(0px, 0px); }
+  20%     { transform:translate(12px, 18px); }
+  50%     { transform:translate(-16px, 8px); }
+  80%     { transform:translate(6px, -14px); }
+}
+@keyframes planet-float-d {
+  0%,100% { transform:translate(0px, 0px); }
+  40%     { transform:translate(-12px, -20px); }
+  70%     { transform:translate(18px, -8px); }
+}
+@keyframes planet-float-e {
+  0%,100% { transform:translate(0px, 0px); }
+  30%     { transform:translate(16px, 12px); }
+  60%     { transform:translate(-10px, -16px); }
+}
+@keyframes asteroid-drift {
+  0%   { transform:translate(0, 0) rotate(0deg); }
+  100% { transform:translate(3px, -5px) rotate(180deg); }
+}
+@keyframes ss-glow-ring {
+  0%,100% { opacity:0.05; }
+  50%     { opacity:0.10; }
+}
+@keyframes shooting-star {
+  0%   { transform:translateX(0) translateY(0); opacity:0; }
+  5%   { opacity:1; }
+  30%  { opacity:0; }
+  100% { transform:translateX(200px) translateY(60px); opacity:0; }
+}
+
+/* Nebula berlapis */
+.ss-nebula {
+  position:absolute; border-radius:50%; pointer-events:none;
+  animation:nebula-breathe 14s ease-in-out infinite;
+  filter:blur(2px);
+}
+/* Orbital ring halus */
+.ss-ring {
+  position:absolute; border-radius:50%; pointer-events:none;
+  border:1px solid rgba(255,255,255,0.07);
+  transform:translate(-50%,-50%);
+  animation:ss-glow-ring 12s ease-in-out infinite;
+}
+/* Matahari — lebih besar dan bercahaya */
+.ss-sun {
+  position:absolute; border-radius:50%; pointer-events:none;
+  background:radial-gradient(circle,
+    rgba(255,252,180,0.99) 8%,
+    rgba(255,230,80,0.92)  25%,
+    rgba(255,170,20,0.65)  48%,
+    rgba(255,110,0,0.28)   65%,
+    transparent 80%);
+  animation:sun-pulse 5s ease-in-out infinite;
+  z-index:1;
+}
+/* Korona matahari */
+.ss-sun::before {
+  content:''; position:absolute; inset:-30%; border-radius:50%;
+  background:radial-gradient(circle,
+    transparent 40%,
+    rgba(255,180,40,0.06) 55%,
+    rgba(255,140,0,0.03) 70%,
+    transparent 85%);
+  animation:sun-pulse 7s ease-in-out 1s infinite;
+}
+/* Planet wrapper */
+.ss-orbit-wrap {
+  position:absolute; pointer-events:none;
+  transform:translate(-50%,-50%);
+  animation:orbit-planet linear infinite;
+}
+/* Planet — dengan detail permukaan */
+.ss-planet {
+  position:absolute; border-radius:50%; pointer-events:none;
+  will-change: transform, filter;
+}
+/* Cincin saturnus-like pada planet besar */
+.ss-planet-ring {
+  position:absolute; pointer-events:none;
+  border-radius:50%;
+  border:2px solid rgba(255,210,120,0.35);
+  transform:translate(-50%,-50%) rotateX(70deg);
+}
+/* Komet utama */
+.ss-comet {
+  position:fixed; pointer-events:none; z-index:2;
+  height:2px; border-radius:2px;
+  background:linear-gradient(to right,
+    transparent 0%,
+    rgba(160,200,255,0.45) 30%,
+    rgba(210,230,255,0.75) 65%,
+    rgba(255,255,255,0.98) 100%);
+  box-shadow:0 0 4px 1px rgba(200,220,255,0.40);
+  animation:comet-streak 22s linear 8s infinite;
+}
+/* Komet kedua */
+.ss-comet2 {
+  position:fixed; pointer-events:none; z-index:2;
+  height:1.5px; border-radius:2px;
+  background:linear-gradient(to right,
+    transparent 0%,
+    rgba(180,210,255,0.35) 35%,
+    rgba(220,235,255,0.65) 70%,
+    rgba(255,255,255,0.90) 100%);
+  animation:comet-streak2 35s linear 18s infinite;
+}
+/* Asteroid kecil */
+.ss-asteroid {
+  position:absolute; border-radius:30%; pointer-events:none;
+  background:radial-gradient(circle at 35% 35%,
+    rgba(160,145,120,0.90) 0%,
+    rgba(110,95,75,0.85) 50%,
+    rgba(70,58,42,0.90) 100%);
+  animation:asteroid-drift 8s ease-in-out infinite alternate;
+  will-change: transform;
+}
+/* Bintang jatuh kecil */
+.ss-shooting {
+  position:absolute; pointer-events:none;
+  height:1px; border-radius:1px;
+  background:linear-gradient(to right, transparent, rgba(255,255,255,0.85));
+  animation:shooting-star linear infinite;
+}
+/* Dusty star cluster */
+.ss-cluster {
+  position:absolute; pointer-events:none;
+  border-radius:50%;
+  background:radial-gradient(circle, rgba(200,210,255,0.12) 0%, transparent 75%);
+  filter:blur(3px);
+  animation:nebula-breathe 20s ease-in-out infinite;
+}
+
+/* Landscape adjustments */
+.layout-mobile-landscape .garden-ground,
+.layout-desktop-landscape .garden-ground { height:18%; }
+.layout-mobile-landscape .garden-grass,
+.layout-desktop-landscape .garden-grass  { bottom:14%; }
+.layout-mobile-landscape .garden-grass2,
+.layout-desktop-landscape .garden-grass2 { bottom:18%; }
+.layout-mobile-landscape .garden-pond,
+.layout-desktop-landscape .garden-pond   { display:none; }
+.layout-mobile-landscape .garden-path,
+.layout-desktop-landscape .garden-path   { display:none; }
+.layout-mobile-landscape .hw-road,
+.layout-desktop-landscape .hw-road,
+.layout-mobile-landscape .hw-lane-center,
+.layout-desktop-landscape .hw-lane-center,
+.layout-mobile-landscape .hw-reflect,
+.layout-desktop-landscape .hw-reflect    { height:50%; }
+.layout-mobile-landscape .hw-sky,
+.layout-desktop-landscape .hw-sky        { bottom:50%; }
+.layout-mobile-landscape .hw-horizon,
+.layout-desktop-landscape .hw-horizon    { bottom:48%; }
+.layout-mobile-landscape .hw-neon-lights,
+.layout-desktop-landscape .hw-neon-lights { bottom:50%; }
+.layout-mobile-landscape .hw-city-bg,
+.layout-desktop-landscape .hw-city-bg    { bottom:50%; }
+.layout-mobile-landscape .hw-pole,
+.layout-desktop-landscape .hw-pole       { bottom:50%; transform-origin:bottom center; }
+.layout-mobile-landscape .hw-lane-edge-l,
+.layout-desktop-landscape .hw-lane-edge-l { height:50%; }
+.layout-mobile-landscape .hw-lane-edge-r,
+.layout-desktop-landscape .hw-lane-edge-r { height:50%; }
+
+/* Mobile portrait: cahaya & kota di DALAM area jalan (bawah 42%) agar tidak terpotong panel */
+.layout-mobile-portrait .hw-horizon {
+  bottom: 34%;
+  height: 10%;
+  filter: blur(4px);
+}
+.layout-mobile-portrait .hw-city-bg {
+  bottom: 36%;
+  height: 14%;
+}
+.layout-mobile-portrait .hw-neon-lights {
+  bottom: 36%;
+  height: 12%;
+  z-index: 3;
+}
+
+/* Portrait: penyambung jalan ke cakrawala tetap di bottom:42% (default sudah benar) */
+/* Landscape hw-road-cap ikut bottom:50% */
+.layout-mobile-landscape .hw-road-cap,
+.layout-desktop-landscape .hw-road-cap   { bottom:50%; }
+
+/* Mobile portrait: perbesar road-cap agar transisi jalan-ke-langit lebih halus */
+.layout-mobile-portrait .hw-road-cap {
+  height: 5%;
+  background: linear-gradient(to top, #0a1222 0%, rgba(10,18,34,0.5) 50%, rgba(10,18,34,0) 100%);
+}
+
+/* ── MOBILE PORTRAIT: highway adjustments ── */
+/* Di layar portrait sempit, jalan sedikit lebih tinggi agar tidak sesak */
+.layout-mobile-portrait .hw-lane-edge-l { left: 8%; }
+.layout-mobile-portrait .hw-lane-edge-r { right: 8%; }
+/* Garis marka tengah lebih lebar di mobile agar terlihat */
+.layout-mobile-portrait .hw-lane-center::before {
+  clip-path: polygon(44% 0%, 56% 0%, 60% 100%, 40% 100%);
+}
+/* (mobile portrait hw-horizon dan hw-city-bg sudah diatur di blok di atas) */
+
+/* ── HAPUS SEMUA ANIMASI TEMA DEKORATIF ── */
+.wave-layer, .wave-layer2,
+.aurora-layer, .aurora-layer2,
+.fantasy-stars, .sparkle-layer, .castle-mist,
+.garden-tree, .garden-tree.sway-a, .garden-tree.sway-b, .garden-tree.sway-c,
+.garden-mist, .garden-mist2,
+.garden-pond,
+.garden-lantern, .lantern-body,
+.gfw, .garden-dust,
+.moon-garden,
+.hw-neon-lights, .hw-neon-lights *,
+.hw-horizon,
+.hw-lane-center,
+.hw-rain-drop,
+.hw-moon,
+.hw-building-blink,
+.hw-c1, .hw-c2, .hw-c3, .hw-c4,
+.ss-nebula, .ss-cluster, .ss-asteroid, .ss-shooting,
+.ss-sun, .ss-sun::before, .ss-sun::after,
+.ss-ring,
+.ss-planet,
+.bedroom-window::after,
+.moonbeam,
+.lamp-halo,
+.scan-line,
+.neon-skyline,
+.window-rain *,
+.hw-rain * {
+  animation: none !important;
+  animation-play-state: paused !important;
+}
