@@ -1864,20 +1864,20 @@ input[type='range']::-webkit-slider-thumb {
 .layout-mobile-landscape .hw-lane-edge-r,
 .layout-desktop-landscape .hw-lane-edge-r { height:50%; }
 
-/* Mobile portrait: cahaya & kota di DALAM area jalan (bawah 42%) agar tidak terpotong panel */
+/* Mobile portrait: geser elemen kota MASUK ke dalam area jalan (0-42%) agar
+   blur tidak bocor ke atas dan tidak terlihat di area player UI */
 .layout-mobile-portrait .hw-horizon {
-  bottom: 34%;
-  height: 10%;
-  filter: blur(4px);
+  bottom: 28%;
+  height: 16%;
+  filter: blur(5px);
 }
 .layout-mobile-portrait .hw-city-bg {
-  bottom: 36%;
-  height: 14%;
+  bottom: 32%;
+  height: 16%;
 }
 .layout-mobile-portrait .hw-neon-lights {
-  bottom: 36%;
-  height: 12%;
-  z-index: 3;
+  bottom: 32%;
+  height: 13%;
 }
 
 /* Portrait: penyambung jalan ke cakrawala tetap di bottom:42% (default sudah benar) */
