@@ -325,7 +325,6 @@ input[type='range']::-webkit-slider-thumb {
   to   { background-position: -8px 60px; }
 }
 
-/* ── BEDROOM: Candle/lamp flicker ── */
 /* ── BEDROOM: Hujan di luar jendela ── */
 .window-rain {
   position: absolute;
@@ -336,17 +335,31 @@ input[type='range']::-webkit-slider-thumb {
   pointer-events: none;
   overflow: hidden;
   border-radius: 6px 6px 0 0;
-  will-change: background-position;
+}
+
+.window-rain::before {
+  content: '';
+  position: absolute;
+  top: -100%;
+  left: 0;
+  right: 0;
+  height: 200%;
   background-image:
     repeating-linear-gradient(
       175deg,
       transparent 0px,
       transparent 5px,
-      rgba(160,200,255,0.12) 5px,
-      rgba(160,200,255,0.12) 6px
+      rgba(160,200,255,0.13) 5px,
+      rgba(160,200,255,0.13) 6px
     );
   background-size: 40px 40px;
-  animation: rain-fall 1.5s linear infinite;
+  animation: rain-slide 1.5s linear infinite;
+  will-change: transform;
+}
+
+@keyframes rain-slide {
+  from { transform: translateY(0); }
+  to   { transform: translateY(50%); }
 }
 
 /* Tetesan di kaca jendela */
@@ -362,7 +375,6 @@ input[type='range']::-webkit-slider-thumb {
     radial-gradient(1px 2px at 30% 70%, rgba(180,210,255,0.30), transparent),
     radial-gradient(1px 3px at 60% 80%, rgba(180,210,255,0.22), transparent);
   background-size: 90px 120px;
-  animation: rain-fall 2.5s linear infinite;
   opacity: 0.7;
 }
 
@@ -461,19 +473,21 @@ input[type='range']::-webkit-slider-thumb {
     100% 45%, 100% 100%
   );
 }
-.city-layer::after {
-  content: '';
+
+/* Neon line tepat di atap skyline — elemen terpisah di JSX */
+.neon-skyline {
   position: absolute;
-  bottom: 0;
   left: 0;
   right: 0;
-  height: 2px;
+  height: 3px;
   background: linear-gradient(90deg,
     transparent 0%, rgba(0,220,200,0.55) 20%,
     rgba(0,180,255,0.70) 50%, rgba(0,220,200,0.55) 80%, transparent 100%);
   will-change: opacity;
   animation: neon-glow 6s ease-in-out infinite alternate;
+  pointer-events: none;
 }
+
 @keyframes neon-glow {
   0%   { opacity: 0.35; }
   100% { opacity: 0.90; }

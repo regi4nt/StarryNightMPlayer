@@ -7142,6 +7142,12 @@ Format exactly:
               <div className="stars" style={{ opacity:0.20 }}/><div className="starsB" style={{ opacity:0.12 }}/>
               {/* City building silhouettes with neon */}
               <div className="city-layer"/>
+              {/* Neon skyline line — posisi sinkron dengan top of city-layer */}
+              {(() => {
+                const ls = layoutMode.includes('landscape');
+                const cityH = ls ? 55 : 40;
+                return <div className="neon-skyline" style={{ bottom: `${cityH}%`, filter:'blur(1px)' }}/>;
+              })()}
               {/* Ground — gradasi gelap di bawah gedung */}
               <div style={{ position:'absolute', bottom:0, left:0, right:0, height: layoutMode.includes('landscape') ? '58%' : '42%', background:'linear-gradient(to top, rgba(0,15,30,0.75) 0%, rgba(0,25,45,0.40) 55%, transparent 100%)' }}/>
               {/* Neon horizon bloom */}
