@@ -1867,16 +1867,16 @@ input[type='range']::-webkit-slider-thumb {
 /* Mobile portrait: geser elemen kota MASUK ke dalam area jalan (0-42%) agar
    blur tidak bocor ke atas dan tidak terlihat di area player UI */
 .layout-mobile-portrait .hw-horizon {
-  bottom: 28%;
+  bottom: calc(var(--nav-h, 68px) + 28%);
   height: 16%;
   filter: blur(5px);
 }
 .layout-mobile-portrait .hw-city-bg {
-  bottom: 32%;
+  bottom: calc(var(--nav-h, 68px) + 32%);
   height: 16%;
 }
 .layout-mobile-portrait .hw-neon-lights {
-  bottom: 32%;
+  bottom: calc(var(--nav-h, 68px) + 32%);
   height: 13%;
 }
 
@@ -1900,6 +1900,28 @@ input[type='range']::-webkit-slider-thumb {
   clip-path: polygon(44% 0%, 56% 0%, 60% 100%, 40% 100%);
 }
 /* (mobile portrait hw-horizon dan hw-city-bg sudah diatur di blok di atas) */
+
+/* ── MOBILE PORTRAIT: geser elemen jalan ke atas sebesar tinggi bottom nav ── */
+/* Bottom nav (~68px) menutupi bagian bawah scene; semua elemen bottom:0 perlu di-offset */
+.layout-mobile-portrait .hw-road,
+.layout-mobile-portrait .hw-lane-center,
+.layout-mobile-portrait .hw-lane-edge-l,
+.layout-mobile-portrait .hw-lane-edge-r,
+.layout-mobile-portrait .hw-reflect {
+  bottom: var(--nav-h, 68px);
+}
+/* road-cap mengikuti top hw-road yaitu bottom = nav-h + 42% */
+.layout-mobile-portrait .hw-road-cap {
+  bottom: calc(var(--nav-h, 68px) + 42%);
+  height: 5%;
+}
+/* Tiang lampu dan langit juga naik mengikuti jalan */
+.layout-mobile-portrait .hw-pole {
+  bottom: calc(var(--nav-h, 68px) + 42%);
+}
+.layout-mobile-portrait .hw-sky {
+  bottom: calc(var(--nav-h, 68px) + 42%);
+}
 
 /* ── HAPUS SEMUA ANIMASI TEMA DEKORATIF ── */
 .wave-layer, .wave-layer2,
