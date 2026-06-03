@@ -7159,30 +7159,66 @@ Format exactly:
               <div className="curtain-right"/>
               {/* Sinar bulan masuk lewat jendela */}
               <div className="moonbeam"/>
-              {/* Lampu tidur — nightstand kiri bawah, lebih natural */}
+              {/* Lampu tidur — satu unit container di kiri bawah */}
               {(() => {
                 const ls = layoutMode.includes('landscape');
                 const isDesk = layoutMode.includes('desktop');
                 const sbW = isDesk ? (ls ? SIDEBAR_W_LANDSCAPE : SIDEBAR_W_PORTRAIT) : 0;
-                const lampOffL = `calc(${sbW}px + 18px)`;
-                const haloW  = ls ? 80 : 100;
-                const haloH  = ls ? 80 : 100;
-                const tableB = ls ? '20%' : '18%';
-                const tiangB = ls ? '23%' : '21%';
-                const kapB   = ls ? '29%' : '26%';
-                const haloB  = ls ? '22%' : '19%';
+                // Unit lampu: container tunggal di pojok kiri bawah area konten
+                // bottom = tepat di atas kasur (kasur height ~18-34%)
+                const unitBottom = ls ? 120 : 100; // px dari bawah layar
+                const unitLeft   = sbW + 28;       // px dari kiri layar
+                // Ukuran elemen: disesuaikan landscape vs portrait
+                const kapW = ls ? 52 : 60; const kapH = ls ? 22 : 26;
+                const tiangH = ls ? 70 : 82; const tiangW = 5;
+                const mejW = ls ? 90 : 100; const mejH = ls ? 10 : 12;
+                // Tiang di tengah kap & meja
+                const tiangOffX = Math.round((mejW - tiangW) / 2);
+                const kapOffX   = Math.round((mejW - kapW) / 2);
                 return (<>
-                  {/* Halo cahaya lampu — dua lapis agar lebih lembut */}
-                  <div className="lamp-halo" style={{ bottom: haloB, left: lampOffL, width: haloW, height: haloH, background:'radial-gradient(circle, rgba(255,200,80,0.50) 0%, rgba(255,160,40,0.22) 30%, rgba(255,110,15,0.06) 60%, transparent 80%)' }}/>
-
+                  {/* Halo cahaya di belakang unit */}
+                  <div className="lamp-halo" style={{
+                    position:'absolute',
+                    bottom: unitBottom + mejH - 10,
+                    left: unitLeft - 30,
+                    width: ls ? 130 : 160, height: ls ? 130 : 160,
+                    background:'radial-gradient(circle, rgba(255,190,60,0.45) 0%, rgba(255,150,30,0.18) 35%, rgba(255,110,15,0.05) 65%, transparent 80%)',
+                    borderRadius:'50%', pointerEvents:'none',
+                  }}/>
                   {/* Kap lampu */}
-                  <div style={{ position:'absolute', bottom: kapB, left: lampOffL, width:44, height:20, background:'linear-gradient(to bottom, rgba(200,120,35,0.80) 0%, rgba(160,80,20,0.90) 100%)', clipPath:'polygon(8% 0%, 92% 0%, 100% 100%, 0% 100%)', borderRadius:'0 0 4px 4px', pointerEvents:'none', boxShadow:'0 -2px 6px rgba(255,200,80,0.30)' }}/>
+                  <div style={{ position:'absolute',
+                    bottom: unitBottom + mejH + tiangH,
+                    left: unitLeft + kapOffX,
+                    width: kapW, height: kapH,
+                    background:'linear-gradient(to bottom, rgba(210,130,40,0.85) 0%, rgba(170,85,20,0.95) 100%)',
+                    clipPath:'polygon(6% 0%, 94% 0%, 100% 100%, 0% 100%)',
+                    borderRadius:'0 0 3px 3px', pointerEvents:'none',
+                    boxShadow:'0 -2px 8px rgba(255,190,60,0.35)'
+                  }}/>
                   {/* Tiang lampu */}
-                  <div style={{ position:'absolute', bottom: tiangB, left:`calc(${sbW}px + 36px)`, width:4, height:'7%', background:'rgba(150,90,30,0.70)', borderRadius:2, pointerEvents:'none' }}/>
+                  <div style={{ position:'absolute',
+                    bottom: unitBottom + mejH,
+                    left: unitLeft + tiangOffX,
+                    width: tiangW, height: tiangH,
+                    background:'linear-gradient(to bottom, rgba(160,95,30,0.80), rgba(120,65,18,0.90))',
+                    borderRadius:3, pointerEvents:'none',
+                  }}/>
                   {/* Meja samping */}
-                  <div style={{ position:'absolute', bottom: tableB, left: lampOffL, width:80, height:10, background:'linear-gradient(to bottom, rgba(120,70,25,0.85) 0%, rgba(90,50,16,0.95) 100%)', borderRadius:'3px 3px 0 0', pointerEvents:'none', boxShadow:'0 2px 8px rgba(0,0,0,0.40)' }}/>
-                  {/* Cahaya lampu di lantai */}
-                  <div style={{ position:'absolute', bottom:0, left: lampOffL, width:120, height:'20%', background:'radial-gradient(ellipse at 30% 0%, rgba(255,155,35,0.08) 0%, rgba(255,120,20,0.03) 50%, transparent 80%)', pointerEvents:'none' }}/>
+                  <div style={{ position:'absolute',
+                    bottom: unitBottom,
+                    left: unitLeft,
+                    width: mejW, height: mejH,
+                    background:'linear-gradient(to bottom, rgba(130,75,25,0.90) 0%, rgba(95,52,15,0.98) 100%)',
+                    borderRadius:'3px 3px 0 0', pointerEvents:'none',
+                    boxShadow:'0 3px 10px rgba(0,0,0,0.50)'
+                  }}/>
+                  {/* Cahaya jatuh ke bawah */}
+                  <div style={{ position:'absolute',
+                    bottom:0, left: unitLeft - 10,
+                    width: mejW + 20, height: unitBottom + mejH,
+                    background:'radial-gradient(ellipse at 50% 100%, rgba(255,150,30,0.10) 0%, rgba(255,120,20,0.04) 45%, transparent 75%)',
+                    pointerEvents:'none',
+                  }}/>
                 </>);
               })()}
               {/* Kasur & headboard — lebih realistis */}
@@ -7368,11 +7404,17 @@ Format exactly:
           if (th === 'nighthighway') {
             const ls = layoutMode.includes('landscape');
             const roadH = ls ? 50 : 42;
-            // Mobil di dalam area jalan — bottom relatif terhadap layar
-            // Jalur kiri (headlight): 10%-18% dari bottom layar
-            // Jalur kanan (taillight): 8%-14% dari bottom layar
-            const carBot1 = `${roadH * 0.30}%`;  // ~12.6% dari bawah layar — lane dekat
-            const carBot2 = `${roadH * 0.16}%`;  // ~6.7% dari bawah layar — lane lebih dekat
+            // Mobil berada di jalur dalam area jalan (bottom:0, height=roadH%)
+            // Jalur kiri  (headlight, datang dari kiri): bottom rendah = dekat pengemudi
+            // Jalur kanan (taillight, pergi ke kanan):   bottom rendah = dekat pengemudi
+            // Dua kendaraan per jalur = dua nilai bottom berbeda
+            const carBot1 = `${roadH * 0.18}%`;  // lane dekat, ~7-9% dari bawah
+            const carBot2 = `${roadH * 0.07}%`;  // lane sangat dekat, ~3-4% dari bawah
+            // Posisi horizontal: jalur kiri di 28-36% dari kiri, jalur kanan di 52-62%
+            const isDesk2 = layoutMode.includes('desktop');
+            const sbW2 = isDesk2 ? (ls ? SIDEBAR_W_LANDSCAPE : SIDEBAR_W_PORTRAIT) : 0;
+            const laneLeftX  = `calc(${sbW2}px + 28%)`;  // jalur kiri (headlight)
+            const laneRightX = `calc(${sbW2}px + 52%)`; // jalur kanan (taillight)
             // Tetesan hujan
             const rainDrops = Array.from({ length: 18 }, (_, i) => ({
               left: `${(i * 5.5 + Math.sin(i*2.1)*3) % 100}%`,
@@ -7437,14 +7479,14 @@ Format exactly:
                   </div>
                 ));
                   })()}
-                {/* Mobil bergerak — berada di dalam area jalan */}
+                {/* Mobil bergerak — di dalam jalur jalan perspektif */}
                 <div className="hw-cars">
-                  {/* Headlight (datang dari kiri) — lane kiri */}
-                  <div className="hw-car hw-car-hl hw-c1" style={{ bottom:carBot1, left:0 }}/>
-                  <div className="hw-car hw-car-hl hw-c2" style={{ bottom:carBot2, left:0 }}/>
-                  {/* Taillight (pergi ke kiri) — lane kanan */}
-                  <div className="hw-car hw-car-tl hw-c3" style={{ bottom:carBot1, right:0 }}/>
-                  <div className="hw-car hw-car-tl hw-c4" style={{ bottom:carBot2, right:0 }}/>
+                  {/* Headlight (datang dari kiri, jalur kiri jalan) */}
+                  <div className="hw-car hw-car-hl hw-c1" style={{ bottom:carBot1, left:laneLeftX }}/>
+                  <div className="hw-car hw-car-hl hw-c2" style={{ bottom:carBot2, left:laneLeftX }}/>
+                  {/* Taillight (pergi ke kanan, jalur kanan jalan) */}
+                  <div className="hw-car hw-car-tl hw-c3" style={{ bottom:carBot1, left:laneRightX }}/>
+                  <div className="hw-car hw-car-tl hw-c4" style={{ bottom:carBot2, left:laneRightX }}/>
                 </div>
                 {/* Hujan halus */}
                 <div className="hw-rain">

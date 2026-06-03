@@ -1291,16 +1291,16 @@ input[type='range']::-webkit-slider-thumb {
   to   { background-position: center 44px; }
 }
 @keyframes car-left {
-  0%   { transform:translateX(-180px); opacity:0; }
-  5%   { opacity:1; }
-  95%  { opacity:1; }
-  100% { transform:translateX(calc(100vw + 180px)); opacity:0; }
+  0%   { transform:translateX(-120%); opacity:0; }
+  6%   { opacity:1; }
+  90%  { opacity:1; }
+  100% { transform:translateX(220%); opacity:0; }
 }
 @keyframes car-right {
-  0%   { transform:translateX(180px); opacity:0; }
-  5%   { opacity:1; }
-  95%  { opacity:1; }
-  100% { transform:translateX(calc(-100vw - 180px)); opacity:0; }
+  0%   { transform:translateX(220%); opacity:0; }
+  6%   { opacity:1; }
+  90%  { opacity:1; }
+  100% { transform:translateX(-120%); opacity:0; }
 }
 @keyframes city-glow-pulse {
   0%,100% { opacity:0.60; }
@@ -1481,22 +1481,19 @@ input[type='range']::-webkit-slider-thumb {
   animation: lane-dash 0.7s linear infinite;
   /* Perspektif: hanya tampil di jalur tengah yang menyempit ke atas */
   clip-path: polygon(46% 0%, 54% 0%, 58% 100%, 42% 100%);
-  mask-image: linear-gradient(to top, black 0%, black 40%, transparent 88%);
-  -webkit-mask-image: linear-gradient(to top, black 0%, black 40%, transparent 88%);
+  mask-image: linear-gradient(to top, black 0%, black 30%, transparent 70%);
+  -webkit-mask-image: linear-gradient(to top, black 0%, black 30%, transparent 70%);
 }
 /* Garis tepi kiri */
 .hw-lane-edge-l {
   position:absolute; bottom:0; height:42%;
   pointer-events:none;
-  left:0; right:0;
+  width:2px;
+  left:22%;
   background: linear-gradient(to top,
     rgba(255,255,210,0.55) 0%,
     rgba(255,255,210,0.25) 40%,
     transparent 100%);
-  width:2px;
-  /* Posisi garis tepi kiri di 22% dari kiri */
-  left:22%;
-  clip-path: none;
 }
 /* Garis tepi kanan */
 .hw-lane-edge-r {
@@ -1553,25 +1550,28 @@ input[type='range']::-webkit-slider-thumb {
 /* Tiang lampu jalan — lebih realistis */
 .hw-pole {
   position:absolute; pointer-events:none;
-  display:flex; flex-direction:column-reverse; align-items:center;
+  display:flex; flex-direction:column; align-items:center;
   z-index:3;
   bottom:42%;
+  transform-origin:bottom center;
 }
-.hw-pole .pole-arm {
-  width:2px;
-  background:linear-gradient(to bottom, rgba(130,140,160,0.65), rgba(100,110,130,0.45));
-}
+/* Urutan atas ke bawah: pole-head (kap) -> pole-arm (tiang) */
 .hw-pole .pole-head {
   width:16px; height:6px; border-radius:3px 3px 0 0;
   background:linear-gradient(to bottom, rgba(255,210,90,0.90), rgba(255,180,50,0.75));
   box-shadow:0 0 12px 5px rgba(255,190,60,0.50), 0 0 24px 10px rgba(255,160,30,0.22);
+  flex-shrink:0;
+}
+.hw-pole .pole-arm {
+  width:2px; flex-shrink:0;
+  background:linear-gradient(to bottom, rgba(130,140,160,0.65), rgba(100,110,130,0.45));
 }
 .hw-pole .pole-cone {
-  margin-bottom:-1px;
+  flex-shrink:0;
   width:0; height:0;
-  border-left:20px solid transparent;
-  border-right:20px solid transparent;
-  border-top:24px solid rgba(255,200,80,0.10);
+  border-left:16px solid transparent;
+  border-right:16px solid transparent;
+  border-top:20px solid rgba(255,200,80,0.12);
 }
 /* Cahaya kerucut lampu */
 .hw-pole .pole-light-cone {
@@ -1800,7 +1800,7 @@ input[type='range']::-webkit-slider-thumb {
 .layout-mobile-landscape .hw-city-bg,
 .layout-desktop-landscape .hw-city-bg    { bottom:50%; }
 .layout-mobile-landscape .hw-pole,
-.layout-desktop-landscape .hw-pole       { bottom:50%; }
+.layout-desktop-landscape .hw-pole       { bottom:50%; transform-origin:bottom center; }
 .layout-mobile-landscape .hw-lane-edge-l,
 .layout-desktop-landscape .hw-lane-edge-l { height:50%; }
 .layout-mobile-landscape .hw-lane-edge-r,
