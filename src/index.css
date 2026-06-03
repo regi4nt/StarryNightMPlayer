@@ -1514,9 +1514,6 @@ input[type='range']::-webkit-slider-thumb {
 /* clip-path 50% = tengah area konten */
 .layout-desktop-portrait .hw-lane-center  { left: 160px; right: 0; }
 .layout-desktop-landscape .hw-lane-center { left: 196px; right: 0; height: 50%; }
-/* Lane edge kiri di desktop: 22% dari tepi kiri konten (setelah sidebar) */
-.layout-desktop-portrait .hw-lane-edge-l  { left: calc(160px + 22% * (1 - 160px/100vw)); }
-.layout-desktop-landscape .hw-lane-edge-l { left: calc(196px + 22% * (1 - 196px/100vw)); }
 /* Garis tepi kiri */
 .hw-lane-edge-l {
   position:absolute; bottom:0; height:42%;
@@ -1541,11 +1538,13 @@ input[type='range']::-webkit-slider-thumb {
   width:2px;
   right:22%;
 }
-/* Desktop: geser garis tepi agar tidak tumpang tindih sidebar */
-.layout-desktop-portrait .hw-lane-edge-l  { left: calc(160px + 22% * (1 - 160px/100vw)); }
-.layout-desktop-landscape .hw-lane-edge-l { left: calc(196px + 22% * (1 - 196px/100vw)); }
-.layout-desktop-portrait .hw-lane-edge-r  { right: 22%; }
-.layout-desktop-landscape .hw-lane-edge-r { right: 22%; }
+/* Desktop: garis tepi kiri dihitung dari tepi kiri konten (setelah sidebar) */
+/* 25% dari lebar konten = posisi garis tepi kiri jalan */
+.layout-desktop-portrait .hw-lane-edge-l  { left: calc(160px + 0.25 * (100vw - 160px)); }
+.layout-desktop-landscape .hw-lane-edge-l { left: calc(196px + 0.25 * (100vw - 196px)); }
+/* Garis tepi kanan: mirror dari kanan (tidak terpengaruh sidebar) */
+.layout-desktop-portrait .hw-lane-edge-r,
+.layout-desktop-landscape .hw-lane-edge-r { right: 25%; }
 /* Pantulan lampu di aspal — lebih berwarna */
 .hw-reflect {
   position:absolute; bottom:0; left:0; right:0; height:38%;

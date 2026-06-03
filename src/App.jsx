@@ -7400,21 +7400,20 @@ Format exactly:
                   // Tiang kiri: sbW + frac% * (100vw - sbW)
                   // Tiang kanan: 100vw - frac% * (100vw - sbW)
                   // Mobile tidak ada sidebar jadi sbW=0, jadi left = frac%
-                  const fracL1 = isMob ? 4  : 3;   // tiang kiri paling dekat (sangat ke tepi)
-                  const fracL2 = isMob ? 11 : 9;   // tiang kiri tengah
-                  const fracL3 = isMob ? 18 : 15;  // tiang kiri jauh
+                  const fracL1 = isMob ? 5  : 8;   // tiang kiri paling dekat
+                  const fracL2 = isMob ? 13 : 18;  // tiang kiri tengah
+                  const fracL3 = isMob ? 22 : 28;  // tiang kiri jauh
                   const poleL = (frac) => isDesk
                     ? `calc(${sbW}px + ${frac / 100} * (100vw - ${sbW}px))`
                     : `${frac}%`;
                   const poleR = (frac) => isDesk
                     ? `calc(100vw - ${frac / 100} * (100vw - ${sbW}px))`
                     : `${100 - frac}%`;
-                  // armH menggunakan CSS string dengan vh agar responsif di semua ukuran layar
-                  // roadH% dari viewport = tinggi area jalan
-                  // Tiang dekat: kepala muncul ~82% dari area jalan, makin jauh makin pendek
-                  const armClose = `${(roadH * 0.82).toFixed(1)}vh`;
-                  const armMid   = `${(roadH * 0.58).toFixed(1)}vh`;
-                  const armFar   = `${(roadH * 0.38).toFixed(1)}vh`;
+                  // armH: tiang dekat setinggi ~78% area jalan (kepala muncul di cakrawala)
+                  // tiang jauh lebih pendek untuk efek perspektif
+                  const armClose = `${(roadH * 0.78).toFixed(1)}vh`;
+                  const armMid   = `${(roadH * 0.52).toFixed(1)}vh`;
+                  const armFar   = `${(roadH * 0.32).toFixed(1)}vh`;
                   const poles = [
                     // Kiri: 3 tiang (dekat→jauh)
                     { posVal: poleL(fracL1), armH: armClose, opacity:1.0,  headS: isMob?14:16 },
