@@ -7164,29 +7164,25 @@ Format exactly:
                 const ls = layoutMode.includes('landscape');
                 const isDesk = layoutMode.includes('desktop');
                 const sbW = isDesk ? (ls ? SIDEBAR_W_LANDSCAPE : SIDEBAR_W_PORTRAIT) : 0;
-                const base   = `calc(${sbW}px + 2.5%)`;
-                const kapL   = `calc(${sbW}px + 5.5%)`;
-                const tiangL = `calc(${sbW}px + 5.5% + 24px)`;
-                const tableL = `calc(${sbW}px + 2%)`;
-                const floorL = `calc(${sbW}px + 0%)`;
-                const haloW  = ls ? 100 : 130;
-                const haloH  = ls ? 100 : 130;
-                const haloB  = ls ? '36%' : '28%';
-                const kapB   = ls ? '48%' : '38%';
-                const tiangB = ls ? '41%' : '31%';
-                const tableB = ls ? '38%' : '28%';
+                const lampOffL = `calc(${sbW}px + 18px)`;
+                const haloW  = ls ? 80 : 100;
+                const haloH  = ls ? 80 : 100;
+                const tableB = ls ? '20%' : '18%';
+                const tiangB = ls ? '23%' : '21%';
+                const kapB   = ls ? '29%' : '26%';
+                const haloB  = ls ? '22%' : '19%';
                 return (<>
                   {/* Halo cahaya lampu — dua lapis agar lebih lembut */}
-                  <div className="lamp-halo" style={{ bottom: haloB, left: base, width: haloW, height: haloH, background:'radial-gradient(circle, rgba(255,200,80,0.75) 0%, rgba(255,160,40,0.35) 22%, rgba(255,110,15,0.12) 52%, transparent 72%)' }}/>
-                  <div style={{ position:'absolute', bottom: haloB, left: base, width: haloW*0.6, height: haloH*0.6, borderRadius:'50%', background:'radial-gradient(circle, rgba(255,230,140,0.35) 0%, transparent 70%)', pointerEvents:'none', transform:'translate(20%, 20%)' }}/>
+                  <div className="lamp-halo" style={{ bottom: haloB, left: lampOffL, width: haloW, height: haloH, background:'radial-gradient(circle, rgba(255,200,80,0.50) 0%, rgba(255,160,40,0.22) 30%, rgba(255,110,15,0.06) 60%, transparent 80%)' }}/>
+
                   {/* Kap lampu */}
-                  <div style={{ position:'absolute', bottom: kapB, left: kapL, width:52, height:24, background:'linear-gradient(to bottom, rgba(200,120,35,0.65) 0%, rgba(160,80,20,0.80) 100%)', clipPath:'polygon(8% 0%, 92% 0%, 100% 100%, 0% 100%)', borderRadius:'0 0 4px 4px', pointerEvents:'none', boxShadow:'0 -2px 6px rgba(255,200,80,0.25)' }}/>
+                  <div style={{ position:'absolute', bottom: kapB, left: lampOffL, width:44, height:20, background:'linear-gradient(to bottom, rgba(200,120,35,0.80) 0%, rgba(160,80,20,0.90) 100%)', clipPath:'polygon(8% 0%, 92% 0%, 100% 100%, 0% 100%)', borderRadius:'0 0 4px 4px', pointerEvents:'none', boxShadow:'0 -2px 6px rgba(255,200,80,0.30)' }}/>
                   {/* Tiang lampu */}
-                  <div style={{ position:'absolute', bottom: tiangB, left: tiangL, width:4, height:'9%', background:'rgba(150,90,30,0.60)', borderRadius:2, pointerEvents:'none' }}/>
+                  <div style={{ position:'absolute', bottom: tiangB, left:`calc(${sbW}px + 36px)`, width:4, height:'7%', background:'rgba(150,90,30,0.70)', borderRadius:2, pointerEvents:'none' }}/>
                   {/* Meja samping */}
-                  <div style={{ position:'absolute', bottom: tableB, left: tableL, width:'14%', height:'3.5%', background:'linear-gradient(to bottom, rgba(100,60,20,0.65) 0%, rgba(75,42,14,0.80) 100%)', borderRadius:'3px 3px 0 0', pointerEvents:'none', boxShadow:'0 3px 10px rgba(0,0,0,0.30)' }}/>
+                  <div style={{ position:'absolute', bottom: tableB, left: lampOffL, width:80, height:10, background:'linear-gradient(to bottom, rgba(120,70,25,0.85) 0%, rgba(90,50,16,0.95) 100%)', borderRadius:'3px 3px 0 0', pointerEvents:'none', boxShadow:'0 2px 8px rgba(0,0,0,0.40)' }}/>
                   {/* Cahaya lampu di lantai */}
-                  <div style={{ position:'absolute', bottom:0, left: floorL, width:'22%', height:'30%', background:'radial-gradient(ellipse at 38% 0%, rgba(255,155,35,0.14) 0%, rgba(255,120,20,0.06) 40%, transparent 72%)', pointerEvents:'none' }}/>
+                  <div style={{ position:'absolute', bottom:0, left: lampOffL, width:120, height:'20%', background:'radial-gradient(ellipse at 30% 0%, rgba(255,155,35,0.08) 0%, rgba(255,120,20,0.03) 50%, transparent 80%)', pointerEvents:'none' }}/>
                 </>);
               })()}
               {/* Kasur & headboard — lebih realistis */}
@@ -7203,10 +7199,7 @@ Format exactly:
                     position:'absolute', bottom:0, left:0, right:0, height: ls ? '34%' : '30%',
                     pointerEvents:'none',
                     background: [
-                      `radial-gradient(ellipse 9% 5% at 35% 26%, rgba(220,200,175,0.22) 0%, transparent 100%)`,
-                      `radial-gradient(ellipse 9% 5% at 57% 26%, rgba(220,200,175,0.22) 0%, transparent 100%)`,
-                      `linear-gradient(to top, rgba(90,48,18,0.65) 0%, rgba(110,60,28,0.48) 28%, rgba(95,52,22,0.30) 58%, transparent 100%)`,
-                      `linear-gradient(180deg, transparent 38%, rgba(255,200,140,0.06) 40%, transparent 42%)`,
+                      `linear-gradient(to top, rgba(90,48,18,0.50) 0%, rgba(110,60,28,0.32) 30%, rgba(95,52,22,0.14) 60%, transparent 100%)`,
                     ].join(', '),
                     clipPath: `polygon(0% 100%, 0% 42%, ${lp} 34%, ${lpIn} 20%, 91% 20%, 92% 34%, 100% 42%, 100% 100%)`
                   }}/>
@@ -7412,18 +7405,28 @@ Format exactly:
                 {/* Pantulan lampu di aspal */}
                 <div className="hw-reflect"/>
                 {/* Tiang lampu — tepi kiri & kanan jalan, simulasi perspektif */}
-                {[
-                  // Kiri: 3 tiang (dekat→jauh) — pos makin besar = makin ke tengah = makin jauh
-                  { side:'left',  pos:'5%',  armH: ls?110:140, opacity:1.0,  headS:16 },
-                  { side:'left',  pos:'12%', armH: ls? 80:105, opacity:0.60, headS:12, scale:0.85 },
-                  { side:'left',  pos:'18%', armH: ls? 55: 72, opacity:0.35, headS: 9, scale:0.70 },
-                  // Kanan: 3 tiang (dekat→jauh) — pos makin besar = makin ke tengah = makin jauh
-                  { side:'right', pos:'5%',  armH: ls?110:140, opacity:1.0,  headS:16 },
-                  { side:'right', pos:'12%', armH: ls? 80:105, opacity:0.60, headS:12, scale:0.85 },
-                  { side:'right', pos:'18%', armH: ls? 55: 72, opacity:0.35, headS: 9, scale:0.70 },
-                ].map((p,i) => (
+                {(() => {
+                  const isDesk = layoutMode.includes('desktop');
+                  const sbW = isDesk ? (ls ? SIDEBAR_W_LANDSCAPE : SIDEBAR_W_PORTRAIT) : 0;
+                  const vw = typeof window !== 'undefined' ? window.innerWidth : 1280;
+                  // Posisi tiang relatif terhadap lebar layar penuh (termasuk sidebar)
+                  // Tiang kiri: dimulai tepat setelah sidebar + offset tepi jalan
+                  // Tiang kanan: dari kanan, offset tepi jalan
+                  const poleL = (frac) => `calc(${sbW}px + ${frac}%)`;
+                  const poleR = (frac) => `${frac}%`;
+                  const poles = [
+                    // Kiri: 3 tiang (dekat→jauh) — makin besar = makin ke tengah = makin jauh
+                    { side:'left',  posVal: poleL(3),  armH: ls?110:140, opacity:1.0,  headS:16 },
+                    { side:'left',  posVal: poleL(9),  armH: ls? 80:105, opacity:0.60, headS:12, scale:0.85 },
+                    { side:'left',  posVal: poleL(14), armH: ls? 55: 72, opacity:0.35, headS: 9, scale:0.70 },
+                    // Kanan: 3 tiang (dekat→jauh) — makin besar = makin ke tengah = makin jauh
+                    { side:'right', posVal: poleR(3),  armH: ls?110:140, opacity:1.0,  headS:16 },
+                    { side:'right', posVal: poleR(9),  armH: ls? 80:105, opacity:0.60, headS:12, scale:0.85 },
+                    { side:'right', posVal: poleR(14), armH: ls? 55: 72, opacity:0.35, headS: 9, scale:0.70 },
+                  ];
+                  return poles.map((p,i) => (
                   <div key={i} className="hw-pole" style={{
-                    [p.side]: p.pos,
+                    [p.side]: p.posVal,
                     opacity: p.opacity,
                     transform: `${p.side==='left' ? 'translateX(-50%)' : 'translateX(50%)'} ${p.scale ? `scale(${p.scale})` : ''}`,
                     transformOrigin: 'bottom center',
@@ -7432,7 +7435,8 @@ Format exactly:
                     <div className="pole-cone"/>
                     <div className="pole-arm" style={{ height: p.armH }}/>
                   </div>
-                ))}
+                ));
+                  })()}
                 {/* Mobil bergerak — berada di dalam area jalan */}
                 <div className="hw-cars">
                   {/* Headlight (datang dari kiri) — lane kiri */}
