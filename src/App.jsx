@@ -1,4 +1,17 @@
-import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useReducer, useMemo, lazy, Suspense } from 'react';
+// ── Optimasi: reducers & memoized values
+import {
+  searchReducer, searchInitialState,
+  radioReducer, radioInitialState,
+  playerReducer, playerInitialState,
+  uiReducer, uiInitialState,
+  lyricsReducer, lyricsInitialState,
+} from './reducers.js';
+import {
+  useAllSongs, useAllSongIds, useDisplayedSongs,
+  useFilteredPlaylists, useCachedIdSets,
+  useWsAudioItems, useSortedWsResults, useRbMergedResults,
+} from './useMemoizedValues.js';
 import {
   Play, Pause, SkipBack, SkipForward,
   ListMusic, Compass, Heart, Volume2, VolumeX,
@@ -16,6 +29,7 @@ import {
 import { T } from './translations.js';
 import {
   openNewTab, STREAMING_PLATFORMS, MUSIC_SOURCES, SONGS, builtinSongs,
+  getStreamingPlatforms, getStreamingPlatformsSync,
   GOOGLE_CLIENT_ID, GOOGLE_SCOPES, DRIVE_FOLDER, SONG_COLORS, COVERS,
   randItem, SLEEP_OPTIONS, PIPED_INSTANCES, INVIDIOUS_INSTANCES,
   buildInvidiousUrl, buildPipedUrl, getProviders, radioUrl,
@@ -2696,6 +2710,7 @@ Return ONLY valid JSON, no explanation:
 
   // ── Responsive
   const [ringSize, setRingSize] = useState(260);
+  const [ringCenter, setRingCenter] = useState({ x: 0, y: 0 }); // center of OrbitalRing in viewport coords
   const [isDesktop, setIsDesktop] = useState(() => !isPhoneDevice());
   // layoutMode: 'mobile-portrait' | 'mobile-landscape' | 'desktop-portrait' | 'desktop-landscape'
   // Phone → mobile layout; Tablet/Desktop/Laptop → desktop layout
@@ -3308,6 +3323,7 @@ Return ONLY valid JSON, no explanation:
           const byW = mainW - 80;
           const ring = Math.max(200, Math.min(400, Math.min(byH, byW)));
           setRingSize(ring);
+          setRingCenter({ x: mainW / 2, y: mainH / 2 });
           const vpad = Math.max(10, Math.round((mainH - ring - reservedH) / 2));
           setLayoutVars({
             playerPad: `${vpad}px 32px`,
@@ -3322,10 +3338,13 @@ Return ONLY valid JSON, no explanation:
           const ringColW = Math.round(vw * 0.45);
           const size = Math.min(vh - 16, ringColW - 16);
           setRingSize(Math.max(140, Math.min(380, size)));
+          setRingCenter({ x: ringColW / 2, y: vh / 2 });
         } else {
           // Portrait fullscreen: centered, leave room for controls below
           const size = Math.min(vw - 48, vh - 240);
           setRingSize(Math.max(180, Math.min(480, size)));
+          // Ring is roughly centered in top ~60% of screen
+          setRingCenter({ x: vw / 2, y: vh * 0.38 });
         }
         return;
       }
@@ -3340,6 +3359,8 @@ Return ONLY valid JSON, no explanation:
         const byW = mainW - 80;
         const ring = Math.max(180, Math.min(320, Math.min(byH, byW)));
         setRingSize(ring);
+        // Ring is vertically centered in mainH area (justifyContent:'center' in player column)
+        setRingCenter({ x: sidebarW + mainW / 2, y: HEADER_H_NORMAL + mainH / 2 });
         // Fixed small padding — vertical centering handled by justifyContent:'center' on container
         setLayoutVars({
           playerPad: '16px 24px',
@@ -3359,6 +3380,8 @@ Return ONLY valid JSON, no explanation:
         const byW = mainW - 60;
         const ring = Math.max(160, Math.min(300, Math.min(byH, byW)));
         setRingSize(ring);
+        // Ring is vertically centered in mainH area
+        setRingCenter({ x: sidebarW + mainW / 2, y: HEADER_H_NORMAL + mainH / 2 });
         // Fixed small padding — vertical centering handled by justifyContent:'center' on container
         setLayoutVars({
           playerPad: '12px 20px',
@@ -3377,6 +3400,8 @@ Return ONLY valid JSON, no explanation:
         const ringColW = Math.round(mainW * 0.42);
         const ring = Math.max(110, Math.min(mainH - 12, ringColW - 20));
         setRingSize(ring);
+        // Ring centered in left column
+        setRingCenter({ x: sideNavW + ringColW / 2, y: HEADER_H_LANDSCAPE + mainH / 2 });
         setLayoutVars({
           playerPad: '4px 10px 4px',
           trackTitleSize: `clamp(12px,${Math.round((mainW - ringColW) * 0.06)}px,16px)`,
@@ -3397,6 +3422,10 @@ Return ONLY valid JSON, no explanation:
         // Ring: fits available space, capped tightly so elements don't overflow
         const ring = Math.max(140, Math.min(availH, availW, 255));
         setRingSize(ring);
+        // Ring top = header + playerPad + clockRow(38) + badge(20), centered horizontally
+        const playerPadTop = Math.max(6, Math.min(14, Math.round(Math.max(0, vh - fixed - ring) / 10)));
+        const ringTopY = HEADER_H_NORMAL + playerPadTop + 38 + ring / 2;
+        setRingCenter({ x: vw / 2, y: ringTopY });
         // Remaining vertical space after ring — distribute as small uniform gaps
         const spare = Math.max(0, vh - fixed - ring);
         const gapUnit = Math.round(spare / 10); // ~10 flex gaps in space-evenly
@@ -7138,40 +7167,13 @@ Format exactly:
             <>
               <div className="stars" style={{ opacity:0.55 }}/><div className="starsB" style={{ opacity:0.40 }}/><div className="starsC" style={{ opacity:0.25 }}/>
               {/* Moon — positioned behind album cover (cover acts as the moon) */}
-              {(() => {
-                const isLs = layoutMode.includes('landscape');
-                const isDesk = layoutMode.includes('desktop');
+              {ringCenter.x > 0 && (() => {
                 const moonSize = Math.round(ringSize * 1.35);
-                // Horizontal center: desktop shifts right of sidebar, mobile is full-width
-                let centerX, centerY;
-                if (isDesk && isLs) {
-                  // Desktop landscape: ring centered in (viewport - sidebar) area
-                  centerX = SIDEBAR_W_LANDSCAPE + (window.innerWidth - SIDEBAR_W_LANDSCAPE) / 2;
-                  centerY = window.innerHeight / 2;
-                } else if (isDesk) {
-                  // Desktop portrait
-                  centerX = SIDEBAR_W_PORTRAIT + (window.innerWidth - SIDEBAR_W_PORTRAIT) / 2;
-                  centerY = window.innerHeight / 2;
-                } else if (isLs) {
-                  // Mobile landscape: ring in left ~42% column
-                  const sideNavW = 52;
-                  const mainW = window.innerWidth - sideNavW;
-                  const lsColW = ringSize + 20;
-                  centerX = sideNavW + lsColW / 2;
-                  centerY = window.innerHeight / 2;
-                } else {
-                  // Mobile portrait: ring centered horizontally
-                  centerX = window.innerWidth / 2;
-                  // Ring is in upper portion, roughly header + clockRow + badge + half-ring
-                  const headerH = HEADER_H_NORMAL;
-                  const aboveRing = headerH + 38 + 20; // clock + badge rows
-                  centerY = aboveRing + ringSize / 2 + 8;
-                }
                 return (
                   <div style={{
                     position:'absolute',
-                    left: centerX - moonSize / 2,
-                    top: centerY - moonSize / 2,
+                    left: ringCenter.x - moonSize / 2,
+                    top: ringCenter.y - moonSize / 2,
                     width: moonSize,
                     height: moonSize,
                     borderRadius:'50%',
@@ -7196,32 +7198,13 @@ Format exactly:
             <>
               <div className="stars" style={{ opacity:0.60 }}/><div className="starsB" style={{ opacity:0.45 }}/><div className="starsC" style={{ opacity:0.20 }}/>
               {/* Large moon — positioned behind album cover (cover acts as the moon) */}
-              {(() => {
-                const isLs = layoutMode.includes('landscape');
-                const isDesk = layoutMode.includes('desktop');
+              {ringCenter.x > 0 && (() => {
                 const moonSize = Math.round(ringSize * 1.38);
-                let centerX, centerY;
-                if (isDesk && isLs) {
-                  centerX = SIDEBAR_W_LANDSCAPE + (window.innerWidth - SIDEBAR_W_LANDSCAPE) / 2;
-                  centerY = window.innerHeight / 2;
-                } else if (isDesk) {
-                  centerX = SIDEBAR_W_PORTRAIT + (window.innerWidth - SIDEBAR_W_PORTRAIT) / 2;
-                  centerY = window.innerHeight / 2;
-                } else if (isLs) {
-                  const sideNavW = 52;
-                  const lsColW = ringSize + 20;
-                  centerX = sideNavW + lsColW / 2;
-                  centerY = window.innerHeight / 2;
-                } else {
-                  centerX = window.innerWidth / 2;
-                  const aboveRing = HEADER_H_NORMAL + 38 + 20;
-                  centerY = aboveRing + ringSize / 2 + 8;
-                }
                 return (
                   <div style={{
                     position:'absolute',
-                    left: centerX - moonSize / 2,
-                    top: centerY - moonSize / 2,
+                    left: ringCenter.x - moonSize / 2,
+                    top: ringCenter.y - moonSize / 2,
                     width: moonSize,
                     height: moonSize,
                     borderRadius:'50%',
@@ -7250,32 +7233,13 @@ Format exactly:
               {/* Aurora borealis ribbon */}
               <div className="aurora-layer"/>
               {/* Bulan besar keemasan — positioned behind album cover (cover acts as the moon) */}
-              {(() => {
-                const isLs = layoutMode.includes('landscape');
-                const isDesk = layoutMode.includes('desktop');
+              {ringCenter.x > 0 && (() => {
                 const moonSize = Math.round(ringSize * 1.40);
-                let centerX, centerY;
-                if (isDesk && isLs) {
-                  centerX = SIDEBAR_W_LANDSCAPE + (window.innerWidth - SIDEBAR_W_LANDSCAPE) / 2;
-                  centerY = window.innerHeight / 2;
-                } else if (isDesk) {
-                  centerX = SIDEBAR_W_PORTRAIT + (window.innerWidth - SIDEBAR_W_PORTRAIT) / 2;
-                  centerY = window.innerHeight / 2;
-                } else if (isLs) {
-                  const sideNavW = 52;
-                  const lsColW = ringSize + 20;
-                  centerX = sideNavW + lsColW / 2;
-                  centerY = window.innerHeight / 2;
-                } else {
-                  centerX = window.innerWidth / 2;
-                  const aboveRing = HEADER_H_NORMAL + 38 + 20;
-                  centerY = aboveRing + ringSize / 2 + 8;
-                }
                 return (
                   <div style={{
                     position:'absolute',
-                    left: centerX - moonSize / 2,
-                    top: centerY - moonSize / 2,
+                    left: ringCenter.x - moonSize / 2,
+                    top: ringCenter.y - moonSize / 2,
                     width: moonSize,
                     height: moonSize,
                     borderRadius:'50%',
@@ -7319,12 +7283,17 @@ Format exactly:
               <div style={{ position:'absolute', bottom:0, left:'35%', right:'35%', height:'14%', background:'linear-gradient(to top, rgba(170,0,255,0.10) 0%, transparent 100%)', filter:'blur(8px)' }}/>
               {/* Scan line — disembunyikan di landscape via CSS */}
               <div className="scan-line"/>
-              {/* Kendaraan terbang 1 — cyan, dari kiri ke kanan */}
-              <div style={{ position:'absolute', top: layoutMode.includes('landscape') ? '14%' : '20%', left:'6%', width:10, height:3, borderRadius:2, background:'rgba(0,220,200,0.95)', boxShadow:'0 0 10px 3px rgba(0,220,200,0.65), -8px 0 8px rgba(0,180,255,0.45)', animation:'float-orb 16s ease-in-out infinite', willChange:'transform, opacity' }}/>
-              {/* Kendaraan terbang 2 — ungu, lebih tinggi */}
-              <div style={{ position:'absolute', top: layoutMode.includes('landscape') ? '8%' : '13%', right:'18%', width:7, height:2, borderRadius:2, background:'rgba(180,50,255,0.90)', boxShadow:'0 0 8px 2px rgba(160,0,255,0.60), 6px 0 6px rgba(200,100,255,0.35)', animation:'float-orb 22s ease-in-out 3s infinite', willChange:'transform, opacity' }}/>
-              {/* Beacon / lampu menara — merah berkedip di puncak gedung */}
-              <div style={{ position:'absolute', top: layoutMode.includes('landscape') ? '5%' : '9%', left:'46.5%', width:5, height:5, borderRadius:'50%', background:'rgba(255,60,60,0.95)', boxShadow:'0 0 10px 4px rgba(255,40,40,0.60)', animation:'pulse-moon 1.4s ease-in-out infinite', willChange:'opacity' }}/>
+              {/* Kendaraan terbang 1 — cyan. Wrapper: posisi + box-shadow STATIS (tidak beranimasi).
+                  Inner: hanya transform/opacity via float-orb — compositor-only, no repaint */}
+              <div style={{ position:'absolute', top: layoutMode.includes('landscape') ? '14%' : '20%', left:'6%', width:10, height:3, borderRadius:2, boxShadow:'0 0 10px 3px rgba(0,220,200,0.65), -8px 0 8px rgba(0,180,255,0.45)', pointerEvents:'none' }}>
+                <div style={{ width:'100%', height:'100%', borderRadius:2, background:'rgba(0,220,200,0.95)', animation:'float-orb 16s ease-in-out infinite', willChange:'transform, opacity' }}/>
+              </div>
+              {/* Kendaraan terbang 2 — ungu */}
+              <div style={{ position:'absolute', top: layoutMode.includes('landscape') ? '8%' : '13%', right:'18%', width:7, height:2, borderRadius:2, boxShadow:'0 0 8px 2px rgba(160,0,255,0.60), 6px 0 6px rgba(200,100,255,0.35)', pointerEvents:'none' }}>
+                <div style={{ width:'100%', height:'100%', borderRadius:2, background:'rgba(180,50,255,0.90)', animation:'float-orb 22s ease-in-out 3s infinite', willChange:'transform, opacity' }}/>
+              </div>
+              {/* Beacon — wrapper menahan filter blur sebagai pengganti box-shadow, inner hanya opacity */}
+              <div style={{ position:'absolute', top: layoutMode.includes('landscape') ? '5%' : '9%', left:'46.5%', width:5, height:5, borderRadius:'50%', background:'rgba(255,60,60,0.95)', filter:'drop-shadow(0 0 4px rgba(255,40,40,0.60))', animation:'pulse-moon 1.4s ease-in-out infinite', willChange:'opacity' }}/>
             </>
           );
           return <><div className="stars"/><div className="starsB"/><div className="starsC"/></>;
@@ -11663,14 +11632,19 @@ Format exactly:
         @keyframes drift{0%{transform:translateX(-10px)}100%{transform:translateX(10px)}}
         @keyframes float-orb{0%,100%{transform:translateY(0);opacity:0.65}50%{transform:translateY(-14px);opacity:0.90}}
         @keyframes rain-fall{0%{transform:translateY(-100%)}100%{transform:translateY(100vh)}}
+        @keyframes rain-drift{0%{transform:translate(0,0)}100%{transform:translate(40px,60px)}}
         @keyframes wave-move{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
         @keyframes scan-move{0%{top:-2px;opacity:0}5%{opacity:0.5}95%{opacity:0.2}100%{top:100%;opacity:0}}
         @keyframes city-flicker{0%,100%{opacity:1}48%{opacity:1}50%{opacity:0.6}52%{opacity:1}80%{opacity:1}82%{opacity:0.75}84%{opacity:1}}
         @keyframes sparkle-twinkle{0%,100%{opacity:0.25}50%{opacity:0.85}}
-        .rain-layer{position:absolute;inset:0;background-image:repeating-linear-gradient(to bottom right,transparent 0px,transparent 6px,rgba(180,210,255,0.07) 6px,rgba(180,210,255,0.07) 7px);animation:none;pointer-events:none;opacity:0.7}
+        .rain-layer{position:absolute;inset:0;background-image:repeating-linear-gradient(to bottom right,transparent 0px,transparent 6px,rgba(180,210,255,0.07) 6px,rgba(180,210,255,0.07) 7px);background-size:100px 100px;animation:rain-drift 4s linear infinite;will-change:transform;pointer-events:none;opacity:0.7}
+        /* PRO: perlambat rain drift — tetap pakai transform (compositor-only, no repaint) */
+        .pro-mode .rain-layer{animation-duration:8s}
         .wave-layer{position:absolute;bottom:0;left:0;right:0;height:22%;background:linear-gradient(180deg,transparent 0%,rgba(10,60,100,0.35) 100%);overflow:hidden}
         .city-layer{position:absolute;bottom:0;left:0;right:0;height:38%;background:linear-gradient(to top,rgba(0,15,25,0.85) 0%,transparent 100%);pointer-events:none}
-        .scan-line{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(0,220,180,0.12),transparent);animation:scan-move 12s linear infinite;pointer-events:none}
+        .scan-line{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(0,220,180,0.12),transparent);animation:scan-move 12s linear infinite;will-change:transform,opacity;pointer-events:none}
+        /* PRO: scan-line lebih lambat — kurangi GPU overdraw */
+        .pro-mode .scan-line{animation-duration:24s}
         .sparkle-layer{position:absolute;inset:0;background-image:radial-gradient(1.5px 1.5px at 15% 25%,rgba(255,180,255,0.7),transparent),radial-gradient(1px 1px at 55% 15%,rgba(180,255,255,0.6),transparent),radial-gradient(2px 2px at 80% 40%,rgba(255,200,100,0.5),transparent),radial-gradient(1px 1px at 30% 70%,rgba(200,100,255,0.7),transparent),radial-gradient(1.5px 1.5px at 70% 80%,rgba(255,100,200,0.5),transparent);animation:sparkle-twinkle 6s ease-in-out infinite}
         .scrollbar-hide::-webkit-scrollbar{display:none}
         .scrollbar-hide{-ms-overflow-style:none;scrollbar-width:none}
@@ -11738,8 +11712,12 @@ Format exactly:
           [data-songrow]{content-visibility:auto;contain-intrinsic-size:0 62px}
           /* Kurangi paint area: hilangkan gradients dekoratif */
           .lite-mode [data-gradient]{background:rgba(255,255,255,0.04)!important}
-          /* Pause semua animasi saat tab tidak aktif (hemat baterai background tab) */
+
+          /* ══ PAGE HIDDEN: pause SEMUA animasi saat tab background — berlaku di lite-mode DAN pro-mode ══
+             Ditulis di luar blok mode agar spesifisitasnya cukup menang atas semua override di atas */
           .page-hidden *:not(iframe){animation-play-state:paused!important}
+          /* Khusus pro-mode: pastikan selector lebih spesifik dari .pro-mode [style*=...] rules */
+          .pro-mode.page-hidden *:not(iframe){animation-play-state:paused!important}
 
           /* ══ PRO MODE: kurangi animasi dekoratif yang tidak perlu ══ */
           /* Bintang twinkle — boros GPU */
