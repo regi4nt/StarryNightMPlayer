@@ -8345,13 +8345,6 @@ Format exactly:
         )}
         {tab==='stream'&&(
           <div style={{ height:'100%', display:'flex', flexDirection:'column', padding:'14px 16px 0' }}>
-          {!streamingPlatformsLoaded && (
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', flex:1, gap:12, color:'rgba(255,255,255,0.4)' }}>
-              <div style={{ width:28, height:28, border:'3px solid rgba(255,255,255,0.15)', borderTopColor:'rgba(255,255,255,0.6)', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
-              <span style={{ fontSize:13 }}>Memuat platform streaming…</span>
-            </div>
-          )}
-          {streamingPlatformsLoaded && <>
 
             {/* Header */}
             <div style={{ marginBottom:10 }}>
@@ -8362,7 +8355,8 @@ Format exactly:
 
               {/* ── Unified search bar */}
               {(() => {
-                const searchPlatforms = STREAMING_PLATFORMS.filter(p => ['ytmusic','websearch'].includes(p.id));
+                const _platforms = getStreamingPlatformsSync();
+                const searchPlatforms = _platforms.filter(p => ['ytmusic','websearch'].includes(p.id));
                 const activePlat = searchPlatforms.find(p => p.id === unifiedPlatform) || searchPlatforms[0] || { id:'ytmusic', color:'#ff0000', name:'YouTube Music', hint:'Cari lagu, artis…' };
                 const handleUnifiedSearch = () => {
                   if (!unifiedQuery.trim()) return;
@@ -8417,7 +8411,7 @@ Format exactly:
               {/* ── STREAMING PLATFORMS */}
               <div style={{ marginBottom:10 }}>
                 <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-                  {STREAMING_PLATFORMS.map(platform => {
+                  {getStreamingPlatformsSync().map(platform => {
                     const isYT = platform.embedType === 'youtube';
                     const isRedirect = platform.embedType === 'redirect';
                     const isRadio = platform.embedType === 'radio';
@@ -9956,7 +9950,6 @@ Format exactly:
               </div>
 
             </div>
-          </>}
           </div>
         )}
 
