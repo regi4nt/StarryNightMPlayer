@@ -635,10 +635,13 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
           const THEMES = [
             { id:'starry',     emoji:'✨', label: lang==='id'?'Langit Berbintang':'Starry Night',    sub: lang==='id'?'Klasik bintang-bintang':'Classic starfield',    colors:['#07071a','#1a1040','#2d1b69'] },
             { id:'bedroom',    emoji:'🛏️', label: lang==='id'?'Kamar Malam':'Night Bedroom',         sub: lang==='id'?'Hujan & lampu hangat':'Rain & warm lamp',       colors:['#0a0810','#1a0a2e','#2d0f3f'] },
-            { id:'journey',    emoji:'🏔️', label: lang==='id'?'Perjalanan':'Night Journey',          sub: lang==='id'?'Hutan & pegunungan':'Forest & mountains',       colors:['#060d0a','#0a1f10','#0d2e18'] },
+            { id:'journey',    emoji:'🏔️', label: lang==='id'?'Pegunungan':'Mountains',          sub: lang==='id'?'Hutan & pegunungan':'Forest & mountains',       colors:['#060d0a','#0a1f10','#0d2e18'] },
             { id:'ocean',      emoji:'🌊', label: lang==='id'?'Laut & Pantai':'Ocean & Beach',       sub: lang==='id'?'Pantai malam hari':'Midnight seashore',         colors:['#040d12','#061828','#083050'] },
             { id:'fantasy',    emoji:'🔮', label: lang==='id'?'Dunia Fantasy':'Fantasy World',       sub: lang==='id'?'Alam semesta lain':'Other realm vibes',         colors:['#090614','#180830','#2d1060'] },
             { id:'futurecity', emoji:'🌆', label: lang==='id'?'Kota Masa Depan':'Future City',       sub: lang==='id'?'Neon cyberpunk malam':'Neon cyberpunk night',   colors:['#050c10','#051520','#073040'] },
+            { id:'nightgarden',  emoji:'🌿', label: lang==='id'?'Taman Malam':'Night Garden',          sub: lang==='id'?'Kunang-kunang & kabut':'Fireflies & mist',        colors:['#020d06','#041a0a','#062810'] },
+            { id:'nighthighway', emoji:'🛣️', label: lang==='id'?'Jalan Raya Malam':'Night Highway',    sub: lang==='id'?'Mobil & lampu malam':'Cars & city lights',        colors:['#03060e','#060c18','#0a1428'] },
+            { id:'solarsystem',  emoji:'🪐', label: lang==='id'?'Tata Surya':'Solar System',           sub: lang==='id'?'Planet & luar angkasa':'Planets & deep space',    colors:['#010108','#030318','#06062a'] },
           ];
           const activeTheme = THEMES.find(t => t.id === (bgTheme || 'starry')) || THEMES[0];
           return (

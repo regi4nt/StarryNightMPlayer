@@ -6979,7 +6979,7 @@ Format exactly:
   ];
 
   return (
-    <div className={`${isLite ? 'lite-mode' : 'pro-mode'} layout-${layoutMode}`} style={{ position:'fixed', inset:0, overflow:'hidden', background: isLite ? '#07071a' : ({starry:'#07071a',bedroom:'#07051a',journey:'#05100a',ocean:'#040e18',fantasy:'#06041a',futurecity:'#020810'}[bgTheme]||'#07071a'), color:'#f1f5f9', fontFamily:"'Segoe UI',system-ui,sans-serif", display:'flex', flexDirection:'column', userSelect:'none', WebkitTapHighlightColor:'transparent' }}>
+    <div className={`${isLite ? 'lite-mode' : 'pro-mode'} layout-${layoutMode}`} style={{ position:'fixed', inset:0, overflow:'hidden', background: isLite ? '#07071a' : ({starry:'#07071a',bedroom:'#07051a',journey:'#05100a',ocean:'#040e18',fantasy:'#06041a',futurecity:'#020810',nightgarden:'#020d06',nighthighway:'#03060e',solarsystem:'#010108'}[bgTheme]||'#07071a'), color:'#f1f5f9', fontFamily:"'Segoe UI',system-ui,sans-serif", display:'flex', flexDirection:'column', userSelect:'none', WebkitTapHighlightColor:'transparent' }}>
 
       {/* ══ PWA INSTALL BANNER — floating bottom, appears when installable ══ */}
       {!pwaInstalled && !pwaBannerDismissed && pwaBannerVisible && pwaPrompt && (
@@ -7026,7 +7026,10 @@ Format exactly:
           journey:   '#05100a',
           ocean:     '#040e18',
           fantasy:   '#06041a',
-          futurecity:'#020810',
+          futurecity:   '#020810',
+          nightgarden:  '#020d06',
+          nighthighway: '#03060e',
+          solarsystem:  '#010108',
         }[th] || '#07071a';
 
         // Overlay gradients per theme
@@ -7080,6 +7083,34 @@ Format exactly:
             // Pantulan neon di langit rendah
             'radial-gradient(ellipse at 30% 70%, rgba(0,180,255,0.10) 0%, transparent 35%)',
             'radial-gradient(ellipse at 70% 65%, rgba(140,0,255,0.10) 0%, transparent 35%)',
+          ],
+          nightgarden: [
+            // Deep green ground glow
+            'radial-gradient(ellipse at 50% 100%, rgba(10,100,50,0.55) 0%, rgba(5,55,25,0.28) 45%, transparent 70%)',
+            // Soft moonlight top-left
+            'radial-gradient(ellipse at 20% 5%, rgba(160,200,180,0.14) 0%, transparent 45%)',
+            // Warm firefly ambient mid
+            'radial-gradient(ellipse at 65% 55%, rgba(80,200,100,0.08) 0%, transparent 40%)',
+          ],
+          nighthighway: [
+            // Asphalt ground dark
+            'radial-gradient(ellipse at 50% 100%, rgba(20,30,50,0.80) 0%, rgba(8,12,24,0.50) 40%, transparent 65%)',
+            // Distant city glow horizon
+            'radial-gradient(ellipse at 50% 35%, rgba(255,140,0,0.10) 0%, rgba(200,80,0,0.05) 35%, transparent 60%)',
+            // Left headlight spill
+            'radial-gradient(ellipse at 35% 65%, rgba(255,240,180,0.12) 0%, transparent 40%)',
+            // Right headlight spill
+            'radial-gradient(ellipse at 65% 65%, rgba(255,240,180,0.12) 0%, transparent 40%)',
+          ],
+          solarsystem: [
+            // Deep space dark core
+            'radial-gradient(ellipse at 50% 50%, rgba(5,5,30,0.60) 0%, transparent 75%)',
+            // Nebula blue-purple haze left
+            'radial-gradient(ellipse at 10% 40%, rgba(60,30,180,0.20) 0%, transparent 55%)',
+            // Nebula pink-red haze right
+            'radial-gradient(ellipse at 90% 60%, rgba(180,30,80,0.16) 0%, transparent 50%)',
+            // Sun warm glow top-center
+            'radial-gradient(ellipse at 50% 8%, rgba(255,180,40,0.22) 0%, transparent 45%)',
           ],
         }[th] || [`radial-gradient(ellipse at 60% 10%,${track.color}20 0%,transparent 60%)`];
 
@@ -7166,27 +7197,6 @@ Format exactly:
           if (th === 'journey') return (
             <>
               <div className="stars" style={{ opacity:0.55 }}/><div className="starsB" style={{ opacity:0.40 }}/><div className="starsC" style={{ opacity:0.25 }}/>
-              {/* Moon — positioned behind album cover (cover acts as the moon) */}
-              {ringCenter.x > 0 && (() => {
-                const moonSize = Math.round(ringSize * 1.35);
-                return (
-                  <div style={{
-                    position:'absolute',
-                    left: ringCenter.x - moonSize / 2,
-                    top: ringCenter.y - moonSize / 2,
-                    width: moonSize,
-                    height: moonSize,
-                    borderRadius:'50%',
-                    background:'radial-gradient(circle, rgba(240,240,200,0.38) 25%, rgba(210,230,180,0.18) 55%, transparent 78%)',
-                    boxShadow:`0 0 ${Math.round(moonSize * 0.4)}px rgba(220,240,180,0.22), 0 0 ${Math.round(moonSize * 0.7)}px rgba(200,230,160,0.10)`,
-                    animation:'pulse-moon 8s ease-in-out infinite',
-                    willChange:'opacity',
-                    pointerEvents:'none',
-                    zIndex: 0,
-                  }}/>
-                );
-              })()}
-              {/* Mountain silhouette — back range */}
               <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'35%', background:'rgba(15,35,20,0.48)', clipPath:'polygon(0% 100%, 0% 65%, 8% 48%, 16% 62%, 24% 38%, 32% 58%, 38% 42%, 44% 55%, 50% 30%, 56% 50%, 63% 35%, 70% 55%, 76% 44%, 83% 58%, 90% 40%, 96% 60%, 100% 52%, 100% 100%)' }}/>
               {/* Mountain silhouette — front range */}
               <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'25%', background:'rgba(5,18,10,0.72)', clipPath:'polygon(0% 100%, 0% 80%, 5% 58%, 12% 72%, 20% 50%, 28% 68%, 35% 52%, 42% 70%, 48% 42%, 55% 62%, 62% 45%, 68% 65%, 75% 50%, 82% 70%, 88% 55%, 94% 72%, 100% 60%, 100% 100%)' }}/>
@@ -7197,29 +7207,6 @@ Format exactly:
           if (th === 'ocean') return (
             <>
               <div className="stars" style={{ opacity:0.60 }}/><div className="starsB" style={{ opacity:0.45 }}/><div className="starsC" style={{ opacity:0.20 }}/>
-              {/* Large moon — positioned behind album cover (cover acts as the moon) */}
-              {ringCenter.x > 0 && (() => {
-                const moonSize = Math.round(ringSize * 1.38);
-                return (
-                  <div style={{
-                    position:'absolute',
-                    left: ringCenter.x - moonSize / 2,
-                    top: ringCenter.y - moonSize / 2,
-                    width: moonSize,
-                    height: moonSize,
-                    borderRadius:'50%',
-                    background:'radial-gradient(circle, rgba(220,235,255,0.42) 28%, rgba(180,210,255,0.18) 58%, transparent 78%)',
-                    boxShadow:`0 0 ${Math.round(moonSize * 0.45)}px rgba(180,210,255,0.28), 0 0 ${Math.round(moonSize * 0.8)}px rgba(160,200,255,0.12)`,
-                    animation:'pulse-moon 7s ease-in-out infinite',
-                    willChange:'opacity',
-                    pointerEvents:'none',
-                    zIndex: 0,
-                  }}/>
-                );
-              })()}
-              {/* Moon shimmer trail — satu line saja */}
-              <div style={{ position:'absolute', bottom:'23%', left:'28%', right:'28%', height:3, background:'rgba(200,230,255,0.20)', borderRadius:4, filter:'blur(4px)', animation:'shimmer 7s ease-in-out infinite', willChange:'opacity' }}/>
-              {/* Wave layers */}
               <div className="wave-layer"/>
               {/* Horizon mist */}
               <div style={{ position:'absolute', bottom:'22%', left:0, right:0, height:'10%', background:'linear-gradient(to top, rgba(10,60,120,0.30) 0%, transparent 100%)', filter:'blur(6px)' }}/>
@@ -7232,27 +7219,6 @@ Format exactly:
               <div className="starsB" style={{ opacity:0.55 }}/>
               {/* Aurora borealis ribbon */}
               <div className="aurora-layer"/>
-              {/* Bulan besar keemasan — positioned behind album cover (cover acts as the moon) */}
-              {ringCenter.x > 0 && (() => {
-                const moonSize = Math.round(ringSize * 1.40);
-                return (
-                  <div style={{
-                    position:'absolute',
-                    left: ringCenter.x - moonSize / 2,
-                    top: ringCenter.y - moonSize / 2,
-                    width: moonSize,
-                    height: moonSize,
-                    borderRadius:'50%',
-                    background:'radial-gradient(circle, rgba(255,240,200,0.60) 18%, rgba(240,210,160,0.30) 48%, transparent 72%)',
-                    boxShadow:`0 0 ${Math.round(moonSize * 0.42)}px rgba(255,230,150,0.32), 0 0 ${Math.round(moonSize * 0.75)}px rgba(255,200,100,0.16)`,
-                    animation:'pulse-moon 8s ease-in-out infinite',
-                    willChange:'opacity',
-                    pointerEvents:'none',
-                    zIndex: 0,
-                  }}/>
-                );
-              })()}
-              {/* Kunang-kunang / firefly melayang — 1 saja */}
               <div style={{ position:'absolute', top:'42%', left:'28%', width:3, height:3, borderRadius:'50%', background:'rgba(120,255,180,0.90)', boxShadow:'0 0 6px rgba(100,255,160,0.70)', animation:'float-orb 9s ease-in-out infinite', willChange:'transform, opacity' }}/>
               {/* Kastil siluet */}
               <div className="castle-layer"/>
@@ -7294,6 +7260,82 @@ Format exactly:
               </div>
               {/* Beacon — wrapper menahan filter blur sebagai pengganti box-shadow, inner hanya opacity */}
               <div style={{ position:'absolute', top: layoutMode.includes('landscape') ? '5%' : '9%', left:'46.5%', width:5, height:5, borderRadius:'50%', background:'rgba(255,60,60,0.95)', filter:'drop-shadow(0 0 4px rgba(255,40,40,0.60))', animation:'pulse-moon 1.4s ease-in-out infinite', willChange:'opacity' }}/>
+            </>
+          );
+          if (th === 'nightgarden') return (
+            <>
+              {/* Bintang redup di langit taman */}
+              <div className="starsB" style={{ opacity:0.35 }}/><div className="starsC" style={{ opacity:0.18 }}/>
+              {/* Kabut taman */}
+              <div className="garden-fog"/>
+              {/* Silhuet pohon belakang */}
+              <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'40%', background:'rgba(3,22,10,0.70)', clipPath:'polygon(0% 100%, 0% 68%, 4% 55%, 7% 40%, 9% 55%, 12% 30%, 15% 52%, 18% 38%, 21% 60%, 25% 42%, 28% 65%, 32% 44%, 36% 60%, 40% 48%, 44% 62%, 48% 38%, 52% 55%, 56% 40%, 60% 58%, 64% 44%, 68% 62%, 72% 46%, 76% 58%, 80% 40%, 84% 55%, 88% 38%, 92% 52%, 96% 60%, 100% 50%, 100% 100%)', pointerEvents:'none' }}/>
+              {/* Silhuet pohon depan lebih gelap */}
+              <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'25%', background:'rgba(1,10,5,0.88)', clipPath:'polygon(0% 100%, 0% 80%, 3% 62%, 6% 72%, 10% 52%, 14% 70%, 18% 58%, 22% 74%, 27% 56%, 32% 72%, 37% 60%, 42% 76%, 48% 58%, 54% 72%, 60% 60%, 66% 74%, 71% 58%, 76% 72%, 81% 60%, 86% 76%, 91% 62%, 95% 74%, 100% 66%, 100% 100%)', pointerEvents:'none' }}/>
+              {/* Kunang-kunang */}
+              <div className="gf1"/><div className="gf2"/><div className="gf3"/>
+              <div className="gf4"/><div className="gf5"/><div className="gf6"/>
+              {/* Kelopak gugur */}
+              <div className="garden-petal"/><div className="garden-petal2"/>
+            </>
+          );
+          if (th === 'nighthighway') return (
+            <>
+              {/* Bintang langit malam jalan raya */}
+              <div className="stars" style={{ opacity:0.50 }}/><div className="starsB" style={{ opacity:0.30 }}/>
+              {/* Langit gradien senja-malam di horizon */}
+              <div style={{ position:'absolute', top:0, left:0, right:0, height:'45%', background:'linear-gradient(to bottom, rgba(5,8,20,0) 0%, rgba(255,100,10,0.08) 70%, rgba(255,120,0,0.14) 100%)', pointerEvents:'none' }}/>
+              {/* Badan jalan */}
+              <div className="highway-road"/>
+              {/* Marka jalan */}
+              <div className="highway-lane"/>
+              {/* Kerucut lampu depan */}
+              <div className="highway-headlights"/>
+              {/* Sinar lampu belakang */}
+              <div className="highway-taillights"/>
+              {/* Mobil bergerak — headlights */}
+              <div className="hcar1" style={{ bottom:'34%' }}/>
+              <div className="hcar2" style={{ bottom:'29%' }}/>
+              {/* Mobil bergerak — taillights */}
+              <div className="hcar3" style={{ bottom:'32%' }}/>
+              <div className="hcar4" style={{ bottom:'27%' }}/>
+              {/* Lampu tepi jalan kiri */}
+              <div style={{ position:'absolute', bottom:'38%', left:'8%', width:3, height:'22%', background:'rgba(255,200,100,0.30)', borderRadius:2, pointerEvents:'none' }}/>
+              <div style={{ position:'absolute', bottom:'38%', left:'33%', width:3, height:'18%', background:'rgba(255,200,100,0.25)', borderRadius:2, pointerEvents:'none' }}/>
+              <div style={{ position:'absolute', bottom:'38%', right:'8%', width:3, height:'22%', background:'rgba(255,200,100,0.30)', borderRadius:2, pointerEvents:'none' }}/>
+            </>
+          );
+          if (th === 'solarsystem') return (
+            <>
+              {/* Bintang luar angkasa penuh */}
+              <div className="stars"/><div className="starsB"/><div className="starsC"/>
+              {/* Nebula awan */}
+              <div className="solar-nebula" style={{ width:320, height:220, left:'5%', top:'15%', background:'radial-gradient(ellipse, rgba(80,30,180,0.18) 0%, transparent 70%)', animationDelay:'0s' }}/>
+              <div className="solar-nebula" style={{ width:260, height:180, right:'8%', top:'30%', background:'radial-gradient(ellipse, rgba(180,30,80,0.15) 0%, transparent 70%)', animationDelay:'6s' }}/>
+              {/* Matahari */}
+              {ringCenter.x > 0 && (() => {
+                const cx = ringCenter.x;
+                const cy = ringCenter.y;
+                return (<>
+                  {/* Orbit rings */}
+                  <div className="solar-orbit" style={{ width: ringSize*2.8, height: ringSize*2.8, left:cx, top:cy }}/>
+                  <div className="solar-orbit" style={{ width: ringSize*4.2, height: ringSize*4.2, left:cx, top:cy }}/>
+                  <div className="solar-orbit" style={{ width: ringSize*5.8, height: ringSize*5.8, left:cx, top:cy }}/>
+                  <div className="solar-orbit" style={{ width: ringSize*7.6, height: ringSize*7.6, left:cx, top:cy, borderColor:'rgba(255,255,255,0.04)' }}/>
+                  {/* Sun glow (behind cover) */}
+                  <div className="solar-sun" style={{ width: ringSize*1.45, height: ringSize*1.45, left: cx - ringSize*1.45/2, top: cy - ringSize*1.45/2, zIndex:0 }}/>
+                  {/* Planet 1 — biru (bumi) */}
+                  <div className="solar-planet" style={{ '--gc':'rgba(60,130,255,0.60)', width:12, height:12, background:'radial-gradient(circle, #4fa3ff 20%, #1a4fa0 65%, #0a1e50 100%)', left: cx + ringSize*1.4 - 6, top: cy - 6, animationDuration:'5s' }}/>
+                  {/* Planet 2 — jingga (mars) */}
+                  <div className="solar-planet" style={{ '--gc':'rgba(255,120,40,0.55)', width:10, height:10, background:'radial-gradient(circle, #ff8c42 25%, #c04010 65%, #6a1a00 100%)', left: cx - ringSize*2.1 - 5, top: cy + 8, animationDuration:'7s', animationDelay:'1s' }}/>
+                  {/* Planet 3 — kuning (saturn-ish) */}
+                  <div className="solar-planet" style={{ '--gc':'rgba(255,210,80,0.50)', width:16, height:16, background:'radial-gradient(circle, #ffe066 20%, #c8960a 55%, #7a5500 100%)', left: cx + ringSize*2.9 - 8, top: cy - 5, animationDuration:'9s', animationDelay:'3s' }}/>
+                  {/* Planet 4 — teal kecil */}
+                  <div className="solar-planet" style={{ '--gc':'rgba(40,220,200,0.45)', width:8, height:8, background:'radial-gradient(circle, #40e0d0 25%, #0a8070 70%, #024030 100%)', left: cx - ringSize*3.8 - 4, top: cy - 12, animationDuration:'11s', animationDelay:'5s' }}/>
+                </>);
+              })()}
+              {/* Komet */}
+              <div className="solar-comet"/>
             </>
           );
           return <><div className="stars"/><div className="starsB"/><div className="starsC"/></>;
