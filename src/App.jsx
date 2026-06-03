@@ -7227,12 +7227,6 @@ Format exactly:
               <div className="city-layer"/>
               {/* Neon window blinks on buildings */}
               <div className="city-windows" style={{ height: layoutMode.includes('landscape') ? '58%' : '42%' }}/>
-              {/* Neon skyline line — tepat di atap skyline */}
-              {(() => {
-                const ls = layoutMode.includes('landscape');
-                const cityH = ls ? 58 : 42;
-                return <div className="neon-skyline" style={{ bottom: `${cityH}%` }}/>;
-              })()}
               {/* Ground — aspal gelap berkilap neon */}
               <div style={{ position:'absolute', bottom:0, left:0, right:0, height: layoutMode.includes('landscape') ? '48%' : '35%', background:'linear-gradient(to top, rgba(0,10,22,0.88) 0%, rgba(0,20,40,0.55) 35%, transparent 100%)' }}/>
               {/* Pantulan neon di aspal — multi-warna lebih hidup */}
@@ -7405,25 +7399,26 @@ Format exactly:
                   // Lebar area konten (tidak termasuk sidebar)
                   const contentW = vw - sbW;
                   // Posisi tiang: dihitung dari tepi kiri konten (setelah sidebar)
+                  // Kedua tiang menggunakan left, agar translateX(-50%) konsisten
                   // Tiang kiri: left = sbW + frac% * contentW
-                  // Tiang kanan: right = frac% * contentW (simetris terhadap tengah konten)
+                  // Tiang kanan: left = sbW + contentW - frac% * contentW (mirror dari kiri)
                   const poleL = (frac) => `calc(${sbW}px + ${frac * contentW / 100}px)`;
-                  const poleR = (frac) => `${frac * contentW / 100}px`;
+                  const poleR = (frac) => `calc(${sbW}px + ${contentW - frac * contentW / 100}px)`;
                   const poles = [
                     // Kiri: 3 tiang (dekat→jauh) — makin besar = makin ke tengah = makin jauh
-                    { side:'left',  posVal: poleL(3),  armH: ls?110:140, opacity:1.0,  headS:16 },
-                    { side:'left',  posVal: poleL(9),  armH: ls? 80:105, opacity:0.60, headS:12, scale:0.85 },
-                    { side:'left',  posVal: poleL(14), armH: ls? 55: 72, opacity:0.35, headS: 9, scale:0.70 },
-                    // Kanan: 3 tiang (dekat→jauh) — simetris mirror dari kiri terhadap tengah konten
-                    { side:'right', posVal: poleR(3),  armH: ls?110:140, opacity:1.0,  headS:16 },
-                    { side:'right', posVal: poleR(9),  armH: ls? 80:105, opacity:0.60, headS:12, scale:0.85 },
-                    { side:'right', posVal: poleR(14), armH: ls? 55: 72, opacity:0.35, headS: 9, scale:0.70 },
+                    { posVal: poleL(3),  armH: ls?110:100, opacity:1.0,  headS:16 },
+                    { posVal: poleL(9),  armH: ls? 80: 75, opacity:0.60, headS:12, scale:0.85 },
+                    { posVal: poleL(14), armH: ls? 55: 52, opacity:0.35, headS: 9, scale:0.70 },
+                    // Kanan: mirror sempurna dari kiri terhadap tengah konten
+                    { posVal: poleR(3),  armH: ls?110:100, opacity:1.0,  headS:16 },
+                    { posVal: poleR(9),  armH: ls? 80: 75, opacity:0.60, headS:12, scale:0.85 },
+                    { posVal: poleR(14), armH: ls? 55: 52, opacity:0.35, headS: 9, scale:0.70 },
                   ];
                   return poles.map((p,i) => (
                   <div key={i} className="hw-pole" style={{
-                    [p.side]: p.posVal,
+                    left: p.posVal,
                     opacity: p.opacity,
-                    transform: `${p.side==='left' ? 'translateX(-50%)' : 'translateX(50%)'} ${p.scale ? `scale(${p.scale})` : ''}`,
+                    transform: `translateX(-50%) ${p.scale ? `scale(${p.scale})` : ''}`,
                     transformOrigin: 'bottom center',
                   }}>
                     <div className="pole-head" style={{ width:p.headS, height: Math.round(p.headS*0.38) }}/>
