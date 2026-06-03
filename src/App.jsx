@@ -6950,7 +6950,7 @@ Format exactly:
   ];
 
   return (
-    <div className={`${isLite ? 'lite-mode' : 'pro-mode'} layout-${layoutMode}`} style={{ position:'fixed', inset:0, overflow:'hidden', background: isLite ? '#07071a' : ({starry:'#07071a',bedroom:'#0d0814',journey:'#05100a',ocean:'#040e18',fantasy:'#0b0515',futurecity:'#040c10'}[bgTheme]||'#07071a'), color:'#f1f5f9', fontFamily:"'Segoe UI',system-ui,sans-serif", display:'flex', flexDirection:'column', userSelect:'none', WebkitTapHighlightColor:'transparent' }}>
+    <div className={`${isLite ? 'lite-mode' : 'pro-mode'} layout-${layoutMode}`} style={{ position:'fixed', inset:0, overflow:'hidden', background: isLite ? '#07071a' : ({starry:'#07071a',bedroom:'#080614',journey:'#05100a',ocean:'#040e18',fantasy:'#06041a',futurecity:'#040c10'}[bgTheme]||'#07071a'), color:'#f1f5f9', fontFamily:"'Segoe UI',system-ui,sans-serif", display:'flex', flexDirection:'column', userSelect:'none', WebkitTapHighlightColor:'transparent' }}>
 
       {/* ══ PWA INSTALL BANNER — floating bottom, appears when installable ══ */}
       {!pwaInstalled && !pwaBannerDismissed && pwaBannerVisible && pwaPrompt && (
@@ -6993,10 +6993,10 @@ Format exactly:
         // Base solid background
         const baseBg = {
           starry:    '#07071a',
-          bedroom:   '#0d0814',
+          bedroom:   '#080614',
           journey:   '#05100a',
           ocean:     '#040e18',
-          fantasy:   '#0b0515',
+          fantasy:   '#06041a',
           futurecity:'#040c10',
         }[th] || '#07071a';
 
@@ -7006,12 +7006,12 @@ Format exactly:
             `radial-gradient(ellipse at 60% 10%,${track.color}20 0%,transparent 60%)`,
           ],
           bedroom: [
-            // Warm candlelight from bottom-left corner
-            'radial-gradient(ellipse at 20% 90%, rgba(255,140,30,0.28) 0%, rgba(200,80,10,0.12) 35%, transparent 65%)',
-            // Cool moonlight through window top-right
-            'radial-gradient(ellipse at 80% 5%, rgba(160,180,255,0.15) 0%, transparent 40%)',
-            // Deep purple night ambiance
-            'radial-gradient(ellipse at 50% 50%, rgba(80,20,120,0.18) 0%, transparent 70%)',
+            // Cahaya lampu tidur kuning hangat dari kiri bawah
+            'radial-gradient(ellipse at 15% 85%, rgba(255,140,30,0.22) 0%, rgba(200,80,10,0.10) 35%, transparent 60%)',
+            // Sinar bulan dingin dari kanan atas (jendela)
+            'radial-gradient(ellipse at 82% 8%, rgba(140,170,255,0.18) 0%, rgba(100,130,220,0.08) 35%, transparent 55%)',
+            // Ambient malam biru gelap
+            'radial-gradient(ellipse at 50% 40%, rgba(20,15,50,0.30) 0%, transparent 70%)',
           ],
           journey: [
             // Green forest floor glow
@@ -7030,12 +7030,14 @@ Format exactly:
             'radial-gradient(ellipse at 25% 60%, rgba(0,200,180,0.10) 0%, transparent 45%)',
           ],
           fantasy: [
-            // Magenta portal glow center-left
-            'radial-gradient(ellipse at 30% 45%, rgba(180,40,255,0.30) 0%, rgba(120,20,200,0.12) 40%, transparent 65%)',
-            // Pink energy right
-            'radial-gradient(ellipse at 75% 65%, rgba(255,60,180,0.22) 0%, transparent 50%)',
-            // Cyan arcane accent top
-            'radial-gradient(ellipse at 60% 5%, rgba(80,200,255,0.15) 0%, transparent 40%)',
+            // Aurora hijau-biru di atas
+            'radial-gradient(ellipse at 35% 15%, rgba(60,200,160,0.20) 0%, rgba(40,160,120,0.08) 45%, transparent 65%)',
+            // Aurora ungu di tengah atas
+            'radial-gradient(ellipse at 65% 10%, rgba(140,60,255,0.18) 0%, rgba(100,40,200,0.08) 40%, transparent 60%)',
+            // Cahaya bulan keemasan
+            'radial-gradient(ellipse at 14% 8%, rgba(255,220,140,0.20) 0%, transparent 40%)',
+            // Ground glow ungu misterius
+            'radial-gradient(ellipse at 50% 100%, rgba(80,20,140,0.30) 0%, rgba(50,10,100,0.15) 40%, transparent 65%)',
           ],
           futurecity: [
             // Cyan neon horizon glow
@@ -7052,79 +7054,93 @@ Format exactly:
           if (th === 'starry') return <><div className="stars"/><div className="starsB"/><div className="starsC"/></>;
           if (th === 'bedroom') return (
             <>
-              {/* Very faint distant stars visible through window */}
-              <div className="stars" style={{ opacity:0.15 }}/><div className="starsB" style={{ opacity:0.1 }}/>
-              {/* Rain streaks */}
-              <div className="rain-layer"/>
-              {/* Warm lamp glow — flickering candle */}
-              <div style={{ position:'absolute', bottom:'12%', left:'15%', width:160, height:160, borderRadius:'50%', background:'radial-gradient(circle, rgba(255,160,40,0.35) 0%, rgba(255,100,10,0.15) 45%, transparent 70%)', animation:'pulse-lamp 2.5s ease-in-out infinite' }}/>
-              <div style={{ position:'absolute', bottom:'12%', left:'22%', width:60, height:60, borderRadius:'50%', background:'radial-gradient(circle, rgba(255,200,80,0.55) 0%, transparent 70%)', animation:'flicker 1.8s ease-in-out infinite' }}/>
-              {/* Window frame with moonlight */}
-              <div style={{ position:'absolute', top:'8%', right:'10%', width:80, height:110, border:'2px solid rgba(160,180,255,0.15)', borderRadius:4, background:'rgba(100,120,200,0.04)', boxShadow:'0 0 40px rgba(160,180,255,0.10) inset' }}/>
-              {/* Warm floor reflection */}
-              <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'20%', background:'linear-gradient(to top, rgba(180,80,10,0.12) 0%, transparent 100%)' }}/>
+              {/* Langit malam via jendela — bintang sangat redup */}
+              <div className="starsB" style={{ opacity:0.18 }}/>
+              {/* Bulan dari luar jendela */}
+              <div style={{ position:'absolute', top:'14%', right:'11%', width:32, height:32, borderRadius:'50%', background:'radial-gradient(circle, rgba(220,230,255,0.80) 35%, rgba(180,200,255,0.35) 65%, transparent 85%)', boxShadow:'0 0 18px rgba(180,200,255,0.30)', animation:'pulse-moon 9s ease-in-out infinite', willChange:'opacity', zIndex:1 }}/>
+              {/* Jendela frame */}
+              <div className="bedroom-window"/>
+              {/* Hujan di luar jendela */}
+              <div className="window-rain"/>
+              {/* Tirai kiri & kanan */}
+              <div className="curtain-left"/>
+              <div className="curtain-right"/>
+              {/* Sinar bulan masuk lewat jendela */}
+              <div className="moonbeam"/>
+              {/* Lampu tidur — nightstand kiri bawah */}
+              {/* Glow lampu — satu elemen gabungan (outer halo + inner glow) */}
+              <div className="lamp-halo" style={{ bottom:'24%', left:'6%', width:140, height:140, background:'radial-gradient(circle, rgba(255,210,100,0.65) 0%, rgba(255,170,60,0.28) 20%, rgba(255,120,20,0.12) 55%, transparent 75%)' }}/>
+              {/* Kap lampu — bentuk trapezoid */}
+              <div style={{ position:'absolute', bottom:'37%', left:'13%', width:50, height:22, background:'rgba(180,100,30,0.55)', clipPath:'polygon(10% 0%, 90% 0%, 100% 100%, 0% 100%)', borderRadius:'0 0 3px 3px', pointerEvents:'none' }}/>
+              {/* Tiang lampu */}
+              <div style={{ position:'absolute', bottom:'30%', left:'35px', width:4, height:'8%', background:'rgba(140,80,25,0.50)', left:'calc(13% + 23px)', pointerEvents:'none' }}/>
+              {/* Meja samping / nightstand */}
+              <div style={{ position:'absolute', bottom:'27%', left:'7%', width:'14%', height:'4%', background:'rgba(80,45,15,0.55)', borderRadius:'3px 3px 0 0', pointerEvents:'none' }}/>
+              {/* Kasur & headboard */}
+              <div className="bed-layer"/>
+              {/* Lantai hangat */}
+              <div className="bedroom-floor"/>
+              {/* Cahaya lampu di lantai */}
+              <div style={{ position:'absolute', bottom:0, left:'5%', width:'20%', height:'28%', background:'radial-gradient(ellipse at 40% 0%, rgba(255,140,30,0.12) 0%, transparent 70%)', pointerEvents:'none' }}/>
             </>
           );
           if (th === 'journey') return (
             <>
-              <div className="stars" style={{ opacity:0.6 }}/><div className="starsB" style={{ opacity:0.45 }}/><div className="starsC" style={{ opacity:0.3 }}/>
+              <div className="stars" style={{ opacity:0.55 }}/><div className="starsB" style={{ opacity:0.40 }}/><div className="starsC" style={{ opacity:0.25 }}/>
               {/* Moon */}
-              <div style={{ position:'absolute', top:'8%', right:'20%', width:70, height:70, borderRadius:'50%', background:'radial-gradient(circle, rgba(240,240,200,0.55) 30%, rgba(200,220,180,0.25) 60%, transparent 80%)', boxShadow:'0 0 30px rgba(220,240,180,0.25)', animation:'pulse-moon 7s ease-in-out infinite' }}/>
-              {/* Mountain silhouette — back range lighter */}
-              <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'35%', background:'rgba(15,35,20,0.5)', clipPath:'polygon(0% 100%, 0% 65%, 8% 48%, 16% 62%, 24% 38%, 32% 58%, 38% 42%, 44% 55%, 50% 30%, 56% 50%, 63% 35%, 70% 55%, 76% 44%, 83% 58%, 90% 40%, 96% 60%, 100% 52%, 100% 100%)' }}/>
-              {/* Mountain silhouette — front range darker */}
-              <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'25%', background:'rgba(5,18,10,0.75)', clipPath:'polygon(0% 100%, 0% 80%, 5% 58%, 12% 72%, 20% 50%, 28% 68%, 35% 52%, 42% 70%, 48% 42%, 55% 62%, 62% 45%, 68% 65%, 75% 50%, 82% 70%, 88% 55%, 94% 72%, 100% 60%, 100% 100%)' }}/>
-              {/* Forest fog drifting */}
-              <div style={{ position:'absolute', bottom:'20%', left:0, right:0, height:'14%', background:'linear-gradient(to top, rgba(60,120,70,0.22), transparent)', animation:'drift 9s ease-in-out infinite alternate', filter:'blur(4px)' }}/>
-              <div style={{ position:'absolute', bottom:'18%', left:'-10%', right:'-10%', height:'10%', background:'linear-gradient(to top, rgba(80,160,90,0.15), transparent)', animation:'drift 12s ease-in-out 3s infinite alternate-reverse', filter:'blur(6px)' }}/>
+              <div style={{ position:'absolute', top:'8%', right:'20%', width:65, height:65, borderRadius:'50%', background:'radial-gradient(circle, rgba(240,240,200,0.50) 30%, rgba(200,220,180,0.22) 60%, transparent 80%)', boxShadow:'0 0 25px rgba(220,240,180,0.20)', animation:'pulse-moon 8s ease-in-out infinite', willChange:'opacity' }}/>
+              {/* Mountain silhouette — back range */}
+              <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'35%', background:'rgba(15,35,20,0.48)', clipPath:'polygon(0% 100%, 0% 65%, 8% 48%, 16% 62%, 24% 38%, 32% 58%, 38% 42%, 44% 55%, 50% 30%, 56% 50%, 63% 35%, 70% 55%, 76% 44%, 83% 58%, 90% 40%, 96% 60%, 100% 52%, 100% 100%)' }}/>
+              {/* Mountain silhouette — front range */}
+              <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'25%', background:'rgba(5,18,10,0.72)', clipPath:'polygon(0% 100%, 0% 80%, 5% 58%, 12% 72%, 20% 50%, 28% 68%, 35% 52%, 42% 70%, 48% 42%, 55% 62%, 62% 45%, 68% 65%, 75% 50%, 82% 70%, 88% 55%, 94% 72%, 100% 60%, 100% 100%)' }}/>
+              {/* Forest fog — satu layer saja */}
+              <div style={{ position:'absolute', bottom:'20%', left:0, right:0, height:'12%', background:'linear-gradient(to top, rgba(60,120,70,0.20), transparent)', animation:'drift 11s ease-in-out infinite alternate', filter:'blur(4px)', willChange:'transform' }}/>
             </>
           );
           if (th === 'ocean') return (
             <>
-              <div className="stars" style={{ opacity:0.65 }}/><div className="starsB" style={{ opacity:0.5 }}/><div className="starsC" style={{ opacity:0.25 }}/>
+              <div className="stars" style={{ opacity:0.60 }}/><div className="starsB" style={{ opacity:0.45 }}/><div className="starsC" style={{ opacity:0.20 }}/>
               {/* Large moon over ocean */}
-              <div style={{ position:'absolute', top:'7%', left:'30%', width:90, height:90, borderRadius:'50%', background:'radial-gradient(circle, rgba(220,235,255,0.6) 35%, rgba(180,210,255,0.25) 65%, transparent 80%)', boxShadow:'0 0 40px rgba(180,210,255,0.3)', animation:'pulse-moon 6s ease-in-out infinite' }}/>
-              {/* Moon shimmer trail on water */}
-              <div style={{ position:'absolute', bottom:'20%', left:'25%', right:'25%', height:4, background:'rgba(200,230,255,0.25)', borderRadius:4, filter:'blur(5px)', animation:'shimmer 3s ease-in-out infinite' }}/>
-              <div style={{ position:'absolute', bottom:'18%', left:'35%', right:'35%', height:2, background:'rgba(220,240,255,0.35)', borderRadius:4, filter:'blur(3px)', animation:'shimmer 4s ease-in-out 0.8s infinite' }}/>
+              <div style={{ position:'absolute', top:'7%', left:'30%', width:85, height:85, borderRadius:'50%', background:'radial-gradient(circle, rgba(220,235,255,0.55) 35%, rgba(180,210,255,0.22) 65%, transparent 80%)', boxShadow:'0 0 35px rgba(180,210,255,0.25)', animation:'pulse-moon 7s ease-in-out infinite', willChange:'opacity' }}/>
+              {/* Moon shimmer trail — satu line saja */}
+              <div style={{ position:'absolute', bottom:'20%', left:'28%', right:'28%', height:3, background:'rgba(200,230,255,0.20)', borderRadius:4, filter:'blur(4px)', animation:'shimmer 7s ease-in-out infinite', willChange:'opacity' }}/>
               {/* Wave layers */}
               <div className="wave-layer"/>
               {/* Horizon mist */}
-              <div style={{ position:'absolute', bottom:'18%', left:0, right:0, height:'12%', background:'linear-gradient(to top, rgba(10,60,120,0.35) 0%, transparent 100%)', filter:'blur(8px)' }}/>
+              <div style={{ position:'absolute', bottom:'18%', left:0, right:0, height:'10%', background:'linear-gradient(to top, rgba(10,60,120,0.30) 0%, transparent 100%)', filter:'blur(6px)' }}/>
             </>
           );
           if (th === 'fantasy') return (
             <>
-              <div className="stars"/><div className="starsB"/><div className="starsC"/>
-              {/* Large arcane portal / moon */}
-              <div style={{ position:'absolute', top:'10%', right:'18%', width:110, height:110, borderRadius:'50%', background:'radial-gradient(circle, rgba(200,80,255,0.45) 25%, rgba(150,40,220,0.20) 55%, transparent 75%)', boxShadow:'0 0 50px rgba(180,60,255,0.35)', animation:'pulse-moon 5s ease-in-out infinite' }}/>
-              {/* Floating orbs */}
-              <div style={{ position:'absolute', top:'22%', left:'12%', width:70, height:70, borderRadius:'50%', background:'radial-gradient(circle, rgba(200,80,255,0.35) 0%, transparent 70%)', animation:'float-orb 5s ease-in-out infinite' }}/>
-              <div style={{ position:'absolute', top:'52%', right:'18%', width:50, height:50, borderRadius:'50%', background:'radial-gradient(circle, rgba(255,80,180,0.30) 0%, transparent 70%)', animation:'float-orb 7s ease-in-out 2s infinite' }}/>
-              <div style={{ position:'absolute', top:'38%', right:'42%', width:35, height:35, borderRadius:'50%', background:'radial-gradient(circle, rgba(100,200,255,0.28) 0%, transparent 70%)', animation:'float-orb 6s ease-in-out 1s infinite' }}/>
-              <div style={{ position:'absolute', top:'65%', left:'30%', width:25, height:25, borderRadius:'50%', background:'radial-gradient(circle, rgba(255,200,100,0.30) 0%, transparent 70%)', animation:'float-orb 8s ease-in-out 3s infinite' }}/>
-              {/* Ground energy mist */}
-              <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'18%', background:'linear-gradient(to top, rgba(120,0,200,0.25) 0%, transparent 100%)', filter:'blur(10px)' }}/>
-              {/* Sparkles */}
-              <div className="sparkle-layer"/>
+              {/* Bintang-bintang besar di langit dongeng */}
+              <div className="fantasy-stars"/>
+              <div className="starsB" style={{ opacity:0.55 }}/>
+              {/* Aurora borealis ribbon */}
+              <div className="aurora-layer"/>
+              {/* Bulan besar keemasan */}
+              <div className="fantasy-moon"/>
+              {/* Kunang-kunang / firefly melayang — 1 saja */}
+              <div style={{ position:'absolute', top:'42%', left:'28%', width:3, height:3, borderRadius:'50%', background:'rgba(120,255,180,0.90)', boxShadow:'0 0 6px rgba(100,255,160,0.70)', animation:'float-orb 9s ease-in-out infinite', willChange:'transform, opacity' }}/>
+              {/* Kastil siluet */}
+              <div className="castle-layer"/>
+              {/* Kabut di kaki kastil */}
+              <div className="castle-mist"/>
             </>
           );
           if (th === 'futurecity') return (
             <>
               {/* Minimal stars (light-polluted sky) */}
-              <div className="stars" style={{ opacity:0.25 }}/><div className="starsB" style={{ opacity:0.15 }}/>
+              <div className="stars" style={{ opacity:0.20 }}/><div className="starsB" style={{ opacity:0.12 }}/>
               {/* City building silhouettes with neon */}
               <div className="city-layer"/>
               {/* Neon horizon bloom */}
-              <div style={{ position:'absolute', bottom:'38%', left:0, right:0, height:3, background:'linear-gradient(90deg, transparent 5%, rgba(0,220,200,0.5) 30%, rgba(0,180,255,0.7) 50%, rgba(0,220,200,0.5) 70%, transparent 95%)', filter:'blur(2px)' }}/>
+              <div style={{ position:'absolute', bottom:'38%', left:0, right:0, height:2, background:'linear-gradient(90deg, transparent 5%, rgba(0,220,200,0.45) 30%, rgba(0,180,255,0.60) 50%, rgba(0,220,200,0.45) 70%, transparent 95%)', filter:'blur(2px)' }}/>
               {/* Ground neon reflections */}
-              <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'38%', background:'linear-gradient(to top, rgba(0,40,60,0.7) 0%, rgba(0,20,40,0.3) 50%, transparent 100%)' }}/>
-              <div style={{ position:'absolute', bottom:0, left:'15%', right:'15%', height:'8%', background:'linear-gradient(to top, rgba(0,200,180,0.15) 0%, transparent 100%)', filter:'blur(12px)' }}/>
+              <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'38%', background:'linear-gradient(to top, rgba(0,40,60,0.65) 0%, rgba(0,20,40,0.25) 50%, transparent 100%)' }}/>
               {/* Scan line */}
               <div className="scan-line"/>
-              {/* Flying vehicle dots */}
-              <div style={{ position:'absolute', top:'25%', left:'5%', width:4, height:4, borderRadius:'50%', background:'rgba(0,220,200,0.9)', boxShadow:'0 0 8px rgba(0,220,200,1)', animation:'float-orb 12s ease-in-out infinite' }}/>
-              <div style={{ position:'absolute', top:'35%', right:'10%', width:3, height:3, borderRadius:'50%', background:'rgba(255,80,100,0.9)', boxShadow:'0 0 6px rgba(255,80,100,1)', animation:'float-orb 15s ease-in-out 4s infinite' }}/>
+              {/* Flying vehicle — satu titik saja */}
+              <div style={{ position:'absolute', top:'28%', left:'5%', width:3, height:3, borderRadius:'50%', background:'rgba(0,220,200,0.85)', boxShadow:'0 0 6px rgba(0,220,200,0.9)', animation:'float-orb 14s ease-in-out infinite', willChange:'transform, opacity' }}/>
             </>
           );
           return <><div className="stars"/><div className="starsB"/><div className="starsC"/></>;
@@ -11457,21 +11473,21 @@ Format exactly:
         .stars{background-image:radial-gradient(1px 1px at 8% 12%,rgba(255,255,255,0.7),transparent),radial-gradient(1.5px 1.5px at 31% 45%,rgba(255,255,255,0.5),transparent),radial-gradient(1px 1px at 62% 23%,rgba(255,255,255,0.6),transparent),radial-gradient(2px 2px at 78% 67%,rgba(255,255,255,0.35),transparent),radial-gradient(1px 1px at 14% 71%,rgba(255,255,255,0.5),transparent),radial-gradient(1px 1px at 88% 18%,rgba(255,255,255,0.45),transparent),radial-gradient(1.5px 1.5px at 47% 89%,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 55% 55%,rgba(255,255,255,0.3),transparent);animation:twinkle 4s ease-in-out infinite}
         .starsB{background-image:radial-gradient(1px 1px at 23% 6%,rgba(255,255,255,0.5),transparent),radial-gradient(1.5px 1.5px at 70% 38%,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 5% 52%,rgba(255,255,255,0.55),transparent),radial-gradient(2px 2px at 91% 81%,rgba(255,255,255,0.3),transparent),radial-gradient(1px 1px at 38% 77%,rgba(255,255,255,0.45),transparent),radial-gradient(1px 1px at 66% 9%,rgba(255,255,255,0.35),transparent),radial-gradient(1.5px 1.5px at 18% 93%,rgba(255,255,255,0.3),transparent);animation:twinkleB 5.5s ease-in-out 1.8s infinite}
         .starsC{background-image:radial-gradient(1px 1px at 42% 31%,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 83% 54%,rgba(255,255,255,0.5),transparent),radial-gradient(1.5px 1.5px at 11% 28%,rgba(255,255,255,0.35),transparent),radial-gradient(1px 1px at 75% 92%,rgba(255,255,255,0.3),transparent),radial-gradient(2px 2px at 29% 63%,rgba(255,255,255,0.25),transparent),radial-gradient(1px 1px at 58% 4%,rgba(255,255,255,0.5),transparent);animation:twinkleC 7s ease-in-out 3.2s infinite}
-        @keyframes pulse-lamp{0%,100%{opacity:0.7;transform:scale(1)}50%{opacity:1;transform:scale(1.08)}}
-        @keyframes pulse-moon{0%,100%{opacity:0.7;transform:scale(1) translateY(0)}50%{opacity:1;transform:scale(1.04) translateY(-3px)}}
-        @keyframes shimmer{0%,100%{opacity:0.4;transform:scaleX(0.7)}50%{opacity:0.8;transform:scaleX(1.2)}}
+        @keyframes pulse-lamp{0%,100%{opacity:0.55}50%{opacity:0.85}}
+        @keyframes pulse-moon{0%,100%{opacity:0.65}50%{opacity:0.95}}
+        @keyframes shimmer{0%,100%{opacity:0.20}50%{opacity:0.55}}
         @keyframes drift{0%{transform:translateX(-10px)}100%{transform:translateX(10px)}}
-        @keyframes float-orb{0%,100%{transform:translateY(0) scale(1);opacity:0.7}50%{transform:translateY(-18px) scale(1.1);opacity:1}}
+        @keyframes float-orb{0%,100%{transform:translateY(0);opacity:0.65}50%{transform:translateY(-14px);opacity:0.90}}
         @keyframes rain-fall{0%{transform:translateY(-100%)}100%{transform:translateY(100vh)}}
         @keyframes wave-move{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
-        @keyframes scan-move{0%{top:-2px;opacity:0}5%{opacity:0.6}95%{opacity:0.3}100%{top:100%;opacity:0}}
-        @keyframes city-flicker{0%,100%{opacity:1}48%{opacity:1}50%{opacity:0.5}52%{opacity:1}80%{opacity:1}82%{opacity:0.7}84%{opacity:1}}
-        @keyframes sparkle-twinkle{0%,100%{opacity:0;transform:scale(0.5)}50%{opacity:1;transform:scale(1)}}
+        @keyframes scan-move{0%{top:-2px;opacity:0}5%{opacity:0.5}95%{opacity:0.2}100%{top:100%;opacity:0}}
+        @keyframes city-flicker{0%,100%{opacity:1}48%{opacity:1}50%{opacity:0.6}52%{opacity:1}80%{opacity:1}82%{opacity:0.75}84%{opacity:1}}
+        @keyframes sparkle-twinkle{0%,100%{opacity:0.25}50%{opacity:0.85}}
         .rain-layer{position:absolute;inset:0;background-image:repeating-linear-gradient(to bottom right,transparent 0px,transparent 6px,rgba(180,210,255,0.07) 6px,rgba(180,210,255,0.07) 7px);animation:none;pointer-events:none;opacity:0.7}
         .wave-layer{position:absolute;bottom:0;left:0;right:0;height:22%;background:linear-gradient(180deg,transparent 0%,rgba(10,60,100,0.35) 100%);overflow:hidden}
         .city-layer{position:absolute;bottom:0;left:0;right:0;height:38%;background:linear-gradient(to top,rgba(0,15,25,0.85) 0%,transparent 100%);pointer-events:none}
-        .scan-line{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(0,220,180,0.18),transparent);animation:scan-move 5s linear infinite;pointer-events:none}
-        .sparkle-layer{position:absolute;inset:0;background-image:radial-gradient(1.5px 1.5px at 15% 25%,rgba(255,180,255,0.7),transparent),radial-gradient(1px 1px at 55% 15%,rgba(180,255,255,0.6),transparent),radial-gradient(2px 2px at 80% 40%,rgba(255,200,100,0.5),transparent),radial-gradient(1px 1px at 30% 70%,rgba(200,100,255,0.7),transparent),radial-gradient(1.5px 1.5px at 70% 80%,rgba(255,100,200,0.5),transparent);animation:sparkle-twinkle 3s ease-in-out infinite}
+        .scan-line{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(0,220,180,0.12),transparent);animation:scan-move 12s linear infinite;pointer-events:none}
+        .sparkle-layer{position:absolute;inset:0;background-image:radial-gradient(1.5px 1.5px at 15% 25%,rgba(255,180,255,0.7),transparent),radial-gradient(1px 1px at 55% 15%,rgba(180,255,255,0.6),transparent),radial-gradient(2px 2px at 80% 40%,rgba(255,200,100,0.5),transparent),radial-gradient(1px 1px at 30% 70%,rgba(200,100,255,0.7),transparent),radial-gradient(1.5px 1.5px at 70% 80%,rgba(255,100,200,0.5),transparent);animation:sparkle-twinkle 6s ease-in-out infinite}
         .scrollbar-hide::-webkit-scrollbar{display:none}
         .scrollbar-hide{-ms-overflow-style:none;scrollbar-width:none}
         input::placeholder{color:rgba(148,163,184,0.35)}
