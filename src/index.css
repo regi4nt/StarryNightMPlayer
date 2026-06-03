@@ -1424,7 +1424,6 @@ input[type='range']::-webkit-slider-thumb {
     radial-gradient(ellipse 30% 80% at 72% 100%,
       rgba(255,80,0,0.09) 0%,
       transparent 65%);
-  filter:blur(7px);
   animation:city-glow-pulse 5s ease-in-out infinite;
   pointer-events:none; z-index:1;
 }
@@ -1558,6 +1557,7 @@ input[type='range']::-webkit-slider-thumb {
 .layout-desktop-landscape .hw-city-bg,
 .layout-desktop-landscape .hw-horizon,
 .layout-desktop-landscape .hw-neon-lights { left: 196px; }
+
 
 
 /* Pantulan lampu di aspal — lebih berwarna */
