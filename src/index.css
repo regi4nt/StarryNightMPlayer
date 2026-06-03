@@ -1535,6 +1535,26 @@ input[type='range']::-webkit-slider-thumb {
 .layout-desktop-landscape .hw-lane-edge-l { left: calc(196px + 22% * (1 - 196px/100vw)); }
 .layout-desktop-portrait .hw-lane-edge-r  { right: 22%; }
 .layout-desktop-landscape .hw-lane-edge-r { right: 22%; }
+
+/* Desktop: geser hw-lane-center agar marka jalan berada di tengah area konten (tidak sidebar) */
+.layout-desktop-portrait .hw-lane-center  { left: 160px; }
+.layout-desktop-landscape .hw-lane-center { left: 196px; }
+
+/* Desktop: geser semua elemen jalan & kota agar mulai dari tepi sidebar, tidak terpotong */
+.layout-desktop-portrait .hw-road,
+.layout-desktop-portrait .hw-road-cap,
+.layout-desktop-portrait .hw-reflect,
+.layout-desktop-portrait .hw-city-bg,
+.layout-desktop-portrait .hw-horizon,
+.layout-desktop-portrait .hw-neon-lights  { left: 160px; }
+.layout-desktop-landscape .hw-road,
+.layout-desktop-landscape .hw-road-cap,
+.layout-desktop-landscape .hw-reflect,
+.layout-desktop-landscape .hw-city-bg,
+.layout-desktop-landscape .hw-horizon,
+.layout-desktop-landscape .hw-neon-lights { left: 196px; }
+
+
 /* Pantulan lampu di aspal — lebih berwarna */
 .hw-reflect {
   position:absolute; bottom:0; left:0; right:0; height:26%;
@@ -1838,6 +1858,13 @@ input[type='range']::-webkit-slider-thumb {
 .layout-desktop-landscape .hw-lane-edge-l { height:50%; }
 .layout-mobile-landscape .hw-lane-edge-r,
 .layout-desktop-landscape .hw-lane-edge-r { height:50%; }
+
+/* Mobile portrait: neon lights lebih tinggi dan z-index lebih tinggi agar tidak terpotong */
+.layout-mobile-portrait .hw-neon-lights {
+  bottom: 40%;
+  height: 18%;
+  z-index: 3;
+}
 
 /* Portrait: penyambung jalan ke cakrawala tetap di bottom:42% (default sudah benar) */
 /* Landscape hw-road-cap ikut bottom:50% */
