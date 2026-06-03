@@ -7187,11 +7187,12 @@ Format exactly:
           if (th === 'journey') return (
             <>
               <div className="stars" style={{ opacity:0.55 }}/><div className="starsB" style={{ opacity:0.40 }}/><div className="starsC" style={{ opacity:0.25 }}/>
-              <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'35%', background:'rgba(15,35,20,0.48)', clipPath:'polygon(0% 100%, 0% 65%, 8% 48%, 16% 62%, 24% 38%, 32% 58%, 38% 42%, 44% 55%, 50% 30%, 56% 50%, 63% 35%, 70% 55%, 76% 44%, 83% 58%, 90% 40%, 96% 60%, 100% 52%, 100% 100%)' }}/>
-              {/* Mountain silhouette — front range */}
-              <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'25%', background:'rgba(5,18,10,0.72)', clipPath:'polygon(0% 100%, 0% 80%, 5% 58%, 12% 72%, 20% 50%, 28% 68%, 35% 52%, 42% 70%, 48% 42%, 55% 62%, 62% 45%, 68% 65%, 75% 50%, 82% 70%, 88% 55%, 94% 72%, 100% 60%, 100% 100%)' }}/>
-              {/* Forest fog — satu layer saja */}
-              <div style={{ position:'absolute', bottom:'20%', left:0, right:0, height:'12%', background:'linear-gradient(to top, rgba(60,120,70,0.20), transparent)', filter:'blur(4px)' }}/>
+              {/* Mountain back range */}
+              <div style={{ position:'absolute', bottom:0, left:0, right:0, height: layoutMode.includes('landscape') ? '45%' : '35%', background:'rgba(15,35,20,0.48)', clipPath:'polygon(0% 100%, 0% 65%, 8% 48%, 16% 62%, 24% 38%, 32% 58%, 38% 42%, 44% 55%, 50% 30%, 56% 50%, 63% 35%, 70% 55%, 76% 44%, 83% 58%, 90% 40%, 96% 60%, 100% 52%, 100% 100%)' }}/>
+              {/* Mountain front range */}
+              <div style={{ position:'absolute', bottom:0, left:0, right:0, height: layoutMode.includes('landscape') ? '32%' : '25%', background:'rgba(5,18,10,0.72)', clipPath:'polygon(0% 100%, 0% 80%, 5% 58%, 12% 72%, 20% 50%, 28% 68%, 35% 52%, 42% 70%, 48% 42%, 55% 62%, 62% 45%, 68% 65%, 75% 50%, 82% 70%, 88% 55%, 94% 72%, 100% 60%, 100% 100%)' }}/>
+              {/* Forest fog — lebih rendah di landscape */}
+              <div style={{ position:'absolute', bottom: layoutMode.includes('landscape') ? '28%' : '20%', left:0, right:0, height:'10%', background:'linear-gradient(to top, rgba(60,120,70,0.20), transparent)', filter:'blur(4px)' }}/>
             </>
           );
           if (th === 'ocean') return (
@@ -7253,7 +7254,11 @@ Format exactly:
             </>
           );
           if (th === 'nightgarden') {
+            const ls = layoutMode.includes('landscape');
             // Pohon-pohon taman dengan variasi sway
+            // Landscape: pohon lebih kecil & posisi lebih rendah
+            const treeBot  = ls ? '12%' : '20%';
+            const treeScale = ls ? 0.70 : 1.0;
             const trees = [
               { l:'4%',  s:50, delay:0,   sway:'sway-a' },
               { l:'13%', s:42, delay:1.2, sway:'sway-b' },
@@ -7265,7 +7270,16 @@ Format exactly:
               { l:'87%', s:56, delay:4.0, sway:'sway-a' },
               { l:'94%', s:40, delay:2.2, sway:'sway-c' },
             ];
-            const fireflies = [
+            // Kunang-kunang: landscape di area langit atas (top 10-35%), portrait area tengah (34-54%)
+            const fireflies = ls ? [
+              { top:'12%', left:'10%', delay:'0s',    dur:'7s',  fx:'18px',  fy:'-10px' },
+              { top:'18%', left:'52%', delay:'1.5s',  dur:'9s',  fx:'-16px', fy:'-8px'  },
+              { top:'25%', left:'32%', delay:'3s',    dur:'11s', fx:'12px',  fy:'-12px' },
+              { top:'15%', left:'72%', delay:'5s',    dur:'8s',  fx:'-12px', fy:'-8px'  },
+              { top:'22%', left:'20%', delay:'2s',    dur:'13s', fx:'16px',  fy:'-7px'  },
+              { top:'10%', left:'62%', delay:'6s',    dur:'10s', fx:'-9px',  fy:'-10px' },
+              { top:'30%', left:'42%', delay:'4s',    dur:'12s', fx:'14px',  fy:'-8px'  },
+            ] : [
               { top:'46%', left:'10%', delay:'0s',    dur:'7s',  fx:'18px',  fy:'-14px' },
               { top:'36%', left:'52%', delay:'1.5s',  dur:'9s',  fx:'-16px', fy:'-9px'  },
               { top:'54%', left:'32%', delay:'3s',    dur:'11s', fx:'12px',  fy:'-18px' },
@@ -7278,51 +7292,48 @@ Format exactly:
               { top:'48%', left:'5%',  delay:'11s',   dur:'8s',  fx:'-14px', fy:'-7px'  },
               { top:'42%', left:'28%', delay:'2.5s',  dur:'16s', fx:'16px',  fy:'-13px' },
             ];
-            // Partikel cahaya bulan
-            const moonDust = [
+            // Partikel cahaya bulan — landscape di area atas
+            const moonDust = ls ? [
+              { top:'8%',  left:'68%', delay:'0s',  dur:'14s' },
+              { top:'14%', left:'45%', delay:'4s',  dur:'11s' },
+              { top:'5%',  left:'82%', delay:'8s',  dur:'18s' },
+            ] : [
               { top:'20%', left:'68%', delay:'0s',  dur:'14s' },
               { top:'28%', left:'45%', delay:'4s',  dur:'11s' },
               { top:'15%', left:'82%', delay:'8s',  dur:'18s' },
               { top:'25%', left:'30%', delay:'12s', dur:'13s' },
             ];
+            const lanternBot = ls ? '14%' : '22%';
             return (
               <>
                 <div className="starsB" style={{ opacity:0.32 }}/><div className="starsC" style={{ opacity:0.18 }}/>
-                {/* Langit taman malam */}
                 <div className="garden-sky"/>
-
-                {/* Pohon-pohon bulat taman */}
-                {trees.map((t,i) => (
-                  <div key={i} className={`garden-tree ${t.sway}`} style={{ left:t.l, animationDelay:`${t.delay}s` }}>
-                    <div className="crown" style={{ width:t.s, height:t.s }}/>
-                    <div className="trunk" style={{ height: Math.round(t.s*0.48) }}/>
-                  </div>
-                ))}
-                {/* Semak kecil di antara pohon */}
+                {trees.map((t,i) => {
+                  const sz = Math.round(t.s * treeScale);
+                  return (
+                    <div key={i} className={`garden-tree ${t.sway}`} style={{ left:t.l, bottom:treeBot, animationDelay:`${t.delay}s` }}>
+                      <div className="crown" style={{ width:sz, height:sz }}/>
+                      <div className="trunk" style={{ height: Math.round(sz*0.48) }}/>
+                    </div>
+                  );
+                })}
                 {[{ l:'8%', w:28, h:18 }, { l:'40%', w:22, h:14 }, { l:'62%', w:30, h:20 }, { l:'78%', w:24, h:16 }].map((b,i) => (
-                  <div key={i} className="garden-bush" style={{ left:b.l, width:b.w, height:b.h }}/>
+                  <div key={i} className="garden-bush" style={{ left:b.l, width:ls?Math.round(b.w*0.7):b.w, height:ls?Math.round(b.h*0.7):b.h }}/>
                 ))}
-                {/* Rumput bergelombang berlapis */}
                 <div className="garden-grass2"/>
                 <div className="garden-grass"/>
-                {/* Tanah */}
                 <div className="garden-ground"/>
-                {/* Jalan setapak */}
-                <div className="garden-path"/>
-                {/* Kolam pantulan */}
-                <div className="garden-pond"/>
-                {/* Kabut rendah berlapis */}
+                {!ls && <div className="garden-path"/>}
+                {!ls && <div className="garden-pond"/>}
                 <div className="garden-mist2"/>
                 <div className="garden-mist"/>
-                {/* Lentera taman */}
                 {[{ l:'18%', delay:'0s' }, { l:'48%', delay:'2s' }, { l:'72%', delay:'4s' }].map((ln,i) => (
-                  <div key={i} className="garden-lantern" style={{ left:ln.l, bottom:'22%', position:'absolute', animationDelay:ln.delay }}>
+                  <div key={i} className="garden-lantern" style={{ left:ln.l, bottom:lanternBot, position:'absolute', animationDelay:ln.delay }}>
                     <div className="lantern-cap"/>
                     <div className="lantern-body"/>
                     <div className="lantern-pole"/>
                   </div>
                 ))}
-                {/* Kunang-kunang */}
                 {fireflies.map((f,i) => (
                   <div key={i} className="gfw" style={{
                     top:f.top, left:f.left,
@@ -7330,7 +7341,6 @@ Format exactly:
                     animationDelay:f.delay, animationDuration:f.dur,
                   }}/>
                 ))}
-                {/* Debu cahaya bulan */}
                 {moonDust.map((d,i) => (
                   <div key={i} className="garden-dust" style={{
                     top:d.top, left:d.left, '--fx':'4px', '--fy':'-6px',
@@ -7379,6 +7389,8 @@ Format exactly:
                 <div className="hw-neon-lights"/>
                 {/* Jalan */}
                 <div className="hw-road"/>
+                {/* Penyambung jalan ke cakrawala — mengisi celah atas hw-road */}
+                <div className="hw-road-cap"/>
                 {/* Marka tengah bergerak */}
                 <div className="hw-lane-center"/>
                 {/* Garis tepi */}
@@ -7390,17 +7402,19 @@ Format exactly:
                   const isDesk = layoutMode.includes('desktop');
                   const sbW = isDesk ? (ls ? SIDEBAR_W_LANDSCAPE : SIDEBAR_W_PORTRAIT) : 0;
                   const vw = typeof window !== 'undefined' ? window.innerWidth : 1280;
-                  // Posisi tiang relatif terhadap lebar layar penuh (termasuk sidebar)
-                  // Tiang kiri: dimulai tepat setelah sidebar + offset tepi jalan
-                  // Tiang kanan: dari kanan, offset tepi jalan
-                  const poleL = (frac) => `calc(${sbW}px + ${frac}%)`;
-                  const poleR = (frac) => `${frac}%`;
+                  // Lebar area konten (tidak termasuk sidebar)
+                  const contentW = vw - sbW;
+                  // Posisi tiang: dihitung dari tepi kiri konten (setelah sidebar)
+                  // Tiang kiri: left = sbW + frac% * contentW
+                  // Tiang kanan: right = frac% * contentW (simetris terhadap tengah konten)
+                  const poleL = (frac) => `calc(${sbW}px + ${frac * contentW / 100}px)`;
+                  const poleR = (frac) => `${frac * contentW / 100}px`;
                   const poles = [
                     // Kiri: 3 tiang (dekat→jauh) — makin besar = makin ke tengah = makin jauh
                     { side:'left',  posVal: poleL(3),  armH: ls?110:140, opacity:1.0,  headS:16 },
                     { side:'left',  posVal: poleL(9),  armH: ls? 80:105, opacity:0.60, headS:12, scale:0.85 },
                     { side:'left',  posVal: poleL(14), armH: ls? 55: 72, opacity:0.35, headS: 9, scale:0.70 },
-                    // Kanan: 3 tiang (dekat→jauh) — makin besar = makin ke tengah = makin jauh
+                    // Kanan: 3 tiang (dekat→jauh) — simetris mirror dari kiri terhadap tengah konten
                     { side:'right', posVal: poleR(3),  armH: ls?110:140, opacity:1.0,  headS:16 },
                     { side:'right', posVal: poleR(9),  armH: ls? 80:105, opacity:0.60, headS:12, scale:0.85 },
                     { side:'right', posVal: poleR(14), armH: ls? 55: 72, opacity:0.35, headS: 9, scale:0.70 },
@@ -7434,66 +7448,71 @@ Format exactly:
             );
           }
           if (th === 'solarsystem') {
-            const sunS = 60;
-            const sunX = '13%';
-            const sunY = '11%';
-            // Planet data — lebih bervariasi dengan ukuran & warna lebih kaya
-            const planetFloats = ['planet-float-a','planet-float-b','planet-float-c','planet-float-d','planet-float-e'];
-            // Setiap planet diposisikan tepat di garis orbitnya
-            // Orbit rings: [55,95,145,205,275,355,445,545]px
-            // Planet idx→ring: 0→ring2(145px,35°), 1→ring3(205px,70°), 2→ring4(275px,15°), 3→ring5(355px,80°), 4→ring7(545px,40°)
+            const ls = layoutMode.includes('landscape');
+            // Landscape: matahari lebih kecil & orbit lebih kecil agar muat di layar pendek
+            const sunS  = ls ? 44 : 60;
+            const sunX  = ls ? '10%' : '13%';
+            const sunY  = ls ? '14%' : '11%';
+            // Skala orbit & planet: portrait penuh, landscape dikecilkan ~65%
+            const sc    = ls ? 0.62 : 1.0;
+            // Orbit radii — dikalikan sc
+            const rings = [55,95,145,205,275,355,445,545].map(r => Math.round(r*sc));
+            // Planet positions dihitung % relatif terhadap posisi matahari + offset trigonometri
+            // Portrait: top=calc(sunY% + r*sin(θ)px), left=calc(sunX% + r*cos(θ)px)
+            // Landscape: sama tapi r lebih kecil
+            const makePlanetPos = (ringIdx, angleDeg) => {
+              const r   = rings[ringIdx];
+              const rad = angleDeg * Math.PI / 180;
+              const ox  = Math.round(r * Math.cos(rad));
+              const oy  = Math.round(r * Math.sin(rad));
+              return {
+                top:  `calc(${sunY} + ${oy}px)`,
+                left: `calc(${sunX} + ${ox}px)`,
+              };
+            };
             const planets = [
-              { size:11, bg:'radial-gradient(circle at 38% 35%, #6ec0ff 0%, #2a68cc 40%, #0d2870 75%, #050f40 100%)',
-                glow:'rgba(70,145,255,0.60)', top:'calc(11% + 83.2px - 5px)', left:'calc(13% + 118.8px - 5px)', dur:'8s', delay:'0s',
-                shadow:'inset -2px -3px 5px rgba(0,0,0,0.40)' },
-              { size:9,  bg:'radial-gradient(circle at 36% 32%, #ffa060 0%, #d04818 45%, #7a2000 78%, #3a0800 100%)',
-                glow:'rgba(255,130,50,0.55)', top:'calc(11% + 192.6px - 4px)', left:'calc(13% + 70.1px - 4px)', dur:'11s', delay:'1s',
-                shadow:'inset -2px -2px 4px rgba(0,0,0,0.45)' },
-              { size:16, bg:'radial-gradient(circle at 40% 36%, #fff090 0%, #dca810 40%, #8a6000 70%, #4a3000 100%)',
-                glow:'rgba(255,215,90,0.50)', top:'calc(11% + 71.2px - 8px)', left:'calc(13% + 265.6px - 8px)', dur:'14s', delay:'3s',
-                shadow:'inset -3px -4px 8px rgba(0,0,0,0.40)' },
-              { size:7,  bg:'radial-gradient(circle at 38% 35%, #55f0e0 0%, #0c9080 50%, #034840 80%, #011a18 100%)',
-                glow:'rgba(50,230,210,0.50)', top:'calc(11% + 349.6px - 3px)', left:'calc(13% + 61.6px - 3px)', dur:'7s', delay:'2s',
-                shadow:'inset -2px -2px 3px rgba(0,0,0,0.40)' },
-              { size:14, bg:'radial-gradient(circle at 42% 38%, #ff9090 0%, #c03030 40%, #701010 70%, #380808 100%)',
-                glow:'rgba(255,80,80,0.45)', top:'calc(11% + 350.3px - 7px)', left:'calc(13% + 417.5px - 7px)', dur:'12s', delay:'5s',
-                shadow:'inset -3px -4px 7px rgba(0,0,0,0.45)' },
+              { size:ls?8:11,  bg:'radial-gradient(circle at 38% 35%, #6ec0ff 0%, #2a68cc 40%, #0d2870 75%, #050f40 100%)',
+                glow:'rgba(70,145,255,0.60)',  ...makePlanetPos(2, 35),  dur:'8s',  delay:'0s', shadow:'inset -2px -3px 5px rgba(0,0,0,0.40)' },
+              { size:ls?7:9,   bg:'radial-gradient(circle at 36% 32%, #ffa060 0%, #d04818 45%, #7a2000 78%, #3a0800 100%)',
+                glow:'rgba(255,130,50,0.55)',  ...makePlanetPos(3, 110), dur:'11s', delay:'1s', shadow:'inset -2px -2px 4px rgba(0,0,0,0.45)' },
+              { size:ls?11:16, bg:'radial-gradient(circle at 40% 36%, #fff090 0%, #dca810 40%, #8a6000 70%, #4a3000 100%)',
+                glow:'rgba(255,215,90,0.50)',  ...makePlanetPos(4, 15),  dur:'14s', delay:'3s', shadow:'inset -3px -4px 8px rgba(0,0,0,0.40)' },
+              { size:ls?5:7,   bg:'radial-gradient(circle at 38% 35%, #55f0e0 0%, #0c9080 50%, #034840 80%, #011a18 100%)',
+                glow:'rgba(50,230,210,0.50)',  ...makePlanetPos(5, 160), dur:'7s',  delay:'2s', shadow:'inset -2px -2px 3px rgba(0,0,0,0.40)' },
+              { size:ls?10:14, bg:'radial-gradient(circle at 42% 38%, #ff9090 0%, #c03030 40%, #701010 70%, #380808 100%)',
+                glow:'rgba(255,80,80,0.45)',   ...makePlanetPos(7, 40),  dur:'12s', delay:'5s', shadow:'inset -3px -4px 7px rgba(0,0,0,0.45)' },
             ];
-            // Asteroid kecil
+            // Asteroid — semua pakai % aman
             const asteroids = [
               { w:4, h:3, top:'62%', left:'24%', delay:'0s', dur:'10s' },
               { w:3, h:2, top:'28%', left:'82%', delay:'3s', dur:'7s'  },
-              { w:5, h:3, top:'72%', left:'55%', delay:'6s', dur:'12s' },
+              { w:5, h:3, top:ls?'55%':'72%', left:'55%', delay:'6s', dur:'12s' },
             ];
-            // Bintang jatuh
+            // Bintang jatuh — semua % aman
             const shootings = [
-              { top:'12%', left:'60%', w:60,  delay:'5s',  dur:'4s' },
-              { top:'25%', left:'20%', w:45,  delay:'14s', dur:'3s' },
-              { top:'8%',  left:'75%', w:80,  delay:'28s', dur:'5s' },
+              { top:'12%', left:'60%', w:ls?40:60,  delay:'5s',  dur:'4s' },
+              { top:'25%', left:'20%', w:ls?30:45,  delay:'14s', dur:'3s' },
+              { top:'8%',  left:'75%', w:ls?55:80,  delay:'28s', dur:'5s' },
             ];
-            // Star clusters
             const clusters = [
               { top:'55%', left:'8%',  w:80,  h:60 },
               { top:'15%', left:'50%', w:100, h:70 },
-              { top:'70%', left:'88%', w:60,  h:50 },
+              { top:ls?'50%':'70%', left:'88%', w:60, h:50 },
             ];
+            // Nebula — skala ukuran di landscape
+            const nebS = ls ? 0.65 : 1.0;
             return (
               <>
-                {/* Bintang penuh */}
                 <div className="stars"/><div className="starsB"/><div className="starsC"/>
-                {/* Star clusters */}
                 {clusters.map((c,i) => (
                   <div key={i} className="ss-cluster" style={{ top:c.top, left:c.left, width:c.w, height:c.h, animationDelay:`${i*5}s` }}/>
                 ))}
-                {/* Nebula berlapis lebih kaya warna */}
-                <div className="ss-nebula" style={{ width:340, height:240, left:'-2%', top:'3%',  background:'radial-gradient(ellipse, rgba(80,25,200,0.22) 0%, rgba(50,10,140,0.08) 55%, transparent 75%)', animationDelay:'0s' }}/>
-                <div className="ss-nebula" style={{ width:280, height:190, right:'-1%', top:'35%', background:'radial-gradient(ellipse, rgba(200,25,85,0.18) 0%, rgba(140,10,55,0.07) 55%, transparent 75%)', animationDelay:'7s' }}/>
-                <div className="ss-nebula" style={{ width:240, height:160, left:'32%', bottom:'3%', background:'radial-gradient(ellipse, rgba(25,90,200,0.16) 0%, rgba(10,55,140,0.06) 55%, transparent 75%)', animationDelay:'3s' }}/>
-                <div className="ss-nebula" style={{ width:200, height:140, right:'20%', top:'8%', background:'radial-gradient(ellipse, rgba(0,180,180,0.12) 0%, transparent 70%)', animationDelay:'11s' }}/>
-                {/* Matahari — pojok kiri atas */}
+                <div className="ss-nebula" style={{ width:Math.round(340*nebS), height:Math.round(240*nebS), left:'-2%', top:'3%',  background:'radial-gradient(ellipse, rgba(80,25,200,0.22) 0%, rgba(50,10,140,0.08) 55%, transparent 75%)', animationDelay:'0s' }}/>
+                <div className="ss-nebula" style={{ width:Math.round(280*nebS), height:Math.round(190*nebS), right:'-1%', top:'35%', background:'radial-gradient(ellipse, rgba(200,25,85,0.18) 0%, rgba(140,10,55,0.07) 55%, transparent 75%)', animationDelay:'7s' }}/>
+                <div className="ss-nebula" style={{ width:Math.round(240*nebS), height:Math.round(160*nebS), left:'32%', bottom:'3%', background:'radial-gradient(ellipse, rgba(25,90,200,0.16) 0%, rgba(10,55,140,0.06) 55%, transparent 75%)', animationDelay:'3s' }}/>
+                <div className="ss-nebula" style={{ width:Math.round(200*nebS), height:Math.round(140*nebS), right:'20%', top:'8%', background:'radial-gradient(ellipse, rgba(0,180,180,0.12) 0%, transparent 70%)', animationDelay:'11s' }}/>
                 <div className="ss-sun" style={{ width:sunS, height:sunS, left:sunX, top:sunY, transform:'translate(-50%,-50%)' }}/>
-                {/* Orbit ring — index 2,3,4,5,7 sesuai posisi planet */}
-                {[55, 95, 145, 205, 275, 355, 445, 545].map((r,i) => {
+                {rings.map((r,i) => {
                   const hasPlanet = [2,3,4,5,7].includes(i);
                   return (
                     <div key={i} className="ss-ring" style={{
@@ -7504,7 +7523,6 @@ Format exactly:
                     }}/>
                   );
                 })}
-                {/* Planet */}
                 {planets.map((p,i) => (
                   <div key={i} className="ss-planet" style={{
                     width:p.size, height:p.size,
@@ -7513,14 +7531,12 @@ Format exactly:
                     top:p.top, left:p.left,
                   }}/>
                 ))}
-                {/* Asteroid kecil */}
                 {asteroids.map((a,i) => (
                   <div key={i} className="ss-asteroid" style={{
                     width:a.w, height:a.h, top:a.top, left:a.left,
                     animationDuration:a.dur, animationDelay:a.delay,
                   }}/>
                 ))}
-                {/* Bintang jatuh */}
                 {shootings.map((s,i) => (
                   <div key={i} className="ss-shooting" style={{
                     top:s.top, left:s.left, width:s.w,
