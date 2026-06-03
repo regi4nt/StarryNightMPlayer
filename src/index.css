@@ -1474,8 +1474,9 @@ input[type='range']::-webkit-slider-thumb {
   background-repeat:repeat-y;
   animation:lane-dash 0.9s linear infinite;
   pointer-events:none;
-  mask-image:linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.55) 60%, transparent 90%);
-  -webkit-mask-image:linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.55) 60%, transparent 90%);
+  mask-image:linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.8) 40%, rgba(0,0,0,0.2) 75%, transparent 95%);
+  -webkit-mask-image:linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.8) 40%, rgba(0,0,0,0.2) 75%, transparent 95%);
+  clip-path:inset(0);
 }
 /* Garis tepi kiri & kanan */
 .hw-lane-edge-l, .hw-lane-edge-r {
@@ -1531,14 +1532,9 @@ input[type='range']::-webkit-slider-thumb {
 
 /* Tiang lampu jalan — lebih realistis */
 .hw-pole {
-  position:absolute; bottom:42%; pointer-events:none;
+  position:absolute; pointer-events:none;
   display:flex; flex-direction:column; align-items:center;
   z-index:3;
-  transform:translateX(-50%);
-}
-/* Poles on right side need opposite offset */
-.hw-pole[style*="right"] {
-  transform:translateX(50%);
 }
 .hw-pole .pole-arm {
   width:2px;

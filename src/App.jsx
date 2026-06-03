@@ -2666,6 +2666,7 @@ Return ONLY valid JSON, no explanation:
   const [uploadProgress, setUploadProg] = useState(0);
   const [loadingTrack, setLoadingTrack] = useState(false);
   const [streamBuffering, setStreamBuffering] = useState(false); // buffering indicator untuk radio/stream
+  const [streamingPlatformsLoaded, setStreamingPlatformsLoaded] = useState(false); // trigger re-render setelah lazy load
   const [driveDownProg, setDriveDownProg] = useState(0);   // 0-100, only in Pro mode
   const [drivePhase, setDrivePhase]       = useState('idle'); // 'idle' | 'check' | 'download'
   const [driveError, setDriveError]     = useState('');
@@ -3770,6 +3771,15 @@ Return ONLY valid JSON, no explanation:
 
   // ── Fetch YT trending when stream tab opens (once per session, refreshable)
   useEffect(() => { if (tab === 'stream') fetchYtTrending(); }, [tab]); // eslint-disable-line
+
+  // ── Lazy-load STREAMING_PLATFORMS saat tab stream pertama kali dibuka
+  useEffect(() => {
+    if (tab === 'stream' && !streamingPlatformsLoaded) {
+      getStreamingPlatforms().then(() => {
+        setStreamingPlatformsLoaded(true);
+      });
+    }
+  }, [tab, streamingPlatformsLoaded]); // eslint-disable-line
 
   // ── Volume/mute
   useEffect(() => {
@@ -7395,12 +7405,26 @@ Format exactly:
                 <div className="hw-lane-edge-l"/><div className="hw-lane-edge-r"/>
                 {/* Pantulan lampu di aspal */}
                 <div className="hw-reflect"/>
-                {/* Tiang lampu — sejajar pinggir jalan kiri (22%) & kanan (22%) */}
-                {[['5%','left'],['22%','left'],['40%','left'],['5%','right'],['22%','right'],['40%','right']].map(([pos,side],i) => (
-                  <div key={i} className="hw-pole" style={{ [side]:pos }}>
-                    <div className="pole-head"/>
+                {/* Tiang lampu — tepat di tepi kiri (22%) & kanan (22%) jalan */}
+                {[
+                  // Kiri: 3 tiang di tepi kiri, simulasi kedalaman (dekat→jauh)
+                  { side:'left',  pos:'22%', armH: ls?110:140, opacity:1.0,  headS:16 },
+                  { side:'left',  pos:'22%', armH: ls? 80:105, opacity:0.70, headS:13, bottom: ls?'44%':'44%' },
+                  { side:'left',  pos:'22%', armH: ls? 55: 72, opacity:0.42, headS:10, bottom: ls?'46%':'46%' },
+                  // Kanan: 3 tiang di tepi kanan
+                  { side:'right', pos:'22%', armH: ls?110:140, opacity:1.0,  headS:16 },
+                  { side:'right', pos:'22%', armH: ls? 80:105, opacity:0.70, headS:13, bottom: ls?'44%':'44%' },
+                  { side:'right', pos:'22%', armH: ls? 55: 72, opacity:0.42, headS:10, bottom: ls?'46%':'46%' },
+                ].map((p,i) => (
+                  <div key={i} className="hw-pole" style={{
+                    [p.side]: p.pos,
+                    bottom: p.bottom || (ls ? '50%' : '42%'),
+                    opacity: p.opacity,
+                    transform: p.side==='left' ? 'translateX(-50%)' : 'translateX(50%)',
+                  }}>
+                    <div className="pole-head" style={{ width:p.headS, height: Math.round(p.headS*0.38) }}/>
                     <div className="pole-cone"/>
-                    <div className="pole-arm" style={{ height: ls ? 110 : 140 }}/>
+                    <div className="pole-arm" style={{ height: p.armH }}/>
                   </div>
                 ))}
                 {/* Mobil bergerak */}
@@ -8318,6 +8342,13 @@ Format exactly:
         )}
         {tab==='stream'&&(
           <div style={{ height:'100%', display:'flex', flexDirection:'column', padding:'14px 16px 0' }}>
+          {!streamingPlatformsLoaded && (
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', flex:1, gap:12, color:'rgba(255,255,255,0.4)' }}>
+              <div style={{ width:28, height:28, border:'3px solid rgba(255,255,255,0.15)', borderTopColor:'rgba(255,255,255,0.6)', borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
+              <span style={{ fontSize:13 }}>Memuat platform streaming…</span>
+            </div>
+          )}
+          {streamingPlatformsLoaded && <>
 
             {/* Header */}
             <div style={{ marginBottom:10 }}>
@@ -9923,6 +9954,7 @@ Format exactly:
 
             </div>
           </div>
+          </>}
         )}
 
         {/* ─── PLAYLIST TAB */}
