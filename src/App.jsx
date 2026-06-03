@@ -7075,22 +7075,52 @@ Format exactly:
               {/* Lampu tidur — nightstand kiri bawah */}
               {(() => {
                 const ls = layoutMode.includes('landscape');
+                const isDesktop = layoutMode.includes('desktop');
+                const sbW = isDesktop ? (ls ? SIDEBAR_W_LANDSCAPE : SIDEBAR_W_PORTRAIT) : 0;
+                // Offset semua elemen lampu agar tidak tertutup sidebar
+                const lampBase = `calc(${sbW}px + 2%)`;
+                const tableLeft = `calc(${sbW}px + 1.5%)`;
+                const tableWidth = '13%';
+                const kapLeft = `calc(${sbW}px + 5%)`;
+                const tiangLeft = `calc(${sbW}px + 5% + 23px)`;
+                const floorLeft = `calc(${sbW}px + 0%)`;
                 return (<>
-                  <div className="lamp-halo" style={{ bottom: ls ? '38%' : '30%', left:'6%', width: ls ? 90 : 120, height: ls ? 90 : 120, background:'radial-gradient(circle, rgba(255,210,100,0.60) 0%, rgba(255,170,60,0.25) 22%, rgba(255,120,20,0.10) 55%, transparent 75%)' }}/>
+                  <div className="lamp-halo" style={{ bottom: ls ? '38%' : '30%', left: lampBase, width: ls ? 90 : 120, height: ls ? 90 : 120, background:'radial-gradient(circle, rgba(255,210,100,0.60) 0%, rgba(255,170,60,0.25) 22%, rgba(255,120,20,0.10) 55%, transparent 75%)' }}/>
                   {/* Kap lampu */}
-                  <div style={{ position:'absolute', bottom: ls ? '50%' : '40%', left:'13%', width:50, height:22, background:'rgba(180,100,30,0.55)', clipPath:'polygon(10% 0%, 90% 0%, 100% 100%, 0% 100%)', borderRadius:'0 0 3px 3px', pointerEvents:'none' }}/>
+                  <div style={{ position:'absolute', bottom: ls ? '50%' : '40%', left: kapLeft, width:50, height:22, background:'rgba(180,100,30,0.55)', clipPath:'polygon(10% 0%, 90% 0%, 100% 100%, 0% 100%)', borderRadius:'0 0 3px 3px', pointerEvents:'none' }}/>
                   {/* Tiang lampu */}
-                  <div style={{ position:'absolute', bottom: ls ? '43%' : '33%', left:'calc(13% + 23px)', width:4, height:'8%', background:'rgba(140,80,25,0.50)', pointerEvents:'none' }}/>
+                  <div style={{ position:'absolute', bottom: ls ? '43%' : '33%', left: tiangLeft, width:4, height:'8%', background:'rgba(140,80,25,0.50)', pointerEvents:'none' }}/>
                   {/* Meja samping */}
-                  <div style={{ position:'absolute', bottom: ls ? '40%' : '30%', left:'7%', width:'14%', height:'4%', background:'rgba(80,45,15,0.55)', borderRadius:'3px 3px 0 0', pointerEvents:'none' }}/>
+                  <div style={{ position:'absolute', bottom: ls ? '40%' : '30%', left: tableLeft, width: tableWidth, height:'4%', background:'rgba(80,45,15,0.55)', borderRadius:'3px 3px 0 0', pointerEvents:'none' }}/>
+                  {/* Cahaya lampu di lantai */}
+                  <div style={{ position:'absolute', bottom:0, left: floorLeft, width:'20%', height:'28%', background:'radial-gradient(ellipse at 40% 0%, rgba(255,140,30,0.10) 0%, transparent 70%)', pointerEvents:'none' }}/>
                 </>);
               })()}
-              {/* Kasur & headboard */}
-              <div className="bed-layer"/>
+              {/* Kasur & headboard — clip-path disesuaikan agar headboard kiri tidak tertutup sidebar */}
+              {(() => {
+                const ls = layoutMode.includes('landscape');
+                const isDesktop = layoutMode.includes('desktop');
+                const sbW = isDesktop ? (ls ? SIDEBAR_W_LANDSCAPE : SIDEBAR_W_PORTRAIT) : 0;
+                // Hitung left post headboard sebagai % viewport (sidebar + 20px margin)
+                const vw = typeof window !== 'undefined' ? window.innerWidth : 1280;
+                const leftPost = Math.round(((sbW + 20) / vw) * 100);
+                const lp = `${leftPost}%`;
+                const lpIn = `${leftPost + 2}%`; // inner edge headboard post
+                return (
+                  <div style={{
+                    position:'absolute', bottom:0, left:0, right:0, height:'28%',
+                    pointerEvents:'none',
+                    background: [
+                      `radial-gradient(ellipse 10% 6% at 36% 28%, rgba(200,180,160,0.18) 0%, transparent 100%)`,
+                      `radial-gradient(ellipse 10% 6% at 58% 28%, rgba(200,180,160,0.18) 0%, transparent 100%)`,
+                      `linear-gradient(to top, rgba(80,40,20,0.55) 0%, rgba(100,55,30,0.40) 30%, rgba(90,50,25,0.25) 60%, transparent 100%)`
+                    ].join(', '),
+                    clipPath: `polygon(0% 100%, 0% 40%, ${lp} 32%, ${lpIn} 22%, 92% 22%, 92% 32%, 100% 40%, 100% 100%)`
+                  }}/>
+                );
+              })()}
               {/* Lantai hangat */}
               <div className="bedroom-floor"/>
-              {/* Cahaya lampu di lantai */}
-              <div style={{ position:'absolute', bottom:0, left:'5%', width:'20%', height:'28%', background:'radial-gradient(ellipse at 40% 0%, rgba(255,140,30,0.10) 0%, transparent 70%)', pointerEvents:'none' }}/>
             </>
           );
           if (th === 'journey') return (
@@ -7154,8 +7184,6 @@ Format exactly:
               })()}
               {/* Ground — gradasi gelap di bawah gedung */}
               <div style={{ position:'absolute', bottom:0, left:0, right:0, height: layoutMode.includes('landscape') ? '45%' : '32%', background:'linear-gradient(to top, rgba(0,15,30,0.75) 0%, rgba(0,25,45,0.40) 45%, transparent 100%)' }}/>
-              {/* Neon horizon bloom */}
-              <div style={{ position:'absolute', bottom: layoutMode.includes('landscape') ? '55%' : '40%', left:0, right:0, height:3, background:'linear-gradient(90deg, transparent 5%, rgba(0,220,200,0.50) 30%, rgba(0,180,255,0.70) 50%, rgba(0,220,200,0.50) 70%, transparent 95%)', filter:'blur(2px)' }}/>
               {/* Pantulan neon di tanah */}
               <div style={{ position:'absolute', bottom:0, left:'15%', right:'15%', height:'18%', background:'linear-gradient(to top, rgba(0,180,160,0.08) 0%, transparent 100%)', filter:'blur(8px)' }}/>
               {/* Scan line — disembunyikan di landscape via CSS */}
