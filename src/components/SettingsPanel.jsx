@@ -1,5 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Moon, Music, SlidersHorizontal, Zap, Bot, History, Radio, RotateCcw, Lock } from 'lucide-react';
+
+function useWindowWidth() {
+  const [width, setWidth] = React.useState(() => window.innerWidth);
+  React.useEffect(() => {
+    const handler = () => setWidth(window.innerWidth);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return width;
+}
 import { SLEEP_OPTIONS, fmtSec } from '../constants.js';
 
 class SettingsErrorBoundary extends React.Component {
@@ -530,6 +540,9 @@ function CacheManager({ lang, t }) {
 function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t, userSpId, setUserSpId, userSpSecret, setUserSpSecret, userScId, setUserScId, userAiKey, setUserAiKey, userYtKey, setUserYtKey, userCfKey, setUserCfKey, userSnKey, setUserSnKey, setTab, setFullscreen, googleUser, handleGoogleLogin, syncPlaylistsToCloud, accessToken, plSyncStatus, plSyncError, plSyncedAt, bgTheme, setBgTheme }) {
   const coverRef = useRef(null);
   const [apiKeyTab, setApiKeyTab] = React.useState('spotify');
+  const [showThemePicker, setShowThemePicker] = React.useState(false);
+  const windowWidth = useWindowWidth();
+  const isMobileNarrow = windowWidth < 400;
   // Local state untuk DNS input agar tidak terganggu re-render parent
   const [localDns, setLocalDns] = React.useState(customDns);
   // Sync dari parent hanya saat customDns berubah via preset (bukan saat user ketik)
@@ -594,62 +607,92 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
         </div>
 
         {/* ── BACKGROUND THEME */}
-        {!isLite && setBgTheme && (
-        <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14 }}>
-            <span style={{ fontSize:16 }}>🌌</span>
-            <div>
-              <div style={{ fontWeight:800, fontSize:14 }}>{lang==='id'?'Tema Latar Belakang':'Background Theme'}</div>
-              <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{lang==='id'?'Suasana visual malam hari':'Night atmosphere visual style'}</div>
+        {!isLite && setBgTheme && (() => {
+          const THEMES = [
+            { id:'starry',     emoji:'✨', label: lang==='id'?'Langit Berbintang':'Starry Night',    sub: lang==='id'?'Klasik bintang-bintang':'Classic starfield',    colors:['#07071a','#1a1040','#2d1b69'] },
+            { id:'bedroom',    emoji:'🛏️', label: lang==='id'?'Kamar Malam':'Night Bedroom',         sub: lang==='id'?'Hujan & lampu hangat':'Rain & warm lamp',       colors:['#0a0810','#1a0a2e','#2d0f3f'] },
+            { id:'journey',    emoji:'🏔️', label: lang==='id'?'Perjalanan':'Night Journey',          sub: lang==='id'?'Hutan & pegunungan':'Forest & mountains',       colors:['#060d0a','#0a1f10','#0d2e18'] },
+            { id:'ocean',      emoji:'🌊', label: lang==='id'?'Laut & Pantai':'Ocean & Beach',       sub: lang==='id'?'Pantai malam hari':'Midnight seashore',         colors:['#040d12','#061828','#083050'] },
+            { id:'fantasy',    emoji:'🔮', label: lang==='id'?'Dunia Fantasy':'Fantasy World',       sub: lang==='id'?'Alam semesta lain':'Other realm vibes',         colors:['#090614','#180830','#2d1060'] },
+            { id:'futurecity', emoji:'🌆', label: lang==='id'?'Kota Masa Depan':'Future City',       sub: lang==='id'?'Neon cyberpunk malam':'Neon cyberpunk night',   colors:['#050c10','#051520','#073040'] },
+          ];
+          const activeTheme = THEMES.find(t => t.id === (bgTheme || 'starry')) || THEMES[0];
+          return (
+            <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+              {/* Header row */}
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                <span style={{ fontSize:16 }}>🌌</span>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontWeight:800, fontSize:14 }}>{lang==='id'?'Tema Latar Belakang':'Background Theme'}</div>
+                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{lang==='id'?'Suasana visual malam hari':'Night atmosphere visual style'}</div>
+                </div>
+              </div>
+              {/* Current theme button — tap to toggle picker */}
+              <button
+                onClick={() => setShowThemePicker(v => !v)}
+                style={{
+                  width:'100%', display:'flex', alignItems:'center', gap:10,
+                  padding:'10px 14px', borderRadius:14,
+                  border:`1.5px solid ${color}60`,
+                  background:`linear-gradient(135deg, ${color}20, ${color}08)`,
+                  cursor:'pointer', textAlign:'left',
+                  boxShadow:`0 0 14px ${color}18`,
+                  transition:'all 0.2s',
+                }}
+              >
+                <div style={{
+                  width:36, height:36, borderRadius:10, flexShrink:0,
+                  background:`linear-gradient(135deg, ${activeTheme.colors[0]}, ${activeTheme.colors[1]}, ${activeTheme.colors[2]})`,
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  fontSize:16,
+                  border:`1px solid ${color}40`,
+                  boxShadow:`0 0 8px ${color}30`,
+                }}>
+                  {activeTheme.emoji}
+                </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.95)', lineHeight:1.2 }}>{activeTheme.label}</div>
+                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginTop:2 }}>{activeTheme.sub}</div>
+                </div>
+                <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', flexShrink:0, transition:'transform 0.2s', transform: showThemePicker ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</div>
+              </button>
+              {/* Expandable theme list */}
+              {showThemePicker && (
+                <div style={{ marginTop:8, display:'grid', gridTemplateColumns: isMobileNarrow ? '1fr' : '1fr 1fr', gap: isMobileNarrow ? 6 : 8 }}>
+                  {THEMES.filter(th => th.id !== activeTheme.id).map(({ id, emoji, label, sub, colors }) => (
+                    <button
+                      key={id}
+                      onClick={() => { setBgTheme(id); setShowThemePicker(false); }}
+                      style={{
+                        display:'flex', alignItems:'center', gap:10,
+                        padding:'9px 12px', borderRadius:12,
+                        border:'1.5px solid rgba(255,255,255,0.08)',
+                        background:'rgba(255,255,255,0.03)',
+                        cursor:'pointer', textAlign:'left',
+                        transition:'all 0.15s',
+                      }}
+                    >
+                      <div style={{
+                        width:32, height:32, borderRadius:9, flexShrink:0,
+                        background:`linear-gradient(135deg, ${colors[0]}, ${colors[1]}, ${colors[2]})`,
+                        display:'flex', alignItems:'center', justifyContent:'center',
+                        fontSize:15,
+                        border:'1px solid rgba(255,255,255,0.08)',
+                        boxShadow:'0 2px 6px rgba(0,0,0,0.4)',
+                      }}>
+                        {emoji}
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:11.5, fontWeight:700, color:'rgba(255,255,255,0.75)', lineHeight:1.2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label}</div>
+                        <div style={{ fontSize:9.5, color:'rgba(255,255,255,0.35)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{sub}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-            {[
-              { id:'starry', emoji:'✨', label: lang==='id'?'Langit Berbintang':'Starry Night', sub: lang==='id'?'Klasik bintang-bintang':'Classic starfield', colors:['#07071a','#1a1040','#2d1b69'] },
-              { id:'bedroom', emoji:'🛏️', label: lang==='id'?'Kamar Malam':'Night Bedroom', sub: lang==='id'?'Hujan & lampu hangat':'Rain & warm lamp', colors:['#0a0810','#1a0a2e','#2d0f3f'] },
-              { id:'journey', emoji:'🏔️', label: lang==='id'?'Perjalanan':'Night Journey', sub: lang==='id'?'Hutan & pegunungan':'Forest & mountains', colors:['#060d0a','#0a1f10','#0d2e18'] },
-              { id:'ocean', emoji:'🌊', label: lang==='id'?'Laut & Pantai':'Ocean & Beach', sub: lang==='id'?'Pantai malam hari':'Midnight seashore', colors:['#040d12','#061828','#083050'] },
-              { id:'fantasy', emoji:'🔮', label: lang==='id'?'Dunia Fantasy':'Fantasy World', sub: lang==='id'?'Alam semesta lain':'Other realm vibes', colors:['#090614','#180830','#2d1060'] },
-              { id:'futurecity', emoji:'🌆', label: lang==='id'?'Kota Masa Depan':'Future City', sub: lang==='id'?'Neon cyberpunk malam':'Neon cyberpunk night', colors:['#050c10','#051520','#073040'] },
-            ].map(({ id, emoji, label, sub, colors }) => {
-              const isActive = (bgTheme || 'starry') === id;
-              return (
-                <button
-                  key={id}
-                  onClick={() => setBgTheme(id)}
-                  style={{
-                    display:'flex', alignItems:'center', gap:10,
-                    padding:'10px 12px', borderRadius:14,
-                    border: isActive ? `1.5px solid ${color}80` : '1.5px solid rgba(255,255,255,0.08)',
-                    background: isActive
-                      ? `linear-gradient(135deg, ${color}25, ${color}10)`
-                      : 'rgba(255,255,255,0.03)',
-                    cursor:'pointer', textAlign:'left',
-                    boxShadow: isActive ? `0 0 18px ${color}25` : 'none',
-                    transition:'all 0.2s',
-                  }}
-                >
-                  {/* Mini preview */}
-                  <div style={{
-                    width:36, height:36, borderRadius:10, flexShrink:0, overflow:'hidden',
-                    background:`linear-gradient(135deg, ${colors[0]}, ${colors[1]}, ${colors[2]})`,
-                    display:'flex', alignItems:'center', justifyContent:'center', fontSize:16,
-                    boxShadow: isActive ? `0 0 10px ${color}40` : '0 2px 6px rgba(0,0,0,0.4)',
-                    border: isActive ? `1px solid ${color}50` : '1px solid rgba(255,255,255,0.08)',
-                  }}>
-                    {emoji}
-                  </div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontSize:11.5, fontWeight:700, color: isActive ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.75)', lineHeight:1.2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label}</div>
-                    <div style={{ fontSize:9.5, color:'rgba(255,255,255,0.35)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{sub}</div>
-                  </div>
-                  {isActive && <div style={{ width:7, height:7, borderRadius:'50%', background:color, flexShrink:0, boxShadow:`0 0 6px ${color}` }}/>}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        )}
+          );
+        })()}
 
         {/* ── SLEEP TIMER */}
         <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>

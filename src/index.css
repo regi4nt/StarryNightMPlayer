@@ -203,3 +203,254 @@ input[type='range']::-webkit-slider-thumb {
     padding-top: var(--wco-height);
   }
 }
+
+/* ══════════════════════════════════════════════════════
+   THEME BACKGROUND LAYERS
+   ══════════════════════════════════════════════════════ */
+
+/* ── Shared star layers (starry / journey / ocean / fantasy / futurecity) ── */
+.stars, .starsB, .starsC {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.stars {
+  background-image:
+    radial-gradient(1px 1px at 10% 15%, rgba(255,255,255,0.9), transparent),
+    radial-gradient(1px 1px at 25% 40%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1.5px 1.5px at 40% 8%,  rgba(255,255,255,0.8), transparent),
+    radial-gradient(1px 1px at 55% 55%, rgba(255,255,255,0.6), transparent),
+    radial-gradient(1px 1px at 70% 22%, rgba(255,255,255,0.9), transparent),
+    radial-gradient(2px 2px at 82% 5%,  rgba(255,255,255,0.7), transparent),
+    radial-gradient(1px 1px at 90% 45%, rgba(255,255,255,0.6), transparent),
+    radial-gradient(1.5px 1.5px at 15% 70%, rgba(255,255,255,0.5), transparent),
+    radial-gradient(1px 1px at 48% 80%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1px 1px at 62% 65%, rgba(255,255,255,0.5), transparent);
+  background-size: 400px 400px;
+  animation: twinkle-a 5s ease-in-out infinite alternate;
+}
+.starsB {
+  background-image:
+    radial-gradient(1px 1px at 8% 35%, rgba(180,200,255,0.8), transparent),
+    radial-gradient(1px 1px at 33% 60%, rgba(180,200,255,0.6), transparent),
+    radial-gradient(1.5px 1.5px at 52% 18%, rgba(200,220,255,0.7), transparent),
+    radial-gradient(1px 1px at 73% 75%, rgba(180,200,255,0.5), transparent),
+    radial-gradient(1px 1px at 88% 30%, rgba(200,220,255,0.7), transparent),
+    radial-gradient(1px 1px at 20% 88%, rgba(180,200,255,0.6), transparent),
+    radial-gradient(1.5px 1.5px at 65% 50%, rgba(200,220,255,0.5), transparent);
+  background-size: 500px 500px;
+  animation: twinkle-b 7s ease-in-out infinite alternate;
+}
+.starsC {
+  background-image:
+    radial-gradient(1px 1px at 5% 5%,   rgba(255,230,180,0.7), transparent),
+    radial-gradient(1px 1px at 30% 25%, rgba(255,240,200,0.5), transparent),
+    radial-gradient(2px 2px at 60% 10%, rgba(255,230,180,0.8), transparent),
+    radial-gradient(1px 1px at 80% 60%, rgba(255,240,200,0.6), transparent),
+    radial-gradient(1px 1px at 45% 90%, rgba(255,230,180,0.5), transparent);
+  background-size: 600px 600px;
+  animation: twinkle-c 9s ease-in-out infinite alternate;
+}
+@keyframes twinkle-a {
+  0%   { opacity: 0.6; transform: scale(1); }
+  50%  { opacity: 1;   transform: scale(1.03); }
+  100% { opacity: 0.7; transform: scale(0.98); }
+}
+@keyframes twinkle-b {
+  0%   { opacity: 0.5; }
+  60%  { opacity: 0.9; }
+  100% { opacity: 0.4; }
+}
+@keyframes twinkle-c {
+  0%   { opacity: 0.4; }
+  40%  { opacity: 0.8; }
+  100% { opacity: 0.3; }
+}
+
+/* ── pulse-lamp (bedroom warm glow) ── */
+@keyframes pulse-lamp {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50%       { opacity: 1;   transform: scale(1.15); }
+}
+
+/* ── pulse-moon ── */
+@keyframes pulse-moon {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50%       { opacity: 1;   transform: scale(1.1); }
+}
+
+/* ── shimmer (ocean water reflection) ── */
+@keyframes shimmer {
+  0%, 100% { opacity: 0.3; transform: scaleX(0.8); }
+  50%       { opacity: 0.8; transform: scaleX(1.1); }
+}
+
+/* ── drift (journey forest fog) ── */
+@keyframes drift {
+  from { transform: translateX(-3%); }
+  to   { transform: translateX(3%); }
+}
+
+/* ── float-orb (fantasy) ── */
+@keyframes float-orb {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 0.7; }
+  50%       { transform: translateY(-18px) scale(1.1); opacity: 1; }
+}
+
+/* ── BEDROOM: Rain streaks ── */
+.rain-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(175deg, rgba(140,180,255,0.08) 0%, transparent 100%),
+    repeating-linear-gradient(
+      175deg,
+      transparent 0px,
+      transparent 8px,
+      rgba(160,200,255,0.06) 8px,
+      rgba(160,200,255,0.06) 9px
+    );
+  background-size: 100% 100%, 60px 60px;
+  animation: rain-fall 0.6s linear infinite;
+}
+@keyframes rain-fall {
+  from { background-position: 0 0, 0 0; }
+  to   { background-position: 0 0, -8px 60px; }
+}
+
+/* ── BEDROOM: Candle/lamp flicker ── */
+@keyframes flicker {
+  0%,100% { opacity: 0.55; transform: scale(1); }
+  25%      { opacity: 0.75; transform: scale(1.08); }
+  50%      { opacity: 0.5;  transform: scale(0.97); }
+  75%      { opacity: 0.8;  transform: scale(1.05); }
+}
+
+/* ── OCEAN: Wave layers ── */
+.wave-layer {
+  position: absolute;
+  bottom: 0;
+  left: -50%;
+  width: 200%;
+  height: 22%;
+  pointer-events: none;
+}
+.wave-layer::before,
+.wave-layer::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: 100%;
+  border-radius: 50% 50% 0 0 / 30px 30px 0 0;
+}
+.wave-layer::before {
+  bottom: 6%;
+  height: 60%;
+  background: rgba(10,60,110,0.35);
+  animation: wave-drift 9s ease-in-out infinite alternate;
+}
+.wave-layer::after {
+  bottom: 0;
+  height: 50%;
+  background: rgba(5,40,80,0.45);
+  animation: wave-drift 12s ease-in-out 1.5s infinite alternate-reverse;
+}
+@keyframes wave-drift {
+  from { transform: translateX(-4%); }
+  to   { transform: translateX(4%); }
+}
+
+/* ── FANTASY: Sparkle/glitter layer ── */
+.sparkle-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(1.5px 1.5px at 18% 30%, rgba(255,180,255,0.9), transparent),
+    radial-gradient(1px 1px at 35% 12%,  rgba(200,120,255,0.8), transparent),
+    radial-gradient(2px 2px at 55% 45%,  rgba(255,100,220,0.7), transparent),
+    radial-gradient(1px 1px at 72% 20%,  rgba(180,100,255,0.9), transparent),
+    radial-gradient(1.5px 1.5px at 88% 65%, rgba(255,150,200,0.7), transparent),
+    radial-gradient(1px 1px at 12% 75%,  rgba(200,100,255,0.6), transparent),
+    radial-gradient(2px 2px at 42% 82%,  rgba(255,80,200,0.8), transparent),
+    radial-gradient(1px 1px at 65% 90%,  rgba(180,120,255,0.7), transparent);
+  background-size: 350px 350px;
+  animation: sparkle-pulse 3s ease-in-out infinite alternate;
+}
+@keyframes sparkle-pulse {
+  0%   { opacity: 0.4; transform: rotate(0deg); }
+  100% { opacity: 0.9; transform: rotate(1deg); }
+}
+
+/* ── FUTURECITY: Neon city silhouette ── */
+.city-layer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  pointer-events: none;
+  background:
+    /* Building 1 */
+    linear-gradient(to top, rgba(0,220,200,0.15) 0%, transparent 100%),
+    /* City block silhouettes */
+    repeating-linear-gradient(
+      90deg,
+      transparent 0px,
+      transparent 18px,
+      rgba(0,200,180,0.08) 18px,
+      rgba(0,200,180,0.08) 20px
+    );
+  clip-path: polygon(
+    0% 100%, 0% 55%, 4% 55%, 4% 30%, 7% 30%, 7% 55%,
+    10% 55%, 10% 20%, 13% 20%, 13% 40%, 16% 40%, 16% 15%,
+    19% 15%, 19% 45%, 22% 45%, 22% 28%, 25% 28%, 25% 45%,
+    28% 45%, 28% 10%, 31% 10%, 31% 35%, 34% 35%, 34% 50%,
+    37% 50%, 37% 22%, 40% 22%, 40% 38%, 43% 38%, 43% 18%,
+    46% 18%, 46% 42%, 49% 42%, 49% 60%, 52% 60%, 52% 30%,
+    55% 30%, 55% 48%, 58% 48%, 58% 12%, 61% 12%, 61% 35%,
+    64% 35%, 64% 25%, 67% 25%, 67% 50%, 70% 50%, 70% 20%,
+    73% 20%, 73% 40%, 76% 40%, 76% 55%, 79% 55%, 79% 28%,
+    82% 28%, 82% 42%, 85% 42%, 85% 18%, 88% 18%, 88% 45%,
+    91% 45%, 91% 32%, 94% 32%, 94% 55%, 97% 55%, 97% 45%,
+    100% 45%, 100% 100%
+  );
+}
+.city-layer::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg,
+    transparent 0%, rgba(0,220,200,0.6) 20%,
+    rgba(0,180,255,0.8) 50%, rgba(0,220,200,0.6) 80%, transparent 100%);
+  animation: neon-glow 4s ease-in-out infinite alternate;
+}
+@keyframes neon-glow {
+  0%   { opacity: 0.4; box-shadow: 0 0 8px rgba(0,220,200,0.4); }
+  100% { opacity: 1;   box-shadow: 0 0 20px rgba(0,200,255,0.8); }
+}
+
+/* ── FUTURECITY: Scan line effect ── */
+.scan-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(0,220,200,0.15), transparent);
+  animation: scan 8s linear infinite;
+  pointer-events: none;
+}
+@keyframes scan {
+  from { top: 0%; opacity: 0.8; }
+  to   { top: 100%; opacity: 0.2; }
+}
+
+/* ── FUTURECITY: Random neon window blinks ── */
+@keyframes blink-neon {
+  0%,100% { opacity: 0.15; }
+  50%      { opacity: 0.7; }
+}
