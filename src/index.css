@@ -1805,3 +1805,35 @@ input[type='range']::-webkit-slider-thumb {
 .layout-desktop-landscape .hw-lane-edge-l { height:50%; }
 .layout-mobile-landscape .hw-lane-edge-r,
 .layout-desktop-landscape .hw-lane-edge-r { height:50%; }
+
+/* ── HAPUS SEMUA ANIMASI TEMA DEKORATIF ── */
+.wave-layer, .wave-layer2,
+.aurora-layer, .aurora-layer2,
+.fantasy-stars, .sparkle-layer, .castle-mist,
+.garden-tree, .garden-tree.sway-a, .garden-tree.sway-b, .garden-tree.sway-c,
+.garden-mist, .garden-mist2,
+.garden-pond,
+.garden-lantern, .lantern-body,
+.gfw, .garden-dust,
+.moon-garden,
+.hw-neon-lights, .hw-neon-lights *,
+.hw-horizon,
+.hw-lane-center,
+.hw-rain-drop,
+.hw-moon,
+.hw-building-blink,
+.hw-c1, .hw-c2, .hw-c3, .hw-c4,
+.ss-nebula, .ss-cluster, .ss-asteroid, .ss-shooting,
+.ss-sun, .ss-sun::before, .ss-sun::after,
+.ss-ring,
+.ss-planet,
+.bedroom-window::after,
+.moonbeam,
+.lamp-halo,
+.scan-line,
+.neon-skyline,
+.window-rain *,
+.hw-rain * {
+  animation: none !important;
+  animation-play-state: paused !important;
+}

@@ -7147,7 +7147,7 @@ Format exactly:
               {(() => {
                 const ls = layoutMode.includes('landscape');
                 return (
-                  <div style={{ position:'absolute', top: ls ? '6%' : '9%', right: ls ? '6.5%' : '8.5%', width: ls ? 26 : 34, height: ls ? 26 : 34, borderRadius:'50%', background:'radial-gradient(circle, rgba(230,240,255,0.90) 30%, rgba(190,210,255,0.45) 60%, transparent 82%)', boxShadow:'0 0 18px rgba(190,210,255,0.40), 0 0 6px rgba(210,225,255,0.60)', animation:'pulse-moon 8s ease-in-out infinite', willChange:'opacity', zIndex:1 }}/>
+                  <div style={{ position:'absolute', top: ls ? '6%' : '9%', right: ls ? '6.5%' : '8.5%', width: ls ? 26 : 34, height: ls ? 26 : 34, borderRadius:'50%', background:'radial-gradient(circle, rgba(230,240,255,0.90) 30%, rgba(190,210,255,0.45) 60%, transparent 82%)', boxShadow:'0 0 18px rgba(190,210,255,0.40), 0 0 6px rgba(210,225,255,0.60)', zIndex:1 }}/>
                 );
               })()}
               {/* Jendela frame */}
@@ -7159,68 +7159,7 @@ Format exactly:
               <div className="curtain-right"/>
               {/* Sinar bulan masuk lewat jendela */}
               <div className="moonbeam"/>
-              {/* Lampu tidur — satu unit container di kiri bawah */}
-              {(() => {
-                const ls = layoutMode.includes('landscape');
-                const isDesk = layoutMode.includes('desktop');
-                const sbW = isDesk ? (ls ? SIDEBAR_W_LANDSCAPE : SIDEBAR_W_PORTRAIT) : 0;
-                // Unit lampu: container tunggal di pojok kiri bawah area konten
-                // bottom = tepat di atas kasur (kasur height ~18-34%)
-                const unitBottom = ls ? 120 : 100; // px dari bawah layar
-                const unitLeft   = sbW + 28;       // px dari kiri layar
-                // Ukuran elemen: disesuaikan landscape vs portrait
-                const kapW = ls ? 52 : 60; const kapH = ls ? 22 : 26;
-                const tiangH = ls ? 70 : 82; const tiangW = 5;
-                const mejW = ls ? 90 : 100; const mejH = ls ? 10 : 12;
-                // Tiang di tengah kap & meja
-                const tiangOffX = Math.round((mejW - tiangW) / 2);
-                const kapOffX   = Math.round((mejW - kapW) / 2);
-                return (<>
-                  {/* Halo cahaya di belakang unit */}
-                  <div className="lamp-halo" style={{
-                    position:'absolute',
-                    bottom: unitBottom + mejH - 10,
-                    left: unitLeft - 30,
-                    width: ls ? 130 : 160, height: ls ? 130 : 160,
-                    background:'radial-gradient(circle, rgba(255,190,60,0.45) 0%, rgba(255,150,30,0.18) 35%, rgba(255,110,15,0.05) 65%, transparent 80%)',
-                    borderRadius:'50%', pointerEvents:'none',
-                  }}/>
-                  {/* Kap lampu */}
-                  <div style={{ position:'absolute',
-                    bottom: unitBottom + mejH + tiangH,
-                    left: unitLeft + kapOffX,
-                    width: kapW, height: kapH,
-                    background:'linear-gradient(to bottom, rgba(210,130,40,0.85) 0%, rgba(170,85,20,0.95) 100%)',
-                    clipPath:'polygon(6% 0%, 94% 0%, 100% 100%, 0% 100%)',
-                    borderRadius:'0 0 3px 3px', pointerEvents:'none',
-                    boxShadow:'0 -2px 8px rgba(255,190,60,0.35)'
-                  }}/>
-                  {/* Tiang lampu */}
-                  <div style={{ position:'absolute',
-                    bottom: unitBottom + mejH,
-                    left: unitLeft + tiangOffX,
-                    width: tiangW, height: tiangH,
-                    background:'linear-gradient(to bottom, rgba(160,95,30,0.80), rgba(120,65,18,0.90))',
-                    borderRadius:3, pointerEvents:'none',
-                  }}/>
-                  {/* Meja samping */}
-                  <div style={{ position:'absolute',
-                    bottom: unitBottom,
-                    left: unitLeft,
-                    width: mejW, height: mejH,
-                    background:'linear-gradient(to bottom, rgba(130,75,25,0.90) 0%, rgba(95,52,15,0.98) 100%)',
-                    borderRadius:'3px 3px 0 0', pointerEvents:'none',
-                    boxShadow:'0 3px 10px rgba(0,0,0,0.50)'
-                  }}/>
-                  {/* Cahaya jatuh ke bawah */}
-                  <div style={{ position:'absolute',
-                    bottom:0, left: unitLeft - 10,
-                    width: mejW + 20, height: unitBottom + mejH,
-                    background:'radial-gradient(ellipse at 50% 100%, rgba(255,150,30,0.10) 0%, rgba(255,120,20,0.04) 45%, transparent 75%)',
-                    pointerEvents:'none',
-                  }}/>
-                </>);
-              })()}
+
               {/* Kasur & headboard — lebih realistis */}
               {(() => {
                 const ls = layoutMode.includes('landscape');
@@ -7252,7 +7191,7 @@ Format exactly:
               {/* Mountain silhouette — front range */}
               <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'25%', background:'rgba(5,18,10,0.72)', clipPath:'polygon(0% 100%, 0% 80%, 5% 58%, 12% 72%, 20% 50%, 28% 68%, 35% 52%, 42% 70%, 48% 42%, 55% 62%, 62% 45%, 68% 65%, 75% 50%, 82% 70%, 88% 55%, 94% 72%, 100% 60%, 100% 100%)' }}/>
               {/* Forest fog — satu layer saja */}
-              <div style={{ position:'absolute', bottom:'20%', left:0, right:0, height:'12%', background:'linear-gradient(to top, rgba(60,120,70,0.20), transparent)', animation:'drift 11s ease-in-out infinite alternate', filter:'blur(4px)', willChange:'transform' }}/>
+              <div style={{ position:'absolute', bottom:'20%', left:0, right:0, height:'12%', background:'linear-gradient(to top, rgba(60,120,70,0.20), transparent)', filter:'blur(4px)' }}/>
             </>
           );
           if (th === 'ocean') return (
@@ -7270,7 +7209,7 @@ Format exactly:
               <div className="starsB" style={{ opacity:0.55 }}/>
               {/* Aurora borealis ribbon */}
               <div className="aurora-layer"/>
-              <div style={{ position:'absolute', top:'42%', left:'28%', width:3, height:3, borderRadius:'50%', background:'rgba(120,255,180,0.90)', boxShadow:'0 0 6px rgba(100,255,160,0.70)', animation:'float-orb 9s ease-in-out infinite', willChange:'transform, opacity' }}/>
+              <div style={{ position:'absolute', top:'42%', left:'28%', width:3, height:3, borderRadius:'50%', background:'rgba(120,255,180,0.90)', boxShadow:'0 0 6px rgba(100,255,160,0.70)' }}/>
               {/* Kastil siluet */}
               <div className="castle-layer"/>
               {/* Sparkle / glitter melayang di langit dongeng */}
@@ -7303,14 +7242,14 @@ Format exactly:
               {/* Kendaraan terbang 1 — cyan. Wrapper: posisi + box-shadow STATIS (tidak beranimasi).
                   Inner: hanya transform/opacity via float-orb — compositor-only, no repaint */}
               <div style={{ position:'absolute', top: layoutMode.includes('landscape') ? '14%' : '20%', left:'6%', width:10, height:3, borderRadius:2, boxShadow:'0 0 10px 3px rgba(0,220,200,0.65), -8px 0 8px rgba(0,180,255,0.45)', pointerEvents:'none' }}>
-                <div style={{ width:'100%', height:'100%', borderRadius:2, background:'rgba(0,220,200,0.95)', animation:'float-orb 16s ease-in-out infinite', willChange:'transform, opacity' }}/>
+                <div style={{ width:'100%', height:'100%', borderRadius:2, background:'rgba(0,220,200,0.95)' }}/>
               </div>
               {/* Kendaraan terbang 2 — ungu */}
               <div style={{ position:'absolute', top: layoutMode.includes('landscape') ? '8%' : '13%', right:'18%', width:7, height:2, borderRadius:2, boxShadow:'0 0 8px 2px rgba(160,0,255,0.60), 6px 0 6px rgba(200,100,255,0.35)', pointerEvents:'none' }}>
-                <div style={{ width:'100%', height:'100%', borderRadius:2, background:'rgba(180,50,255,0.90)', animation:'float-orb 22s ease-in-out 3s infinite', willChange:'transform, opacity' }}/>
+                <div style={{ width:'100%', height:'100%', borderRadius:2, background:'rgba(180,50,255,0.90)' }}/>
               </div>
               {/* Beacon — wrapper menahan filter blur sebagai pengganti box-shadow, inner hanya opacity */}
-              <div style={{ position:'absolute', top: layoutMode.includes('landscape') ? '5%' : '9%', left:'46.5%', width:5, height:5, borderRadius:'50%', background:'rgba(255,60,60,0.95)', filter:'drop-shadow(0 0 4px rgba(255,40,40,0.60))', animation:'pulse-moon 1.4s ease-in-out infinite', willChange:'opacity' }}/>
+              <div style={{ position:'absolute', top: layoutMode.includes('landscape') ? '5%' : '9%', left:'46.5%', width:5, height:5, borderRadius:'50%', background:'rgba(255,60,60,0.95)', filter:'drop-shadow(0 0 4px rgba(255,40,40,0.60))' }}/>
             </>
           );
           if (th === 'nightgarden') {
@@ -7479,15 +7418,7 @@ Format exactly:
                   </div>
                 ));
                   })()}
-                {/* Mobil bergerak — di dalam jalur jalan perspektif */}
-                <div className="hw-cars">
-                  {/* Headlight (datang dari kiri, jalur kiri jalan) */}
-                  <div className="hw-car hw-car-hl hw-c1" style={{ bottom:carBot1, left:laneLeftX }}/>
-                  <div className="hw-car hw-car-hl hw-c2" style={{ bottom:carBot2, left:laneLeftX }}/>
-                  {/* Taillight (pergi ke kanan, jalur kanan jalan) */}
-                  <div className="hw-car hw-car-tl hw-c3" style={{ bottom:carBot1, left:laneRightX }}/>
-                  <div className="hw-car hw-car-tl hw-c4" style={{ bottom:carBot2, left:laneRightX }}/>
-                </div>
+
                 {/* Hujan halus */}
                 <div className="hw-rain">
                   {rainDrops.map((d,i) => (
@@ -7580,7 +7511,6 @@ Format exactly:
                     background:p.bg,
                     boxShadow:`0 0 10px 4px ${p.glow}, ${p.shadow}`,
                     top:p.top, left:p.left,
-                    animation:`planet-pulse 4s ease-in-out ${p.delay} infinite, ${planetFloats[i]} ${p.dur} ease-in-out ${p.delay} infinite`,
                   }}/>
                 ))}
                 {/* Asteroid kecil */}
