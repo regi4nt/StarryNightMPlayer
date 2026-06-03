@@ -1412,19 +1412,19 @@ input[type='range']::-webkit-slider-thumb {
 }
 /* Cahaya kota di cakrawala — sedikit overlap ke jalan agar tersambung */
 .hw-horizon {
-  position:absolute; bottom:38%; left:0; right:0; height:16%;
+  position:absolute; bottom:40%; left:0; right:0; height:12%;
   background:
-    radial-gradient(ellipse 60% 100% at 50% 100%,
-      rgba(255,115,5,0.14) 0%,
-      rgba(210,65,0,0.06) 55%,
-      transparent 80%),
-    radial-gradient(ellipse 35% 80% at 28% 100%,
-      rgba(255,80,0,0.06) 0%,
-      transparent 70%),
-    radial-gradient(ellipse 35% 80% at 72% 100%,
-      rgba(255,80,0,0.06) 0%,
-      transparent 70%);
-  filter:blur(10px);
+    radial-gradient(ellipse 55% 100% at 50% 100%,
+      rgba(255,115,5,0.22) 0%,
+      rgba(210,65,0,0.10) 50%,
+      transparent 75%),
+    radial-gradient(ellipse 30% 80% at 28% 100%,
+      rgba(255,80,0,0.09) 0%,
+      transparent 65%),
+    radial-gradient(ellipse 30% 80% at 72% 100%,
+      rgba(255,80,0,0.09) 0%,
+      transparent 65%);
+  filter:blur(7px);
   animation:city-glow-pulse 5s ease-in-out infinite;
   pointer-events:none; z-index:1;
 }
@@ -1460,11 +1460,10 @@ input[type='range']::-webkit-slider-thumb {
   position:absolute; bottom:0; left:0; right:0; height:42%;
   background:linear-gradient(to top,
     #030508 0%,
-    #060810 30%,
-    #08101e 60%,
-    #0c1625 82%,
-    #101e30 95%,
-    #0d1828 100%);
+    #060810 35%,
+    #08101e 70%,
+    #0d1828 90%,
+    rgba(30,14,8,0.95) 100%);
   pointer-events:none;
 }
 /* Penyambung jalan ke cakrawala — mengisi celah antara ujung hw-road dan hw-city-bg */
@@ -1495,8 +1494,8 @@ input[type='range']::-webkit-slider-thumb {
   position:absolute; inset:0;
   background-image: repeating-linear-gradient(
     to bottom,
-    rgba(255,255,200,0.70) 0px,
-    rgba(255,255,200,0.70) 20px,
+    rgba(255,255,200,0.65) 0px,
+    rgba(255,255,200,0.65) 20px,
     transparent 20px,
     transparent 44px
   );
@@ -1504,16 +1503,11 @@ input[type='range']::-webkit-slider-thumb {
   background-position: center 0;
   background-repeat: repeat-y;
   animation: lane-dash 0.7s linear infinite;
-  /* Perspektif kuat: sangat sempit di atas (titik hilang), lebar natural di bawah */
-  clip-path: polygon(49% 0%, 51% 0%, 58% 100%, 42% 100%);
-  /* Fade: solid di bawah, cepat hilang ke atas (efek kedalaman jalan) */
-  mask-image: linear-gradient(to top, black 0%, black 20%, rgba(0,0,0,0.6) 45%, rgba(0,0,0,0.15) 70%, transparent 90%);
-  -webkit-mask-image: linear-gradient(to top, black 0%, black 20%, rgba(0,0,0,0.6) 45%, rgba(0,0,0,0.15) 70%, transparent 90%);
+  /* Perspektif: hanya tampil di jalur tengah yang menyempit ke atas */
+  clip-path: polygon(46% 0%, 54% 0%, 58% 100%, 42% 100%);
+  mask-image: linear-gradient(to top, black 0%, black 30%, transparent 70%);
+  -webkit-mask-image: linear-gradient(to top, black 0%, black 30%, transparent 70%);
 }
-/* Desktop portrait: geser lane-center agar mulai setelah sidebar (160px) */
-/* clip-path 50% = tengah area konten */
-.layout-desktop-portrait .hw-lane-center  { left: 160px; right: 0; }
-.layout-desktop-landscape .hw-lane-center { left: 196px; right: 0; height: 50%; }
 /* Garis tepi kiri */
 .hw-lane-edge-l {
   position:absolute; bottom:0; height:42%;
@@ -1522,8 +1516,7 @@ input[type='range']::-webkit-slider-thumb {
   left:22%;
   background: linear-gradient(to top,
     rgba(255,255,210,0.55) 0%,
-    rgba(255,255,210,0.30) 55%,
-    rgba(255,255,210,0.10) 80%,
+    rgba(255,255,210,0.25) 40%,
     transparent 100%);
 }
 /* Garis tepi kanan */
@@ -1532,28 +1525,25 @@ input[type='range']::-webkit-slider-thumb {
   pointer-events:none;
   background: linear-gradient(to top,
     rgba(255,255,210,0.55) 0%,
-    rgba(255,255,210,0.30) 55%,
-    rgba(255,255,210,0.10) 80%,
+    rgba(255,255,210,0.25) 40%,
     transparent 100%);
   width:2px;
   right:22%;
 }
-/* Desktop: garis tepi kiri dihitung dari tepi kiri konten (setelah sidebar) */
-/* 25% dari lebar konten = posisi garis tepi kiri jalan */
-.layout-desktop-portrait .hw-lane-edge-l  { left: calc(160px + 0.25 * (100vw - 160px)); }
-.layout-desktop-landscape .hw-lane-edge-l { left: calc(196px + 0.25 * (100vw - 196px)); }
-/* Garis tepi kanan: mirror dari kanan (tidak terpengaruh sidebar) */
-.layout-desktop-portrait .hw-lane-edge-r,
-.layout-desktop-landscape .hw-lane-edge-r { right: 25%; }
+/* Desktop: geser garis tepi agar tidak tumpang tindih sidebar */
+.layout-desktop-portrait .hw-lane-edge-l  { left: calc(160px + 22% * (1 - 160px/100vw)); }
+.layout-desktop-landscape .hw-lane-edge-l { left: calc(196px + 22% * (1 - 196px/100vw)); }
+.layout-desktop-portrait .hw-lane-edge-r  { right: 22%; }
+.layout-desktop-landscape .hw-lane-edge-r { right: 22%; }
 /* Pantulan lampu di aspal — lebih berwarna */
 .hw-reflect {
-  position:absolute; bottom:0; left:0; right:0; height:38%;
+  position:absolute; bottom:0; left:0; right:0; height:26%;
   background:
-    radial-gradient(ellipse 22% 60% at 37% 0%, rgba(255,225,140,0.14) 0%, transparent 75%),
-    radial-gradient(ellipse 22% 60% at 63% 0%, rgba(255,225,140,0.14) 0%, transparent 75%),
-    radial-gradient(ellipse 10% 35% at 74% 0%, rgba(255,40,40,0.10) 0%, transparent 70%),
-    radial-gradient(ellipse 8%  30% at 26% 0%, rgba(255,40,40,0.10) 0%, transparent 70%),
-    radial-gradient(ellipse 15% 45% at 50% 0%, rgba(0,180,255,0.05) 0%, transparent 65%);
+    radial-gradient(ellipse 22% 55% at 37% 0%, rgba(255,225,140,0.16) 0%, transparent 72%),
+    radial-gradient(ellipse 22% 55% at 63% 0%, rgba(255,225,140,0.16) 0%, transparent 72%),
+    radial-gradient(ellipse 10% 30% at 74% 0%, rgba(255,40,40,0.12) 0%, transparent 65%),
+    radial-gradient(ellipse 8%  25% at 26% 0%, rgba(255,40,40,0.12) 0%, transparent 65%),
+    radial-gradient(ellipse 15% 40% at 50% 0%, rgba(0,180,255,0.06) 0%, transparent 60%);
   pointer-events:none;
 }
 /* Wrapper mobil */
@@ -1586,33 +1576,31 @@ input[type='range']::-webkit-slider-thumb {
 .hw-c3 { animation:car-right 11s linear 2s  infinite; }
 .hw-c4 { animation:car-right 15s linear 8s  infinite; }
 
-/* Tiang lampu jalan — berdiri dari jalan ke atas, lampu di atas */
+/* Tiang lampu jalan — lebih realistis */
 .hw-pole {
   position:absolute; pointer-events:none;
-  display:flex; flex-direction:column-reverse; align-items:center;
+  display:flex; flex-direction:column; align-items:center;
   z-index:3;
-  bottom:0;
+  bottom:42%;
   transform-origin:bottom center;
 }
-/* pole-arm: tiang vertikal (rendered first = paling bawah karena column-reverse) */
+/* Urutan atas ke bawah: pole-head (kap) -> pole-arm (tiang) */
+.hw-pole .pole-head {
+  width:16px; height:6px; border-radius:3px 3px 0 0;
+  background:linear-gradient(to bottom, rgba(255,210,90,0.90), rgba(255,180,50,0.75));
+  box-shadow:0 0 12px 5px rgba(255,190,60,0.50), 0 0 24px 10px rgba(255,160,30,0.22);
+  flex-shrink:0;
+}
 .hw-pole .pole-arm {
   width:2px; flex-shrink:0;
-  background:linear-gradient(to top, rgba(100,110,130,0.45), rgba(130,140,160,0.65));
+  background:linear-gradient(to bottom, rgba(130,140,160,0.65), rgba(100,110,130,0.45));
 }
-/* pole-cone: kerucut cahaya di bawah kepala */
 .hw-pole .pole-cone {
   flex-shrink:0;
   width:0; height:0;
   border-left:16px solid transparent;
   border-right:16px solid transparent;
   border-top:20px solid rgba(255,200,80,0.12);
-}
-/* pole-head: kepala lampu (rendered last = paling atas karena column-reverse) */
-.hw-pole .pole-head {
-  width:16px; height:6px; border-radius:3px 3px 0 0;
-  background:linear-gradient(to bottom, rgba(255,210,90,0.90), rgba(255,180,50,0.75));
-  box-shadow:0 0 12px 5px rgba(255,190,60,0.50), 0 0 24px 10px rgba(255,160,30,0.22);
-  flex-shrink:0;
 }
 /* Cahaya kerucut lampu */
 .hw-pole .pole-light-cone {
@@ -1839,13 +1827,13 @@ input[type='range']::-webkit-slider-thumb {
 .layout-mobile-landscape .hw-sky,
 .layout-desktop-landscape .hw-sky        { bottom:50%; }
 .layout-mobile-landscape .hw-horizon,
-.layout-desktop-landscape .hw-horizon    { bottom:46%; }
+.layout-desktop-landscape .hw-horizon    { bottom:48%; }
 .layout-mobile-landscape .hw-neon-lights,
 .layout-desktop-landscape .hw-neon-lights { bottom:50%; }
 .layout-mobile-landscape .hw-city-bg,
 .layout-desktop-landscape .hw-city-bg    { bottom:50%; }
 .layout-mobile-landscape .hw-pole,
-.layout-desktop-landscape .hw-pole       { transform-origin:bottom center; }
+.layout-desktop-landscape .hw-pole       { bottom:50%; transform-origin:bottom center; }
 .layout-mobile-landscape .hw-lane-edge-l,
 .layout-desktop-landscape .hw-lane-edge-l { height:50%; }
 .layout-mobile-landscape .hw-lane-edge-r,
@@ -1868,7 +1856,7 @@ input[type='range']::-webkit-slider-thumb {
 .layout-mobile-portrait .hw-lane-edge-r { right: 8%; }
 /* Garis marka tengah lebih lebar di mobile agar terlihat */
 .layout-mobile-portrait .hw-lane-center::before {
-  clip-path: polygon(48% 0%, 52% 0%, 60% 100%, 40% 100%);
+  clip-path: polygon(44% 0%, 56% 0%, 60% 100%, 40% 100%);
 }
 /* Horizon glow di mobile portrait sedikit lebih pendek */
 .layout-mobile-portrait .hw-horizon { height: 10%; }

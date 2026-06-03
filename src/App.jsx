@@ -7400,29 +7400,24 @@ Format exactly:
                   // Tiang kiri: sbW + frac% * (100vw - sbW)
                   // Tiang kanan: 100vw - frac% * (100vw - sbW)
                   // Mobile tidak ada sidebar jadi sbW=0, jadi left = frac%
-                  const fracL1 = isMob ? 5  : 8;   // tiang kiri paling dekat
-                  const fracL2 = isMob ? 13 : 18;  // tiang kiri tengah
-                  const fracL3 = isMob ? 22 : 28;  // tiang kiri jauh
+                  const fracL1 = isMob ? 4  : 3;   // tiang kiri paling dekat (sangat ke tepi)
+                  const fracL2 = isMob ? 11 : 9;   // tiang kiri tengah
+                  const fracL3 = isMob ? 18 : 15;  // tiang kiri jauh
                   const poleL = (frac) => isDesk
                     ? `calc(${sbW}px + ${frac / 100} * (100vw - ${sbW}px))`
                     : `${frac}%`;
                   const poleR = (frac) => isDesk
                     ? `calc(100vw - ${frac / 100} * (100vw - ${sbW}px))`
                     : `${100 - frac}%`;
-                  // armH: tiang dekat setinggi ~78% area jalan (kepala muncul di cakrawala)
-                  // tiang jauh lebih pendek untuk efek perspektif
-                  const armClose = `${(roadH * 0.78).toFixed(1)}vh`;
-                  const armMid   = `${(roadH * 0.52).toFixed(1)}vh`;
-                  const armFar   = `${(roadH * 0.32).toFixed(1)}vh`;
                   const poles = [
                     // Kiri: 3 tiang (dekat→jauh)
-                    { posVal: poleL(fracL1), armH: armClose, opacity:1.0,  headS: isMob?14:16 },
-                    { posVal: poleL(fracL2), armH: armMid,   opacity:0.60, headS: isMob?10:12, scale:0.85 },
-                    { posVal: poleL(fracL3), armH: armFar,   opacity:0.35, headS: isMob? 7: 9, scale:0.70 },
+                    { posVal: poleL(fracL1), armH: ls?110:100, opacity:1.0,  headS: isMob?14:16 },
+                    { posVal: poleL(fracL2), armH: ls? 80: 75, opacity:0.60, headS: isMob?10:12, scale:0.85 },
+                    { posVal: poleL(fracL3), armH: ls? 55: 52, opacity:0.35, headS: isMob? 7: 9, scale:0.70 },
                     // Kanan: mirror
-                    { posVal: poleR(fracL1), armH: armClose, opacity:1.0,  headS: isMob?14:16 },
-                    { posVal: poleR(fracL2), armH: armMid,   opacity:0.60, headS: isMob?10:12, scale:0.85 },
-                    { posVal: poleR(fracL3), armH: armFar,   opacity:0.35, headS: isMob? 7: 9, scale:0.70 },
+                    { posVal: poleR(fracL1), armH: ls?110:100, opacity:1.0,  headS: isMob?14:16 },
+                    { posVal: poleR(fracL2), armH: ls? 80: 75, opacity:0.60, headS: isMob?10:12, scale:0.85 },
+                    { posVal: poleR(fracL3), armH: ls? 55: 52, opacity:0.35, headS: isMob? 7: 9, scale:0.70 },
                   ];
                   return poles.map((p,i) => (
                   <div key={i} className="hw-pole" style={{
