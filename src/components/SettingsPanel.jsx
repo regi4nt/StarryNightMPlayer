@@ -1,15 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Moon, Music, SlidersHorizontal, Zap, Bot, History, Radio, RotateCcw, Lock } from 'lucide-react';
-
-function useWindowWidth() {
-  const [width, setWidth] = React.useState(() => window.innerWidth);
-  React.useEffect(() => {
-    const handler = () => setWidth(window.innerWidth);
-    window.addEventListener('resize', handler);
-    return () => window.removeEventListener('resize', handler);
-  }, []);
-  return width;
-}
 import { SLEEP_OPTIONS, fmtSec } from '../constants.js';
 
 class SettingsErrorBoundary extends React.Component {
@@ -155,7 +145,6 @@ function CacheManager({ lang, t }) {
   const [cleared, setCleared] = React.useState(false);
   const [clearDone, setClearDone] = React.useState(null); // null | 'quick' | 'all'
   const [confirmClearAll, setConfirmClearAll] = React.useState(false);
-  const [confirmClearQuick, setConfirmClearQuick] = React.useState(false);
 
   // ── Keys yang PENTING (jangan hapus saat Quick Clean)
   const KEEP_KEYS = new Set([
@@ -438,60 +427,37 @@ function CacheManager({ lang, t }) {
           {/* ── Tombol Quick & All berdampingan */}
           <div style={{ display:'flex', gap:8 }}>
 
-            {/* Quick Clean — dengan konfirmasi */}
-            {!confirmClearQuick ? (
-              <button
-                onClick={()=>{ if(hasQuickCache && !isClearing) setConfirmClearQuick(true); }}
-                disabled={isClearing || !hasQuickCache}
-                style={{
-                  flex:1, padding:'11px 0', borderRadius:12, border:'none',
-                  background: clearDone==='quick'
-                    ? 'linear-gradient(135deg,#22c55e,#16a34a)'
-                    : hasQuickCache
-                      ? (clearing==='quick' ? 'rgba(245,158,11,0.4)' : 'linear-gradient(135deg,#f59e0b,#d97706)')
-                      : 'rgba(255,255,255,0.06)',
-                  color: hasQuickCache ? 'white' : 'rgba(255,255,255,0.2)',
-                  fontSize:12, fontWeight:800, cursor: hasQuickCache && !isClearing ? 'pointer' : 'default',
-                  display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3,
-                  transition:'all 0.3s', opacity: isClearing && clearing!=='quick' ? 0.5 : 1,
-                }}
-              >
-                <span style={{ fontSize:15 }}>
-                  {clearing==='quick' ? '⏳' : clearDone==='quick' ? '✅' : '⚡'}
-                </span>
-                <span style={{ fontSize:11, fontWeight:800, lineHeight:1 }}>
-                  {clearing==='quick'
-                    ? (lang==='id'?'Membersihkan...':'Cleaning...')
-                    : clearDone==='quick'
-                      ? (lang==='id'?'Selesai!':'Done!')
-                      : 'Quick Clean'}
-                </span>
-                <span style={{ fontSize:9, fontWeight:600, opacity:0.75, lineHeight:1 }}>
-                  {lang==='id' ? 'Jaga data penting' : 'Keeps your data'}
-                </span>
-              </button>
-            ) : (
-              /* Konfirmasi Quick Clean */
-              <div style={{ flex:1, display:'flex', flexDirection:'column', gap:5, padding:'8px 6px', borderRadius:12, background:'rgba(245,158,11,0.1)', border:'1.5px solid rgba(245,158,11,0.4)' }}>
-                <div style={{ fontSize:10, fontWeight:700, color:'#fde68a', textAlign:'center', lineHeight:1.3 }}>
-                  {lang==='id' ? '⚡ Yakin bersihkan cache?' : '⚡ Clean cache?'}
-                </div>
-                <div style={{ display:'flex', gap:4 }}>
-                  <button
-                    onClick={()=>setConfirmClearQuick(false)}
-                    style={{ flex:1, padding:'6px 0', borderRadius:8, border:'none', background:'rgba(255,255,255,0.08)', color:'rgba(255,255,255,0.6)', fontSize:11, fontWeight:700, cursor:'pointer' }}
-                  >
-                    {lang==='id' ? 'Batal' : 'Cancel'}
-                  </button>
-                  <button
-                    onClick={()=>{ setConfirmClearQuick(false); handleQuickClear(); }}
-                    style={{ flex:1, padding:'6px 0', borderRadius:8, border:'none', background:'linear-gradient(135deg,#f59e0b,#d97706)', color:'white', fontSize:11, fontWeight:800, cursor:'pointer' }}
-                  >
-                    {lang==='id' ? 'Ya, bersihkan' : 'Yes, clean'}
-                  </button>
-                </div>
-              </div>
-            )}
+            {/* Quick Clean */}
+            <button
+              onClick={handleQuickClear}
+              disabled={isClearing || !hasQuickCache}
+              style={{
+                flex:1, padding:'11px 0', borderRadius:12, border:'none',
+                background: clearDone==='quick'
+                  ? 'linear-gradient(135deg,#22c55e,#16a34a)'
+                  : hasQuickCache
+                    ? (clearing==='quick' ? 'rgba(245,158,11,0.4)' : 'linear-gradient(135deg,#f59e0b,#d97706)')
+                    : 'rgba(255,255,255,0.06)',
+                color: hasQuickCache ? 'white' : 'rgba(255,255,255,0.2)',
+                fontSize:12, fontWeight:800, cursor: hasQuickCache && !isClearing ? 'pointer' : 'default',
+                display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3,
+                transition:'all 0.3s', opacity: isClearing && clearing!=='quick' ? 0.5 : 1,
+              }}
+            >
+              <span style={{ fontSize:15 }}>
+                {clearing==='quick' ? '⏳' : clearDone==='quick' ? '✅' : '⚡'}
+              </span>
+              <span style={{ fontSize:11, fontWeight:800, lineHeight:1 }}>
+                {clearing==='quick'
+                  ? (lang==='id'?'Membersihkan...':'Cleaning...')
+                  : clearDone==='quick'
+                    ? (lang==='id'?'Selesai!':'Done!')
+                    : 'Quick Clean'}
+              </span>
+              <span style={{ fontSize:9, fontWeight:600, opacity:0.75, lineHeight:1 }}>
+                {lang==='id' ? 'Jaga data penting' : 'Keeps your data'}
+              </span>
+            </button>
 
             {/* Clear All — dengan konfirmasi */}
             {!confirmClearAll ? (
@@ -561,12 +527,9 @@ function CacheManager({ lang, t }) {
   );
 }
 
-function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t, userSpId, setUserSpId, userSpSecret, setUserSpSecret, userScId, setUserScId, userAiKey, setUserAiKey, userYtKey, setUserYtKey, userCfKey, setUserCfKey, userSnKey, setUserSnKey, setTab, setFullscreen, googleUser, handleGoogleLogin, syncPlaylistsToCloud, accessToken, plSyncStatus, plSyncError, plSyncedAt, bgTheme, setBgTheme }) {
+function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t, userSpId, setUserSpId, userSpSecret, setUserSpSecret, userScId, setUserScId, userAiKey, setUserAiKey, userYtKey, setUserYtKey, userCfKey, setUserCfKey, userSnKey, setUserSnKey, setTab, setFullscreen, googleUser, handleGoogleLogin, syncPlaylistsToCloud, accessToken, plSyncStatus, plSyncError, plSyncedAt }) {
   const coverRef = useRef(null);
   const [apiKeyTab, setApiKeyTab] = React.useState('spotify');
-  const [showThemePicker, setShowThemePicker] = React.useState(false);
-  const windowWidth = useWindowWidth();
-  const isMobileNarrow = windowWidth < 400;
   // Local state untuk DNS input agar tidak terganggu re-render parent
   const [localDns, setLocalDns] = React.useState(customDns);
   // Sync dari parent hanya saat customDns berubah via preset (bukan saat user ketik)
@@ -629,97 +592,6 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
             </div>
           )}
         </div>
-
-        {/* ── BACKGROUND THEME */}
-        {!isLite && setBgTheme && (() => {
-          const THEMES = [
-            { id:'starry',     emoji:'✨', label: lang==='id'?'Langit Berbintang':'Starry Night',    sub: lang==='id'?'Klasik bintang-bintang':'Classic starfield',    colors:['#07071a','#1a1040','#2d1b69'] },
-            { id:'bedroom',    emoji:'🛏️', label: lang==='id'?'Kamar Malam':'Night Bedroom',         sub: lang==='id'?'Hujan & lampu hangat':'Rain & warm lamp',       colors:['#0a0810','#1a0a2e','#2d0f3f'] },
-            { id:'journey',    emoji:'🏔️', label: lang==='id'?'Pegunungan':'Mountains',          sub: lang==='id'?'Hutan & pegunungan':'Forest & mountains',       colors:['#060d0a','#0a1f10','#0d2e18'] },
-            { id:'ocean',      emoji:'🌊', label: lang==='id'?'Laut & Pantai':'Ocean & Beach',       sub: lang==='id'?'Pantai malam hari':'Midnight seashore',         colors:['#040d12','#061828','#083050'] },
-            { id:'fantasy',    emoji:'🔮', label: lang==='id'?'Dunia Fantasy':'Fantasy World',       sub: lang==='id'?'Alam semesta lain':'Other realm vibes',         colors:['#090614','#180830','#2d1060'] },
-            { id:'futurecity', emoji:'🌆', label: lang==='id'?'Kota Masa Depan':'Future City',       sub: lang==='id'?'Neon cyberpunk malam':'Neon cyberpunk night',   colors:['#050c10','#051520','#073040'] },
-            { id:'nightgarden',  emoji:'🌿', label: lang==='id'?'Taman Malam':'Night Garden',          sub: lang==='id'?'Kunang-kunang & kabut':'Fireflies & mist',        colors:['#020d06','#041a0a','#062810'] },
-            { id:'nighthighway', emoji:'🛣️', label: lang==='id'?'Jalan Raya Malam':'Night Highway',    sub: lang==='id'?'Mobil & lampu malam':'Cars & city lights',        colors:['#03060e','#060c18','#0a1428'] },
-            { id:'solarsystem',  emoji:'🪐', label: lang==='id'?'Tata Surya':'Solar System',           sub: lang==='id'?'Planet & luar angkasa':'Planets & deep space',    colors:['#010108','#030318','#06062a'] },
-          ];
-          const activeTheme = THEMES.find(t => t.id === (bgTheme || 'starry')) || THEMES[0];
-          return (
-            <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-              {/* Header row */}
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-                <span style={{ fontSize:16 }}>🌌</span>
-                <div style={{ flex:1 }}>
-                  <div style={{ fontWeight:800, fontSize:14 }}>{lang==='id'?'Tema Latar Belakang':'Background Theme'}</div>
-                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{lang==='id'?'Suasana visual malam hari':'Night atmosphere visual style'}</div>
-                </div>
-              </div>
-              {/* Current theme button — tap to toggle picker */}
-              <button
-                onClick={() => setShowThemePicker(v => !v)}
-                style={{
-                  width:'100%', display:'flex', alignItems:'center', gap:10,
-                  padding:'10px 14px', borderRadius:14,
-                  border:`1.5px solid ${color}60`,
-                  background:`linear-gradient(135deg, ${color}20, ${color}08)`,
-                  cursor:'pointer', textAlign:'left',
-                  boxShadow:`0 0 14px ${color}18`,
-                  transition:'all 0.2s',
-                }}
-              >
-                <div style={{
-                  width:36, height:36, borderRadius:10, flexShrink:0,
-                  background:`linear-gradient(135deg, ${activeTheme.colors[0]}, ${activeTheme.colors[1]}, ${activeTheme.colors[2]})`,
-                  display:'flex', alignItems:'center', justifyContent:'center',
-                  fontSize:16,
-                  border:`1px solid ${color}40`,
-                  boxShadow:`0 0 8px ${color}30`,
-                }}>
-                  {activeTheme.emoji}
-                </div>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.95)', lineHeight:1.2 }}>{activeTheme.label}</div>
-                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginTop:2 }}>{activeTheme.sub}</div>
-                </div>
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', flexShrink:0, transition:'transform 0.2s', transform: showThemePicker ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</div>
-              </button>
-              {/* Expandable theme list */}
-              {showThemePicker && (
-                <div style={{ marginTop:8, display:'grid', gridTemplateColumns: isMobileNarrow ? '1fr' : '1fr 1fr', gap: isMobileNarrow ? 6 : 8 }}>
-                  {THEMES.filter(th => th.id !== activeTheme.id).map(({ id, emoji, label, sub, colors }) => (
-                    <button
-                      key={id}
-                      onClick={() => { setBgTheme(id); setShowThemePicker(false); }}
-                      style={{
-                        display:'flex', alignItems:'center', gap:10,
-                        padding:'9px 12px', borderRadius:12,
-                        border:'1.5px solid rgba(255,255,255,0.08)',
-                        background:'rgba(255,255,255,0.03)',
-                        cursor:'pointer', textAlign:'left',
-                        transition:'all 0.15s',
-                      }}
-                    >
-                      <div style={{
-                        width:32, height:32, borderRadius:9, flexShrink:0,
-                        background:`linear-gradient(135deg, ${colors[0]}, ${colors[1]}, ${colors[2]})`,
-                        display:'flex', alignItems:'center', justifyContent:'center',
-                        fontSize:15,
-                        border:'1px solid rgba(255,255,255,0.08)',
-                        boxShadow:'0 2px 6px rgba(0,0,0,0.4)',
-                      }}>
-                        {emoji}
-                      </div>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontSize:11.5, fontWeight:700, color:'rgba(255,255,255,0.75)', lineHeight:1.2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label}</div>
-                        <div style={{ fontSize:9.5, color:'rgba(255,255,255,0.35)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{sub}</div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })()}
 
         {/* ── SLEEP TIMER */}
         <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>

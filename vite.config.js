@@ -30,7 +30,6 @@ export default defineConfig(({ mode }) => {
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
-          // ── Audio files — CacheFirst (30 hari, support range request untuk seek)
           {
             urlPattern: /\.(mp3|wav|ogg|flac|m4a)(\?.*)?$/i,
             handler: 'CacheFirst',
@@ -41,7 +40,6 @@ export default defineConfig(({ mode }) => {
               rangeRequests: true,
             }
           },
-          // ── Cover art & thumbnails — CacheFirst (tidak pernah berubah untuk URL yang sama)
           {
             urlPattern: /^https:\/\/images\.unsplash\.com\//,
             handler: 'CacheFirst',
@@ -56,73 +54,10 @@ export default defineConfig(({ mode }) => {
             handler: 'CacheFirst',
             options: {
               cacheName: 'yt-thumb-cache',
-              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 14 },
+              expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 7 },
               cacheableResponse: { statuses: [0, 200] }
             }
-          },
-          // ── Placeholder cover (ui-avatars) — CacheFirst (URL deterministik, tidak berubah)
-          {
-            urlPattern: /^https:\/\/ui-avatars\.com\//,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'avatar-cache',
-              expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 30 },
-              cacheableResponse: { statuses: [0, 200] }
-            }
-          },
-          // ── Lirik LRCLib — StaleWhileRevalidate (lirik jarang berubah, tapi tetap fresh)
-          {
-            urlPattern: /^https:\/\/lrclib\.net\/api\//,
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'lyrics-cache',
-              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
-              cacheableResponse: { statuses: [0, 200] }
-            }
-          },
-          // ── Radio Browser server list — CacheFirst (berubah sangat jarang, 1 jam TTL)
-          {
-            urlPattern: /^https:\/\/all\.api\.radio-browser\.info\//,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'radio-server-cache',
-              expiration: { maxEntries: 5, maxAgeSeconds: 60 * 60 },
-              cacheableResponse: { statuses: [0, 200] }
-            }
-          },
-          // ── Radio Browser search/list — NetworkFirst (konten sering update, fallback cache)
-          {
-            urlPattern: /^https:\/\/[a-z0-9]+\.api\.radio-browser\.info\//,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'radio-data-cache',
-              networkTimeoutSeconds: 4,
-              expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 6 },
-              cacheableResponse: { statuses: [0, 200] }
-            }
-          },
-          // ── Internal API routes — NetworkFirst (data fresh, tapi fallback ke cache saat offline)
-          {
-            urlPattern: /^\/api\/(youtube|jamendo|radio|radio-garden|ai|yt-status|ccmixter)(\?.*)?$/,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-cache',
-              networkTimeoutSeconds: 5,
-              expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 2 },
-              cacheableResponse: { statuses: [0, 200] }
-            }
-          },
-          // ── YouTube search via googleapis (saat pakai user key) — NetworkFirst
-          {
-            urlPattern: /^https:\/\/www\.googleapis\.com\/youtube\/v3\/(search|videos)\?/,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'yt-api-cache',
-              networkTimeoutSeconds: 5,
-              expiration: { maxEntries: 80, maxAgeSeconds: 60 * 60 * 2 },
-              cacheableResponse: { statuses: [0, 200] }
-            }
-          },
+          }
         ]
       }
     })

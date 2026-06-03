@@ -1,17 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useReducer, useMemo, lazy, Suspense } from 'react';
-// ── Optimasi: reducers & memoized values
-import {
-  searchReducer, searchInitialState,
-  radioReducer, radioInitialState,
-  playerReducer, playerInitialState,
-  uiReducer, uiInitialState,
-  lyricsReducer, lyricsInitialState,
-} from './reducers.js';
-import {
-  useAllSongs, useAllSongIds, useDisplayedSongs,
-  useFilteredPlaylists, useCachedIdSets,
-  useWsAudioItems, useSortedWsResults, useRbMergedResults,
-} from './useMemoizedValues.js';
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import {
   Play, Pause, SkipBack, SkipForward,
   ListMusic, Compass, Heart, Volume2, VolumeX,
@@ -29,7 +16,6 @@ import {
 import { T } from './translations.js';
 import {
   openNewTab, STREAMING_PLATFORMS, MUSIC_SOURCES, SONGS, builtinSongs,
-  getStreamingPlatforms, getStreamingPlatformsSync,
   GOOGLE_CLIENT_ID, GOOGLE_SCOPES, DRIVE_FOLDER, SONG_COLORS, COVERS,
   randItem, SLEEP_OPTIONS, PIPED_INSTANCES, INVIDIOUS_INSTANCES,
   buildInvidiousUrl, buildPipedUrl, getProviders, radioUrl,
@@ -157,7 +143,6 @@ export default function App() {
   const ytProgressRef   = useRef(0);   // mirror of ytProgress for use in intervals
   const ytDurationRef   = useRef(0);   // mirror of ytDuration for use in intervals
   const playYouTubeRef  = useRef(null); // always-fresh ref to playYouTube
-  const ytDlTriggerRef  = useRef(null); // forward-ref ke triggerYtDownload (di-set setelah didefinisikan)
   const ytEndedFiredRef = useRef(false); // prevent double-fire of ytNext on video end
   const ytRepeatSeekingRef = useRef(false); // true selama seekTo(0) untuk repeat-one (blokir ended palsu)
   const [ytSongs, setYtSongs]         = useState(() => {
@@ -1567,7 +1552,7 @@ Return ONLY valid JSON, no explanation:
     if (allItems.length > 0) ytSearchCacheSet(query + '_' + mode, allItems);
   };
 
-  const playYouTube = async (item, queue, queueIdx) => {
+  const playYouTube = (item, queue, queueIdx) => {
     // Support Piped format (url), Invidious format (videoId), or direct videoId
     let videoId = item.videoId || null;
     if (!videoId) {
@@ -1579,56 +1564,11 @@ Return ONLY valid JSON, no explanation:
     const dur   = secs > 0 ? `${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}` : '';
     const thumb = item.thumbnail || `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
     const ytTrack = { type:'youtube', videoId, title:item.title, artist:item.uploaderName||item.author||'YouTube', thumbnail:thumb, duration:dur, durationSecs:secs };
-
-    // ── Update queue refs (untuk next/prev) sebelum switch ──
-    if (queue) {
-      const queueChanged = queue !== ytQueueRef.current;
-      ytQueueRef.current = queue;
-      ytQueueIdxRef.current = queueIdx ?? queue.findIndex(v => (v.videoId || v.url?.includes(videoId)) === videoId);
-      if (queueChanged) ytShufflePlayedRef.current = null;
-    }
-
-    // ── Cache-first: cek cache audio dulu (hanya di Pro mode) ──
-    if (!isLite) {
-      try {
-        const cachedBlob = await ytCacheGet(videoId);
-        if (cachedBlob && cachedBlob.size > 10000) {
-          // Cache hit → putar via native audio player (hemat data, bisa seek penuh)
-          const blobUrl = URL.createObjectURL(cachedBlob);
-          const nativeTrack = {
-            id: `yt_${videoId}`,
-            type: 'youtube',
-            videoId,
-            title: item.title,
-            artist: item.uploaderName || item.author || 'YouTube',
-            album: 'YouTube',
-            cover: thumb,
-            src: blobUrl,
-            color: '#ff4444',
-            bg: 'rgba(255,68,68,0.15)',
-            mood: 'youtube',
-            thumbnail: thumb,
-            duration: secs,
-            durationSecs: secs,
-            _ytCached: true, // marker: sedang diputar dari cache
-          };
-          stopAllMedia('local');
-          setEmbedTrack(null);
-          setCustomSongs(prev => { const ex = prev.find(s => s.id === nativeTrack.id); return ex ? prev.map(s => s.id === nativeTrack.id ? { ...s, src: blobUrl } : s) : [nativeTrack, ...prev]; });
-          setTrack(nativeTrack);
-          setProgress(0); setDuration(secs || 0);
-          setPlaying(true);
-          setTab('player');
-          return;
-        }
-      } catch (_) { /* cache miss atau error → lanjut ke iframe */ }
-    }
-
-    // ── Tidak ada cache / Lite mode → putar via iframe seperti biasa ──
     const doSwitch = () => {
       stopAllMedia('embed');
       setEmbedTrack(ytTrack);
       setYtProgress(0); setYtDuration(secs||0); ytProgressRef.current = 0; ytDurationRef.current = secs||0; ytEndedFiredRef.current = false;
+      if (queue) { const queueChanged = queue !== ytQueueRef.current; ytQueueRef.current = queue; ytQueueIdxRef.current = queueIdx ?? queue.findIndex(v=>(v.videoId||v.url?.includes(videoId))===videoId); if (queueChanged) ytShufflePlayedRef.current = null; }
       setEmbedMinimized(false);
       if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
@@ -1641,14 +1581,6 @@ Return ONLY valid JSON, no explanation:
       setTab('player');
     };
     doSwitch();
-
-    // ── Background download: simpan audio ke cache setelah iframe mulai putar ──
-    // (hanya Pro mode & belum ada cache; tidak blokir playback)
-    if (!isLite) {
-      setTimeout(() => {
-        if (ytDlTriggerRef.current) ytDlTriggerRef.current(videoId);
-      }, 1500);
-    }
   };
   // Keep ref always pointing to latest playYouTube (avoids stale closure in ytNext/ytPrev)
   playYouTubeRef.current = playYouTube;
@@ -2061,7 +1993,6 @@ Return ONLY valid JSON, no explanation:
   const likedYtPendingRef  = useRef(likedYtPending);
   const cachedYtIdsRef     = useRef(cachedYtIds);
   const triggerYtDownloadRef = useRef(triggerYtDownload);
-  ytDlTriggerRef.current = triggerYtDownload; // sync agar playYouTube selalu punya versi terbaru
   useEffect(() => { likedYtPendingRef.current    = likedYtPending;    }, [likedYtPending]);
   useEffect(() => { cachedYtIdsRef.current       = cachedYtIds;       }, [cachedYtIds]);
   useEffect(() => { triggerYtDownloadRef.current = triggerYtDownload; }, [triggerYtDownload]);
@@ -2429,7 +2360,6 @@ Return ONLY valid JSON, no explanation:
   const [showSettings, setShowSettings] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [coverSpin, setCoverSpin] = useState(() => localStorage.getItem('sn_cover_spin') !== 'false');
-  const [bgTheme, setBgTheme] = useState(() => localStorage.getItem('sn_bg_theme') || 'starry');
   const fullscreenRef = useRef(false);
 
 
@@ -2499,7 +2429,6 @@ Return ONLY valid JSON, no explanation:
         sendPlay();
         setTimeout(sendPlay, 500);
         setTimeout(sendPlay, 1500);
-        setTimeout(sendPlay, 3000);
         return;
       }
 
@@ -2517,29 +2446,6 @@ Return ONLY valid JSON, no explanation:
     };
     document.addEventListener('visibilitychange', onResume);
     return () => document.removeEventListener('visibilitychange', onResume);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── YouTube background heartbeat
-  // Chrome/Android men-throttle iframe saat tab di-background.
-  // Solusi: kirim postMessage 'listening' setiap 10 detik agar browser tahu ada
-  // aktivitas media aktif — sama seperti audio <element> yang terus "streaming".
-  useEffect(() => {
-    const tick = () => {
-      const et = embedTrackRef.current;
-      if (!et || et.type !== 'youtube') return;
-      if (!playingRef.current) return;
-      if (!ytIframeRef.current) return;
-      try {
-        // 'listening' memberi tahu YT Player API bahwa kita aktif memantau event
-        ytIframeRef.current.contentWindow.postMessage(JSON.stringify({ event:'listening' }), '*');
-        // Jika tab di background dan YT ter-pause oleh browser, paksa play lagi
-        if (document.visibilityState === 'hidden') {
-          ytIframeRef.current.contentWindow.postMessage(JSON.stringify({ event:'command', func:'playVideo', args:'' }), '*');
-        }
-      } catch(_) {}
-    };
-    const id = setInterval(tick, 10000);
-    return () => clearInterval(id);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
 
@@ -2666,10 +2572,6 @@ Return ONLY valid JSON, no explanation:
   const [uploadProgress, setUploadProg] = useState(0);
   const [loadingTrack, setLoadingTrack] = useState(false);
   const [streamBuffering, setStreamBuffering] = useState(false); // buffering indicator untuk radio/stream
-  const [streamingPlatformsLoaded, setStreamingPlatformsLoaded] = useState(() => {
-    // Cek apakah sudah di-cache sebelumnya (mis. kalau App re-render)
-    return !!getStreamingPlatformsSync().length;
-  }); // trigger re-render setelah lazy load
   const [driveDownProg, setDriveDownProg] = useState(0);   // 0-100, only in Pro mode
   const [drivePhase, setDrivePhase]       = useState('idle'); // 'idle' | 'check' | 'download'
   const [driveError, setDriveError]     = useState('');
@@ -2714,7 +2616,6 @@ Return ONLY valid JSON, no explanation:
 
   // ── Responsive
   const [ringSize, setRingSize] = useState(260);
-  const [ringCenter, setRingCenter] = useState({ x: 0, y: 0 }); // center of OrbitalRing in viewport coords
   const [isDesktop, setIsDesktop] = useState(() => !isPhoneDevice());
   // layoutMode: 'mobile-portrait' | 'mobile-landscape' | 'desktop-portrait' | 'desktop-landscape'
   // Phone → mobile layout; Tablet/Desktop/Laptop → desktop layout
@@ -3327,7 +3228,6 @@ Return ONLY valid JSON, no explanation:
           const byW = mainW - 80;
           const ring = Math.max(200, Math.min(400, Math.min(byH, byW)));
           setRingSize(ring);
-          setRingCenter({ x: mainW / 2, y: mainH / 2 });
           const vpad = Math.max(10, Math.round((mainH - ring - reservedH) / 2));
           setLayoutVars({
             playerPad: `${vpad}px 32px`,
@@ -3342,13 +3242,10 @@ Return ONLY valid JSON, no explanation:
           const ringColW = Math.round(vw * 0.45);
           const size = Math.min(vh - 16, ringColW - 16);
           setRingSize(Math.max(140, Math.min(380, size)));
-          setRingCenter({ x: ringColW / 2, y: vh / 2 });
         } else {
           // Portrait fullscreen: centered, leave room for controls below
           const size = Math.min(vw - 48, vh - 240);
           setRingSize(Math.max(180, Math.min(480, size)));
-          // Ring is roughly centered in top ~60% of screen
-          setRingCenter({ x: vw / 2, y: vh * 0.38 });
         }
         return;
       }
@@ -3363,8 +3260,6 @@ Return ONLY valid JSON, no explanation:
         const byW = mainW - 80;
         const ring = Math.max(180, Math.min(320, Math.min(byH, byW)));
         setRingSize(ring);
-        // Ring is vertically centered in mainH area (justifyContent:'center' in player column)
-        setRingCenter({ x: sidebarW + mainW / 2, y: HEADER_H_NORMAL + mainH / 2 });
         // Fixed small padding — vertical centering handled by justifyContent:'center' on container
         setLayoutVars({
           playerPad: '16px 24px',
@@ -3384,8 +3279,6 @@ Return ONLY valid JSON, no explanation:
         const byW = mainW - 60;
         const ring = Math.max(160, Math.min(300, Math.min(byH, byW)));
         setRingSize(ring);
-        // Ring is vertically centered in mainH area
-        setRingCenter({ x: sidebarW + mainW / 2, y: HEADER_H_NORMAL + mainH / 2 });
         // Fixed small padding — vertical centering handled by justifyContent:'center' on container
         setLayoutVars({
           playerPad: '12px 20px',
@@ -3404,8 +3297,6 @@ Return ONLY valid JSON, no explanation:
         const ringColW = Math.round(mainW * 0.42);
         const ring = Math.max(110, Math.min(mainH - 12, ringColW - 20));
         setRingSize(ring);
-        // Ring centered in left column
-        setRingCenter({ x: sideNavW + ringColW / 2, y: HEADER_H_LANDSCAPE + mainH / 2 });
         setLayoutVars({
           playerPad: '4px 10px 4px',
           trackTitleSize: `clamp(12px,${Math.round((mainW - ringColW) * 0.06)}px,16px)`,
@@ -3426,10 +3317,6 @@ Return ONLY valid JSON, no explanation:
         // Ring: fits available space, capped tightly so elements don't overflow
         const ring = Math.max(140, Math.min(availH, availW, 255));
         setRingSize(ring);
-        // Ring top = header + playerPad + clockRow(38) + badge(20), centered horizontally
-        const playerPadTop = Math.max(6, Math.min(14, Math.round(Math.max(0, vh - fixed - ring) / 10)));
-        const ringTopY = HEADER_H_NORMAL + playerPadTop + 38 + ring / 2;
-        setRingCenter({ x: vw / 2, y: ringTopY });
         // Remaining vertical space after ring — distribute as small uniform gaps
         const spare = Math.max(0, vh - fixed - ring);
         const gapUnit = Math.round(spare / 10); // ~10 flex gaps in space-evenly
@@ -3693,7 +3580,7 @@ Return ONLY valid JSON, no explanation:
     const title  = activeTrack?.title  || 'Starry Night MPlayer';
     const artist = activeTrack?.artist || '';
     const album  = activeTrack?.album  || (track.isRadio ? 'Live Radio' : '');
-    const cover  = globalCover || (embedTrack?.type === 'youtube' ? (embedTrack?.thumbnail || getCover(track)) : getCover(track)) || '/icon-512.png';
+    const cover  = globalCover || getCover(track) || '/icon-512.png';
     navigator.mediaSession.metadata = new MediaMetadata({
       title, artist, album,
       artwork: [
@@ -3774,15 +3661,6 @@ Return ONLY valid JSON, no explanation:
 
   // ── Fetch YT trending when stream tab opens (once per session, refreshable)
   useEffect(() => { if (tab === 'stream') fetchYtTrending(); }, [tab]); // eslint-disable-line
-
-  // ── Lazy-load STREAMING_PLATFORMS segera saat app mount (bukan nunggu tab stream)
-  useEffect(() => {
-    if (!streamingPlatformsLoaded) {
-      getStreamingPlatforms().then(() => {
-        setStreamingPlatformsLoaded(true);
-      });
-    }
-  }, []); // eslint-disable-line
 
   // ── Volume/mute
   useEffect(() => {
@@ -6992,7 +6870,7 @@ Format exactly:
   ];
 
   return (
-    <div className={`${isLite ? 'lite-mode' : 'pro-mode'} layout-${layoutMode}`} style={{ position:'fixed', inset:0, overflow:'hidden', background: isLite ? '#07071a' : ({starry:'#07071a',bedroom:'#07051a',journey:'#05100a',ocean:'#040e18',fantasy:'#06041a',futurecity:'#020810',nightgarden:'#020d06',nighthighway:'#03060e',solarsystem:'#010108'}[bgTheme]||'#07071a'), color:'#f1f5f9', fontFamily:"'Segoe UI',system-ui,sans-serif", display:'flex', flexDirection:'column', userSelect:'none', WebkitTapHighlightColor:'transparent' }}>
+    <div className={`${isLite ? 'lite-mode' : 'pro-mode'} layout-${layoutMode}`} style={{ position:'fixed', inset:0, overflow:'hidden', background:'#07071a', color:'#f1f5f9', fontFamily:"'Segoe UI',system-ui,sans-serif", display:'flex', flexDirection:'column', userSelect:'none', WebkitTapHighlightColor:'transparent' }}>
 
       {/* ══ PWA INSTALL BANNER — floating bottom, appears when installable ══ */}
       {!pwaInstalled && !pwaBannerDismissed && pwaBannerVisible && pwaPrompt && (
@@ -7029,537 +6907,9 @@ Format exactly:
         </div>
       )}
 
-      {/* BG — Pro only, theme-aware */}
-      {!isLite && (() => {
-        const th = bgTheme || 'starry';
-        // Base solid background
-        const baseBg = {
-          starry:    '#07071a',
-          bedroom:   '#07051a',
-          journey:   '#05100a',
-          ocean:     '#040e18',
-          fantasy:   '#06041a',
-          futurecity:   '#020810',
-          nightgarden:  '#020d06',
-          nighthighway: '#03060e',
-          solarsystem:  '#010108',
-        }[th] || '#07071a';
-
-        // Overlay gradients per theme
-        const overlays = {
-          starry: [
-            `radial-gradient(ellipse at 60% 10%,${track?.color||'#3b82f6'}20 0%,transparent 60%)`,
-          ],
-          bedroom: [
-            // Cahaya lampu tidur kuning-oranye hangat dari kiri bawah (lebih kuat & natural)
-            'radial-gradient(ellipse at 12% 92%, rgba(255,150,30,0.32) 0%, rgba(210,90,10,0.16) 30%, transparent 58%)',
-            // Sinar bulan dingin dari kanan atas masuk lewat jendela (lebih nyata)
-            'radial-gradient(ellipse at 88% 5%, rgba(160,185,255,0.22) 0%, rgba(120,150,230,0.10) 30%, transparent 52%)',
-            // Ambient malam biru gelap keunguan di tengah
-            'radial-gradient(ellipse at 50% 50%, rgba(18,12,48,0.28) 0%, transparent 65%)',
-            // Cahaya bulan di lantai (dari jendela)
-            'radial-gradient(ellipse at 80% 100%, rgba(140,165,255,0.10) 0%, transparent 40%)',
-          ],
-          journey: [
-            // Green forest floor glow
-            'radial-gradient(ellipse at 50% 100%, rgba(20,120,40,0.35) 0%, rgba(10,60,20,0.18) 40%, transparent 65%)',
-            // Moonlight from top
-            'radial-gradient(ellipse at 40% 0%, rgba(180,210,255,0.18) 0%, transparent 45%)',
-            // Misty mountain teal
-            'radial-gradient(ellipse at 80% 60%, rgba(20,80,60,0.15) 0%, transparent 50%)',
-          ],
-          ocean: [
-            // Deep sea from bottom
-            'radial-gradient(ellipse at 50% 100%, rgba(0,80,160,0.45) 0%, rgba(0,40,100,0.25) 40%, transparent 65%)',
-            // Moonlit surface shimmer top
-            'radial-gradient(ellipse at 50% 10%, rgba(160,220,255,0.20) 0%, transparent 50%)',
-            // Bioluminescent teal mid
-            'radial-gradient(ellipse at 25% 60%, rgba(0,200,180,0.10) 0%, transparent 45%)',
-          ],
-          fantasy: [
-            // Aurora hijau-biru di atas
-            'radial-gradient(ellipse at 35% 15%, rgba(60,200,160,0.20) 0%, rgba(40,160,120,0.08) 45%, transparent 65%)',
-            // Aurora ungu di tengah atas
-            'radial-gradient(ellipse at 65% 10%, rgba(140,60,255,0.18) 0%, rgba(100,40,200,0.08) 40%, transparent 60%)',
-            // Cahaya bulan keemasan
-            'radial-gradient(ellipse at 14% 8%, rgba(255,220,140,0.20) 0%, transparent 40%)',
-            // Ground glow ungu misterius
-            'radial-gradient(ellipse at 50% 100%, rgba(80,20,140,0.30) 0%, rgba(50,10,100,0.15) 40%, transparent 65%)',
-          ],
-          futurecity: [
-            // Cyan-teal horizon glow — neon bawah kota (lebih kuat)
-            'radial-gradient(ellipse at 50% 95%, rgba(0,230,210,0.32) 0%, rgba(0,160,190,0.16) 38%, transparent 62%)',
-            // Blue neon pillar kiri
-            'radial-gradient(ellipse at 8%  55%, rgba(0,130,255,0.24) 0%, transparent 48%)',
-            // Purple haze kanan atas
-            'radial-gradient(ellipse at 88% 8%,  rgba(170,0,255,0.18) 0%, transparent 42%)',
-            // Pantulan neon di langit rendah
-            'radial-gradient(ellipse at 30% 70%, rgba(0,180,255,0.10) 0%, transparent 35%)',
-            'radial-gradient(ellipse at 70% 65%, rgba(140,0,255,0.10) 0%, transparent 35%)',
-          ],
-          nightgarden: [
-            // Rich emerald sky glow from horizon
-            'radial-gradient(ellipse at 50% 100%, rgba(10,110,55,0.65) 0%, rgba(5,60,28,0.32) 45%, transparent 72%)',
-            // Moonlight from top-right
-            'radial-gradient(ellipse at 78% 5%, rgba(170,210,190,0.18) 0%, rgba(120,175,155,0.08) 35%, transparent 55%)',
-            // Warm firefly ambient mid-left
-            'radial-gradient(ellipse at 22% 55%, rgba(90,210,115,0.08) 0%, transparent 42%)',
-            // Deep forest atmosphere at sides
-            'radial-gradient(ellipse at 0% 60%, rgba(4,45,18,0.35) 0%, transparent 45%)',
-            'radial-gradient(ellipse at 100% 60%, rgba(4,45,18,0.35) 0%, transparent 45%)',
-          ],
-          nighthighway: [
-            // Deep asphalt ground
-            'radial-gradient(ellipse at 50% 100%, rgba(15,22,42,0.88) 0%, rgba(6,10,22,0.55) 40%, transparent 68%)',
-            // City glow horizon — warmer & brighter
-            'radial-gradient(ellipse at 50% 32%, rgba(255,150,0,0.13) 0%, rgba(200,80,0,0.06) 38%, transparent 62%)',
-            // Left headlight cone — warmer
-            'radial-gradient(ellipse at 36% 68%, rgba(255,245,190,0.14) 0%, transparent 42%)',
-            // Right headlight cone — warmer
-            'radial-gradient(ellipse at 64% 68%, rgba(255,245,190,0.14) 0%, transparent 42%)',
-            // Neon cyan glow from city left
-            'radial-gradient(ellipse at 5% 45%, rgba(0,200,255,0.07) 0%, transparent 40%)',
-            // Neon purple glow from city right
-            'radial-gradient(ellipse at 95% 45%, rgba(180,0,255,0.06) 0%, transparent 40%)',
-          ],
-          solarsystem: [
-            // Deep space dark core — slightly warmer
-            'radial-gradient(ellipse at 50% 50%, rgba(5,4,30,0.65) 0%, transparent 78%)',
-            // Nebula blue-purple haze left — stronger
-            'radial-gradient(ellipse at 8% 38%, rgba(65,28,195,0.24) 0%, rgba(40,15,130,0.10) 40%, transparent 58%)',
-            // Nebula pink-red haze right — stronger
-            'radial-gradient(ellipse at 92% 62%, rgba(195,28,85,0.20) 0%, rgba(130,15,50,0.08) 40%, transparent 55%)',
-            // Sun warm glow top — bigger & richer
-            'radial-gradient(ellipse at 13% 11%, rgba(255,190,50,0.30) 0%, rgba(255,140,0,0.12) 35%, transparent 55%)',
-            // Cosmic dust teal
-            'radial-gradient(ellipse at 70% 25%, rgba(0,200,180,0.08) 0%, transparent 45%)',
-          ],
-        }[th] || [`radial-gradient(ellipse at 60% 10%,${track?.color||'#3b82f6'}20 0%,transparent 60%)`];
-
-        // Animated overlay elements per theme
-        const ThemeOverlay = () => {
-          if (th === 'starry') return <><div className="stars"/><div className="starsB"/><div className="starsC"/></>;
-          if (th === 'bedroom') return (
-            <>
-              {/* Langit malam via jendela — bintang sangat redup */}
-              <div className="starsB" style={{ opacity:0.20 }}/>
-              {/* Bulan di dalam jendela — lebih besar & bercahaya */}
-              {(() => {
-                const ls = layoutMode.includes('landscape');
-                return (
-                  <div style={{ position:'absolute', top: ls ? '6%' : '9%', right: ls ? '6.5%' : '8.5%', width: ls ? 26 : 34, height: ls ? 26 : 34, borderRadius:'50%', background:'radial-gradient(circle, rgba(230,240,255,0.90) 30%, rgba(190,210,255,0.45) 60%, transparent 82%)', boxShadow:'0 0 18px rgba(190,210,255,0.40), 0 0 6px rgba(210,225,255,0.60)', zIndex:1 }}/>
-                );
-              })()}
-              {/* Jendela frame */}
-              <div className="bedroom-window"/>
-              {/* Hujan di luar jendela */}
-              <div className="window-rain"/>
-              {/* Tirai kiri & kanan */}
-              <div className="curtain-left"/>
-              <div className="curtain-right"/>
-              {/* Sinar bulan masuk lewat jendela */}
-              <div className="moonbeam"/>
-
-              {/* Kasur & headboard — lebih realistis */}
-              {(() => {
-                const ls = layoutMode.includes('landscape');
-                const isDesk = layoutMode.includes('desktop');
-                const sbW = isDesk ? (ls ? SIDEBAR_W_LANDSCAPE : SIDEBAR_W_PORTRAIT) : 0;
-                const vw = typeof window !== 'undefined' ? window.innerWidth : 1280;
-                const leftPost = Math.round(((sbW + 18) / vw) * 100);
-                const lp   = `${leftPost}%`;
-                const lpIn = `${leftPost + 1.8}%`;
-                return (
-                  <div style={{
-                    position:'absolute', bottom:0, left:0, right:0, height: ls ? '34%' : '30%',
-                    pointerEvents:'none',
-                    background: [
-                      `linear-gradient(to top, rgba(90,48,18,0.50) 0%, rgba(110,60,28,0.32) 30%, rgba(95,52,22,0.14) 60%, transparent 100%)`,
-                    ].join(', '),
-                    clipPath: `polygon(0% 100%, 0% 42%, ${lp} 34%, ${lpIn} 20%, 91% 20%, 92% 34%, 100% 42%, 100% 100%)`
-                  }}/>
-                );
-              })()}
-              {/* Lantai hangat */}
-              <div className="bedroom-floor"/>
-            </>
-          );
-          if (th === 'journey') return (
-            <>
-              <div className="stars" style={{ opacity:0.55 }}/><div className="starsB" style={{ opacity:0.40 }}/><div className="starsC" style={{ opacity:0.25 }}/>
-              {/* Mountain back range */}
-              <div style={{ position:'absolute', bottom:0, left:0, right:0, height: layoutMode.includes('landscape') ? '45%' : '35%', background:'rgba(15,35,20,0.48)', clipPath:'polygon(0% 100%, 0% 65%, 8% 48%, 16% 62%, 24% 38%, 32% 58%, 38% 42%, 44% 55%, 50% 30%, 56% 50%, 63% 35%, 70% 55%, 76% 44%, 83% 58%, 90% 40%, 96% 60%, 100% 52%, 100% 100%)' }}/>
-              {/* Mountain front range */}
-              <div style={{ position:'absolute', bottom:0, left:0, right:0, height: layoutMode.includes('landscape') ? '32%' : '25%', background:'rgba(5,18,10,0.72)', clipPath:'polygon(0% 100%, 0% 80%, 5% 58%, 12% 72%, 20% 50%, 28% 68%, 35% 52%, 42% 70%, 48% 42%, 55% 62%, 62% 45%, 68% 65%, 75% 50%, 82% 70%, 88% 55%, 94% 72%, 100% 60%, 100% 100%)' }}/>
-              {/* Forest fog — lebih rendah di landscape */}
-              <div style={{ position:'absolute', bottom: layoutMode.includes('landscape') ? '28%' : '20%', left:0, right:0, height:'10%', background:'linear-gradient(to top, rgba(60,120,70,0.20), transparent)', filter:'blur(4px)' }}/>
-            </>
-          );
-          if (th === 'ocean') return (
-            <>
-              <div className="stars" style={{ opacity:0.60 }}/><div className="starsB" style={{ opacity:0.45 }}/><div className="starsC" style={{ opacity:0.20 }}/>
-              <div className="wave-layer"/>
-              {/* Horizon mist */}
-              <div style={{ position:'absolute', bottom:'22%', left:0, right:0, height:'10%', background:'linear-gradient(to top, rgba(10,60,120,0.30) 0%, transparent 100%)', filter:'blur(6px)' }}/>
-            </>
-          );
-          if (th === 'fantasy') return (
-            <>
-              {/* Bintang-bintang besar di langit dongeng */}
-              <div className="fantasy-stars"/>
-              <div className="starsB" style={{ opacity:0.55 }}/>
-              {/* Aurora borealis ribbon */}
-              <div className="aurora-layer"/>
-              <div style={{ position:'absolute', top:'42%', left:'28%', width:3, height:3, borderRadius:'50%', background:'rgba(120,255,180,0.90)', boxShadow:'0 0 6px rgba(100,255,160,0.70)' }}/>
-              {/* Kastil siluet */}
-              <div className="castle-layer"/>
-              {/* Sparkle / glitter melayang di langit dongeng */}
-              <div className="sparkle-layer"/>
-              {/* Kabut di kaki kastil */}
-              <div className="castle-mist"/>
-            </>
-          );
-          if (th === 'futurecity') return (
-            <>
-              {/* Minimal stars — langit polusi cahaya kota */}
-              <div className="stars" style={{ opacity:0.18 }}/><div className="starsB" style={{ opacity:0.10 }}/>
-              {/* City building silhouettes with neon */}
-              <div className="city-layer"/>
-              {/* Neon window blinks on buildings */}
-              <div className="city-windows" style={{ height: layoutMode.includes('landscape') ? '58%' : '42%' }}/>
-              {/* Ground — aspal gelap berkilap neon */}
-              <div style={{ position:'absolute', bottom:0, left:0, right:0, height: layoutMode.includes('landscape') ? '48%' : '35%', background:'linear-gradient(to top, rgba(0,10,22,0.88) 0%, rgba(0,20,40,0.55) 35%, transparent 100%)' }}/>
-              {/* Pantulan neon di aspal — multi-warna lebih hidup */}
-              <div style={{ position:'absolute', bottom:0, left:'10%', right:'10%', height:'20%', background:'linear-gradient(to top, rgba(0,210,190,0.12) 0%, rgba(0,150,255,0.07) 50%, transparent 100%)', filter:'blur(10px)' }}/>
-              <div style={{ position:'absolute', bottom:0, left:'35%', right:'35%', height:'14%', background:'linear-gradient(to top, rgba(170,0,255,0.10) 0%, transparent 100%)', filter:'blur(8px)' }}/>
-              {/* Scan line — disembunyikan di landscape via CSS */}
-              <div className="scan-line"/>
-              {/* Kendaraan terbang 1 — cyan. Wrapper: posisi + box-shadow STATIS (tidak beranimasi).
-                  Inner: hanya transform/opacity via float-orb — compositor-only, no repaint */}
-              <div style={{ position:'absolute', top: layoutMode.includes('landscape') ? '14%' : '20%', left:'6%', width:10, height:3, borderRadius:2, boxShadow:'0 0 10px 3px rgba(0,220,200,0.65), -8px 0 8px rgba(0,180,255,0.45)', pointerEvents:'none' }}>
-                <div style={{ width:'100%', height:'100%', borderRadius:2, background:'rgba(0,220,200,0.95)' }}/>
-              </div>
-              {/* Kendaraan terbang 2 — ungu */}
-              <div style={{ position:'absolute', top: layoutMode.includes('landscape') ? '8%' : '13%', right:'18%', width:7, height:2, borderRadius:2, boxShadow:'0 0 8px 2px rgba(160,0,255,0.60), 6px 0 6px rgba(200,100,255,0.35)', pointerEvents:'none' }}>
-                <div style={{ width:'100%', height:'100%', borderRadius:2, background:'rgba(180,50,255,0.90)' }}/>
-              </div>
-              {/* Beacon — wrapper menahan filter blur sebagai pengganti box-shadow, inner hanya opacity */}
-              <div style={{ position:'absolute', top: layoutMode.includes('landscape') ? '5%' : '9%', left:'46.5%', width:5, height:5, borderRadius:'50%', background:'rgba(255,60,60,0.95)', filter:'drop-shadow(0 0 4px rgba(255,40,40,0.60))' }}/>
-            </>
-          );
-          if (th === 'nightgarden') {
-            const ls = layoutMode.includes('landscape');
-            // Pohon-pohon taman dengan variasi sway
-            // Landscape: pohon lebih kecil & posisi lebih rendah
-            const treeBot  = ls ? '12%' : '20%';
-            const treeScale = ls ? 0.70 : 1.0;
-            const trees = [
-              { l:'4%',  s:50, delay:0,   sway:'sway-a' },
-              { l:'13%', s:42, delay:1.2, sway:'sway-b' },
-              { l:'22%', s:66, delay:2.5, sway:'sway-c' },
-              { l:'33%', s:38, delay:0.6, sway:'sway-b' },
-              { l:'56%', s:52, delay:0.8, sway:'sway-a' },
-              { l:'67%', s:64, delay:3.0, sway:'sway-c' },
-              { l:'77%', s:44, delay:1.8, sway:'sway-b' },
-              { l:'87%', s:56, delay:4.0, sway:'sway-a' },
-              { l:'94%', s:40, delay:2.2, sway:'sway-c' },
-            ];
-            // Kunang-kunang: landscape di area langit atas (top 10-35%), portrait area tengah (34-54%)
-            const fireflies = ls ? [
-              { top:'12%', left:'10%', delay:'0s',    dur:'7s',  fx:'18px',  fy:'-10px' },
-              { top:'18%', left:'52%', delay:'1.5s',  dur:'9s',  fx:'-16px', fy:'-8px'  },
-              { top:'25%', left:'32%', delay:'3s',    dur:'11s', fx:'12px',  fy:'-12px' },
-              { top:'15%', left:'72%', delay:'5s',    dur:'8s',  fx:'-12px', fy:'-8px'  },
-              { top:'22%', left:'20%', delay:'2s',    dur:'13s', fx:'16px',  fy:'-7px'  },
-              { top:'10%', left:'62%', delay:'6s',    dur:'10s', fx:'-9px',  fy:'-10px' },
-              { top:'30%', left:'42%', delay:'4s',    dur:'12s', fx:'14px',  fy:'-8px'  },
-            ] : [
-              { top:'46%', left:'10%', delay:'0s',    dur:'7s',  fx:'18px',  fy:'-14px' },
-              { top:'36%', left:'52%', delay:'1.5s',  dur:'9s',  fx:'-16px', fy:'-9px'  },
-              { top:'54%', left:'32%', delay:'3s',    dur:'11s', fx:'12px',  fy:'-18px' },
-              { top:'40%', left:'72%', delay:'5s',    dur:'8s',  fx:'-12px', fy:'-11px' },
-              { top:'50%', left:'20%', delay:'2s',    dur:'13s', fx:'20px',  fy:'-7px'  },
-              { top:'44%', left:'62%', delay:'6s',    dur:'10s', fx:'-9px',  fy:'-16px' },
-              { top:'34%', left:'42%', delay:'4s',    dur:'12s', fx:'14px',  fy:'-11px' },
-              { top:'52%', left:'82%', delay:'7s',    dur:'9s',  fx:'-18px', fy:'-9px'  },
-              { top:'38%', left:'88%', delay:'9s',    dur:'14s', fx:'10px',  fy:'-20px' },
-              { top:'48%', left:'5%',  delay:'11s',   dur:'8s',  fx:'-14px', fy:'-7px'  },
-              { top:'42%', left:'28%', delay:'2.5s',  dur:'16s', fx:'16px',  fy:'-13px' },
-            ];
-            // Partikel cahaya bulan — landscape di area atas
-            const moonDust = ls ? [
-              { top:'8%',  left:'68%', delay:'0s',  dur:'14s' },
-              { top:'14%', left:'45%', delay:'4s',  dur:'11s' },
-              { top:'5%',  left:'82%', delay:'8s',  dur:'18s' },
-            ] : [
-              { top:'20%', left:'68%', delay:'0s',  dur:'14s' },
-              { top:'28%', left:'45%', delay:'4s',  dur:'11s' },
-              { top:'15%', left:'82%', delay:'8s',  dur:'18s' },
-              { top:'25%', left:'30%', delay:'12s', dur:'13s' },
-            ];
-            const lanternBot = ls ? '14%' : '22%';
-            return (
-              <>
-                <div className="starsB" style={{ opacity:0.32 }}/><div className="starsC" style={{ opacity:0.18 }}/>
-                <div className="garden-sky"/>
-                {trees.map((t,i) => {
-                  const sz = Math.round(t.s * treeScale);
-                  return (
-                    <div key={i} className={`garden-tree ${t.sway}`} style={{ left:t.l, bottom:treeBot, animationDelay:`${t.delay}s` }}>
-                      <div className="crown" style={{ width:sz, height:sz }}/>
-                      <div className="trunk" style={{ height: Math.round(sz*0.48) }}/>
-                    </div>
-                  );
-                })}
-                {[{ l:'8%', w:28, h:18 }, { l:'40%', w:22, h:14 }, { l:'62%', w:30, h:20 }, { l:'78%', w:24, h:16 }].map((b,i) => (
-                  <div key={i} className="garden-bush" style={{ left:b.l, width:ls?Math.round(b.w*0.7):b.w, height:ls?Math.round(b.h*0.7):b.h }}/>
-                ))}
-                <div className="garden-grass2"/>
-                <div className="garden-grass"/>
-                <div className="garden-ground"/>
-                {!ls && <div className="garden-path"/>}
-                {!ls && <div className="garden-pond"/>}
-                <div className="garden-mist2"/>
-                <div className="garden-mist"/>
-                {[{ l:'18%', delay:'0s' }, { l:'48%', delay:'2s' }, { l:'72%', delay:'4s' }].map((ln,i) => (
-                  <div key={i} className="garden-lantern" style={{ left:ln.l, bottom:lanternBot, position:'absolute', animationDelay:ln.delay }}>
-                    <div className="lantern-cap"/>
-                    <div className="lantern-body"/>
-                    <div className="lantern-pole"/>
-                  </div>
-                ))}
-                {fireflies.map((f,i) => (
-                  <div key={i} className="gfw" style={{
-                    top:f.top, left:f.left,
-                    '--fx':f.fx, '--fy':f.fy,
-                    animationDelay:f.delay, animationDuration:f.dur,
-                  }}/>
-                ))}
-                {moonDust.map((d,i) => (
-                  <div key={i} className="garden-dust" style={{
-                    top:d.top, left:d.left, '--fx':'4px', '--fy':'-6px',
-                    animationDelay:d.delay, animationDuration:d.dur,
-                  }}/>
-                ))}
-              </>
-            );
-          }
-          if (th === 'nighthighway') {
-            const ls = layoutMode.includes('landscape');
-            const isMob = layoutMode.includes('mobile');
-            const roadH = ls ? 50 : 42;
-            // Mobil berada di jalur dalam area jalan (bottom:0, height=roadH%)
-            // Jalur kiri  (headlight, datang dari kiri): bottom rendah = dekat pengemudi
-            // Jalur kanan (taillight, pergi ke kanan):   bottom rendah = dekat pengemudi
-            // Dua kendaraan per jalur = dua nilai bottom berbeda
-            const carBot1 = `${roadH * 0.18}%`;  // lane dekat, ~7-9% dari bawah
-            const carBot2 = `${roadH * 0.07}%`;  // lane sangat dekat, ~3-4% dari bawah
-            // Posisi horizontal: jalur kiri di 28-36% dari kiri, jalur kanan di 52-62%
-            const isDesk2 = layoutMode.includes('desktop');
-            const sbW2 = isDesk2 ? (ls ? SIDEBAR_W_LANDSCAPE : SIDEBAR_W_PORTRAIT) : 0;
-            const laneLeftX  = `calc(${sbW2}px + 28%)`;  // jalur kiri (headlight)
-            const laneRightX = `calc(${sbW2}px + 52%)`; // jalur kanan (taillight)
-            // Tetesan hujan
-            const rainDrops = Array.from({ length: 18 }, (_, i) => ({
-              left: `${(i * 5.5 + Math.sin(i*2.1)*3) % 100}%`,
-              height: `${60 + (i % 5) * 20}px`,
-              delay: `${(i * 0.28) % 2.5}s`,
-              dur: `${0.7 + (i % 4) * 0.15}s`,
-              opacity: 0.15 + (i % 3) * 0.08,
-            }));
-            return (
-              <>
-                <div className="stars" style={{ opacity:0.40 }}/><div className="starsB" style={{ opacity:0.22 }}/>
-
-                {/* Awan tipis */}
-                <div className="hw-cloud" style={{ top:'12%', left:'20%', width:120, height:28 }}/>
-                <div className="hw-cloud" style={{ top:'18%', right:'15%', width:90, height:20 }}/>
-                {/* Langit */}
-                <div className="hw-sky"/>
-                {/* Siluet gedung kota di cakrawala */}
-                <div className="hw-city-bg"/>
-                {/* Cahaya kota di cakrawala */}
-                <div className="hw-horizon"/>
-                {/* Lampu neon di gedung */}
-                <div className="hw-neon-lights"/>
-                {/* Jalan */}
-                <div className="hw-road"/>
-                {/* Penyambung jalan ke cakrawala — mengisi celah atas hw-road */}
-                <div className="hw-road-cap"/>
-                {/* Marka tengah bergerak */}
-                <div className="hw-lane-center"/>
-                {/* Garis tepi */}
-                <div className="hw-lane-edge-l"/><div className="hw-lane-edge-r"/>
-                {/* Pantulan lampu di aspal */}
-                <div className="hw-reflect"/>
-                {/* Tiang lampu — tepi kiri & kanan jalan, simulasi perspektif */}
-                {(() => {
-                  const isDesk = layoutMode.includes('desktop');
-                  const sbW = isDesk ? (ls ? SIDEBAR_W_LANDSCAPE : SIDEBAR_W_PORTRAIT) : 0;
-                  // Posisi tiang: persentase dari lebar konten (area setelah sidebar)
-                  // Tiang kiri: sbW + frac% * (100vw - sbW)
-                  // Tiang kanan: 100vw - frac% * (100vw - sbW)
-                  // Mobile tidak ada sidebar jadi sbW=0, jadi left = frac%
-                  const fracL1 = isMob ? 4  : 3;   // tiang kiri paling dekat (sangat ke tepi)
-                  const fracL2 = isMob ? 11 : 9;   // tiang kiri tengah
-                  const fracL3 = isMob ? 18 : 15;  // tiang kiri jauh
-                  const poleL = (frac) => isDesk
-                    ? `calc(${sbW}px + ${frac / 100} * (100vw - ${sbW}px))`
-                    : `${frac}%`;
-                  const poleR = (frac) => isDesk
-                    ? `calc(100vw - ${frac / 100} * (100vw - ${sbW}px))`
-                    : `${100 - frac}%`;
-                  const poles = [
-                    // Kiri: 3 tiang (dekat→jauh)
-                    { posVal: poleL(fracL1), armH: ls?110:100, opacity:1.0,  headS: isMob?14:16 },
-                    { posVal: poleL(fracL2), armH: ls? 80: 75, opacity:0.60, headS: isMob?10:12, scale:0.85 },
-                    { posVal: poleL(fracL3), armH: ls? 55: 52, opacity:0.35, headS: isMob? 7: 9, scale:0.70 },
-                    // Kanan: mirror
-                    { posVal: poleR(fracL1), armH: ls?110:100, opacity:1.0,  headS: isMob?14:16 },
-                    { posVal: poleR(fracL2), armH: ls? 80: 75, opacity:0.60, headS: isMob?10:12, scale:0.85 },
-                    { posVal: poleR(fracL3), armH: ls? 55: 52, opacity:0.35, headS: isMob? 7: 9, scale:0.70 },
-                  ];
-                  return poles.map((p,i) => (
-                  <div key={i} className="hw-pole" style={{
-                    left: p.posVal,
-                    opacity: p.opacity,
-                    transform: `translateX(-50%) ${p.scale ? `scale(${p.scale})` : ''}`,
-                    transformOrigin: 'bottom center',
-                  }}>
-                    <div className="pole-head" style={{ width:p.headS, height: Math.round(p.headS*0.38) }}/>
-                    <div className="pole-cone"/>
-                    <div className="pole-arm" style={{ height: p.armH }}/>
-                  </div>
-                ));
-                  })()}
-
-                {/* Hujan halus */}
-                <div className="hw-rain">
-                  {rainDrops.map((d,i) => (
-                    <div key={i} className="hw-rain-drop" style={{
-                      left:d.left, height:d.height,
-                      opacity:d.opacity,
-                      animationDuration:d.dur,
-                      animationDelay:d.delay,
-                    }}/>
-                  ))}
-                </div>
-              </>
-            );
-          }
-          if (th === 'solarsystem') {
-            const ls = layoutMode.includes('landscape');
-            // Landscape: matahari lebih kecil & orbit lebih kecil agar muat di layar pendek
-            const sunS  = ls ? 44 : 60;
-            const sunX  = ls ? '10%' : '13%';
-            const sunY  = ls ? '14%' : '11%';
-            // Skala orbit & planet: portrait penuh, landscape dikecilkan ~65%
-            const sc    = ls ? 0.62 : 1.0;
-            // Orbit radii — dikalikan sc
-            const rings = [55,95,145,205,275,355,445,545].map(r => Math.round(r*sc));
-            // Planet positions dihitung % relatif terhadap posisi matahari + offset trigonometri
-            // Portrait: top=calc(sunY% + r*sin(θ)px), left=calc(sunX% + r*cos(θ)px)
-            // Landscape: sama tapi r lebih kecil
-            const makePlanetPos = (ringIdx, angleDeg) => {
-              const r   = rings[ringIdx];
-              const rad = angleDeg * Math.PI / 180;
-              const ox  = Math.round(r * Math.cos(rad));
-              const oy  = Math.round(r * Math.sin(rad));
-              return {
-                top:  `calc(${sunY} + ${oy}px)`,
-                left: `calc(${sunX} + ${ox}px)`,
-              };
-            };
-            const planets = [
-              { size:ls?8:11,  bg:'radial-gradient(circle at 38% 35%, #6ec0ff 0%, #2a68cc 40%, #0d2870 75%, #050f40 100%)',
-                glow:'rgba(70,145,255,0.60)',  ...makePlanetPos(2, 35),  dur:'8s',  delay:'0s', shadow:'inset -2px -3px 5px rgba(0,0,0,0.40)' },
-              { size:ls?7:9,   bg:'radial-gradient(circle at 36% 32%, #ffa060 0%, #d04818 45%, #7a2000 78%, #3a0800 100%)',
-                glow:'rgba(255,130,50,0.55)',  ...makePlanetPos(3, 110), dur:'11s', delay:'1s', shadow:'inset -2px -2px 4px rgba(0,0,0,0.45)' },
-              { size:ls?11:16, bg:'radial-gradient(circle at 40% 36%, #fff090 0%, #dca810 40%, #8a6000 70%, #4a3000 100%)',
-                glow:'rgba(255,215,90,0.50)',  ...makePlanetPos(4, 15),  dur:'14s', delay:'3s', shadow:'inset -3px -4px 8px rgba(0,0,0,0.40)' },
-              { size:ls?5:7,   bg:'radial-gradient(circle at 38% 35%, #55f0e0 0%, #0c9080 50%, #034840 80%, #011a18 100%)',
-                glow:'rgba(50,230,210,0.50)',  ...makePlanetPos(5, 160), dur:'7s',  delay:'2s', shadow:'inset -2px -2px 3px rgba(0,0,0,0.40)' },
-              { size:ls?10:14, bg:'radial-gradient(circle at 42% 38%, #ff9090 0%, #c03030 40%, #701010 70%, #380808 100%)',
-                glow:'rgba(255,80,80,0.45)',   ...makePlanetPos(7, 40),  dur:'12s', delay:'5s', shadow:'inset -3px -4px 7px rgba(0,0,0,0.45)' },
-            ];
-            // Asteroid — semua pakai % aman
-            const asteroids = [
-              { w:4, h:3, top:'62%', left:'24%', delay:'0s', dur:'10s' },
-              { w:3, h:2, top:'28%', left:'82%', delay:'3s', dur:'7s'  },
-              { w:5, h:3, top:ls?'55%':'72%', left:'55%', delay:'6s', dur:'12s' },
-            ];
-            // Bintang jatuh — semua % aman
-            const shootings = [
-              { top:'12%', left:'60%', w:ls?40:60,  delay:'5s',  dur:'4s' },
-              { top:'25%', left:'20%', w:ls?30:45,  delay:'14s', dur:'3s' },
-              { top:'8%',  left:'75%', w:ls?55:80,  delay:'28s', dur:'5s' },
-            ];
-            const clusters = [
-              { top:'55%', left:'8%',  w:80,  h:60 },
-              { top:'15%', left:'50%', w:100, h:70 },
-              { top:ls?'50%':'70%', left:'88%', w:60, h:50 },
-            ];
-            // Nebula — skala ukuran di landscape
-            const nebS = ls ? 0.65 : 1.0;
-            return (
-              <>
-                <div className="stars"/><div className="starsB"/><div className="starsC"/>
-                {clusters.map((c,i) => (
-                  <div key={i} className="ss-cluster" style={{ top:c.top, left:c.left, width:c.w, height:c.h, animationDelay:`${i*5}s` }}/>
-                ))}
-                <div className="ss-nebula" style={{ width:Math.round(340*nebS), height:Math.round(240*nebS), left:'-2%', top:'3%',  background:'radial-gradient(ellipse, rgba(80,25,200,0.22) 0%, rgba(50,10,140,0.08) 55%, transparent 75%)', animationDelay:'0s' }}/>
-                <div className="ss-nebula" style={{ width:Math.round(280*nebS), height:Math.round(190*nebS), right:'-1%', top:'35%', background:'radial-gradient(ellipse, rgba(200,25,85,0.18) 0%, rgba(140,10,55,0.07) 55%, transparent 75%)', animationDelay:'7s' }}/>
-                <div className="ss-nebula" style={{ width:Math.round(240*nebS), height:Math.round(160*nebS), left:'32%', bottom:'3%', background:'radial-gradient(ellipse, rgba(25,90,200,0.16) 0%, rgba(10,55,140,0.06) 55%, transparent 75%)', animationDelay:'3s' }}/>
-                <div className="ss-nebula" style={{ width:Math.round(200*nebS), height:Math.round(140*nebS), right:'20%', top:'8%', background:'radial-gradient(ellipse, rgba(0,180,180,0.12) 0%, transparent 70%)', animationDelay:'11s' }}/>
-                <div className="ss-sun" style={{ width:sunS, height:sunS, left:sunX, top:sunY, transform:'translate(-50%,-50%)' }}/>
-                {rings.map((r,i) => {
-                  const hasPlanet = [2,3,4,5,7].includes(i);
-                  return (
-                    <div key={i} className="ss-ring" style={{
-                      width:r*2, height:r*2, left:sunX, top:sunY,
-                      animationDelay:`${i*2.5}s`,
-                      opacity: hasPlanet ? Math.max(0.22, 0.60 - i*0.04) : Math.max(0.06, 0.25 - i*0.03),
-                      borderWidth: hasPlanet ? '1.5px' : '1px',
-                    }}/>
-                  );
-                })}
-                {planets.map((p,i) => (
-                  <div key={i} className="ss-planet" style={{
-                    width:p.size, height:p.size,
-                    background:p.bg,
-                    boxShadow:`0 0 10px 4px ${p.glow}, ${p.shadow}`,
-                    top:p.top, left:p.left,
-                  }}/>
-                ))}
-                {asteroids.map((a,i) => (
-                  <div key={i} className="ss-asteroid" style={{
-                    width:a.w, height:a.h, top:a.top, left:a.left,
-                    animationDuration:a.dur, animationDelay:a.delay,
-                  }}/>
-                ))}
-                {shootings.map((s,i) => (
-                  <div key={i} className="ss-shooting" style={{
-                    top:s.top, left:s.left, width:s.w,
-                    animationDuration:s.dur, animationDelay:s.delay,
-                  }}/>
-                ))}
-              </>
-            );
-          }
-          return <><div className="stars"/><div className="starsB"/><div className="starsC"/></>;
-        };
-
-        return (
-          <>
-            {overlays.map((g, i) => (
-              <div key={i} style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, background:g }}/>
-            ))}
-            <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, overflow:'hidden' }}>
-              <ThemeOverlay/>
-            </div>
-          </>
-        );
-      })()}
+      {/* BG — Pro only */}
+      {!isLite && <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, background:`radial-gradient(ellipse at 60% 10%,${track.color}20 0%,transparent 60%)` }}/>}
+      {!isLite && <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, overflow:'hidden' }}><div className="stars"/><div className="starsB"/><div className="starsC"/></div>}
 
       {/* ══ HEADER */}
       {!fullscreen && <header style={{ position: 'sticky', top: 0, zIndex:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'space-between', minHeight: layoutMode === 'mobile-landscape' ? HEADER_H_LANDSCAPE : HEADER_H_NORMAL, padding: layoutMode === 'mobile-landscape' ? '5px 14px' : '9px 14px', boxSizing:'border-box', borderBottom: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.18)' }}>
@@ -7727,7 +7077,7 @@ Format exactly:
 
         {/* ── SETTINGS PANEL — menutup semua tab di desktop & landscape, hanya player di portrait */}
         {showSettings && (isDesktop || layoutMode === 'mobile-landscape' || tab === 'player') && (
-          <Suspense fallback={<Spinner/>}><SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userScId={userScId} setUserScId={setUserScId} userAiKey={userAiKey} setUserAiKey={setUserAiKey} userYtKey={userYtKey} setUserYtKey={setUserYtKey} userCfKey={userCfKey} setUserCfKey={setUserCfKey} userSnKey={userSnKey} setUserSnKey={setUserSnKey} setTab={setTab} setFullscreen={setFullscreen} googleUser={googleUser||null} handleGoogleLogin={handleGoogleLogin} syncPlaylistsToCloud={syncPlaylistsToCloud} accessToken={accessToken||null} plSyncStatus={plSyncStatus} plSyncError={plSyncError||null} plSyncedAt={plSyncedAt||null} bgTheme={bgTheme} setBgTheme={(v)=>{ setBgTheme(v); localStorage.setItem('sn_bg_theme', v); }}/></Suspense>
+          <Suspense fallback={<Spinner/>}><SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userScId={userScId} setUserScId={setUserScId} userAiKey={userAiKey} setUserAiKey={setUserAiKey} userYtKey={userYtKey} setUserYtKey={setUserYtKey} userCfKey={userCfKey} setUserCfKey={setUserCfKey} userSnKey={userSnKey} setUserSnKey={setUserSnKey} setTab={setTab} setFullscreen={setFullscreen} googleUser={googleUser||null} handleGoogleLogin={handleGoogleLogin} syncPlaylistsToCloud={syncPlaylistsToCloud} accessToken={accessToken||null} plSyncStatus={plSyncStatus} plSyncError={plSyncError||null} plSyncedAt={plSyncedAt||null}/></Suspense>
         )}
 
         {/* ─── PLAYER TAB */}
@@ -8349,9 +7699,8 @@ Format exactly:
 
               {/* ── Unified search bar */}
               {(() => {
-                const _platforms = getStreamingPlatformsSync();
-                const searchPlatforms = _platforms.filter(p => ['ytmusic','websearch'].includes(p.id));
-                const activePlat = searchPlatforms.find(p => p.id === unifiedPlatform) || searchPlatforms[0] || { id:'ytmusic', color:'#ff0000', name:'YouTube Music', hint:'Cari lagu, artis…' };
+                const searchPlatforms = STREAMING_PLATFORMS.filter(p => ['ytmusic','websearch'].includes(p.id));
+                const activePlat = searchPlatforms.find(p => p.id === unifiedPlatform) || searchPlatforms[0];
                 const handleUnifiedSearch = () => {
                   if (!unifiedQuery.trim()) return;
                   if (unifiedPlatform === 'ytmusic') {
@@ -8405,7 +7754,7 @@ Format exactly:
               {/* ── STREAMING PLATFORMS */}
               <div style={{ marginBottom:10 }}>
                 <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-                  {getStreamingPlatformsSync().map(platform => {
+                  {STREAMING_PLATFORMS.map(platform => {
                     const isYT = platform.embedType === 'youtube';
                     const isRedirect = platform.embedType === 'redirect';
                     const isRadio = platform.embedType === 'radio';
@@ -11855,7 +11204,7 @@ Format exactly:
           key={embedTrack.videoId}
           src={`https://www.youtube.com/embed/${embedTrack.videoId}?autoplay=1&enablejsapi=1&rel=0&modestbranding=1&playsinline=1&origin=${encodeURIComponent(window.location.origin)}`}
           title={embedTrack.title}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; background-fetch"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           style={{ position:'fixed', top:'-9999px', left:'-9999px', width:320, height:180, pointerEvents:'none', border:'none', zIndex:-1 }}
         />
       )}
@@ -11877,26 +11226,6 @@ Format exactly:
         .stars{background-image:radial-gradient(1px 1px at 8% 12%,rgba(255,255,255,0.7),transparent),radial-gradient(1.5px 1.5px at 31% 45%,rgba(255,255,255,0.5),transparent),radial-gradient(1px 1px at 62% 23%,rgba(255,255,255,0.6),transparent),radial-gradient(2px 2px at 78% 67%,rgba(255,255,255,0.35),transparent),radial-gradient(1px 1px at 14% 71%,rgba(255,255,255,0.5),transparent),radial-gradient(1px 1px at 88% 18%,rgba(255,255,255,0.45),transparent),radial-gradient(1.5px 1.5px at 47% 89%,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 55% 55%,rgba(255,255,255,0.3),transparent);animation:twinkle 4s ease-in-out infinite}
         .starsB{background-image:radial-gradient(1px 1px at 23% 6%,rgba(255,255,255,0.5),transparent),radial-gradient(1.5px 1.5px at 70% 38%,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 5% 52%,rgba(255,255,255,0.55),transparent),radial-gradient(2px 2px at 91% 81%,rgba(255,255,255,0.3),transparent),radial-gradient(1px 1px at 38% 77%,rgba(255,255,255,0.45),transparent),radial-gradient(1px 1px at 66% 9%,rgba(255,255,255,0.35),transparent),radial-gradient(1.5px 1.5px at 18% 93%,rgba(255,255,255,0.3),transparent);animation:twinkleB 5.5s ease-in-out 1.8s infinite}
         .starsC{background-image:radial-gradient(1px 1px at 42% 31%,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 83% 54%,rgba(255,255,255,0.5),transparent),radial-gradient(1.5px 1.5px at 11% 28%,rgba(255,255,255,0.35),transparent),radial-gradient(1px 1px at 75% 92%,rgba(255,255,255,0.3),transparent),radial-gradient(2px 2px at 29% 63%,rgba(255,255,255,0.25),transparent),radial-gradient(1px 1px at 58% 4%,rgba(255,255,255,0.5),transparent);animation:twinkleC 7s ease-in-out 3.2s infinite}
-        @keyframes pulse-lamp{0%,100%{opacity:0.55}50%{opacity:0.85}}
-        @keyframes pulse-moon{0%,100%{opacity:0.65}50%{opacity:0.95}}
-        @keyframes shimmer{0%,100%{opacity:0.20}50%{opacity:0.55}}
-        @keyframes drift{0%{transform:translateX(-10px)}100%{transform:translateX(10px)}}
-        @keyframes float-orb{0%,100%{transform:translateY(0);opacity:0.65}50%{transform:translateY(-14px);opacity:0.90}}
-        @keyframes rain-fall{0%{transform:translateY(-100%)}100%{transform:translateY(100vh)}}
-        @keyframes rain-drift{0%{transform:translate(0,0)}100%{transform:translate(40px,60px)}}
-        @keyframes wave-move{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
-        @keyframes scan-move{0%{top:-2px;opacity:0}5%{opacity:0.5}95%{opacity:0.2}100%{top:100%;opacity:0}}
-        @keyframes city-flicker{0%,100%{opacity:1}48%{opacity:1}50%{opacity:0.6}52%{opacity:1}80%{opacity:1}82%{opacity:0.75}84%{opacity:1}}
-        @keyframes sparkle-twinkle{0%,100%{opacity:0.25}50%{opacity:0.85}}
-        .rain-layer{position:absolute;inset:0;background-image:repeating-linear-gradient(to bottom right,transparent 0px,transparent 6px,rgba(180,210,255,0.07) 6px,rgba(180,210,255,0.07) 7px);background-size:100px 100px;animation:rain-drift 4s linear infinite;will-change:transform;pointer-events:none;opacity:0.7}
-        /* PRO: perlambat rain drift — tetap pakai transform (compositor-only, no repaint) */
-        .pro-mode .rain-layer{animation-duration:8s}
-        .wave-layer{position:absolute;bottom:0;left:0;right:0;height:22%;background:linear-gradient(180deg,transparent 0%,rgba(10,60,100,0.35) 100%);overflow:hidden}
-        .city-layer{position:absolute;bottom:0;left:0;right:0;height:38%;background:linear-gradient(to top,rgba(0,15,25,0.85) 0%,transparent 100%);pointer-events:none}
-        .scan-line{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(0,220,180,0.12),transparent);animation:scan-move 12s linear infinite;will-change:transform,opacity;pointer-events:none}
-        /* PRO: scan-line lebih lambat — kurangi GPU overdraw */
-        .pro-mode .scan-line{animation-duration:24s}
-        .sparkle-layer{position:absolute;inset:0;background-image:radial-gradient(1.5px 1.5px at 15% 25%,rgba(255,180,255,0.7),transparent),radial-gradient(1px 1px at 55% 15%,rgba(180,255,255,0.6),transparent),radial-gradient(2px 2px at 80% 40%,rgba(255,200,100,0.5),transparent),radial-gradient(1px 1px at 30% 70%,rgba(200,100,255,0.7),transparent),radial-gradient(1.5px 1.5px at 70% 80%,rgba(255,100,200,0.5),transparent);animation:sparkle-twinkle 6s ease-in-out infinite}
         .scrollbar-hide::-webkit-scrollbar{display:none}
         .scrollbar-hide{-ms-overflow-style:none;scrollbar-width:none}
         input::placeholder{color:rgba(148,163,184,0.35)}
@@ -11963,12 +11292,8 @@ Format exactly:
           [data-songrow]{content-visibility:auto;contain-intrinsic-size:0 62px}
           /* Kurangi paint area: hilangkan gradients dekoratif */
           .lite-mode [data-gradient]{background:rgba(255,255,255,0.04)!important}
-
-          /* ══ PAGE HIDDEN: pause SEMUA animasi saat tab background — berlaku di lite-mode DAN pro-mode ══
-             Ditulis di luar blok mode agar spesifisitasnya cukup menang atas semua override di atas */
+          /* Pause semua animasi saat tab tidak aktif (hemat baterai background tab) */
           .page-hidden *:not(iframe){animation-play-state:paused!important}
-          /* Khusus pro-mode: pastikan selector lebih spesifik dari .pro-mode [style*=...] rules */
-          .pro-mode.page-hidden *:not(iframe){animation-play-state:paused!important}
 
           /* ══ PRO MODE: kurangi animasi dekoratif yang tidak perlu ══ */
           /* Bintang twinkle — boros GPU */
