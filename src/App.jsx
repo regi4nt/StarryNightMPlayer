@@ -2764,16 +2764,11 @@ Return ONLY valid JSON, no explanation:
       const h = entries[0]?.borderBoxSize?.[0]?.blockSize ?? el.offsetHeight;
       if (h > 0 && h !== bottomNavHRef.current) {
         bottomNavHRef.current = h;
-        // Set CSS variable so highway elements can offset from bottom nav
-        document.documentElement.style.setProperty('--nav-h', `${h}px`);
         // Re-trigger layout calc so ring size updates immediately
         window.dispatchEvent(new Event('resize'));
       }
     });
     ro.observe(el);
-    // Set initial value immediately
-    const initH = el.offsetHeight || 68;
-    document.documentElement.style.setProperty('--nav-h', `${initH}px`);
     return () => ro.disconnect();
   }, []);
   useEffect(() => { spPlayingRef.current = spPlaying; }, [spPlaying]);
