@@ -7395,12 +7395,12 @@ Format exactly:
                 <div className="hw-lane-edge-l"/><div className="hw-lane-edge-r"/>
                 {/* Pantulan lampu di aspal */}
                 <div className="hw-reflect"/>
-                {/* Tiang lampu — 3 kiri, 3 kanan */}
-                {[['8%','left'],['30%','left'],['52%','left'],['8%','right'],['28%','right'],['50%','right']].map(([pos,side],i) => (
+                {/* Tiang lampu — sejajar pinggir jalan kiri (22%) & kanan (22%) */}
+                {[['5%','left'],['22%','left'],['40%','left'],['5%','right'],['22%','right'],['40%','right']].map(([pos,side],i) => (
                   <div key={i} className="hw-pole" style={{ [side]:pos }}>
                     <div className="pole-head"/>
                     <div className="pole-cone"/>
-                    <div className="pole-arm" style={{ height: ls ? 60 : 80 }}/>
+                    <div className="pole-arm" style={{ height: ls ? 110 : 140 }}/>
                   </div>
                 ))}
                 {/* Mobil bergerak */}
@@ -7430,21 +7430,24 @@ Format exactly:
             const sunY = '11%';
             // Planet data — lebih bervariasi dengan ukuran & warna lebih kaya
             const planetFloats = ['planet-float-a','planet-float-b','planet-float-c','planet-float-d','planet-float-e'];
+            // Setiap planet diposisikan tepat di garis orbitnya
+            // Orbit rings: [55,95,145,205,275,355,445,545]px
+            // Planet idx→ring: 0→ring2(145px,35°), 1→ring3(205px,70°), 2→ring4(275px,15°), 3→ring5(355px,80°), 4→ring7(545px,40°)
             const planets = [
               { size:11, bg:'radial-gradient(circle at 38% 35%, #6ec0ff 0%, #2a68cc 40%, #0d2870 75%, #050f40 100%)',
-                glow:'rgba(70,145,255,0.60)', top:'20%', left:'30%', dur:'20s', delay:'0s',
+                glow:'rgba(70,145,255,0.60)', top:'calc(11% + 83.2px - 5px)', left:'calc(13% + 118.8px - 5px)', dur:'8s', delay:'0s',
                 shadow:'inset -2px -3px 5px rgba(0,0,0,0.40)' },
               { size:9,  bg:'radial-gradient(circle at 36% 32%, #ffa060 0%, #d04818 45%, #7a2000 78%, #3a0800 100%)',
-                glow:'rgba(255,130,50,0.55)', top:'58%', left:'40%', dur:'26s', delay:'5s',
+                glow:'rgba(255,130,50,0.55)', top:'calc(11% + 192.6px - 4px)', left:'calc(13% + 70.1px - 4px)', dur:'11s', delay:'1s',
                 shadow:'inset -2px -2px 4px rgba(0,0,0,0.45)' },
               { size:16, bg:'radial-gradient(circle at 40% 36%, #fff090 0%, #dca810 40%, #8a6000 70%, #4a3000 100%)',
-                glow:'rgba(255,215,90,0.50)', top:'32%', left:'62%', dur:'36s', delay:'10s',
+                glow:'rgba(255,215,90,0.50)', top:'calc(11% + 71.2px - 8px)', left:'calc(13% + 265.6px - 8px)', dur:'14s', delay:'3s',
                 shadow:'inset -3px -4px 8px rgba(0,0,0,0.40)' },
               { size:7,  bg:'radial-gradient(circle at 38% 35%, #55f0e0 0%, #0c9080 50%, #034840 80%, #011a18 100%)',
-                glow:'rgba(50,230,210,0.50)', top:'68%', left:'74%', dur:'16s', delay:'2s',
+                glow:'rgba(50,230,210,0.50)', top:'calc(11% + 349.6px - 3px)', left:'calc(13% + 61.6px - 3px)', dur:'7s', delay:'2s',
                 shadow:'inset -2px -2px 3px rgba(0,0,0,0.40)' },
               { size:14, bg:'radial-gradient(circle at 42% 38%, #ff9090 0%, #c03030 40%, #701010 70%, #380808 100%)',
-                glow:'rgba(255,80,80,0.45)', top:'42%', left:'78%', dur:'28s', delay:'14s',
+                glow:'rgba(255,80,80,0.45)', top:'calc(11% + 350.3px - 7px)', left:'calc(13% + 417.5px - 7px)', dur:'12s', delay:'5s',
                 shadow:'inset -3px -4px 7px rgba(0,0,0,0.45)' },
             ];
             // Asteroid kecil
@@ -7480,10 +7483,18 @@ Format exactly:
                 <div className="ss-nebula" style={{ width:200, height:140, right:'20%', top:'8%', background:'radial-gradient(ellipse, rgba(0,180,180,0.12) 0%, transparent 70%)', animationDelay:'11s' }}/>
                 {/* Matahari — pojok kiri atas */}
                 <div className="ss-sun" style={{ width:sunS, height:sunS, left:sunX, top:sunY, transform:'translate(-50%,-50%)' }}/>
-                {/* Orbit ring samar di sekitar matahari */}
-                {[90, 140, 200].map((r,i) => (
-                  <div key={i} className="ss-ring" style={{ width:r*2, height:r*2, left:sunX, top:sunY, animationDelay:`${i*4}s` }}/>
-                ))}
+                {/* Orbit ring — index 2,3,4,5,7 sesuai posisi planet */}
+                {[55, 95, 145, 205, 275, 355, 445, 545].map((r,i) => {
+                  const hasPlanet = [2,3,4,5,7].includes(i);
+                  return (
+                    <div key={i} className="ss-ring" style={{
+                      width:r*2, height:r*2, left:sunX, top:sunY,
+                      animationDelay:`${i*2.5}s`,
+                      opacity: hasPlanet ? Math.max(0.22, 0.60 - i*0.04) : Math.max(0.06, 0.25 - i*0.03),
+                      borderWidth: hasPlanet ? '1.5px' : '1px',
+                    }}/>
+                  );
+                })}
                 {/* Planet */}
                 {planets.map((p,i) => (
                   <div key={i} className="ss-planet" style={{
