@@ -1876,36 +1876,35 @@ input[type='range']::-webkit-slider-thumb {
 .layout-mobile-landscape .hw-lane-edge-r,
 .layout-desktop-landscape .hw-lane-edge-r { height:50%; }
 
-/* Mobile portrait: cahaya orange tepat di cakrawala (garis batas jalan-langit = 42%) */
+/* Mobile portrait: semua elemen pakai batas konsisten 42% agar tidak ada celah */
+.layout-mobile-portrait .hw-sky {
+  bottom: 42%;
+}
+.layout-mobile-portrait .hw-city-bg {
+  bottom: 42%;
+  height: 20%;
+  z-index: 1;
+}
 .layout-mobile-portrait .hw-horizon {
-  bottom: 39%;
+  bottom: 40%;
   height: 14%;
   filter: blur(3px);
   z-index: 2;
 }
-.layout-mobile-portrait .hw-city-bg {
-  bottom: 38%;
-  height: 18%;
-}
-/* Turunkan hw-sky agar tidak ada celah dengan hw-city-bg di mobile portrait */
-.layout-mobile-portrait .hw-sky {
-  bottom: 38%;
-}
 .layout-mobile-portrait .hw-neon-lights {
-  bottom: 40%;
+  bottom: 42%;
   height: 13%;
 }
 
-/* Portrait: penyambung jalan ke cakrawala tetap di bottom:42% (default sudah benar) */
 /* Landscape hw-road-cap ikut bottom:50% */
 .layout-mobile-landscape .hw-road-cap,
 .layout-desktop-landscape .hw-road-cap   { bottom:50%; }
 
-/* Mobile portrait: perbesar road-cap agar transisi jalan-ke-langit lebih halus */
+/* Mobile portrait: road-cap tipis untuk memperhalus transisi jalan-ke-langit */
 .layout-mobile-portrait .hw-road-cap {
-  bottom: 38%;
-  height: 6%;
-  background: linear-gradient(to top, #0a1222 0%, rgba(10,18,34,0.5) 50%, rgba(10,18,34,0) 100%);
+  bottom: 42%;
+  height: 4%;
+  background: linear-gradient(to top, rgba(10,18,34,0.9) 0%, rgba(10,18,34,0.4) 60%, rgba(10,18,34,0) 100%);
 }
 
 /* ── MOBILE PORTRAIT: highway adjustments ── */
