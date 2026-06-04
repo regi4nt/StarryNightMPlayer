@@ -270,7 +270,12 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
               {isPlaying && !isLite && <div style={{ position:'absolute', width:'100%', height:'100%', borderRadius:'50%', boxShadow:`inset 0 0 ${artR*0.3}px ${color}40` }}/>}
             </div>
           : isLite
-            ? <div style={{ width:'100%', height:'100%', background:color+'33', display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={artR*0.6} color={color}/></div>
+            ? isRadio
+              ? <div style={{ width:'100%', height:'100%', background:`linear-gradient(135deg,${color}30,${color}18)`, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:6, position:'relative' }}>
+                  <Radio size={artR*0.45} color={color}/>
+                  <div style={{ fontSize:artR*0.14, fontWeight:800, color:color, textTransform:'uppercase', letterSpacing:'0.12em' }}>LIVE</div>
+                </div>
+              : <div style={{ width:'100%', height:'100%', background:color+'33', display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={artR*0.6} color={color}/></div>
             : (cover && !imgError)
               ? <img src={croppedCover || cover} alt={title} style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={() => setImgError(true)}/>
               : <div style={{ width:'100%', height:'100%', background:`linear-gradient(135deg,${color}28,${color}10)`, display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={artR*0.5} color={color} opacity={0.7}/></div>}

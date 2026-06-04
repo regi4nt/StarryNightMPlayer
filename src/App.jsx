@@ -170,6 +170,7 @@ export default function App() {
   // ── Unified search state
   const [unifiedQuery, setUnifiedQuery] = useState('');
   const [unifiedPlatform, setUnifiedPlatform] = useState('ytmusic'); // 'ytmusic' | 'soundcloud' | 'spotify'
+  const [streamMode, setStreamMode] = useState('music'); // 'music' | 'radio'
 
   // ── YouTube search state (keyed by platform id)
   const [ytQuery,   setYtQuery]   = useState({});
@@ -8390,12 +8391,26 @@ Format exactly:
             {/* Header */}
             <div style={{ marginBottom:10 }}>
               <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom:8 }}>
-                <div style={{ fontWeight:800, fontSize:15 }}>{t?.streamingPlatforms||'Streaming Platforms'}</div>
+                <div style={{ fontWeight:800, fontSize:15 }}>{streamMode==='radio' ? (t?.radioMode||'Radio') : (t?.musicSearch||'Cari Musik')}</div>
                 {sleepTimer && <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:999, background:'rgba(251,191,36,0.15)', color:'#fbbf24', letterSpacing:'0.04em' }}>💤 {fmtSec(sleepTimer.remaining)}</span>}
               </div>
 
-              {/* ── Unified search bar */}
-              {(() => {
+              {/* ── Mode Toggle: Musik vs Radio */}
+              <div style={{ display:'flex', gap:3, marginBottom:10, background:'rgba(255,255,255,0.05)', borderRadius:12, padding:'3px' }}>
+                <button
+                  onClick={() => { setStreamMode('music'); }}
+                  style={{ flex:1, padding:'7px 0', borderRadius:9, border:'none', background: streamMode==='music' ? 'rgba(99,102,241,0.35)' : 'transparent', color: streamMode==='music' ? '#a5b4fc' : 'rgba(255,255,255,0.35)', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:5, transition:'all 0.18s' }}>
+                  🔍 {t?.musicMode||'Musik'}
+                </button>
+                <button
+                  onClick={() => { setStreamMode('radio'); loadSomaFM(); loadGardenPlaces(); }}
+                  style={{ flex:1, padding:'7px 0', borderRadius:9, border:'none', background: streamMode==='radio' ? 'rgba(245,158,11,0.3)' : 'transparent', color: streamMode==='radio' ? '#fbbf24' : 'rgba(255,255,255,0.35)', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:5, transition:'all 0.18s' }}>
+                  📻 {t?.radioLabel||'Radio'}
+                </button>
+              </div>
+
+              {/* ── Unified search bar (hanya di mode musik) */}
+              {streamMode === 'music' && (() => {
                 const _platforms = getStreamingPlatformsSync();
                 const searchPlatforms = _platforms.filter(p => ['ytmusic','websearch'].includes(p.id));
                 const activePlat = searchPlatforms.find(p => p.id === unifiedPlatform) || searchPlatforms[0] || { id:'ytmusic', color:'#ff0000', name:'YouTube Music', hint:'Cari lagu, artis…' };
@@ -8457,6 +8472,9 @@ Format exactly:
                     const isRedirect = platform.embedType === 'redirect';
                     const isRadio = platform.embedType === 'radio';
                     const isWebSearch = platform.embedType === 'websearch';
+                    // Mode filter: musik mode hanya tampilkan YT & websearch, radio mode hanya tampilkan radio
+                    if (streamMode === 'music' && isRadio) return null;
+                    if (streamMode === 'radio' && !isRadio) return null;
                     const ytQ = ytQuery[platform.id] || '';
                     const results = ytResults[platform.id] || [];
                     const loading = ytLoading[platform.id];
@@ -10771,24 +10789,37 @@ Format exactly:
                   <div>
                     {personaRecs && (
                       <>
-                        {/* ── Sticky top header with greeting */}
+                        {/* ── Header: greeting (idle) ↔ tip (memutar musik) ── */}
                         <div style={{ margin:'0 0 0', padding:'16px 16px 12px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-                          {/* Greeting pill */}
-                          {personaRecs.greeting && (
-                            <div style={{ display:'flex', alignItems:'flex-start', gap:10, marginBottom:12 }}>
-                              <div style={{ width:34, height:34, borderRadius:12, flexShrink:0, background:`linear-gradient(135deg,${track.color},#a855f7)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, boxShadow:isLite?'none':`0 4px 14px ${track.color}50` }}>🌟</div>
-                              <div style={{ flex:1 }}>
-                                <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:3 }}>Starry AI</div>
-                                <div style={{ fontSize:12.5, color:'rgba(255,255,255,0.8)', lineHeight:1.6, fontWeight:500 }}>{personaRecs.greeting}</div>
-                                {personaRecs.tip && (
-                                  <div style={{ marginTop:8, display:'flex', alignItems:'flex-start', gap:7, padding:'8px 10px', borderRadius:10, background:'rgba(234,179,8,0.08)', border:'1px solid rgba(234,179,8,0.18)' }}>
-                                    <span style={{ fontSize:13, flexShrink:0, lineHeight:1 }}>💡</span>
-                                    <div style={{ fontSize:11.5, color:'rgba(255,255,255,0.6)', lineHeight:1.6 }}>{personaRecs.tip}</div>
+                          {(() => {
+                            const isNowPlaying = playing && (track.src || embedTrack);
+                            const activeTitle  = embedTrack ? (embedTrack.title  || track.title)  : track.title;
+                            const activeArtist = embedTrack ? (embedTrack.artist || track.artist) : track.artist;
+                            const msgText = isNowPlaying
+                              ? (personaRecs.tip || personaRecs.greeting || null)
+                              : (personaRecs.greeting || null);
+                            if (!msgText) return null;
+                            return (
+                              <div style={{ display:'flex', alignItems:'flex-start', gap:10, marginBottom:12 }}>
+                                <div style={{ width:34, height:34, borderRadius:12, flexShrink:0, background:`linear-gradient(135deg,${track.color},#a855f7)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, boxShadow:isLite?'none':`0 4px 14px ${track.color}50` }}>
+                                  {isNowPlaying ? '💡' : '🌟'}
+                                </div>
+                                <div style={{ flex:1 }}>
+                                  <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:3 }}>
+                                    {isNowPlaying ? `Sedang memutar · ${activeTitle}` : 'Starry AI'}
                                   </div>
-                                )}
+                                  <div style={{ fontSize:12.5, color:'rgba(255,255,255,0.8)', lineHeight:1.6, fontWeight:500 }}>
+                                    {msgText}
+                                  </div>
+                                  {isNowPlaying && activeArtist && (
+                                    <div style={{ marginTop:5, fontSize:10.5, color:`${track.color}cc`, fontWeight:600 }}>
+                                      🎵 {activeArtist}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            );
+                          })()}
                           {/* Action bar */}
                           <div style={{ display:'flex', gap:8, alignItems:'center' }}>
                             <button onClick={()=>refreshForYouRef.current?.(true)} disabled={personaLoading}
@@ -10869,7 +10900,7 @@ Format exactly:
                               title: s.name, sub: s.genre, tag: s.subcategory, reason: s.reason,
                               onPlay: ()=>{
                                 const q = s.subcategory==='olahraga' ? `${s.name} live stream` : s.name;
-                                setUnifiedPlatform('radio'); setTab('stream');
+                                setUnifiedPlatform('radio'); setStreamMode('radio'); setTab('stream');
                                 setTimeout(()=>{ setRbMode('search'); setRbQuery(q); rbSearch(q, null); }, 300);
                               }, btnLabel: s.subcategory==='olahraga'?'▶ Live':'📻 Radio',
                             }))
@@ -11029,7 +11060,7 @@ Format exactly:
                                     {popularRecs.trending_radio.map((r, i) => (
                                       <div key={i}
                                         onClick={() => {
-                                          setUnifiedPlatform('radio'); setTab('stream');
+                                          setUnifiedPlatform('radio'); setStreamMode('radio'); setTab('stream');
                                           setTimeout(() => { setRbMode('search'); setRbQuery(r.name); rbSearch(r.name, null); }, 300);
                                         }}
                                         style={{ flexShrink:0, width:'clamp(140px,40vw,165px)', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(245,158,11,0.18)', borderRadius:20, overflow:'hidden', cursor:'pointer', transition:isLite?'none':'transform 0.15s, background 0.15s' }}
@@ -11268,7 +11299,9 @@ Format exactly:
               </div>
             ) : aiSubView==='lyrics' ? (
               /* ── LYRICS VIEW inside AI tab */
-              <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'16px 20px 24px' }}>
+              <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+                {/* ── STICKY HEADER: Live Caption + Control Buttons ── */}
+                <div style={{ flexShrink:0, padding:'16px 20px 0', background:'transparent' }}>
                 {/* ── Live Caption Bar — only shown when synced LRC is available */}
                 {/* captionTick forces re-render every 250ms so caption stays in sync (FIX Bug #9) */}
                 {lrcLines.length > 0 && lyrics && !lyrics.startsWith('⚡') && (() => {
@@ -11317,6 +11350,9 @@ Format exactly:
                     {lyricsLoading?<><Loader2 size={13} style={{ animation:'spin 1s linear infinite' }}/>{t?.lyricsSearchBtn||'Search...'}</>:<><Sparkles size={13}/>{lyrics?(t?.lyricsRefresh||'Refresh'):(t?.lyricsShow||'Show Lyrics')}</>}
                   </button>
                 </div>
+                </div>{/* end sticky header */}
+                {/* ── SCROLLABLE LYRICS CONTENT ── */}
+                <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'0 20px 24px' }}>
                 {!lyrics&&!lyricsLoading&&!lyricsNeedGenerate&&!lyricsGenerating&&(
                   <div style={{ textAlign:'center', paddingTop:36 }}>
                     <Mic2 size={48} style={{ color:'rgba(255,255,255,0.1)', margin:'0 auto 16px', display:'block' }}/>
@@ -11438,6 +11474,7 @@ Format exactly:
                     </>
                   )
                 )}
+                </div>{/* end scrollable lyrics content */}
               </div>
             ) : (
               /* ── CHAT VIEW */
@@ -11514,6 +11551,7 @@ Format exactly:
                         <button
                           onClick={()=>{
                             setUnifiedPlatform('radio');
+                            setStreamMode('radio');
                             setTab('stream');
                             setTimeout(()=>{ setRbMode('search'); setRbQuery(act.query); rbSearch(act.query, null); multiSearch(act.query, null); }, 300);
                           }}
