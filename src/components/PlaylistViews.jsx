@@ -1,5 +1,19 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { CheckCircle, ChevronLeft, ListPlus, Music, PenLine, Radio, Search, Trash2, X } from 'lucide-react';
+import React from 'react';
+// Helper: thumbnail with fallback for YT, Radio, Web sources
+function ThumbImg({ src, size, radius, isRadio, color, iconSize }) {
+  const [err, setErr] = React.useState(false);
+  React.useEffect(() => { setErr(false); }, [src]);
+  if (err) return (
+    <div style={{ width:size, height:size, borderRadius:radius, background:isRadio?`${color}20`:'rgba(255,255,255,0.07)', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+      {isRadio ? <Radio size={iconSize} color={color}/> : <Music size={iconSize} color={color}/>}
+    </div>
+  );
+  return <img src={src} loading="lazy" decoding="async" style={{ width:size, height:size, borderRadius:radius, objectFit:'cover', flexShrink:0, display:'block' }} onError={()=>setErr(true)}/>;
+}
+
+
 
 function PlaylistFormView({ editingPl, allSongs, lang, isLite, t, setPlaylists, setEditingPl, setPlView, deletePlaylist, onSave }) {
   const isEdit = !!editingPl;
@@ -95,8 +109,8 @@ function PlaylistFormView({ editingPl, allSongs, lang, isLite, t, setPlaylists, 
                       ? <div style={{ width: 32, height: 32, borderRadius: 7, background: s.isRadio ? `${s.color}20` : (s.bg || 'rgba(255,255,255,0.07)'), flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           {s.isRadio ? <Radio size={13} color={s.color}/> : <Music size={13} color={s.color}/>}
                         </div>
-                      : s.isDrive && s.cover
-                        ? <img src={s.cover} loading="lazy" decoding="async" style={{ width: 32, height: 32, borderRadius: 7, objectFit: 'cover', flexShrink: 0 }} />
+                      : (s.cover || s.thumbnail || s.favicon)
+                        ? <ThumbImg src={s.cover || s.thumbnail || s.favicon} size={32} radius={7} isRadio={s.isRadio} color={s.color} iconSize={13}/>
                         : <div style={{ width: 32, height: 32, borderRadius: 7, background: s.isRadio ? `${s.color}20` : (s.bg || 'rgba(255,255,255,0.07)'), flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             {s.isRadio ? <Radio size={13} color={s.color}/> : <Music size={13} color={s.color}/>}
                           </div>}
@@ -143,8 +157,8 @@ function PlaylistFormView({ editingPl, allSongs, lang, isLite, t, setPlaylists, 
                     ? <div style={{ width: 34, height: 34, borderRadius: 8, background: s.isRadio ? `${s.color}20` : (s.bg || 'rgba(255,255,255,0.07)'), flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         {s.isRadio ? <Radio size={14} color={s.color}/> : <Music size={14} color={s.color}/>}
                       </div>
-                    : s.isDrive && s.cover
-                      ? <img src={s.cover} loading="lazy" decoding="async" style={{ width: 34, height: 34, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+                    : (s.cover || s.thumbnail || s.favicon)
+                      ? <ThumbImg src={s.cover || s.thumbnail || s.favicon} size={34} radius={8} isRadio={s.isRadio} color={s.color} iconSize={14}/>
                       : <div style={{ width: 34, height: 34, borderRadius: 8, background: s.isRadio ? `${s.color}20` : (s.bg || 'rgba(255,255,255,0.07)'), flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           {s.isRadio ? <Radio size={14} color={s.color}/> : <Music size={14} color={s.color}/>}
                         </div>}
@@ -220,8 +234,8 @@ function PlaylistModal({ onClose, onSave, allSongs, existing, isLite, t, prefill
                         ? <div style={{ width:34, height:34, borderRadius:8, background:s.isRadio?`${s.color}20`:(s.bg||'rgba(255,255,255,0.07)'), flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
                             {s.isRadio ? <Radio size={14} color={s.color}/> : <Music size={14} color={s.color}/>}
                           </div>
-                        : s.isDrive && s.cover
-                          ? <img src={s.cover} loading="lazy" decoding="async" style={{ width:34, height:34, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
+                        : (s.cover || s.thumbnail || s.favicon)
+                          ? <ThumbImg src={s.cover || s.thumbnail || s.favicon} size={34} radius={8} isRadio={s.isRadio} color={s.color} iconSize={14}/>
                           : <div style={{ width:34, height:34, borderRadius:8, background:s.isRadio?`${s.color}20`:(s.bg||'rgba(255,255,255,0.07)'), flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
                               {s.isRadio ? <Radio size={14} color={s.color}/> : <Music size={14} color={s.color}/>}
                             </div>}
@@ -287,8 +301,8 @@ function PlaylistModal({ onClose, onSave, allSongs, existing, isLite, t, prefill
                     ? <div style={{ width:34, height:34, borderRadius:8, background:s.isRadio?`${s.color}20`:(s.bg||'rgba(255,255,255,0.07)'), flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
                         {s.isRadio ? <Radio size={14} color={s.color}/> : <Music size={14} color={s.color}/>}
                       </div>
-                    : s.isDrive && s.cover
-                      ? <img src={s.cover} loading="lazy" decoding="async" style={{ width:34, height:34, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
+                    : (s.cover || s.thumbnail || s.favicon)
+                      ? <ThumbImg src={s.cover || s.thumbnail || s.favicon} size={34} radius={8} isRadio={s.isRadio} color={s.color} iconSize={14}/>
                       : <div style={{ width:34, height:34, borderRadius:8, background:s.isRadio?`${s.color}20`:(s.bg||'rgba(255,255,255,0.07)'), flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
                           {s.isRadio ? <Radio size={14} color={s.color}/> : <Music size={14} color={s.color}/>}
                         </div>}

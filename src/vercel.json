@@ -1,0 +1,172 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "installCommand": "npm install",
+  "rewrites": [
+    {
+      "source": "/api/radio-garden/:path*",
+      "destination": "https://radio.garden/api/ara/:path*"
+    },
+    {
+      "source": "/api/textyl/:path*",
+      "destination": "https://api.textyl.co/api/:path*"
+    },
+    {
+      "source": "/api/ccmixter",
+      "has": [
+        {
+          "type": "query",
+          "key": "title",
+          "value": "(?<title>.*)"
+        }
+      ],
+      "destination": "https://ccmixter.org/api/query?title=:title&limit=5&format=json"
+    },
+    {
+      "source": "/api/deezer",
+      "has": [
+        {
+          "type": "query",
+          "key": "q",
+          "value": "(?<q>.*)"
+        }
+      ],
+      "destination": "https://api.deezer.com/search?q=:q&limit=5&output=json"
+    },
+    {
+      "source": "/api/chartlyrics/:path*",
+      "destination": "https://api.chartlyrics.com/apiv1.asmx/:path*"
+    },
+    {
+      "source": "/api/invidious",
+      "destination": "/api/youtube?backend=invidious"
+    },
+    {
+      "source": "/api/piped",
+      "destination": "/api/youtube?backend=piped"
+    },
+    {
+      "source": "/api/anthropic",
+      "destination": "/api/ai?provider=anthropic"
+    },
+    {
+      "source": "/api/openai",
+      "destination": "/api/ai?provider=openai"
+    },
+    {
+      "source": "/api/gemini",
+      "destination": "/api/ai?provider=gemini"
+    },
+    {
+      "source": "/api/groq",
+      "destination": "/api/ai?provider=groq"
+    },
+    {
+      "source": "/api/grok",
+      "destination": "/api/ai?provider=grok"
+    },
+    {
+      "source": "/api/deepseek",
+      "destination": "/api/ai?provider=deepseek"
+    },
+    {
+      "source": "/api/openrouter",
+      "destination": "/api/ai?provider=openrouter"
+    },
+    {
+      "source": "/api/cloudflare",
+      "destination": "/api/ai?provider=cloudflare"
+    },
+    {
+      "source": "/api/huggingface",
+      "destination": "/api/ai?provider=huggingface"
+    },
+    {
+      "source": "/api/github",
+      "destination": "/api/ai?provider=github"
+    },
+    {
+      "source": "/api/sambanova",
+      "destination": "/api/ai?provider=sambanova"
+    },
+    {
+      "source": "/((?!api/|sw\\.js|workbox-[^/]+\\.js|favicon\\.svg|icon-[^/]+\\.png|manifest\\.webmanifest).*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/manifest.webmanifest",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/manifest+json"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
+    },
+    {
+      "source": "/sw.js",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/javascript"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        }
+      ]
+    },
+    {
+      "source": "/workbox-:hash.js",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/javascript"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; frame-src https://www.youtube.com https://www.youtube-nocookie.com https://open.spotify.com https://w.soundcloud.com https://embed.music.apple.com https://www.tiktok.com https://www.vimeo.com https://www.dailymotion.com https://odysee.com https://rumble.com https://www.newgrounds.com https://audiomack.com https://www.mixcloud.com https://www.vidio.com https://player.vimeo.com https://archive.org https://www.facebook.com https://www.instagram.com https://www.threads.net https://platform.twitter.com https://player.bilibili.com https://www.bilibili.com https://player.twitch.tv https://clips.twitch.tv https://*.peertube.social https://peertube.social https://tube.tchncs.de https://framatube.org https://peertube.stream https://watch.sepiasearch.org; connect-src 'self' https: wss:; worker-src 'self' blob:;"
+        }
+      ]
+    }
+  ]
+}
