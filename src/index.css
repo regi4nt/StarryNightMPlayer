@@ -1575,10 +1575,10 @@ input[type='range']::-webkit-slider-thumb {
 .layout-desktop-portrait .hw-sky  { left: 160px; }
 .layout-desktop-landscape .hw-sky { left: 196px; }
 
-/* Desktop portrait: lane markings juga harus ikut tinggi jalan yang baru (52%) */
+/* Desktop portrait: lane markings ikut tinggi jalan (50%) */
 .layout-desktop-portrait .hw-lane-center,
 .layout-desktop-portrait .hw-lane-edge-l,
-.layout-desktop-portrait .hw-lane-edge-r  { height: 52%; }
+.layout-desktop-portrait .hw-lane-edge-r  { height: 50%; }
 
 /* Desktop: geser hw-lane-center agar marka jalan berada di tengah area konten (tidak sidebar) */
 .layout-desktop-portrait .hw-lane-center  { left: 160px; }
@@ -1592,15 +1592,16 @@ input[type='range']::-webkit-slider-thumb {
 .layout-desktop-portrait .hw-horizon,
 .layout-desktop-portrait .hw-neon-lights  { left: 160px; }
 
-/* Desktop portrait: perbesar ukuran jalan & naikkan cakrawala agar tidak ada celah kosong.
-   Viewport desktop portrait lebih tinggi dari mobile sehingga 42% terlalu kecil. */
-.layout-desktop-portrait .hw-road         { height: 52%; }
-.layout-desktop-portrait .hw-road-cap     { bottom: 52%; }
-.layout-desktop-portrait .hw-sky          { bottom: 52%; }
-.layout-desktop-portrait .hw-city-bg      { bottom: 52%; }
-.layout-desktop-portrait .hw-horizon      { bottom: 50%; }
-.layout-desktop-portrait .hw-neon-lights  { bottom: 52%; }
-.layout-desktop-portrait .hw-reflect      { bottom: 52%; }
+/* Desktop portrait: perbesar tinggi jalan & naikkan cakrawala agar tidak ada celah kosong.
+   Viewport desktop portrait lebih tinggi dari mobile sehingga 42% terlalu kecil -> 50%. */
+.layout-desktop-portrait .hw-road         { height: 50%; }
+.layout-desktop-portrait .hw-road-cap     { bottom: 50%; height: 4%; }
+.layout-desktop-portrait .hw-sky          { bottom: 50%; }
+.layout-desktop-portrait .hw-city-bg      { bottom: 50%; }
+.layout-desktop-portrait .hw-horizon      { bottom: 48%; }
+.layout-desktop-portrait .hw-neon-lights  { bottom: 50%; }
+.layout-desktop-portrait .hw-reflect      { height: 50%; }
+.layout-desktop-portrait .hw-pole         { bottom: 50%; }
 .layout-desktop-landscape .hw-road,
 .layout-desktop-landscape .hw-road-cap,
 .layout-desktop-landscape .hw-reflect,
