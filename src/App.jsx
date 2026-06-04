@@ -8429,7 +8429,7 @@ Format exactly:
                   }
                 };
                 return (
-                  <div style={{ marginBottom:2, borderRadius:16, background:`${activePlat.color}0d`, border:`1px solid ${activePlat.color}30`, overflow:'hidden' }}>
+                  <div style={{ marginBottom:2, borderRadius:16, background:`${activePlat.color}0d`, border:`1px solid ${activePlat.color}30` }}>
                     {/* ── Header kartu — sama struktur dengan kartu Radio */}
                     <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px 8px' }}>
                       <div style={{ width:36, height:36, borderRadius:10, background:`${activePlat.color}20`, display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', flexShrink:0 }}>
@@ -8472,6 +8472,211 @@ Format exactly:
                         <Search size={11}/> {t?.searchBtn||'Cari'}
                       </button>
                     </div>
+
+                    {/* ── Hasil YT — tampil di dalam kartu search */}
+                    {unifiedPlatform === 'ytmusic' && (() => {
+                      const ytPlatColor = '#ff0000';
+                      const results = ytResults['ytmusic'] || [];
+                      const loading = ytLoading['ytmusic'];
+                      const error   = ytError['ytmusic'];
+                      if (!loading && results.length === 0 && !error) return null;
+                      return (
+                        <div style={{ padding:'0 10px 10px' }}>
+                          {error && <div style={{ fontSize:11, color:'#fca5a5', marginBottom:6, padding:'6px 10px', borderRadius:8, background:'rgba(239,68,68,0.1)' }}>{error}</div>}
+                          {loading && (
+                            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                              {[1,2,3,4].map(i => (
+                                <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)' }}>
+                                  <div style={{ width:32, height:32, borderRadius:8, background:'rgba(255,68,68,0.12)', flexShrink:0, animation:'pulse 1.4s ease-in-out infinite', animationDelay:`${i*0.12}s` }}/>
+                                  <div style={{ flex:1, display:'flex', flexDirection:'column', gap:5 }}>
+                                    <div style={{ height:10, borderRadius:6, background:'rgba(255,255,255,0.08)', width:`${72-i*6}%`, animation:'pulse 1.4s ease-in-out infinite', animationDelay:`${i*0.12}s` }}/>
+                                    <div style={{ height:8, borderRadius:6, background:'rgba(255,255,255,0.05)', width:'40%', animation:'pulse 1.4s ease-in-out infinite', animationDelay:`${i*0.18}s` }}/>
+                                  </div>
+                                </div>
+                              ))}
+                              <div style={{ textAlign:'center', paddingTop:4, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                                <Loader2 size={12} style={{ color:'rgba(255,68,68,0.6)', animation:'spin 0.8s linear infinite' }}/>
+                                <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)' }}>{t?.searchingYt||'Searching YouTube…'}</span>
+                              </div>
+                            </div>
+                          )}
+                          {!loading && results.length > 0 && (
+                            <div style={{ borderTop:'1px solid rgba(255,255,255,0.07)', overflow:'hidden' }}>
+                              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 10px 4px' }}>
+                                <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)', fontWeight:600 }}>{results.length} hasil</span>
+                                <button onClick={() => { setYtResults(p=>({...p,ytmusic:[]})); setYtQuery(p=>({...p,ytmusic:''})); setUnifiedQuery(''); }}
+                                  style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:999, color:'rgba(255,255,255,0.45)', fontSize:10, fontWeight:700, padding:'2px 9px', cursor:'pointer', display:'flex', alignItems:'center', gap:4, lineHeight:1.4 }}>
+                                  ✕ Tutup
+                                </button>
+                              </div>
+                              <div style={{ maxHeight:320, overflowY:'auto', padding:'0 8px 8px', display:'flex', flexDirection:'column', gap:4 }} className="scrollbar-hide">
+                                {results[0]?.resultType === 'channel' && results.map((v, vi) => (
+                                  <a key={v.channelId||vi} href={v.channelUrl} target="_blank" rel="noopener noreferrer"
+                                    style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', textDecoration:'none' }}
+                                    onMouseEnter={e=>{ e.currentTarget.style.background='rgba(255,68,68,0.08)'; e.currentTarget.style.borderColor='rgba(255,68,68,0.3)'; }}
+                                    onMouseLeave={e=>{ e.currentTarget.style.background='rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; }}>
+                                    <div style={{ width:38, height:38, borderRadius:999, background:'rgba(255,68,68,0.15)', flexShrink:0, overflow:'hidden' }}>
+                                      {v.thumbnail && <img src={v.thumbnail} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{ e.target.style.display='none'; }}/>}
+                                    </div>
+                                    <div style={{ flex:1, minWidth:0 }}>
+                                      <div style={{ fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.9)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{v.title}</div>
+                                      <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>👤 Channel{v.subscriberCount > 0 ? ` · ${v.subscriberCount>=1000000?(v.subscriberCount/1000000).toFixed(1)+'M':v.subscriberCount>=1000?(v.subscriberCount/1000).toFixed(0)+'K':v.subscriberCount} subs` : ''}</div>
+                                    </div>
+                                    <div style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:999, background:'rgba(255,68,68,0.15)', color:'#ff6b6b', flexShrink:0 }}>BUKA ↗</div>
+                                  </a>
+                                ))}
+                                {results[0]?.resultType === 'playlist' && results.map((v, vi) => (
+                                  <a key={v.playlistId||vi} href={v.playlistUrl} target="_blank" rel="noopener noreferrer"
+                                    style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', textDecoration:'none' }}
+                                    onMouseEnter={e=>{ e.currentTarget.style.background='rgba(255,68,68,0.08)'; e.currentTarget.style.borderColor='rgba(255,68,68,0.3)'; }}
+                                    onMouseLeave={e=>{ e.currentTarget.style.background='rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; }}>
+                                    <div style={{ width:38, height:38, borderRadius:8, background:'rgba(255,68,68,0.15)', flexShrink:0, overflow:'hidden', position:'relative' }}>
+                                      {v.thumbnail && <img src={v.thumbnail} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{ e.target.style.display='none'; }}/>}
+                                      <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,0.3)' }}>📂</div>
+                                    </div>
+                                    <div style={{ flex:1, minWidth:0 }}>
+                                      <div style={{ fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.9)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{v.title}</div>
+                                      <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{v.uploaderName||'YouTube'}{v.videoCount>0?` · ${v.videoCount} video`:''}</div>
+                                    </div>
+                                    <div style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:999, background:'rgba(255,68,68,0.15)', color:'#ff6b6b', flexShrink:0 }}>BUKA ↗</div>
+                                  </a>
+                                ))}
+                                {!results[0]?.resultType && results.map((v, vi) => {
+                                  const secs = v.duration || v.lengthSeconds || 0;
+                                  const dur  = secs > 0 ? `${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}` : '';
+                                  const ch   = v.uploaderName || v.author || v.channel || 'YouTube';
+                                  const thumb = v.thumbnail || `https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`;
+                                  const isCurrentYt = embedTrack?.type === 'youtube' && embedTrack.videoId === v.videoId;
+                                  const isShort = secs > 0 && secs < 62;
+                                  const isLiveVideo = v.isLive || v.liveNow || false;
+                                  return (
+                                    <div key={v.videoId||vi}
+                                      style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background: isCurrentYt?'rgba(255,68,68,0.1)':'rgba(255,255,255,0.04)', border: isCurrentYt?'1px solid rgba(255,68,68,0.35)':'1px solid rgba(255,255,255,0.08)' }}
+                                      onMouseEnter={e=>{ if(!isCurrentYt) e.currentTarget.style.background='rgba(255,0,0,0.08)'; }}
+                                      onMouseLeave={e=>{ if(!isCurrentYt) e.currentTarget.style.background='rgba(255,255,255,0.04)'; }}>
+                                      <div onClick={() => { if(isCurrentYt) setPlaying(p=>!p); else playYouTube(v, results, vi); }}
+                                        style={{ width:38, height:38, borderRadius:8, background:'rgba(255,0,0,0.2)', flexShrink:0, cursor:'pointer', overflow:'hidden', position:'relative' }}>
+                                        {!isLite && <img src={thumb} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{ e.target.style.display='none'; }}/>}
+                                        <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background: isCurrentYt?'rgba(0,0,0,0.45)':isLite?'rgba(0,0,0,0.3)':'rgba(0,0,0,0.18)', borderRadius:8 }}>
+                                          {isCurrentYt && playing
+                                            ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12 }}>{[8,5,7].map((h,i)=>(<div key={i} style={{ width:2.5, height:h, background:'#ff4444', borderRadius:1, animation:`bounce 1.4s ease-in-out ${i*0.25}s infinite` }}/>))}</div>
+                                            : <Play size={13} style={{ color: isCurrentYt?'#ff6b6b':'#ff4444', marginLeft:2 }}/>}
+                                        </div>
+                                      </div>
+                                      <div onClick={() => playYouTube(v, results, vi)} style={{ flex:1, minWidth:0, cursor:'pointer' }}>
+                                        <div style={{ fontSize:12, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color: isCurrentYt?'#ff6b6b':'rgba(255,255,255,0.9)' }}>{v.title}</div>
+                                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1, display:'flex', alignItems:'center', gap:4 }}>
+                                          <span>{ch}{dur?` · ${dur}`:''}</span>
+                                          {isLiveVideo && <span style={{ fontSize:9, fontWeight:700, padding:'1px 4px', borderRadius:4, background:'rgba(255,50,50,0.25)', color:'#ff6b6b' }}>● LIVE</span>}
+                                          {isShort && <span style={{ fontSize:9, fontWeight:700, padding:'1px 4px', borderRadius:4, background:'rgba(255,255,255,0.08)', color:'rgba(255,255,255,0.4)' }}>SHORT</span>}
+                                        </div>
+                                      </div>
+                                      <button onClick={e => { e.stopPropagation(); window.open(`https://www.youtube.com/watch?v=${v.videoId}`,'_blank','noopener,noreferrer'); }}
+                                        style={{ background:'none', border:'1px solid rgba(255,68,68,0.4)', borderRadius:6, color:'#ff4444', fontSize:10, fontWeight:700, padding:'3px 7px', cursor:'pointer', flexShrink:0, lineHeight:1.2 }}>↗</button>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* ── Hasil WebSearch — tampil di dalam kartu search */}
+                    {unifiedPlatform === 'websearch' && (() => {
+                      const wsAudioItems = wsResults.filter(it => it.audioUrl && ['jamendo','ccmixter','audius'].includes(it.source));
+                      const srcColors2 = { jamendo:'#f0c020', fma:'#5cb85c', ccmixter:'#e74c3c', audius:'#cc0000', deezer:'#a238ff' };
+                      if (!wsLoading && wsResults.length === 0 && !wsError && !wsEmbedUrl) return null;
+                      return (
+                        <div style={{ padding:'0 10px 10px' }}>
+                          {wsLoading && (
+                            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                              {[1,2,3].map(i => (
+                                <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)' }}>
+                                  <div style={{ width:32, height:32, borderRadius:8, background:'rgba(99,102,241,0.15)', flexShrink:0, animation:'pulse 1.4s ease-in-out infinite' }}/>
+                                  <div style={{ flex:1, display:'flex', flexDirection:'column', gap:5 }}>
+                                    <div style={{ height:10, borderRadius:6, background:'rgba(255,255,255,0.08)', width:'65%', animation:'pulse 1.4s ease-in-out infinite' }}/>
+                                    <div style={{ height:8, borderRadius:6, background:'rgba(255,255,255,0.05)', width:'40%', animation:'pulse 1.4s ease-in-out infinite' }}/>
+                                  </div>
+                                </div>
+                              ))}
+                              <div style={{ textAlign:'center', paddingTop:4, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                                <Loader2 size={12} style={{ color:'rgba(99,102,241,0.6)', animation:'spin 0.8s linear infinite' }}/>
+                                <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)' }}>Searching…</span>
+                              </div>
+                            </div>
+                          )}
+                          {wsError && !wsLoading && (
+                            <div style={{ fontSize:11, color:'#fca5a5', padding:'8px 10px', borderRadius:8, background:'rgba(239,68,68,0.1)', marginBottom:8 }}>{wsError}</div>
+                          )}
+                          {!wsLoading && wsResults.length > 0 && (
+                            <div style={{ borderTop:'1px solid rgba(255,255,255,0.07)', overflow:'hidden' }}>
+                              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 10px 4px' }}>
+                                <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)', fontWeight:600 }}>{wsResults.length} sumber</span>
+                                <button onClick={() => { setWsResults([]); setWsQuery(''); setUnifiedQuery(''); setWsEmbedUrl(null); setWsError(null); }}
+                                  style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:999, color:'rgba(255,255,255,0.45)', fontSize:10, fontWeight:700, padding:'2px 9px', cursor:'pointer', lineHeight:1.4 }}>
+                                  ✕ Tutup
+                                </button>
+                              </div>
+                              <div style={{ maxHeight:360, overflowY:'auto', padding:'0 8px 8px', display:'flex', flexDirection:'column', gap:4 }} className="scrollbar-hide">
+                                {[...wsResults].sort((a,b) => {
+                                  const order = ['jamendo','audius','ccmixter','fma','deezer','soundcloud','spotify'];
+                                  const ai = order.indexOf(a.source); const bi = order.indexOf(b.source);
+                                  return (ai===-1?999:ai) - (bi===-1?999:bi);
+                                }).map((item, idx) => {
+                                  const sc = srcColors2[item.source] || 'rgba(255,255,255,0.4)';
+                                  const isAudio = !!item.audioUrl && ['jamendo','ccmixter','audius'].includes(item.source);
+                                  const isCurrentTrack = currentTrack?.id === item.id || currentTrack?.audioUrl === item.audioUrl;
+                                  const isExternal = !isAudio && !!item.embedUrl;
+                                  return (
+                                    <div key={item.id||idx}
+                                      style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background: isCurrentTrack?'rgba(99,102,241,0.12)':'rgba(255,255,255,0.04)', border: isCurrentTrack?'1px solid rgba(99,102,241,0.35)':'1px solid rgba(255,255,255,0.08)' }}
+                                      onMouseEnter={e=>{ if(!isCurrentTrack) e.currentTarget.style.background='rgba(99,102,241,0.08)'; }}
+                                      onMouseLeave={e=>{ if(!isCurrentTrack) e.currentTarget.style.background='rgba(255,255,255,0.04)'; }}>
+                                      <div onClick={() => { if(isCurrentTrack) { setPlaying(p=>!p); } else if(isAudio) { playWsTrack(item, wsAudioItems, wsAudioItems.indexOf(item)); } else if(item.embedUrl) { setWsEmbedUrl(item.embedUrl); } }}
+                                        style={{ width:38, height:38, borderRadius:8, background:`${sc}20`, flexShrink:0, cursor:'pointer', overflow:'hidden', position:'relative' }}>
+                                        {item.thumbnail && !isLite && <img src={item.thumbnail} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{ e.target.style.display='none'; }}/>}
+                                        <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background: isCurrentTrack?'rgba(0,0,0,0.45)':'rgba(0,0,0,0.2)' }}>
+                                          {isCurrentTrack && playing
+                                            ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12 }}>{[8,5,7].map((h,i)=>(<div key={i} style={{ width:2.5, height:h, background:sc, borderRadius:1, animation:`bounce 1.4s ease-in-out ${i*0.25}s infinite` }}/>))}</div>
+                                            : <Play size={13} style={{ color:sc, marginLeft:2 }}/>}
+                                        </div>
+                                      </div>
+                                      <div onClick={() => { if(isAudio) playWsTrack(item, wsAudioItems, wsAudioItems.indexOf(item)); else if(item.embedUrl) setWsEmbedUrl(item.embedUrl); }} style={{ flex:1, minWidth:0, cursor:'pointer' }}>
+                                        <div style={{ fontSize:12, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color: isCurrentTrack?sc:'rgba(255,255,255,0.9)' }}>{item.title}</div>
+                                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1, display:'flex', alignItems:'center', gap:4 }}>
+                                          <span style={{ padding:'1px 5px', borderRadius:4, background:`${sc}20`, color:sc, fontWeight:700, fontSize:9 }}>{item.source}</span>
+                                          {item.artist && <span>{item.artist}</span>}
+                                        </div>
+                                      </div>
+                                      <div style={{ display:'flex', gap:4, flexShrink:0, alignItems:'center' }}>
+                                        {item.url && <button onClick={e=>{ e.stopPropagation(); window.open(item.url,'_blank','noopener,noreferrer'); }}
+                                          style={{ background:'none', border:`1px solid ${sc}40`, borderRadius:6, color:sc, fontSize:10, fontWeight:700, padding:'3px 7px', cursor:'pointer', lineHeight:1.2 }}>↗</button>}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                          {wsEmbedUrl && (
+                            <div style={{ marginTop:8, borderRadius:10, overflow:'hidden', border:'1px solid rgba(255,255,255,0.1)' }}>
+                              <iframe src={wsEmbedUrl} style={{ width:'100%', height:80, border:'none', display:'block' }} allow="autoplay" title="embed"/>
+                            </div>
+                          )}
+                          {spWsEmbedId && (
+                            <div style={{ marginTop:8, borderRadius:10, overflow:'hidden' }}>
+                              <iframe src={`https://open.spotify.com/embed/track/${spWsEmbedId}`} style={{ width:'100%', height:80, border:'none', display:'block' }} allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" title="spotify"/>
+                            </div>
+                          )}
+                          {!wsLoading && !wsError && wsResults.length===0 && !wsEmbedUrl && (
+                            <div style={{ textAlign:'center', padding:'16px 10px', color:'rgba(255,255,255,0.25)', fontSize:11 }}>Tidak ada hasil ditemukan.</div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
                   </div>
                 );
               })()}
@@ -8491,13 +8696,15 @@ Format exactly:
                     // Mode filter: musik mode hanya tampilkan YT & websearch, radio mode hanya tampilkan radio
                     if (streamMode === 'music' && isRadio) return null;
                     if (streamMode === 'radio' && !isRadio) return null;
+                    // YT & WebSearch sudah ada di unified card atas — skip sepenuhnya di loop ini
+                    if (isYT || isWebSearch) return null;
                     const ytQ = ytQuery[platform.id] || '';
                     const results = ytResults[platform.id] || [];
                     const loading = ytLoading[platform.id];
                     const error   = ytError[platform.id];
                     return (
                       <div key={platform.id} ref={platform.id === 'ytmusic' ? ytMusicSectionRef : null}
-                        style={{ borderRadius:16, background:(isYT||isWebSearch)?'transparent':`${platform.color}0e`, border:(isYT||isWebSearch)?'none':`1px solid ${platform.color}30`, overflow:(isYT||isWebSearch)?'visible':'hidden', display: (isYT||isWebSearch) && unifiedPlatform !== platform.id ? 'none' : 'block' }}>
+                        style={{ borderRadius:16, background:`${platform.color}0e`, border:`1px solid ${platform.color}30`, overflow:'hidden' }}>
                         {/* ── Platform header — disembunyikan untuk YT/WebSearch (sudah ada di unified card atas) */}
                         {!isYT && !isWebSearch && (
                         <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px 8px' }}>
