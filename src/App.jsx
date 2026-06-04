@@ -8497,7 +8497,7 @@ Format exactly:
                     const error   = ytError[platform.id];
                     return (
                       <div key={platform.id} ref={platform.id === 'ytmusic' ? ytMusicSectionRef : null}
-                        style={{ borderRadius:16, background:(isYT||isWebSearch)?'transparent':`${platform.color}0e`, border:(isYT||isWebSearch)?'none':`1px solid ${platform.color}30`, overflow:'hidden', display: (isYT||isWebSearch) && unifiedPlatform !== platform.id ? 'none' : 'block' }}>
+                        style={{ borderRadius:16, background:(isYT||isWebSearch)?'transparent':`${platform.color}0e`, border:(isYT||isWebSearch)?'none':`1px solid ${platform.color}30`, overflow:(isYT||isWebSearch)?'visible':'hidden', display: (isYT||isWebSearch) && unifiedPlatform !== platform.id ? 'none' : 'block' }}>
                         {/* ── Platform header — disembunyikan untuk YT/WebSearch (sudah ada di unified card atas) */}
                         {!isYT && !isWebSearch && (
                         <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px 8px' }}>
@@ -8539,15 +8539,16 @@ Format exactly:
                             )}
                             {/* Results — with thumbnail & playing indicator */}
                             {!loading && results.length > 0 && (
-                              <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:4, maxHeight:340, overflowY:'auto', paddingRight:2 }} className="scrollbar-hide">
+                              <div style={{ marginTop:8, borderRadius:12, border:'1px solid rgba(255,68,68,0.2)', background:'rgba(255,68,68,0.04)', overflow:'hidden' }}>
                                 {/* ── Tombol tutup hasil ── */}
-                                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:2 }}>
+                                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 10px 4px' }}>
                                   <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)', fontWeight:600 }}>{results.length} hasil</span>
                                   <button onClick={() => { setYtResults(p=>({...p,[platform.id]:[]})); setYtQuery(p=>({...p,[platform.id]:''})); setUnifiedQuery(''); }}
                                     style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:999, color:'rgba(255,255,255,0.45)', fontSize:10, fontWeight:700, padding:'2px 9px', cursor:'pointer', display:'flex', alignItems:'center', gap:4, lineHeight:1.4 }}>
                                     ✕ Tutup
                                   </button>
                                 </div>
+                                <div style={{ maxHeight:320, overflowY:'auto', padding:'0 8px 8px', display:'flex', flexDirection:'column', gap:4 }} className="scrollbar-hide">
                                 {/* ── Channel results ── */}
                                 {results[0]?.resultType === 'channel' && results.map((v, vi) => (
                                   <a key={v.channelId || vi} href={v.channelUrl} target="_blank" rel="noopener noreferrer"
@@ -8629,6 +8630,8 @@ Format exactly:
                                   );
                                 })}
                               </div>
+                            </div>
+                          </div>
                             )}
                           </div>
                         )}
@@ -8724,15 +8727,16 @@ Format exactly:
                               )}
                               {/* Results */}
                               {!wsLoading && wsResults.length > 0 && (
-                                <div style={{ display:'flex', flexDirection:'column', gap:4, marginTop:4, maxHeight:360, overflowY:'auto', paddingRight:2 }} className="scrollbar-hide">
+                                <div style={{ borderRadius:12, border:'1px solid rgba(99,102,241,0.2)', background:'rgba(99,102,241,0.04)', overflow:'hidden', marginTop:4 }}>
                                   {/* ── Tombol tutup hasil ── */}
-                                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:2 }}>
+                                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 10px 4px' }}>
                                     <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)', fontWeight:600 }}>{wsResults.length} sumber</span>
                                     <button onClick={() => { setWsResults([]); setWsQuery(''); setUnifiedQuery(''); }}
                                       style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:999, color:'rgba(255,255,255,0.45)', fontSize:10, fontWeight:700, padding:'2px 9px', cursor:'pointer', display:'flex', alignItems:'center', gap:4, lineHeight:1.4 }}>
                                       ✕ Tutup
                                     </button>
                                   </div>
+                                  <div style={{ maxHeight:340, overflowY:'auto', padding:'0 8px 8px', display:'flex', flexDirection:'column', gap:4 }} className="scrollbar-hide">
                                   {[...wsResults].sort((a, b) => {
                                     // Embed-only cards (no native audio) selalu di bawah
                                     const EMBED_TYPES = new Set(['facebook','instagram','tiktok','twitter','threads','bilibili','vidio','vimeo','dailymotion','archive','audiomack','mixcloud','odysee','rumble','peertube','newgrounds','fma','sc_embed','sp_embed','sc_redirect']);
@@ -9291,6 +9295,8 @@ Format exactly:
                                     );
                                   })}
                                 </div>
+                                </div>
+                              </div>
                               )}
                               {/* Inline embed player */}
                               {wsEmbedUrl && (
