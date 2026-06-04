@@ -3900,15 +3900,19 @@ Return ONLY valid JSON, no explanation:
     }
   }, [track.id, customSongs]);
 
-  // ── Auto-fetch lirik saat lagu ganti dan tab lirik sedang terbuka
+  // ── Auto-fetch lirik DINONAKTIFKAN — lirik hanya dimuat saat tombol ditekan
   const getLyricsRef = useRef(null);
   useEffect(() => { getLyricsRef.current = getLyrics; });
+  // Reset state lirik saat lagu berganti agar tombol muncul kembali
   useEffect(() => {
-    if (aiSubView === 'lyrics' && !lyricsLoading) {
-      getLyricsRef.current?.();
-    }
+    setLyrics('');
+    setLyricsNeedGenerate(false);
+    setLyricsGenerated(false);
+    setLrcLines([]);
+    setRomanizedLrcLines([]);
+    setLyricsRomanized('');
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [track.id, embedTrack?.videoId, aiSubView]);
+  }, [track.id, embedTrack?.videoId]);
 
   // ── FIX Bug #10: Auto-romanisation — trigger romanizeLyrics otomatis saat lirik non-Latin berhasil dimuat
   // Sebelumnya hanya manual via tombol, padahal ada komentar "Auto-romanisation" di kode.
@@ -8409,7 +8413,7 @@ Format exactly:
                 </button>
               </div>
 
-              {/* ── Unified search bar (hanya di mode musik) */}
+              {/* ── Music search card — mirip kartu Radio */}
               {streamMode === 'music' && (() => {
                 const _platforms = getStreamingPlatformsSync();
                 const searchPlatforms = _platforms.filter(p => ['ytmusic','websearch'].includes(p.id));
@@ -8424,24 +8428,36 @@ Format exactly:
                     doWebSearch(unifiedQuery);
                   }
                 };
-
                 return (
-                  <div style={{ marginBottom:8 }}>
-                    {/* Platform filter tabs */}
-                    <div style={{ display:'flex', gap:5, marginBottom:7 }}>
+                  <div style={{ marginBottom:2, borderRadius:16, background:`${activePlat.color}0d`, border:`1px solid ${activePlat.color}30`, overflow:'hidden' }}>
+                    {/* ── Header kartu — sama struktur dengan kartu Radio */}
+                    <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px 8px' }}>
+                      <div style={{ width:36, height:36, borderRadius:10, background:`${activePlat.color}20`, display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', flexShrink:0 }}>
+                        <PlatformLogo id={activePlat.id} size={22}/>
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                          <span style={{ fontWeight:700, fontSize:13, color:'white' }}>{activePlat.name}</span>
+                          <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:999, background:`${activePlat.color}25`, color:activePlat.color }}>IN-APP ▶</span>
+                        </div>
+                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{activePlat.description || (unifiedPlatform==='ytmusic' ? 'Cari & putar langsung dalam app via YouTube' : 'Cari musik dari Jamendo, Audius, ccMixter & lebih')}</div>
+                      </div>
+                    </div>
+                    {/* ── Platform selector tabs di dalam kartu */}
+                    <div style={{ display:'flex', gap:3, margin:'0 10px 8px', background:'rgba(255,255,255,0.04)', borderRadius:10, padding:3 }}>
                       {searchPlatforms.map(p => {
                         const isActive = unifiedPlatform === p.id;
                         return (
                           <button key={p.id} onClick={() => { setUnifiedPlatform(p.id); setUnifiedQuery(p.id==='ytmusic' ? (ytQuery['ytmusic']||'') : p.id==='websearch' ? wsQuery : ''); }}
-                            style={{ flex:1, padding:'6px 0', borderRadius:10, border:`1.5px solid ${isActive ? p.color : p.color+'30'}`, background: isActive ? `${p.color}22` : 'rgba(255,255,255,0.03)', color: isActive ? p.color : 'rgba(255,255,255,0.4)', fontSize:11, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:5, transition:'all 0.15s' }}>
-                            <PlatformLogo id={p.id} size={13}/>
+                            style={{ flex:1, padding:'6px 0', borderRadius:8, border:'none', background: isActive ? `${p.color}22` : 'transparent', color: isActive ? p.color : 'rgba(255,255,255,0.35)', fontSize:11, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:5, transition:'all 0.15s' }}>
+                            <PlatformLogo id={p.id} size={12}/>
                             {p.name}
                           </button>
                         );
                       })}
                     </div>
-                    {/* Search input — selalu tampil */}
-                    <div style={{ display:'flex', gap:6 }}>
+                    {/* ── Search input */}
+                    <div style={{ display:'flex', gap:6, padding:'0 10px 10px' }}>
                       <div style={{ flex:1, display:'flex', alignItems:'center', gap:6, background:'rgba(0,0,0,0.35)', borderRadius:999, padding:'7px 13px', border:`1.5px solid ${activePlat.color}35` }}>
                         <Search size={12} style={{ color:activePlat.color, flexShrink:0 }}/>
                         <input type="text" placeholder={activePlat.hint || 'Cari lagu, artis…'}
@@ -8453,7 +8469,7 @@ Format exactly:
                       </div>
                       <button onClick={handleUnifiedSearch}
                         style={{ padding:'7px 14px', borderRadius:999, border:'none', background:`${activePlat.color}cc`, color:'white', fontSize:11, fontWeight:700, cursor:'pointer', flexShrink:0, display:'flex', alignItems:'center', gap:4 }}>
-                        <Search size={11}/> {t?.searchBtn||'Search'}
+                        <Search size={11}/> {t?.searchBtn||'Cari'}
                       </button>
                     </div>
                   </div>
@@ -8481,8 +8497,9 @@ Format exactly:
                     const error   = ytError[platform.id];
                     return (
                       <div key={platform.id} ref={platform.id === 'ytmusic' ? ytMusicSectionRef : null}
-                        style={{ borderRadius:16, background:`${platform.color}0e`, border:`1px solid ${platform.color}30`, overflow:'hidden', display: (isYT||isWebSearch) && unifiedPlatform !== platform.id ? 'none' : 'block' }}>
-                        {/* ── Platform header */}
+                        style={{ borderRadius:16, background:(isYT||isWebSearch)?'transparent':`${platform.color}0e`, border:(isYT||isWebSearch)?'none':`1px solid ${platform.color}30`, overflow:'hidden', display: (isYT||isWebSearch) && unifiedPlatform !== platform.id ? 'none' : 'block' }}>
+                        {/* ── Platform header — disembunyikan untuk YT/WebSearch (sudah ada di unified card atas) */}
+                        {!isYT && !isWebSearch && (
                         <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px 8px' }}>
                           <div style={{ width:36, height:36, borderRadius:10, background:`${platform.color}20`, display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', flexShrink:0 }}>
                             <PlatformLogo id={platform.id} size={22}/>
@@ -8490,14 +8507,13 @@ Format exactly:
                           <div style={{ flex:1, minWidth:0 }}>
                             <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                               <span style={{ fontWeight:700, fontSize:13, color:'white' }}>{platform.name}</span>
-                              {(isYT||isWebSearch) && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:999, background:`${platform.color}25`, color:platform.color }}>{isWebSearch ? 'IN-APP ▶' : 'IN-APP ▶'}</span>}
                               {isRadio && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:999, background:`${platform.color}25`, color:platform.color }}>● LIVE</span>}
                               {isRedirect && <span style={{ fontSize:9, fontWeight:700, padding:'2px 6px', borderRadius:999, background:'rgba(255,255,255,0.07)', color:'rgba(255,255,255,0.35)' }}>REDIRECT ↗</span>}
                             </div>
                             <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{platform.description}</div>
                           </div>
-
                         </div>
+                        )}
 
                         {/* ── YouTube: results only (search bar moved to unified) */}
                         {isYT && (
