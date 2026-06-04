@@ -8,17 +8,23 @@ function SongThumb({ src, bg, isRadio, isYtSong, title, color }) {
   const [err, setErr] = React.useState(false);
   React.useEffect(() => { setErr(false); }, [src]);
   const badge = isYtSong
-    ? <div style={{ position:'absolute', bottom:2, right:2, fontSize:7, fontWeight:800, background:'rgba(255,0,0,0.85)', color:'white', padding:'1px 3px', borderRadius:3, lineHeight:1.2 }}>YT</div>
+    ? <div style={{ position:'absolute', bottom:2, right:2, fontSize:7, fontWeight:800, background:'rgba(255,0,0,0.85)', color:'white', padding:'1px 3px', borderRadius:3, lineHeight:1.2, zIndex:2 }}>YT</div>
     : isRadio
-    ? <div style={{ position:'absolute', bottom:2, right:2, fontSize:7, fontWeight:800, background:'rgba(245,158,11,0.85)', color:'white', padding:'1px 3px', borderRadius:3, lineHeight:1.2 }}>FM</div>
+    ? <div style={{ position:'absolute', bottom:2, right:2, fontSize:7, fontWeight:800, background:'rgba(245,158,11,0.85)', color:'white', padding:'1px 3px', borderRadius:3, lineHeight:1.2, zIndex:2 }}>FM</div>
     : null;
   return (
     <div style={{ width:42, height:42, borderRadius:10, background:bg, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', position:'relative', overflow:'hidden' }}>
-      {err
-        ? isRadio ? <Radio size={16} color={color}/> : <Music size={16} color={isYtSong ? '#ff4444' : color}/>
-        : <img src={src} alt={title} loading="lazy" decoding="async" style={{ width:'100%', height:'100%', objectFit:'cover', position:'absolute', inset:0 }} onError={()=>setErr(true)}/>
-      }
-      {!err && badge}
+      {err ? (
+        <>
+          {isRadio ? <Radio size={16} color={color}/> : <Music size={16} color={isYtSong ? '#ff4444' : color}/>}
+          {badge}
+        </>
+      ) : (
+        <>
+          <img src={src} alt={title} loading="lazy" decoding="async" style={{ width:'100%', height:'100%', objectFit:'cover', position:'absolute', inset:0 }} onError={()=>setErr(true)}/>
+          {badge}
+        </>
+      )}
     </div>
   );
 }
@@ -64,6 +70,16 @@ function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDri
         const FallbackIcon = () => s.isRadio
           ? <Radio size={16} color={s.color}/>
           : <Music size={16} color={isYtSong ? '#ff4444' : s.color}/>;
+        // Badge label sumber — hanya di mode Pro, muncul di semua state cover
+        const srcBadge = !isLite && (isYtSong
+          ? <div style={{ position:'absolute', bottom:2, right:2, fontSize:7, fontWeight:800, background:'rgba(255,0,0,0.85)', color:'white', padding:'1px 3px', borderRadius:3, lineHeight:1.2, zIndex:2 }}>YT</div>
+          : s.isRadio
+          ? <div style={{ position:'absolute', bottom:2, right:2, fontSize:7, fontWeight:800, background:'rgba(245,158,11,0.85)', color:'white', padding:'1px 3px', borderRadius:3, lineHeight:1.2, zIndex:2 }}>FM</div>
+          : s.isDrive || s.driveId
+          ? <div style={{ position:'absolute', bottom:2, right:2, fontSize:7, fontWeight:800, background:'rgba(14,165,233,0.85)', color:'white', padding:'1px 3px', borderRadius:3, lineHeight:1.2, zIndex:2 }}>GD</div>
+          : s._wsSource
+          ? <div style={{ position:'absolute', bottom:2, right:2, fontSize:7, fontWeight:800, background:'rgba(124,58,237,0.85)', color:'white', padding:'1px 3px', borderRadius:3, lineHeight:1.2, zIndex:2 }}>WEB</div>
+          : null);
         if (isLite) return (
           <div style={{ width:42, height:42, borderRadius:10, background:bg, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
             <FallbackIcon/>
@@ -72,9 +88,11 @@ function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDri
         if (thumbSrc) return (
           <SongThumb src={thumbSrc} bg={bg} isRadio={s.isRadio} isYtSong={isYtSong} title={s.title} color={s.color}/>
         );
+        // Mode Pro tanpa cover: tampilkan ikon fallback + badge sumber
         return (
-          <div style={{ width:42, height:42, borderRadius:10, background:bg, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <div style={{ width:42, height:42, borderRadius:10, background:bg, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', position:'relative', overflow:'hidden' }}>
             <FallbackIcon/>
+            {srcBadge}
           </div>
         );
       })()}

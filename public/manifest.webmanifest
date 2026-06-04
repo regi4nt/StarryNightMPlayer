@@ -2,14 +2,17 @@
   "name": "Starry Night MPlayer",
   "short_name": "StarryMPlayer",
   "description": "Pemutar musik AI dengan tema luar angkasa",
-  "id": "/",
-  "start_url": "/",
+  "id": "/starrynight-mplayer/",
+  "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
   "display_override": [
     "window-controls-overlay",
     "standalone"
   ],
+  "launch_handler": {
+    "client_mode": ["navigate-new", "auto"]
+  },
   "background_color": "#07071a",
   "theme_color": "#07071a",
   "orientation": "portrait",
@@ -65,7 +68,7 @@
       "name": "Stream",
       "short_name": "Stream",
       "description": "Buka tab Stream & Radio",
-      "url": "/?tab=stream",
+      "url": "/?tab=stream&source=shortcut",
       "icons": [
         {
           "src": "/icon-192-maskable.png",
@@ -78,7 +81,7 @@
       "name": "Playlist",
       "short_name": "Playlist",
       "description": "Buka koleksi & playlist",
-      "url": "/?tab=playlist",
+      "url": "/?tab=playlist&source=shortcut",
       "icons": [
         {
           "src": "/icon-192-maskable.png",
@@ -91,7 +94,7 @@
       "name": "Other",
       "short_name": "Other",
       "description": "Buka tab AI, lirik & fitur lain",
-      "url": "/?tab=ai",
+      "url": "/?tab=ai&source=shortcut",
       "icons": [
         {
           "src": "/icon-192-maskable.png",
@@ -102,6 +105,13 @@
     }
   ],
   "prefer_related_applications": false,
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "https://starrynight-mplayer.vercel.app/manifest.webmanifest",
+      "id": "/starrynight-mplayer/"
+    }
+  ],
   "protocol_handlers": [
     {
       "protocol": "web+starry",

@@ -1394,23 +1394,33 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
               <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{t?.installAppDesc||'Desktop & Mobile — no app store needed'}</div>
             </div>
           </div>
-          {pwaInstalled ? (
+          {/* pwaPrompt override: jika browser kirim beforeinstallprompt, artinya belum/sudah di-uninstall */}
+          {pwaInstalled && !pwaPrompt ? (
             <div style={{ padding:'10px 14px', borderRadius:12, background:'rgba(99,102,241,0.1)', border:'1px solid rgba(99,102,241,0.25)', display:'flex', alignItems:'center', gap:10 }}>
               <span style={{ fontSize:20 }}>✅</span>
               <div>
-                <div style={{ fontSize:13, fontWeight:700, color:'#a5b4fc' }}>{t?.pwaInstalled||'Already installed!'}</div>
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:2 }}>{t?.pwaInstalledDesc||'Open from your home screen or app launcher'}</div>
+                <div style={{ fontSize:13, fontWeight:700, color:'#a5b4fc' }}>{t?.pwaInstalled||'Sudah terpasang!'}</div>
+                <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:2 }}>{t?.pwaInstalledDesc||'Buka dari layar utama atau app launcher'}</div>
               </div>
             </div>
+          ) : pwaPrompt ? (
+            /* Ada prompt tersedia — tampilkan tombol install langsung */
+            <button onClick={installPwa} style={{ width:'100%', padding:'12px 16px', borderRadius:12, border:'none', cursor:'pointer', background:'linear-gradient(135deg,#6366f1,#a855f7)', color:'white', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+              <span style={{ fontSize:16 }}>📲</span>
+              <div style={{ textAlign:'left' }}>
+                <div style={{ fontSize:13, fontWeight:800 }}>{t?.installNow||'Install Sekarang'}</div>
+                <div style={{ fontSize:10, opacity:0.8, marginTop:1 }}>Buka sebagai app — tanpa browser bar</div>
+              </div>
+            </button>
           ) : (
             <div style={{ padding:'10px 14px', borderRadius:12, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)' }}>
-              <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)', marginBottom:6 }}>{t?.pwaManualTitle||'Manual install steps:'}</div>
+              <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)', marginBottom:6 }}>{t?.pwaManualTitle||'Cara install manual:'}</div>
               <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
                 {[
-                  [t?.pwaShortcutRadio?.startsWith('🎙️') ? '📱 Chrome Android' : '📱 Chrome Android', t?.pwaStepAndroid||'Menu ⋮ → Add to Home Screen'],
+                  ['📱 Chrome Android', 'Menu ⋮ → Tambahkan ke Layar Utama'],
                   ['🍎 Safari iOS', 'Tap 🔗 → Tambahkan ke Layar Utama'],
-                  ['🖥️ Chrome Desktop', 'Klik ikon ⬇️ di address bar'],
-                  ['🖥️ Edge Desktop', 'Klik ikon ... → Apps → Install'],
+                  ['🖥️ Chrome Desktop', 'Klik ikon ⊕ di address bar'],
+                  ['🖥️ Edge Desktop', 'Klik ikon ··· → Apps → Install'],
                 ].map(([platform, step]) => (
                   <div key={platform} style={{ fontSize:11, color:'rgba(255,255,255,0.4)' }}>
                     <span style={{ color:'rgba(255,255,255,0.65)' }}>{platform}:</span> {step}

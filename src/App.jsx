@@ -746,12 +746,18 @@ export default function App() {
       setSpTrack(track);
     };
 
-    // Check permissions
-    if (typeof AudioContext !== 'undefined' || typeof webkitAudioContext !== 'undefined') {
-      startNew();
-    } else {
-      startNew();
+    // Guard: buat/resume AudioContext (singleton) saat ada user gesture agar tidak di-block browser.
+    // Beberapa browser (Safari, Chrome) suspend AudioContext jika dibuat sebelum interaksi user.
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) {
+      if (!audioCtxRef.current) {
+        try { audioCtxRef.current = new AC(); } catch (_) {}
+      }
+      if (audioCtxRef.current?.state === 'suspended') {
+        audioCtxRef.current.resume().catch(() => {});
+      }
     }
+    startNew();
   };
 
   // ── YT Search cache (sessionStorage, TTL 5 menit)
@@ -2772,6 +2778,7 @@ Return ONLY valid JSON, no explanation:
 
   // ── Refs
   const audioRef            = useRef(null);
+  const audioCtxRef         = useRef(null);   // singleton AudioContext — dibuat sekali, di-resume saat user gesture
   const hlsRef              = useRef(null);   // HLS.js instance untuk stream .m3u8
   const radioReconnectRef   = useRef(null);   // setTimeout handle untuk auto-reconnect
   const radioReconnectCount = useRef(0);       // berapa kali sudah reconnect
@@ -2792,6 +2799,30 @@ Return ONLY valid JSON, no explanation:
   useEffect(() => { repeatRef.current   = repeat;    }, [repeat]);
   useEffect(() => { tokenRef.current    = accessToken; }, [accessToken]);
   useEffect(() => { isLiteRef.current   = isLite;    }, [isLite]);
+
+  // ── AudioContext guard: unlock singleton pada interaksi user pertama
+  // Browser modern (Safari/Chrome) memblokir AudioContext yang dibuat sebelum ada gesture.
+  // Kita daftarkan satu listener 'once' — setelah itu AudioContext aman di-resume kapan saja.
+  useEffect(() => {
+    const unlock = () => {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      if (!audioCtxRef.current) {
+        try { audioCtxRef.current = new AC(); } catch (_) { return; }
+      }
+      if (audioCtxRef.current.state === 'suspended') {
+        audioCtxRef.current.resume().catch(() => {});
+      }
+    };
+    ['click', 'touchstart', 'keydown'].forEach(ev =>
+      document.addEventListener(ev, unlock, { once: true, passive: true })
+    );
+    return () => {
+      ['click', 'touchstart', 'keydown'].forEach(ev =>
+        document.removeEventListener(ev, unlock)
+      );
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Measure actual bottom nav height so portrait ring calc is always accurate
   useEffect(() => {
@@ -3026,39 +3057,107 @@ Return ONLY valid JSON, no explanation:
 
   // ── PWA Install prompt — capture beforeinstallprompt & wire up install flow
   const [pwaPrompt, setPwaPrompt] = useState(null);
-  const [pwaInstalled, setPwaInstalled] = useState(
-    () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true
-  );
-  const [pwaBannerDismissed, setPwaBannerDismissed] = useState(
-    () => localStorage.getItem('sn_pwa_dismissed') === '1'
-  );
+  const [pwaInstalled, setPwaInstalled] = useState(() => {
+    // Deteksi awal: apakah sedang berjalan dalam mode standalone (sudah install)?
+    const isStandaloneNow =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.matchMedia('(display-mode: window-controls-overlay)').matches ||
+      window.navigator.standalone === true;
+    if (isStandaloneNow) return true;
+    // Jika tidak standalone tapi localStorage bilang terpasang,
+    // anggap sudah di-uninstall → hapus flag lama
+    if (localStorage.getItem('sn_pwa_installed') === '1') {
+      localStorage.removeItem('sn_pwa_installed');
+    }
+    return false;
+  });
+  const [pwaBannerDismissed, setPwaBannerDismissed] = useState(false);
   const [pwaBannerVisible, setPwaBannerVisible] = useState(false);
 
   useEffect(() => {
+    const isStandalone = () =>
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.matchMedia('(display-mode: window-controls-overlay)').matches ||
+      window.navigator.standalone === true;
+
+    // Verifikasi status install via getInstalledRelatedApps (Chromium 85+)
+    // Ini mendeteksi uninstall yang tidak memicu event apapun
+    const checkInstalledApps = async () => {
+      if (!navigator.getInstalledRelatedApps) return;
+      try {
+        const apps = await navigator.getInstalledRelatedApps();
+        const isInstalled = apps.length > 0 || isStandalone();
+        if (!isInstalled && localStorage.getItem('sn_pwa_installed') === '1') {
+          // App hilang dari daftar installed → user uninstall tanpa event
+          localStorage.removeItem('sn_pwa_installed');
+          setPwaInstalled(false);
+          setPwaBannerDismissed(false);
+          localStorage.removeItem('sn_pwa_dismissed');
+        }
+      } catch (_) { /* API tidak tersedia di browser ini */ }
+    };
+    checkInstalledApps();
+
     const onBeforeInstall = (e) => {
       e.preventDefault();
+      // Browser fires beforeinstallprompt → app adalah NOT installed (termasuk pasca-uninstall)
+      setPwaInstalled(false);
+      localStorage.removeItem('sn_pwa_installed');
+      setPwaBannerDismissed(false);
+      localStorage.removeItem('sn_pwa_dismissed');
       setPwaPrompt(e);
       setPwaBannerVisible(true);
     };
+
     const onAppInstalled = () => {
       setPwaInstalled(true);
+      localStorage.setItem('sn_pwa_installed', '1');
       setPwaPrompt(null);
       setPwaBannerVisible(false);
+      localStorage.removeItem('sn_pwa_dismissed');
     };
+
+    // Listen perubahan display-mode (standalone → browser = uninstall di desktop)
+    const mqlStandalone = window.matchMedia('(display-mode: standalone)');
+    const mqlWCO = window.matchMedia('(display-mode: window-controls-overlay)');
+    const onDisplayModeChange = () => {
+      if (!isStandalone()) {
+        // Keluar dari standalone → kemungkinan uninstall
+        setPwaInstalled(false);
+        localStorage.removeItem('sn_pwa_installed');
+      }
+    };
+
     window.addEventListener('beforeinstallprompt', onBeforeInstall);
     window.addEventListener('appinstalled', onAppInstalled);
+    mqlStandalone.addEventListener('change', onDisplayModeChange);
+    mqlWCO.addEventListener('change', onDisplayModeChange);
     return () => {
       window.removeEventListener('beforeinstallprompt', onBeforeInstall);
       window.removeEventListener('appinstalled', onAppInstalled);
+      mqlStandalone.removeEventListener('change', onDisplayModeChange);
+      mqlWCO.removeEventListener('change', onDisplayModeChange);
     };
   }, []);
 
   const installPwa = useCallback(async () => {
     if (!pwaPrompt) return;
-    pwaPrompt.prompt();
-    const { outcome } = await pwaPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setPwaInstalled(true);
+    try {
+      pwaPrompt.prompt();
+      const { outcome } = await pwaPrompt.userChoice;
+      if (outcome === 'accepted') {
+        // appinstalled event akan menyusul — set state sekarang agar UI responsif
+        setPwaInstalled(true);
+        localStorage.setItem('sn_pwa_installed', '1');
+        setPwaPrompt(null);
+        setPwaBannerVisible(false);
+        localStorage.removeItem('sn_pwa_dismissed');
+      } else {
+        // Tolak kali ini — sembunyikan banner, tapi jangan blokir permanen
+        setPwaBannerVisible(false);
+      }
+    } catch (_) {
+      // Prompt sudah dipakai atau browser tidak mendukung — reset agar bisa dicoba lagi
       setPwaPrompt(null);
       setPwaBannerVisible(false);
     }
@@ -3752,9 +3851,36 @@ Return ONLY valid JSON, no explanation:
         const a = audioRef.current; if (!a) return;
         a.currentTime = Math.min(a.duration || 0, a.currentTime + (d?.seekOffset ?? 10));
       });
+      // seekto: OS scrub bar (lock screen / notification) menggunakan ini — tanpa handler ini
+      // drag scrub bar di notifikasi tidak akan mengubah posisi playback.
+      try {
+        navigator.mediaSession.setActionHandler('seekto', (d) => {
+          if (d?.seekTime == null) return;
+          const a = audioRef.current; if (!a) return;
+          a.currentTime = Math.max(0, Math.min(d.seekTime, a.duration || 0));
+          setProgress(a.currentTime);
+        });
+      } catch (_) { /* browser lama tidak mendukung 'seekto' */ }
+    } else if (embedTrack?.type === 'youtube') {
+      // YouTube: dukung seekto via iframe postMessage
+      try {
+        navigator.mediaSession.setActionHandler('seekto', (d) => {
+          if (d?.seekTime == null) return;
+          try {
+            ytIframeRef.current?.contentWindow.postMessage(
+              JSON.stringify({ event: 'command', func: 'seekTo', args: [d.seekTime, true] }), '*'
+            );
+          } catch (_) {}
+          setYtProgress(d.seekTime);
+          ytProgressRef.current = d.seekTime;
+        });
+      } catch (_) {}
+      try { navigator.mediaSession.setActionHandler('seekbackward', null); } catch {}
+      try { navigator.mediaSession.setActionHandler('seekforward',  null); } catch {}
     } else {
       try { navigator.mediaSession.setActionHandler('seekbackward', null); } catch {}
       try { navigator.mediaSession.setActionHandler('seekforward',  null); } catch {}
+      try { navigator.mediaSession.setActionHandler('seekto',       null); } catch {}
     }
     return () => {
       try { navigator.mediaSession.setActionHandler('play',          null); } catch {}
@@ -3764,6 +3890,7 @@ Return ONLY valid JSON, no explanation:
       try { navigator.mediaSession.setActionHandler('nexttrack',     null); } catch {}
       try { navigator.mediaSession.setActionHandler('seekbackward',  null); } catch {}
       try { navigator.mediaSession.setActionHandler('seekforward',   null); } catch {}
+      try { navigator.mediaSession.setActionHandler('seekto',        null); } catch {}
     };
   }, [track, embedTrack, globalCover, playing]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -3772,6 +3899,38 @@ Return ONLY valid JSON, no explanation:
     if (!('mediaSession' in navigator)) return;
     navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
   }, [playing]);
+
+  // ── Sync Media Session position state (untuk scrubbing di lock screen / notification)
+  // setPositionState memberitahu OS posisi & durasi saat ini sehingga scrub bar di notification
+  // bar / lock screen bekerja dengan benar — tanpa ini posisi tidak diketahui OS.
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+    if (typeof navigator.mediaSession.setPositionState !== 'function') return;
+    try {
+      if (embedTrack?.type === 'youtube') {
+        // YouTube: gunakan ytDuration & ytProgress
+        if (ytDuration > 0) {
+          navigator.mediaSession.setPositionState({
+            duration:     ytDuration,
+            playbackRate: 1,
+            position:     Math.min(ytProgress, ytDuration),
+          });
+        }
+      } else if (!track.isRadio) {
+        // Audio biasa: gunakan progress & duration dari <audio>
+        if (duration > 0) {
+          navigator.mediaSession.setPositionState({
+            duration,
+            playbackRate: audioRef.current?.playbackRate ?? 1,
+            position:     Math.min(progress, duration),
+          });
+        }
+      }
+      // Radio: tidak punya posisi/durasi — biarkan OS tidak menampilkan scrub bar
+    } catch (_) {
+      // setPositionState bisa throw jika position > duration karena race condition
+    }
+  }, [progress, duration, ytProgress, ytDuration, embedTrack, track.isRadio]);
 
 
   useEffect(() => {
@@ -10519,8 +10678,8 @@ Format exactly:
                               onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.04)'}
                               onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                               <div style={{ width:38, height:38, borderRadius:10, overflow:'hidden', flexShrink:0, display:'grid', gridTemplateColumns:'1fr 1fr', gap:1, background:'rgba(99,102,241,0.15)' }}>
-                                {covers.length>0 ? covers.slice(0,4).map((c,idx)=>{ const lbl=getSongSourceLabel(coverSongs[idx]); return (
-                                  <PlCoverImg key={idx} src={c} label={lbl?.label} labelColor={lbl?.color} labelBg={lbl?.bg} style={covers.length===1?{gridColumn:'span 2',gridRow:'span 2'}:covers.length===2&&idx>1?{display:'none'}:covers.length===3&&idx===3?{display:'none'}:{}}/>
+                                {covers.length>0 ? covers.slice(0,4).map((c,idx)=>{ return (
+                                  <PlCoverImg key={idx} src={c} style={covers.length===1?{gridColumn:'span 2',gridRow:'span 2'}:covers.length===2&&idx>1?{display:'none'}:covers.length===3&&idx===3?{display:'none'}:{}}/>
                                 ); }) : <Music size={16} style={{color:'#a78bfa',margin:'auto',gridColumn:'span 2'}}/>}
                               </div>
                               <div style={{ flex:1, minWidth:0 }}>
