@@ -1575,6 +1575,11 @@ input[type='range']::-webkit-slider-thumb {
 .layout-desktop-portrait .hw-sky  { left: 160px; }
 .layout-desktop-landscape .hw-sky { left: 196px; }
 
+/* Desktop portrait: lane markings juga harus ikut tinggi jalan yang baru (52%) */
+.layout-desktop-portrait .hw-lane-center,
+.layout-desktop-portrait .hw-lane-edge-l,
+.layout-desktop-portrait .hw-lane-edge-r  { height: 52%; }
+
 /* Desktop: geser hw-lane-center agar marka jalan berada di tengah area konten (tidak sidebar) */
 .layout-desktop-portrait .hw-lane-center  { left: 160px; }
 .layout-desktop-landscape .hw-lane-center { left: 196px; }
@@ -1586,12 +1591,47 @@ input[type='range']::-webkit-slider-thumb {
 .layout-desktop-portrait .hw-city-bg,
 .layout-desktop-portrait .hw-horizon,
 .layout-desktop-portrait .hw-neon-lights  { left: 160px; }
+
+/* Desktop portrait: perbesar ukuran jalan & naikkan cakrawala agar tidak ada celah kosong.
+   Viewport desktop portrait lebih tinggi dari mobile sehingga 42% terlalu kecil. */
+.layout-desktop-portrait .hw-road         { height: 52%; }
+.layout-desktop-portrait .hw-road-cap     { bottom: 52%; }
+.layout-desktop-portrait .hw-sky          { bottom: 52%; }
+.layout-desktop-portrait .hw-city-bg      { bottom: 52%; }
+.layout-desktop-portrait .hw-horizon      { bottom: 50%; }
+.layout-desktop-portrait .hw-neon-lights  { bottom: 52%; }
+.layout-desktop-portrait .hw-reflect      { bottom: 52%; }
 .layout-desktop-landscape .hw-road,
 .layout-desktop-landscape .hw-road-cap,
 .layout-desktop-landscape .hw-reflect,
 .layout-desktop-landscape .hw-city-bg,
 .layout-desktop-landscape .hw-horizon,
 .layout-desktop-landscape .hw-neon-lights { left: 196px; }
+
+/* ── Fullscreen desktop: sidebar hilang, semua elemen hw- kembali ke left:0 ── */
+.is-fullscreen.layout-desktop-portrait .hw-road,
+.is-fullscreen.layout-desktop-portrait .hw-road-cap,
+.is-fullscreen.layout-desktop-portrait .hw-reflect,
+.is-fullscreen.layout-desktop-portrait .hw-city-bg,
+.is-fullscreen.layout-desktop-portrait .hw-horizon,
+.is-fullscreen.layout-desktop-portrait .hw-neon-lights,
+.is-fullscreen.layout-desktop-portrait .hw-sky,
+.is-fullscreen.layout-desktop-portrait .hw-lane-center { left: 0; }
+
+.is-fullscreen.layout-desktop-landscape .hw-road,
+.is-fullscreen.layout-desktop-landscape .hw-road-cap,
+.is-fullscreen.layout-desktop-landscape .hw-reflect,
+.is-fullscreen.layout-desktop-landscape .hw-city-bg,
+.is-fullscreen.layout-desktop-landscape .hw-horizon,
+.is-fullscreen.layout-desktop-landscape .hw-neon-lights,
+.is-fullscreen.layout-desktop-landscape .hw-sky,
+.is-fullscreen.layout-desktop-landscape .hw-lane-center { left: 0; }
+
+/* Lane edges: reset ke posisi default (0% sidebar offset) */
+.is-fullscreen.layout-desktop-portrait .hw-lane-edge-l,
+.is-fullscreen.layout-desktop-landscape .hw-lane-edge-l { left:  22%; }
+.is-fullscreen.layout-desktop-portrait .hw-lane-edge-r,
+.is-fullscreen.layout-desktop-landscape .hw-lane-edge-r { right: 22%; }
 
 
 

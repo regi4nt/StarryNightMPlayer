@@ -7051,7 +7051,7 @@ Format exactly:
   ];
 
   return (
-    <div className={`${isLite ? 'lite-mode' : 'pro-mode'} layout-${layoutMode}`} style={{ position:'fixed', inset:0, overflow:'hidden', background: isLite ? '#07071a' : ({starry:'#07071a',bedroom:'#07051a',journey:'#05100a',ocean:'#040e18',fantasy:'#06041a',futurecity:'#020810',nightgarden:'#020d06',nighthighway:'#03060e',solarsystem:'#010108'}[bgTheme]||'#07071a'), color:'#f1f5f9', fontFamily:"'Segoe UI',system-ui,sans-serif", display:'flex', flexDirection:'column', userSelect:'none', WebkitTapHighlightColor:'transparent' }}>
+    <div className={`${isLite ? 'lite-mode' : 'pro-mode'} layout-${layoutMode}${fullscreen ? ' is-fullscreen' : ''}`} style={{ position:'fixed', inset:0, overflow:'hidden', background: isLite ? '#07071a' : ({starry:'#07071a',bedroom:'#07051a',journey:'#05100a',ocean:'#040e18',fantasy:'#06041a',futurecity:'#020810',nightgarden:'#020d06',nighthighway:'#03060e',solarsystem:'#010108'}[bgTheme]||'#07071a'), color:'#f1f5f9', fontFamily:"'Segoe UI',system-ui,sans-serif", display:'flex', flexDirection:'column', userSelect:'none', WebkitTapHighlightColor:'transparent' }}>
 
       {/* ══ PWA INSTALL BANNER — floating bottom, appears when installable ══ */}
       {!pwaInstalled && !pwaBannerDismissed && pwaBannerVisible && pwaPrompt && (
@@ -7413,7 +7413,8 @@ Format exactly:
             const carBot2 = `${roadH * 0.07}%`;  // lane sangat dekat, ~3-4% dari bawah
             // Posisi horizontal: jalur kiri di 28-36% dari kiri, jalur kanan di 52-62%
             const isDesk2 = layoutMode.includes('desktop');
-            const sbW2 = isDesk2 ? (ls ? SIDEBAR_W_LANDSCAPE : SIDEBAR_W_PORTRAIT) : 0;
+            // Saat fullscreen, sidebar tidak ada — sbW2 = 0
+            const sbW2 = (isDesk2 && !fullscreen) ? (ls ? SIDEBAR_W_LANDSCAPE : SIDEBAR_W_PORTRAIT) : 0;
             const laneLeftX  = `calc(${sbW2}px + 28%)`;  // jalur kiri (headlight)
             const laneRightX = `calc(${sbW2}px + 52%)`; // jalur kanan (taillight)
             // Tetesan hujan
@@ -7452,7 +7453,8 @@ Format exactly:
                 {/* Tiang lampu — tepi kiri & kanan jalan, simulasi perspektif */}
                 {(() => {
                   const isDesk = layoutMode.includes('desktop');
-                  const sbW = isDesk ? (ls ? SIDEBAR_W_LANDSCAPE : SIDEBAR_W_PORTRAIT) : 0;
+                  // Saat fullscreen, sidebar tidak ada — sbW = 0
+                  const sbW = (isDesk && !fullscreen) ? (ls ? SIDEBAR_W_LANDSCAPE : SIDEBAR_W_PORTRAIT) : 0;
                   // Posisi tiang: persentase dari lebar konten (area setelah sidebar)
                   // Tiang kiri: sbW + frac% * (100vw - sbW)
                   // Tiang kanan: 100vw - frac% * (100vw - sbW)
