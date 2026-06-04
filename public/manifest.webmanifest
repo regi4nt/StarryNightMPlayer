@@ -6,11 +6,17 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "display_override": ["window-controls-overlay", "standalone"],
+  "display_override": [
+    "window-controls-overlay",
+    "standalone"
+  ],
   "background_color": "#07071a",
   "theme_color": "#07071a",
   "orientation": "portrait",
-  "categories": ["music", "entertainment"],
+  "categories": [
+    "music",
+    "entertainment"
+  ],
   "lang": "id",
   "icons": [
     {
@@ -56,25 +62,43 @@
   ],
   "shortcuts": [
     {
-      "name": "Radio",
-      "short_name": "Radio",
-      "description": "Buka tab Radio langsung",
+      "name": "Stream",
+      "short_name": "Stream",
+      "description": "Buka tab Stream & Radio",
       "url": "/?tab=stream",
-      "icons": [{ "src": "/icon-192-maskable.png", "sizes": "192x192", "type": "image/png" }]
+      "icons": [
+        {
+          "src": "/icon-192-maskable.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     },
     {
-      "name": "Koleksi",
-      "short_name": "Koleksi",
-      "description": "Lihat koleksi & playlist",
+      "name": "Playlist",
+      "short_name": "Playlist",
+      "description": "Buka koleksi & playlist",
       "url": "/?tab=playlist",
-      "icons": [{ "src": "/icon-192-maskable.png", "sizes": "192x192", "type": "image/png" }]
+      "icons": [
+        {
+          "src": "/icon-192-maskable.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     },
     {
-      "name": "AI & Lirik",
-      "short_name": "AI",
-      "description": "Buka tab AI & lirik",
+      "name": "Other",
+      "short_name": "Other",
+      "description": "Buka tab AI, lirik & fitur lain",
       "url": "/?tab=ai",
-      "icons": [{ "src": "/icon-192-maskable.png", "sizes": "192x192", "type": "image/png" }]
+      "icons": [
+        {
+          "src": "/icon-192-maskable.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ],
   "prefer_related_applications": false,

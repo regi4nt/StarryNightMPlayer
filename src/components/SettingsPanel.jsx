@@ -1424,9 +1424,9 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
             <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginBottom:6 }}>🔗 Pintasan layar utama (setelah install):</div>
             <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
               {[
-                ['🎙️ Radio', 'Buka tab Radio langsung'],
-                ['🎵 Koleksi', 'Buka koleksi & playlist'],
-                ['🔍 Cari', 'Buka pencarian musik'],
+                ['📡 Stream', 'Buka tab Stream & Radio'],
+                ['🎵 Playlist', 'Buka koleksi & playlist'],
+                ['🤖 Other', 'Buka tab AI, lirik & fitur lain'],
               ].map(([name, desc]) => (
                 <div key={name} style={{ display:'flex', gap:8, alignItems:'center' }}>
                   <span style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.55)', minWidth:60 }}>{name}</span>

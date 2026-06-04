@@ -98,11 +98,38 @@ const HEADER_H_LANDSCAPE  = 34;   // header height for mobile-landscape (slimmer
 
 
 // Playlist cover grid cell dengan fallback
-function PlCoverImg({ src, style }) {
+function PlCoverImg({ src, style, label, labelColor, labelBg }) {
   const [err, setErr] = React.useState(false);
   React.useEffect(() => { setErr(false); }, [src]);
-  if (err) return <div style={{ width:'100%', height:'100%', background:'rgba(99,102,241,0.2)', ...style }}/>;
-  return <img src={src} loading="lazy" decoding="async" style={{ width:'100%', height:'100%', objectFit:'cover', ...style }} onError={()=>setErr(true)}/>;
+  const inner = err
+    ? <div style={{ width:'100%', height:'100%', background:'rgba(99,102,241,0.2)' }}/>
+    : <img src={src} loading="lazy" decoding="async" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={()=>setErr(true)}/>;
+  if (!label) return <div style={{ width:'100%', height:'100%', position:'relative', overflow:'hidden', ...style }}>{inner}</div>;
+  return (
+    <div style={{ width:'100%', height:'100%', position:'relative', overflow:'hidden', ...style }}>
+      {inner}
+      <span style={{
+        position:'absolute', bottom:1, right:1,
+        fontSize:6, fontWeight:800, lineHeight:1,
+        padding:'1px 2.5px', borderRadius:3,
+        background: labelBg || 'rgba(0,0,0,0.72)',
+        color: labelColor || '#fff',
+        letterSpacing:'0.02em',
+        pointerEvents:'none',
+        backdropFilter:'blur(2px)',
+      }}>{label}</span>
+    </div>
+  );
+}
+
+// Helper: source label info from song object
+function getSongSourceLabel(s) {
+  if (!s) return null;
+  if (s.type === 'youtube' || s.videoId) return { label:'YT', color:'#fff', bg:'rgba(220,38,38,0.9)' };
+  if (s.isRadio) return { label:'Radio', color:'#fff', bg:'rgba(217,119,6,0.9)' };
+  if (s.isDrive || s.driveId) return { label:'Drive', color:'#fff', bg:'rgba(14,165,233,0.9)' };
+  if (s._wsSource) return { label:'Web', color:'#fff', bg:'rgba(124,58,237,0.9)' };
+  return null;
 }
 
 export default function App() {
@@ -10316,7 +10343,8 @@ Format exactly:
                             <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
                               {matchedPl.map(pl => {
                                 const songs = allSongs.filter(s=>pl.songIds.includes(s.id));
-                                const covers = songs.slice(0,4).map(s=>s.cover||s.thumbnail||s.favicon).filter(Boolean);
+                                const coverSongs = songs.slice(0,4);
+                                const covers = coverSongs.map(s=>s.cover||s.thumbnail||s.favicon).filter(Boolean);
                                 const isActivePl = activePl===pl.id;
                                 return (
                                   <div key={pl.id} onClick={()=>{ setActivePl(pl.id); setPlView('detail'); setPlGlobalSearch(''); }}
@@ -10324,9 +10352,9 @@ Format exactly:
                                     onMouseEnter={e=>e.currentTarget.style.background='rgba(99,102,241,0.1)'}
                                     onMouseLeave={e=>e.currentTarget.style.background=isActivePl?'rgba(99,102,241,0.12)':'rgba(255,255,255,0.04)'}>
                                     <div style={{ width:36, height:36, borderRadius:9, overflow:'hidden', flexShrink:0, display:'grid', gridTemplateColumns:'1fr 1fr', gap:1, background:'rgba(99,102,241,0.15)' }}>
-                                      {covers.length>0 ? covers.slice(0,4).map((c,idx)=>(
-                                        <PlCoverImg key={idx} src={c} style={covers.length===1?{gridColumn:'span 2',gridRow:'span 2'}:covers.length===2&&idx>1?{display:'none'}:covers.length===3&&idx===3?{display:'none'}:{}}/>
-                                      )) : <Music size={15} style={{color:'#a78bfa',margin:'auto',gridColumn:'span 2'}}/>}
+                                      {covers.length>0 ? covers.slice(0,4).map((c,idx)=>{ const lbl=getSongSourceLabel(coverSongs[idx]); return (
+                                        <PlCoverImg key={idx} src={c} label={lbl?.label} labelColor={lbl?.color} labelBg={lbl?.bg} style={covers.length===1?{gridColumn:'span 2',gridRow:'span 2'}:covers.length===2&&idx>1?{display:'none'}:covers.length===3&&idx===3?{display:'none'}:{}}/>
+                                      ); }) : <Music size={15} style={{color:'#a78bfa',margin:'auto',gridColumn:'span 2'}}/>}
                                     </div>
                                     <div style={{ flex:1, minWidth:0 }}>
                                       <div style={{ fontWeight:700, fontSize:13, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'white' }}>{pl.name}</div>
@@ -10482,7 +10510,8 @@ Format exactly:
                       {playlists.map(pl => {
                         const songs = allSongs.filter(s=>pl.songIds.includes(s.id));
                         const isActivePl = activePl===pl.id;
-                        const covers = songs.slice(0,4).map(s=>s.cover||s.thumbnail||s.favicon).filter(Boolean);
+                        const coverSongs = songs.slice(0,4);
+                        const covers = coverSongs.map(s=>s.cover||s.thumbnail||s.favicon).filter(Boolean);
                         return (
                           <div key={pl.id} style={{ borderRadius:14, background: isActivePl?'rgba(99,102,241,0.12)':'rgba(255,255,255,0.03)', border:`1px solid ${isActivePl?'rgba(99,102,241,0.35)':'rgba(255,255,255,0.08)'}`, overflow:'hidden' }}>
                             <div onClick={()=>{ setActivePl(pl.id); setPlView('detail'); }}
@@ -10490,9 +10519,9 @@ Format exactly:
                               onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.04)'}
                               onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                               <div style={{ width:38, height:38, borderRadius:10, overflow:'hidden', flexShrink:0, display:'grid', gridTemplateColumns:'1fr 1fr', gap:1, background:'rgba(99,102,241,0.15)' }}>
-                                {covers.length>0 ? covers.slice(0,4).map((c,idx)=>(
-                                  <PlCoverImg key={idx} src={c} style={covers.length===1?{gridColumn:'span 2',gridRow:'span 2'}:covers.length===2&&idx>1?{display:'none'}:covers.length===3&&idx===3?{display:'none'}:{}}/>
-                                )) : <Music size={16} style={{color:'#a78bfa',margin:'auto',gridColumn:'span 2'}}/>}
+                                {covers.length>0 ? covers.slice(0,4).map((c,idx)=>{ const lbl=getSongSourceLabel(coverSongs[idx]); return (
+                                  <PlCoverImg key={idx} src={c} label={lbl?.label} labelColor={lbl?.color} labelBg={lbl?.bg} style={covers.length===1?{gridColumn:'span 2',gridRow:'span 2'}:covers.length===2&&idx>1?{display:'none'}:covers.length===3&&idx===3?{display:'none'}:{}}/>
+                                ); }) : <Music size={16} style={{color:'#a78bfa',margin:'auto',gridColumn:'span 2'}}/>}
                               </div>
                               <div style={{ flex:1, minWidth:0 }}>
                                 <div style={{ fontWeight:700, fontSize:13, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'white' }}>{pl.name}</div>
