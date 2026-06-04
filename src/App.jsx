@@ -7364,7 +7364,7 @@ Format exactly:
                 {trees.map((t,i) => {
                   const sz = Math.round(t.s * treeScale);
                   return (
-                    <div key={i} className={`garden-tree ${t.sway}`} style={{ left:t.l, bottom:treeBot, animationDelay:`${t.delay}s` }}>
+                    <div key={i} className={`garden-tree ${t.sway}`} style={{ left:t.l, bottom:treeBot }}>
                       <div className="crown" style={{ width:sz, height:sz }}/>
                       <div className="trunk" style={{ height: Math.round(sz*0.48) }}/>
                     </div>
@@ -7381,7 +7381,7 @@ Format exactly:
                 <div className="garden-mist2"/>
                 <div className="garden-mist"/>
                 {[{ l:'18%', delay:'0s' }, { l:'48%', delay:'2s' }, { l:'72%', delay:'4s' }].map((ln,i) => (
-                  <div key={i} className="garden-lantern" style={{ left:ln.l, bottom:lanternBot, position:'absolute', animationDelay:ln.delay }}>
+                  <div key={i} className="garden-lantern" style={{ left:ln.l, bottom:lanternBot, position:'absolute' }}>
                     <div className="lantern-cap"/>
                     <div className="lantern-body"/>
                     <div className="lantern-pole"/>
@@ -7391,13 +7391,11 @@ Format exactly:
                   <div key={i} className="gfw" style={{
                     top:f.top, left:f.left,
                     '--fx':f.fx, '--fy':f.fy,
-                    animationDelay:f.delay, animationDuration:f.dur,
                   }}/>
                 ))}
                 {moonDust.map((d,i) => (
                   <div key={i} className="garden-dust" style={{
                     top:d.top, left:d.left, '--fx':'4px', '--fy':'-6px',
-                    animationDelay:d.delay, animationDuration:d.dur,
                   }}/>
                 ))}
               </>
@@ -7498,8 +7496,6 @@ Format exactly:
                     <div key={i} className="hw-rain-drop" style={{
                       left:d.left, height:d.height,
                       opacity:d.opacity,
-                      animationDuration:d.dur,
-                      animationDelay:d.delay,
                     }}/>
                   ))}
                 </div>
@@ -7564,19 +7560,18 @@ Format exactly:
               <>
                 <div className="stars"/><div className="starsB"/><div className="starsC"/>
                 {clusters.map((c,i) => (
-                  <div key={i} className="ss-cluster" style={{ top:c.top, left:c.left, width:c.w, height:c.h, animationDelay:`${i*5}s` }}/>
+                  <div key={i} className="ss-cluster" style={{ top:c.top, left:c.left, width:c.w, height:c.h }}/>
                 ))}
-                <div className="ss-nebula" style={{ width:Math.round(340*nebS), height:Math.round(240*nebS), left:'-2%', top:'3%',  background:'radial-gradient(ellipse, rgba(80,25,200,0.22) 0%, rgba(50,10,140,0.08) 55%, transparent 75%)', animationDelay:'0s' }}/>
-                <div className="ss-nebula" style={{ width:Math.round(280*nebS), height:Math.round(190*nebS), right:'-1%', top:'35%', background:'radial-gradient(ellipse, rgba(200,25,85,0.18) 0%, rgba(140,10,55,0.07) 55%, transparent 75%)', animationDelay:'7s' }}/>
-                <div className="ss-nebula" style={{ width:Math.round(240*nebS), height:Math.round(160*nebS), left:'32%', bottom:'3%', background:'radial-gradient(ellipse, rgba(25,90,200,0.16) 0%, rgba(10,55,140,0.06) 55%, transparent 75%)', animationDelay:'3s' }}/>
-                <div className="ss-nebula" style={{ width:Math.round(200*nebS), height:Math.round(140*nebS), right:'20%', top:'8%', background:'radial-gradient(ellipse, rgba(0,180,180,0.12) 0%, transparent 70%)', animationDelay:'11s' }}/>
+                <div className="ss-nebula" style={{ width:Math.round(340*nebS), height:Math.round(240*nebS), left:'-2%', top:'3%',  background:'radial-gradient(ellipse, rgba(80,25,200,0.22) 0%, rgba(50,10,140,0.08) 55%, transparent 75%)' }}/>
+                <div className="ss-nebula" style={{ width:Math.round(280*nebS), height:Math.round(190*nebS), right:'-1%', top:'35%', background:'radial-gradient(ellipse, rgba(200,25,85,0.18) 0%, rgba(140,10,55,0.07) 55%, transparent 75%)' }}/>
+                <div className="ss-nebula" style={{ width:Math.round(240*nebS), height:Math.round(160*nebS), left:'32%', bottom:'3%', background:'radial-gradient(ellipse, rgba(25,90,200,0.16) 0%, rgba(10,55,140,0.06) 55%, transparent 75%)' }}/>
+                <div className="ss-nebula" style={{ width:Math.round(200*nebS), height:Math.round(140*nebS), right:'20%', top:'8%', background:'radial-gradient(ellipse, rgba(0,180,180,0.12) 0%, transparent 70%)' }}/>
                 <div className="ss-sun" style={{ width:sunS, height:sunS, left:sunX, top:sunY, transform:'translate(-50%,-50%)' }}/>
                 {rings.map((r,i) => {
                   const hasPlanet = [2,3,4,5,7].includes(i);
                   return (
                     <div key={i} className="ss-ring" style={{
                       width:r*2, height:r*2, left:sunX, top:sunY,
-                      animationDelay:`${i*2.5}s`,
                       opacity: hasPlanet ? Math.max(0.22, 0.60 - i*0.04) : Math.max(0.06, 0.25 - i*0.03),
                       borderWidth: hasPlanet ? '1.5px' : '1px',
                     }}/>
@@ -7593,13 +7588,11 @@ Format exactly:
                 {asteroids.map((a,i) => (
                   <div key={i} className="ss-asteroid" style={{
                     width:a.w, height:a.h, top:a.top, left:a.left,
-                    animationDuration:a.dur, animationDelay:a.delay,
                   }}/>
                 ))}
                 {shootings.map((s,i) => (
                   <div key={i} className="ss-shooting" style={{
                     top:s.top, left:s.left, width:s.w,
-                    animationDuration:s.dur, animationDelay:s.delay,
                   }}/>
                 ))}
               </>

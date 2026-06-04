@@ -6,6 +6,8 @@ import { btn, fmt } from '../constants.js';
 // Mengembalikan blob URL yang sudah di-crop. Untuk data: URL (upload lokal)
 // yang sudah diproses di SettingsPanel, langsung dikembalikan apa adanya.
 function useCroppedCover(src) {
+  // Fix 3: initialise dengan src agar tidak blank, tapi jangan panggil
+  // setCropped(src) lagi di dalam efek — cukup satu kali lewat useState(src).
   const [cropped, setCropped] = useState(src);
   const prevBlobRef = useRef(null);
 
@@ -21,15 +23,15 @@ function useCroppedCover(src) {
     // data: URL sudah di-crop di SettingsPanel — pakai langsung
     if (src.startsWith('data:')) { setCropped(src); return; }
 
-    // Tampilkan sumber asli dulu (agar tidak blank saat load)
-    setCropped(src);
+    // Jangan setCropped(src) di sini — cukup tampilkan yang sudah ada di state
+    // (jika src berubah, state awal sudah di-set lewat useState(src) / re-render).
 
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
       const { naturalWidth: w, naturalHeight: h } = img;
-      // Sudah square — tidak perlu crop
-      if (w === h) return;
+      // Sudah square — tidak perlu crop; pertahankan nilai state saat ini
+      if (w === h) { setCropped(src); return; }
 
       const side = Math.min(w, h);
       const sx   = Math.floor((w - side) / 2);
@@ -46,10 +48,11 @@ function useCroppedCover(src) {
         if (!blob) return;
         const url = URL.createObjectURL(blob);
         prevBlobRef.current = url;
+        // Satu-satunya setCropped dalam jalur ini — hanya setelah crop selesai
         setCropped(url);
       }, 'image/jpeg', 0.92);
     };
-    // Gagal load (CORS, 404) — tetap pakai src asli
+    // Gagal load (CORS, 404) — pertahankan src asli
     img.onerror = () => setCropped(src);
     img.src = src;
 
@@ -173,30 +176,49 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
     return Math.round(Math.atan2(b, a) * (180 / Math.PI));
   };
 
+  // Fix 2: Gunakan Web Animations API (WAAPI) sebagai pengganti el.style.animation.
+  // WAAPI berjalan murni di compositor thread dan tidak di-reset saat parent re-render.
+  const waapiRef = useRef(null); // menyimpan referensi Animation object
+
   useEffect(() => {
     const el = coverRef.current;
     if (!el) return;
 
     if (!shouldSpin) {
-      // Nonaktifkan: freeze di posisi 0
-      el.style.animation = 'none';
+      // Nonaktifkan: batalkan animasi WAAPI dan freeze di posisi 0
+      if (waapiRef.current) { waapiRef.current.cancel(); waapiRef.current = null; }
       el.style.transform = '';
       return;
     }
 
     if (isPlaying) {
-      // Ambil sudut saat ini (bisa dari freeze sebelumnya atau dari animasi)
+      if (waapiRef.current) {
+        // Sudah ada animasi yang berjalan — lanjutkan saja (jangan buat ulang)
+        if (waapiRef.current.playState === 'paused') {
+          waapiRef.current.play();
+        }
+        return;
+      }
+      // Buat animasi baru mulai dari sudut saat ini
       const angle = getCurrentAngle(el);
-      // Hitung delay negatif agar animasi CSS mulai dari sudut tersebut
-      // 36s = 1 putaran penuh, jadi delay = -(angle/360)*36s
-      const delay = -((((angle % 360) + 360) % 360) / 360) * 36;
-      el.style.transform = '';
-      el.style.animation = `spin20 36s linear ${delay}s infinite`;
+      const startDeg = ((angle % 360) + 360) % 360;
+      const anim = el.animate(
+        [
+          { transform: `rotate(${startDeg}deg)` },
+          { transform: `rotate(${startDeg + 360}deg)` },
+        ],
+        { duration: 36000, iterations: Infinity, easing: 'linear' }
+      );
+      waapiRef.current = anim;
+      el.style.transform = ''; // biarkan WAAPI yang mengontrol
     } else {
-      // Freeze: baca posisi dari compositor, hentikan animasi CSS
-      const angle = getCurrentAngle(el);
-      el.style.animation = 'none';
-      el.style.transform = `rotate(${angle}deg)`;
+      // Pause: freeze di posisi compositor, hentikan WAAPI
+      if (waapiRef.current) {
+        const angle = getCurrentAngle(el);
+        waapiRef.current.cancel();
+        waapiRef.current = null;
+        el.style.transform = `rotate(${angle}deg)`;
+      }
     }
   }, [isPlaying, shouldSpin]); // eslint-disable-line
 
@@ -347,6 +369,31 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
     </div>
   );
 }
+
+// ═══════════════════════════════════════════════════════
+//  React.memo wrapper untuk OrbitalRing
+//  Fix 1: areEqual mengabaikan `progress` (detik mentah yang berubah tiap detik)
+//  dan hanya membandingkan `pct` (0–1, dibulatkan ke 4 desimal) untuk arc.
+//  Ini mencegah re-render setiap tick timer saat pct belum berubah secara visual.
+// ═══════════════════════════════════════════════════════
+function orbitalEqual(prev, next) {
+  // Prop-prop yang memicu visual change selain pct
+  const keys = ['size','color','duration','isPlaying','cover','title','onSeek',
+                 'isLite','isRadio','downloadProg','isDownloading',
+                 'drivePhase','ytDownloading','ytDlProg','coverSpin'];
+  for (const k of keys) {
+    if (prev[k] !== next[k]) return false;
+  }
+  // pct: arc SVG — bandingkan dengan presisi 4 desimal (≈ 0.3 px pada ring Ø 300)
+  const prevPct = Math.round((prev.pct ?? 0) * 1e4);
+  const nextPct = Math.round((next.pct ?? 0) * 1e4);
+  if (prevPct !== nextPct) return false;
+  // `progress` (detik mentah) sengaja DIABAIKAN — hanya dipakai untuk label fmt()
+  // di dalam komponen, tidak mempengaruhi geometri arc.
+  return true;
+}
+
+OrbitalRing = React.memo(OrbitalRing, orbitalEqual);
 
 // ═══════════════════════════════════════════════════════
 //  SONG ROW
