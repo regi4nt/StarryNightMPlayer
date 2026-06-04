@@ -7701,8 +7701,11 @@ Format exactly:
           <div style={{ width:24, height:1, background:'rgba(255,255,255,0.07)', margin:'3px 0' }}/>
           {/* Mini album art */}
           {tab !== 'player' && (
-            <div onClick={()=>setTab('player')} style={{ width:38, height:38, borderRadius:10, overflow:'hidden', cursor:'pointer', marginBottom:4, border:`2px solid ${track.color}40`, flexShrink:0 }}>
-              {(isLite || !track.isDrive) ? <div style={{ width:'100%', height:'100%', background:track.bg||`${track.color}25`, display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={14} color={track.color}/></div> : <img src={getCover(track)} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>}
+            <div onClick={()=>setTab('player')} style={{ width:38, height:38, borderRadius:10, overflow:'hidden', cursor:'pointer', marginBottom:4, border:`2px solid ${embedTrack?(embedTrack.type==='soundcloud'?'#ff550040':'#ff444440'):track.color+'40'}`, flexShrink:0 }}>
+              {embedTrack
+                ? <div style={{ width:'100%', height:'100%', background:embedTrack.type==='soundcloud'?'rgba(255,85,0,0.2)':'rgba(255,68,68,0.2)', display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={14} color={embedTrack.type==='soundcloud'?'#ff5500':'#ff4444'}/></div>
+                : (isLite || !track.isDrive) ? <div style={{ width:'100%', height:'100%', background:track.bg||`${track.color}25`, display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={14} color={track.color}/></div> : <img src={getCover(track)} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+              }
             </div>
           )}
           {tabs.map(t=>{
@@ -7738,7 +7741,7 @@ Format exactly:
           {tab !== 'player' && (
             <div onClick={()=>setTab('player')} style={{ margin:'0 0 8px', padding:'9px 10px', borderRadius:12, background:embedTrack?'rgba(255,68,68,0.1)':track.isRadio?`${track.color}14`:`${track.color}12`, border:`1px solid ${embedTrack?'rgba(255,68,68,0.3)':track.color+'30'}`, cursor:'pointer', display:'flex', alignItems:'center', gap:8 }}>
               {embedTrack
-                ? <div style={{ width:30, height:30, borderRadius:7, background:'rgba(255,68,68,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:12 }}>▶</div>
+                ? <div style={{ width:30, height:30, borderRadius:7, background: embedTrack.type==='soundcloud'?'rgba(255,85,0,0.2)':'rgba(255,68,68,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Music size={13} color={embedTrack.type==='soundcloud'?'#ff5500':'#ff4444'}/></div>
                 : track.isRadio
                   ? <div style={{ width:30, height:30, borderRadius:7, background:`${track.color}25`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, position:'relative' }}>
                       <Radio size={13} color={track.color}/>
@@ -8501,7 +8504,7 @@ Format exactly:
                             </div>
                           )}
                           {!loading && results.length > 0 && (
-                            <div style={{ borderTop:'1px solid rgba(255,255,255,0.07)', overflow:'hidden' }}>
+                            <div style={{ borderTop:'1px solid rgba(255,255,255,0.07)' }}>
                               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 10px 4px' }}>
                                 <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)', fontWeight:600 }}>{results.length} hasil</span>
                                 <button onClick={() => { setYtResults(p=>({...p,ytmusic:[]})); setYtQuery(p=>({...p,ytmusic:''})); setUnifiedQuery(''); }}
@@ -8509,7 +8512,7 @@ Format exactly:
                                   ✕ Tutup
                                 </button>
                               </div>
-                              <div style={{ padding:'0 8px 8px', display:'flex', flexDirection:'column', gap:4 }}>
+                              <div style={{ padding:'0 8px 8px', display:'flex', flexDirection:'column', gap:4, maxHeight:'360px', overflowY:'auto' }}>
                                 {results[0]?.resultType === 'channel' && results.map((v, vi) => (
                                   <a key={v.channelId||vi} href={v.channelUrl} target="_blank" rel="noopener noreferrer"
                                     style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', textDecoration:'none' }}
@@ -8611,7 +8614,7 @@ Format exactly:
                             <div style={{ fontSize:11, color:'#fca5a5', padding:'8px 10px', borderRadius:8, background:'rgba(239,68,68,0.1)', marginBottom:8 }}>{wsError}</div>
                           )}
                           {!wsLoading && wsResults.length > 0 && (
-                            <div style={{ borderTop:'1px solid rgba(255,255,255,0.07)', overflow:'hidden' }}>
+                            <div style={{ borderTop:'1px solid rgba(255,255,255,0.07)' }}>
                               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 10px 4px' }}>
                                 <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)', fontWeight:600 }}>{wsResults.length} sumber</span>
                                 <button onClick={() => { setWsResults([]); setWsQuery(''); setUnifiedQuery(''); setWsEmbedUrl(null); setWsError(null); }}
@@ -8619,7 +8622,7 @@ Format exactly:
                                   ✕ Tutup
                                 </button>
                               </div>
-                              <div style={{ padding:'0 8px 8px', display:'flex', flexDirection:'column', gap:4 }}>
+                              <div style={{ padding:'0 8px 8px', display:'flex', flexDirection:'column', gap:4, maxHeight:'360px', overflowY:'auto' }}>
                                 {[...wsResults].sort((a,b) => {
                                   const order = ['jamendo','audius','ccmixter','fma','deezer','soundcloud','spotify'];
                                   const ai = order.indexOf(a.source); const bi = order.indexOf(b.source);
@@ -12099,7 +12102,10 @@ Format exactly:
             <div onClick={()=>setTab('player')} style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 14px 6px', cursor:'pointer', borderBottom:'1px solid rgba(255,255,255,0.06)', background: embedTrack ? 'rgba(255,68,68,0.07)' : `${track.color}0a` }}>
               {/* Cover / icon */}
               {embedTrack
-                ? <div style={{ width:36, height:36, borderRadius:9, background:'rgba(255,68,68,0.18)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:14 }}>▶</div>
+                ? (() => {
+                    const etColor = embedTrack.type === 'youtube' ? '#ff4444' : embedTrack.type === 'soundcloud' ? '#ff5500' : '#6366f1';
+                    return <div style={{ width:36, height:36, borderRadius:9, background:etColor+'22', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Music size={15} color={etColor}/></div>;
+                  })()
                 : track.isRadio
                   ? <div style={{ width:36, height:36, borderRadius:9, background:`${track.color}25`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, position:'relative' }}>
                       <Radio size={15} color={track.color}/>
