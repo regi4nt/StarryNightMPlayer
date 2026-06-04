@@ -1464,17 +1464,26 @@ input[type='range']::-webkit-slider-thumb {
     #0d1828 90%,
     rgba(30,14,8,0.95) 100%);
   pointer-events:none;
+  overflow:visible;
 }
-/* Penyambung jalan ke cakrawala — blur tepi atas jalan agar transisi halus */
-.hw-road-cap {
-  position:absolute; bottom:42%; left:0; right:0; height:6%;
-  background:linear-gradient(to top,
-    rgba(10,14,26,0.95) 0%,
-    rgba(10,14,26,0.70) 30%,
-    rgba(10,14,26,0.30) 65%,
-    rgba(10,14,26,0) 100%);
+/* Blur tepi atas jalan — transisi kabur antara jalan dan langit */
+.hw-road::after {
+  content:''; position:absolute; left:0; right:0; top:0; height:30%;
+  background:linear-gradient(to bottom,
+    rgba(12,20,36,0.85) 0%,
+    rgba(10,16,30,0.40) 50%,
+    transparent 100%);
   filter: blur(6px);
-  pointer-events:none; z-index:2;
+  pointer-events:none;
+  z-index:1;
+}
+/* Penyambung jalan ke cakrawala — mengisi celah antara ujung hw-road dan hw-city-bg */
+.hw-road-cap {
+  position:absolute; bottom:42%; left:0; right:0; height:3%;
+  background:linear-gradient(to top,
+    #0a1222 0%,
+    rgba(10,18,34,0) 100%);
+  pointer-events:none; z-index:0;
 }
 /* Tekstur aspal — grain halus */
 .hw-road::before {
@@ -1867,20 +1876,20 @@ input[type='range']::-webkit-slider-thumb {
 .layout-mobile-landscape .hw-lane-edge-r,
 .layout-desktop-landscape .hw-lane-edge-r { height:50%; }
 
-/* Mobile portrait: tempatkan horizon TEPAT di batas langit-jalan (bottom:42%)
-   agar cahaya orange muncul di cakrawala, bukan di tengah jalan */
+/* Mobile portrait: cahaya orange tepat di cakrawala (garis batas jalan-langit = 42%) */
 .layout-mobile-portrait .hw-horizon {
-  bottom: 40%;
+  bottom: 39%;
   height: 14%;
   filter: blur(3px);
+  z-index: 2;
 }
 .layout-mobile-portrait .hw-city-bg {
-  bottom: 40%;
-  height: 14%;
+  bottom: 38%;
+  height: 18%;
 }
 .layout-mobile-portrait .hw-neon-lights {
   bottom: 40%;
-  height: 12%;
+  height: 13%;
 }
 
 /* Portrait: penyambung jalan ke cakrawala tetap di bottom:42% (default sudah benar) */
@@ -1888,12 +1897,10 @@ input[type='range']::-webkit-slider-thumb {
 .layout-mobile-landscape .hw-road-cap,
 .layout-desktop-landscape .hw-road-cap   { bottom:50%; }
 
-/* Mobile portrait: road-cap blur tepi jalan ke cakrawala */
+/* Mobile portrait: perbesar road-cap agar transisi jalan-ke-langit lebih halus */
 .layout-mobile-portrait .hw-road-cap {
-  bottom: 40%;
-  height: 7%;
-  background: linear-gradient(to top, rgba(10,14,26,0.95) 0%, rgba(10,14,26,0.55) 40%, rgba(10,14,26,0) 100%);
-  filter: blur(7px);
+  height: 6%;
+  background: linear-gradient(to top, #0a1222 0%, rgba(10,18,34,0.5) 50%, rgba(10,18,34,0) 100%);
 }
 
 /* ── MOBILE PORTRAIT: highway adjustments ── */

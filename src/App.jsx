@@ -7641,7 +7641,7 @@ Format exactly:
 
       {/* Mobile Landscape — vertical icon nav on left */}
       {layoutMode === 'mobile-landscape' && !fullscreen && (
-        <div data-side-nav-mobile style={{ width:52, flexShrink:0, borderRight:'1px solid rgba(255,255,255,0.07)', background:'rgba(0,0,0,0.25)', display:'flex', flexDirection:'column', alignItems:'center', padding:'6px 0 10px', gap:2 }}>
+        <div style={{ width:52, flexShrink:0, borderRight:'1px solid rgba(255,255,255,0.07)', background:'rgba(0,0,0,0.25)', display:'flex', flexDirection:'column', alignItems:'center', padding:'6px 0 10px', gap:2 }}>
           <button onClick={()=>setTab('player')} style={{ width:42, height:42, borderRadius:12, border:'none', cursor:'pointer', background:tab==='player'?`${track.color}25`:'transparent', color:tab==='player'?track.color:'rgba(255,255,255,0.35)', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:1, position:'relative' }}>
             <Compass size={18}/>
             {tab==='player'&&<div style={{ position:'absolute', right:4, top:'50%', transform:'translateY(-50%)', width:3, height:16, borderRadius:999, background:track.color }}/>}
@@ -7676,7 +7676,7 @@ Format exactly:
 
       {/* Desktop left sidebar nav */}
       {(layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait') && !fullscreen && (
-        <div data-sidebar style={{ width: layoutMode === 'desktop-portrait' ? SIDEBAR_W_PORTRAIT : SIDEBAR_W_LANDSCAPE, flexShrink:0, borderRight:'1px solid rgba(255,255,255,0.07)', background:'rgba(0,0,0,0.18)', display:'flex', flexDirection:'column', padding: layoutMode === 'desktop-portrait' ? '8px 6px 12px' : '10px 8px 16px', gap:3 }}>
+        <div style={{ width: layoutMode === 'desktop-portrait' ? SIDEBAR_W_PORTRAIT : SIDEBAR_W_LANDSCAPE, flexShrink:0, borderRight:'1px solid rgba(255,255,255,0.07)', background:'rgba(0,0,0,0.18)', display:'flex', flexDirection:'column', padding: layoutMode === 'desktop-portrait' ? '8px 6px 12px' : '10px 8px 16px', gap:3 }}>
           {/* Player nav item — always at top */}
           <button onClick={()=>setTab('player')} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:12, border:'none', cursor:'pointer', background:tab==='player'?`${track.color}20`:'transparent', color:tab==='player'?track.color:'rgba(255,255,255,0.4)', textAlign:'left', width:'100%', fontSize:13, fontWeight:tab==='player'?700:500 }}>
             <Compass size={17}/><span>Player</span>
@@ -11780,7 +11780,7 @@ Format exactly:
 
       {/* ══ BOTTOM NAV — Mobile Portrait only */}
       {layoutMode === 'mobile-portrait' && !fullscreen && (
-        <div ref={bottomNavRef} data-bottom-nav style={{ position:'relative', zIndex:10, flexShrink:0, display:'flex', flexDirection:'column', background:'rgba(0,0,0,0.18)', borderTop:'1px solid rgba(255,255,255,0.08)' }}>
+        <div ref={bottomNavRef} style={{ position:'relative', zIndex:10, flexShrink:0, display:'flex', flexDirection:'column', background:'rgba(0,0,0,0.18)', borderTop:'1px solid rgba(255,255,255,0.08)' }}>
 
           {/* Mini Now-Playing Bar — visible when NOT on player tab */}
           {tab !== 'player' && (
@@ -11902,36 +11902,16 @@ Format exactly:
         input::placeholder{color:rgba(148,163,184,0.35)}
         input[type=range]{cursor:pointer;height:4px;border-radius:999px}
 
-        /* ══ NAVBAR & SIDEBAR: tema tidak tembus ke dalam UI chrome ══ */
-        header {
-          background: rgba(4,4,18,0.72) !important;
-          backdrop-filter: blur(18px) !important;
-          -webkit-backdrop-filter: blur(18px) !important;
-        }
-        [data-sidebar] {
-          background: rgba(4,4,18,0.68) !important;
-          backdrop-filter: blur(16px) !important;
-          -webkit-backdrop-filter: blur(16px) !important;
-        }
-        [data-bottom-nav] {
-          background: rgba(4,4,18,0.72) !important;
-          backdrop-filter: blur(18px) !important;
-          -webkit-backdrop-filter: blur(18px) !important;
-        }
-        [data-side-nav-mobile] {
-          background: rgba(4,4,18,0.68) !important;
-          backdrop-filter: blur(16px) !important;
-          -webkit-backdrop-filter: blur(16px) !important;
-        }
-
         /* ══ LAYOUT MODE — Mobile Portrait ══ */
         .layout-mobile-portrait header {
-          background: rgba(4,4,18,0.72) !important;
+          background: rgba(0,0,0,0.18);
+          
         }
 
         /* ══ LAYOUT MODE — Mobile Landscape ══ */
         .layout-mobile-landscape header {
-          background: rgba(4,4,18,0.72) !important;
+          background: rgba(0,0,0,0.18);
+          
           border-bottom-color: rgba(255,255,255,0.05);
         }
         /* In mobile-landscape: player inner layout is row, ring left, controls right */
@@ -11941,16 +11921,19 @@ Format exactly:
 
         /* ══ LAYOUT MODE — Desktop Portrait ══ */
         .layout-desktop-portrait header {
-          background: rgba(4,4,18,0.72) !important;
+          background: rgba(0,0,0,0.18);
+          
           border-bottom: 1px solid rgba(255,255,255,0.05);
         }
+        /* Desktop portrait sidebar gets a subtle gradient separator */
         .layout-desktop-portrait [data-sidebar] {
-          background: rgba(4,4,18,0.68) !important;
+          background: linear-gradient(180deg, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.12) 100%);
         }
 
         /* ══ LAYOUT MODE — Desktop Landscape ══ */
         .layout-desktop-landscape header {
-          background: rgba(4,4,18,0.72) !important;
+          background: rgba(0,0,0,0.18);
+          
           border-bottom: 1px solid rgba(99,102,241,0.12);
           box-shadow: 0 1px 0 rgba(99,102,241,0.06);
         }
@@ -11969,7 +11952,7 @@ Format exactly:
           .lite-mode input[type=range]::-moz-range-thumb{box-shadow:none!important}
           .lite-mode input[type=range]::-ms-thumb{box-shadow:none!important}
           /* Matikan backdrop-filter dari layout-mode header rules */
-          .lite-mode header{background:rgba(4,4,18,0.82)!important}
+          .lite-mode header{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:rgba(0,0,0,0.18)!important}
           /* Matikan box-shadow glow dekoratif di tombol */
           .lite-mode button{box-shadow:none!important}
           /* Matikan filter drop-shadow di SVG orbital ring */
