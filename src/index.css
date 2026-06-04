@@ -328,7 +328,7 @@ input[type='range']::-webkit-slider-thumb {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  will-change: transform;
+  will-change: background-position;
   background-image:
     repeating-linear-gradient(
       175deg,
@@ -469,7 +469,7 @@ input[type='range']::-webkit-slider-thumb {
   left: 0;
   right: 0;
   height: 42%;
-  contain: paint;
+  contain: layout style;
   pointer-events: none;
   /* Stripe neon vertical di gedung (kisi garis bangunan) */
   background:
@@ -819,7 +819,7 @@ input[type='range']::-webkit-slider-thumb {
   left: 0;
   right: 0;
   height: 45%;
-  contain: paint;
+  contain: layout style;
   pointer-events: none;
   background: rgba(8,5,20,0.82);
   clip-path: polygon(
@@ -1108,7 +1108,7 @@ input[type='range']::-webkit-slider-thumb {
 /* Sky gradient overlay */
 .garden-sky {
   position:absolute; top:0; left:0; right:0; bottom:22%;
-  contain: paint;
+  contain: layout style;
   background:linear-gradient(to bottom,
     #010905 0%,
     #020e08 35%,
@@ -1146,7 +1146,7 @@ input[type='range']::-webkit-slider-thumb {
 /* Ground — tanah dengan gradien lebih kaya */
 .garden-ground {
   position:absolute; bottom:0; left:0; right:0; height:22%;
-  contain: paint;
+  contain: layout style;
   background:linear-gradient(to top,
     rgba(3,18,8,0.98) 0%,
     rgba(6,32,14,0.85) 30%,
@@ -1392,7 +1392,7 @@ input[type='range']::-webkit-slider-thumb {
 /* Langit malam dengan gradien lebih dramatis */
 .hw-sky {
   position:absolute; top:0; left:0; right:0; bottom:42%;
-  contain: paint;
+  contain: layout style;
   background:linear-gradient(to bottom,
     #010208 0%,
     #020510 30%,
@@ -1506,7 +1506,7 @@ input[type='range']::-webkit-slider-thumb {
 /* Jalan aspal — lebih gelap dan berkilat */
 .hw-road {
   position:absolute; bottom:0; left:0; right:0; height:42%;
-  contain: paint;
+  contain: layout style;
   background:linear-gradient(to top,
     #030508 0%,
     #060810 35%,
