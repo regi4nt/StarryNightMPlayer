@@ -8631,7 +8631,6 @@ Format exactly:
                                 })}
                               </div>
                             </div>
-                          </div>
                             )}
                           </div>
                         )}
@@ -9296,7 +9295,6 @@ Format exactly:
                                   })}
                                 </div>
                                 </div>
-                              </div>
                               )}
                               {/* Inline embed player */}
                               {wsEmbedUrl && (
