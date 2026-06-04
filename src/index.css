@@ -1424,6 +1424,7 @@ input[type='range']::-webkit-slider-thumb {
     radial-gradient(ellipse 30% 80% at 72% 100%,
       rgba(255,80,0,0.09) 0%,
       transparent 65%);
+  filter:blur(8px);
   animation:city-glow-pulse 5s ease-in-out infinite;
   pointer-events:none; z-index:1;
 }
@@ -1867,9 +1868,9 @@ input[type='range']::-webkit-slider-thumb {
 /* Mobile portrait: geser elemen kota MASUK ke dalam area jalan (0-42%) agar
    blur tidak bocor ke atas dan tidak terlihat di area player UI */
 .layout-mobile-portrait .hw-horizon {
-  bottom: 28%;
-  height: 16%;
-  filter: blur(5px);
+  bottom: 40%;
+  height: 10%;
+  filter: blur(6px);
 }
 .layout-mobile-portrait .hw-city-bg {
   bottom: 32%;

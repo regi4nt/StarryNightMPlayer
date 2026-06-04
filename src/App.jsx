@@ -7549,12 +7549,16 @@ Format exactly:
           return <><div className="stars"/><div className="starsB"/><div className="starsC"/></>;
         };
 
+        const isDesktopLayout = layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait';
+        const sidebarOffset = isDesktopLayout
+          ? (layoutMode === 'desktop-landscape' ? SIDEBAR_W_LANDSCAPE : SIDEBAR_W_PORTRAIT)
+          : 0;
         return (
           <>
             {overlays.map((g, i) => (
               <div key={i} style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, background:g }}/>
             ))}
-            <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, overflow:'hidden' }}>
+            <div style={{ position:'fixed', top:0, bottom:0, left:sidebarOffset, right:0, pointerEvents:'none', zIndex:0, overflow:'hidden' }}>
               <ThemeOverlay/>
             </div>
           </>
