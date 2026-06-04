@@ -1887,6 +1887,10 @@ input[type='range']::-webkit-slider-thumb {
   bottom: 38%;
   height: 18%;
 }
+/* Turunkan hw-sky agar tidak ada celah dengan hw-city-bg di mobile portrait */
+.layout-mobile-portrait .hw-sky {
+  bottom: 38%;
+}
 .layout-mobile-portrait .hw-neon-lights {
   bottom: 40%;
   height: 13%;
@@ -1899,6 +1903,7 @@ input[type='range']::-webkit-slider-thumb {
 
 /* Mobile portrait: perbesar road-cap agar transisi jalan-ke-langit lebih halus */
 .layout-mobile-portrait .hw-road-cap {
+  bottom: 38%;
   height: 6%;
   background: linear-gradient(to top, #0a1222 0%, rgba(10,18,34,0.5) 50%, rgba(10,18,34,0) 100%);
 }
