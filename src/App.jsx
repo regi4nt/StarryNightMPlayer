@@ -10257,7 +10257,7 @@ Format exactly:
 
             {/* ── Playlist list view */}
             {plView==='list'&&(
-              <div className="scrollbar-hide" style={{ height:'100%', overflow:'hidden', padding:'14px 16px 0', display:'flex', flexDirection:'column', gap:5, paddingBottom:'max(80px, calc(72px + env(safe-area-inset-bottom)))' }}>
+              <div style={{ height:'100%', display:'flex', flexDirection:'column', padding:'14px 16px 0' }}>
                 {/* Header — same style as Stream tab */}
                 <div style={{ marginBottom:10 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom:10 }}>
@@ -10288,7 +10288,7 @@ Format exactly:
 
                 </div>
 
-                <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column', gap:10, paddingBottom:'max(20px, calc(16px + env(safe-area-inset-bottom)))' }}>
+                <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column', gap:10, paddingBottom:'max(80px, calc(72px + env(safe-area-inset-bottom)))' }}>
 
                   {/* ── GLOBAL SEARCH RESULTS */}
                   {plGlobalSearch.trim() && (() => {
