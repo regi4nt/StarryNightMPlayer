@@ -7314,14 +7314,12 @@ Format exactly:
             const treeScale = ls ? 0.70 : 1.0;
             const trees = [
               { l:'4%',  s:50, delay:0,   sway:'sway-a' },
-              { l:'13%', s:42, delay:1.2, sway:'sway-b' },
-              { l:'22%', s:66, delay:2.5, sway:'sway-c' },
-              { l:'33%', s:38, delay:0.6, sway:'sway-b' },
+              { l:'18%', s:58, delay:1.5, sway:'sway-b' },
+              { l:'34%', s:44, delay:2.8, sway:'sway-c' },
               { l:'56%', s:52, delay:0.8, sway:'sway-a' },
-              { l:'67%', s:64, delay:3.0, sway:'sway-c' },
-              { l:'77%', s:44, delay:1.8, sway:'sway-b' },
-              { l:'87%', s:56, delay:4.0, sway:'sway-a' },
-              { l:'94%', s:40, delay:2.2, sway:'sway-c' },
+              { l:'70%', s:62, delay:3.2, sway:'sway-b' },
+              { l:'83%', s:48, delay:1.8, sway:'sway-c' },
+              { l:'94%', s:40, delay:4.5, sway:'sway-a' },
             ];
             // Kunang-kunang: landscape di area langit atas (top 10-35%), portrait area tengah (34-54%)
             const fireflies = ls ? [
@@ -7333,17 +7331,13 @@ Format exactly:
               { top:'10%', left:'62%', delay:'6s',    dur:'10s', fx:'-9px',  fy:'-10px' },
               { top:'30%', left:'42%', delay:'4s',    dur:'12s', fx:'14px',  fy:'-8px'  },
             ] : [
-              { top:'46%', left:'10%', delay:'0s',    dur:'7s',  fx:'18px',  fy:'-14px' },
-              { top:'36%', left:'52%', delay:'1.5s',  dur:'9s',  fx:'-16px', fy:'-9px'  },
-              { top:'54%', left:'32%', delay:'3s',    dur:'11s', fx:'12px',  fy:'-18px' },
-              { top:'40%', left:'72%', delay:'5s',    dur:'8s',  fx:'-12px', fy:'-11px' },
-              { top:'50%', left:'20%', delay:'2s',    dur:'13s', fx:'20px',  fy:'-7px'  },
-              { top:'44%', left:'62%', delay:'6s',    dur:'10s', fx:'-9px',  fy:'-16px' },
-              { top:'34%', left:'42%', delay:'4s',    dur:'12s', fx:'14px',  fy:'-11px' },
-              { top:'52%', left:'82%', delay:'7s',    dur:'9s',  fx:'-18px', fy:'-9px'  },
-              { top:'38%', left:'88%', delay:'9s',    dur:'14s', fx:'10px',  fy:'-20px' },
-              { top:'48%', left:'5%',  delay:'11s',   dur:'8s',  fx:'-14px', fy:'-7px'  },
-              { top:'42%', left:'28%', delay:'2.5s',  dur:'16s', fx:'16px',  fy:'-13px' },
+              { top:'46%', left:'10%', delay:'0s',    dur:'8s',  fx:'18px',  fy:'-14px' },
+              { top:'36%', left:'52%', delay:'2s',    dur:'11s', fx:'-16px', fy:'-9px'  },
+              { top:'54%', left:'32%', delay:'4s',    dur:'13s', fx:'12px',  fy:'-18px' },
+              { top:'40%', left:'72%', delay:'6s',    dur:'9s',  fx:'-12px', fy:'-11px' },
+              { top:'50%', left:'20%', delay:'3s',    dur:'14s', fx:'20px',  fy:'-7px'  },
+              { top:'44%', left:'62%', delay:'7s',    dur:'11s', fx:'-9px',  fy:'-16px' },
+              { top:'34%', left:'42%', delay:'5s',    dur:'12s', fx:'14px',  fy:'-11px' },
             ];
             // Partikel cahaya bulan — landscape di area atas
             const moonDust = ls ? [
@@ -7418,7 +7412,7 @@ Format exactly:
             const laneLeftX  = `calc(${sbW2}px + 28%)`;  // jalur kiri (headlight)
             const laneRightX = `calc(${sbW2}px + 52%)`; // jalur kanan (taillight)
             // Tetesan hujan
-            const rainDrops = Array.from({ length: 18 }, (_, i) => ({
+            const rainDrops = Array.from({ length: 12 }, (_, i) => ({
               left: `${(i * 5.5 + Math.sin(i*2.1)*3) % 100}%`,
               height: `${60 + (i % 5) * 20}px`,
               delay: `${(i * 0.28) % 2.5}s`,
@@ -7513,7 +7507,7 @@ Format exactly:
             // Skala orbit & planet: portrait penuh, landscape dikecilkan ~65%
             const sc    = ls ? 0.62 : 1.0;
             // Orbit radii — dikalikan sc
-            const rings = [55,95,145,205,275,355,445,545].map(r => Math.round(r*sc));
+            const rings = [55,95,145,205,275,355].map(r => Math.round(r*sc)); // 6 rings cukup, hemat DOM
             // Planet positions dihitung % relatif terhadap posisi matahari + offset trigonometri
             // Portrait: top=calc(sunY% + r*sin(θ)px), left=calc(sunX% + r*cos(θ)px)
             // Landscape: sama tapi r lebih kecil
@@ -7548,8 +7542,7 @@ Format exactly:
             // Bintang jatuh — semua % aman
             const shootings = [
               { top:'12%', left:'60%', w:ls?40:60,  delay:'5s',  dur:'4s' },
-              { top:'25%', left:'20%', w:ls?30:45,  delay:'14s', dur:'3s' },
-              { top:'8%',  left:'75%', w:ls?55:80,  delay:'28s', dur:'5s' },
+              { top:'25%', left:'20%', w:ls?30:45,  delay:'18s', dur:'3s' },
             ];
             const clusters = [
               { top:'55%', left:'8%',  w:80,  h:60 },
