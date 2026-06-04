@@ -1298,8 +1298,12 @@ input[type='range']::-webkit-slider-thumb {
 }
 
 /* ══════════════════════════════════════════════════════
-   JALAN RAYA MALAM (nighthighway) — IMPROVED
+   JALAN RAYA MALAM (nighthighway) — v2 CLEAN
 ══════════════════════════════════════════════════════ */
+
+/* ── Variabel tinggi jalan per layout ── */
+/* portrait/mobile: jalan = bawah 42%, langit = atas 58% */
+/* landscape/desktop-landscape: jalan = bawah 50%, langit = atas 50% */
 
 @keyframes lane-dash {
   from { background-position: center 0px; }
@@ -1318,21 +1322,12 @@ input[type='range']::-webkit-slider-thumb {
   100% { transform:translateX(-120%); opacity:0; }
 }
 @keyframes city-glow-pulse {
-  0%,100% { opacity:0.60; }
-  50%     { opacity:0.92; }
+  0%,100% { opacity:0.65; }
+  50%     { opacity:1.00; }
 }
 @keyframes hw-building-blink {
   0%,94%,96%,100% { opacity:1; }
   95%             { opacity:0.3; }
-}
-@keyframes hw-neon-flicker {
-  0%,88%,90%,93%,100% { opacity:0.85; }
-  89%                  { opacity:0.2; }
-  91%,92%             { opacity:0.6; }
-}
-@keyframes rain-fall {
-  from { transform:translateY(-10px); }
-  to   { transform:translateY(calc(100vh + 10px)); }
 }
 @keyframes hw-moon-rise {
   0%,100% { box-shadow:0 0 18px 8px rgba(200,220,255,0.28), 0 0 40px 18px rgba(170,200,255,0.10); }
@@ -1343,18 +1338,20 @@ input[type='range']::-webkit-slider-thumb {
   100% { transform:translateX(2vw)  translateY(calc(100vh + 10px)); }
 }
 
-/* Langit malam dengan gradien lebih dramatis */
+/* ── Langit ── */
 .hw-sky {
-  position:absolute; top:0; left:0; right:0; bottom:42%;
+  position:absolute; top:0; left:0; right:0;
+  bottom:42%; /* overridden landscape */
   background:linear-gradient(to bottom,
     #010208 0%,
-    #020510 30%,
-    #030a18 60%,
-    rgba(240,80,5,0.07) 82%,
-    rgba(255,110,0,0.14) 100%);
+    #020510 28%,
+    #030a18 58%,
+    rgba(200,60,0,0.06) 80%,
+    rgba(240,90,0,0.11) 100%);
   pointer-events:none;
 }
-/* Bulan di langit highway */
+
+/* ── Bulan ── */
 .hw-moon {
   position:absolute; top:8%; right:16%;
   width:28px; height:28px; border-radius:50%;
@@ -1366,21 +1363,22 @@ input[type='range']::-webkit-slider-thumb {
   animation:hw-moon-rise 9s ease-in-out infinite;
   pointer-events:none; z-index:1;
 }
-/* Awan tipis malam */
+
+/* ── Awan tipis ── */
 .hw-cloud {
   position:absolute; pointer-events:none;
   border-radius:50px;
   background:rgba(255,255,255,0.04);
   filter:blur(8px);
 }
-/* Siluet gedung kota di cakrawala — lebih detail */
+
+/* ── Siluet gedung kota ── */
 .hw-city-bg {
   position:absolute; bottom:42%; left:0; right:0; height:20%;
-  background:
-    linear-gradient(to top,
-      rgba(8,15,30,0.92) 0%,
-      rgba(6,12,25,0.80) 50%,
-      transparent 100%);
+  background:linear-gradient(to top,
+    rgba(8,15,30,0.95) 0%,
+    rgba(6,12,25,0.80) 50%,
+    transparent 100%);
   clip-path:polygon(
     0% 100%, 0% 65%,
     2% 65%, 2% 30%, 4% 30%, 4% 20%, 5% 20%, 5% 28%, 6% 28%,
@@ -1410,25 +1408,39 @@ input[type='range']::-webkit-slider-thumb {
   );
   pointer-events:none; z-index:0;
 }
-/* Cahaya kota di cakrawala — sedikit overlap ke jalan agar tersambung */
+
+/* ── Cahaya orange cakrawala — HANYA di garis horizon, tidak bocor ke bawah ──
+   Dibatasi overflow:hidden agar blur tidak keluar dari kotak elemen */
 .hw-horizon {
-  position:absolute; bottom:40%; left:0; right:0; height:12%;
-  background:
-    radial-gradient(ellipse 55% 100% at 50% 100%,
-      rgba(255,115,5,0.22) 0%,
-      rgba(210,65,0,0.10) 50%,
-      transparent 75%),
-    radial-gradient(ellipse 30% 80% at 28% 100%,
-      rgba(255,80,0,0.09) 0%,
-      transparent 65%),
-    radial-gradient(ellipse 30% 80% at 72% 100%,
-      rgba(255,80,0,0.09) 0%,
-      transparent 65%);
-  filter:blur(8px);
-  animation:city-glow-pulse 5s ease-in-out infinite;
+  position:absolute;
+  bottom:42%; /* tepat di garis langit-jalan */
+  left:0; right:0;
+  height:8%;  /* tipis — hanya selebar horizon */
+  overflow:hidden; /* <-- kunci: cegah blur bocor */
   pointer-events:none; z-index:1;
 }
-/* Lampu neon gedung di cakrawala */
+.hw-horizon::after {
+  content:'';
+  position:absolute;
+  /* geser ke bawah agar glow muncul di bagian bawah kotak = garis horizon */
+  bottom:0; left:0; right:0;
+  height:200%; /* tinggi lebih besar agar gradient radial penuh */
+  background:
+    radial-gradient(ellipse 60% 60% at 50% 100%,
+      rgba(255,115,5,0.38) 0%,
+      rgba(220,70,0,0.18) 40%,
+      transparent 72%),
+    radial-gradient(ellipse 28% 50% at 25% 100%,
+      rgba(255,90,0,0.14) 0%,
+      transparent 65%),
+    radial-gradient(ellipse 28% 50% at 75% 100%,
+      rgba(255,90,0,0.14) 0%,
+      transparent 65%);
+  filter:blur(10px);
+  animation:city-glow-pulse 5s ease-in-out infinite;
+}
+
+/* ── Lampu neon gedung di cakrawala ── */
 .hw-neon-lights {
   position:absolute; bottom:42%; left:0; right:0; height:15%;
   background-image:
@@ -1455,7 +1467,8 @@ input[type='range']::-webkit-slider-thumb {
   pointer-events:none; z-index:2;
   animation:hw-building-blink 8s ease-in-out 3s infinite;
 }
-/* Jalan aspal — lebih gelap dan berkilat */
+
+/* ── Jalan aspal ── */
 .hw-road {
   position:absolute; bottom:0; left:0; right:0; height:42%;
   background:linear-gradient(to top,
@@ -1466,86 +1479,70 @@ input[type='range']::-webkit-slider-thumb {
     rgba(30,14,8,0.95) 100%);
   pointer-events:none;
 }
-/* Penyambung jalan ke cakrawala — mengisi celah antara ujung hw-road dan hw-city-bg */
+
+/* ── Penyambung jalan ke cakrawala ── */
 .hw-road-cap {
   position:absolute; bottom:42%; left:0; right:0; height:3%;
-  background:linear-gradient(to top,
-    #0a1222 0%,
-    rgba(10,18,34,0) 100%);
+  background:linear-gradient(to top, #0a1222 0%, rgba(10,18,34,0) 100%);
   pointer-events:none; z-index:0;
 }
-/* Tekstur aspal — grain halus */
+
+/* ── Tekstur aspal ── */
 .hw-road::before {
   content:''; position:absolute; inset:0;
   background-image:
     repeating-linear-gradient(87deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 8px),
-    repeating-linear-gradient(3deg, rgba(255,255,255,0.010) 0px, rgba(255,255,255,0.010) 1px, transparent 1px, transparent 12px);
+    repeating-linear-gradient(3deg,  rgba(255,255,255,0.010) 0px, rgba(255,255,255,0.010) 1px, transparent 1px, transparent 12px);
   pointer-events:none;
 }
-/* Garis putus tengah */
-/* Garis putus tengah — animasi bergerak dari atas ke bawah */
+
+/* ── Marka tengah bergerak ── */
 .hw-lane-center {
   position:absolute; bottom:0; left:0; right:0; height:42%;
-  overflow:hidden;
-  pointer-events:none;
+  overflow:hidden; pointer-events:none;
 }
 .hw-lane-center::before {
-  content:'';
-  position:absolute; inset:0;
+  content:''; position:absolute; inset:0;
   background-image: repeating-linear-gradient(
     to bottom,
-    rgba(255,255,200,0.65) 0px,
-    rgba(255,255,200,0.65) 20px,
-    transparent 20px,
-    transparent 44px
+    rgba(255,255,200,0.65) 0px, rgba(255,255,200,0.65) 20px,
+    transparent 20px, transparent 44px
   );
   background-size: 4px 44px;
   background-position: center 0;
   background-repeat: repeat-y;
   animation: lane-dash 0.7s linear infinite;
-  /* Perspektif: hanya tampil di jalur tengah yang menyempit ke atas */
   clip-path: polygon(46% 0%, 54% 0%, 58% 100%, 42% 100%);
   mask-image: linear-gradient(to top, black 0%, black 30%, transparent 70%);
   -webkit-mask-image: linear-gradient(to top, black 0%, black 30%, transparent 70%);
 }
-/* Garis tepi kiri */
+
+/* ── Garis tepi kiri & kanan ── */
 .hw-lane-edge-l {
   position:absolute; bottom:0; height:42%;
-  pointer-events:none;
-  width:2px;
-  left:22%;
+  pointer-events:none; width:2px; left:22%;
   background: linear-gradient(to top,
-    rgba(255,255,210,0.55) 0%,
-    rgba(255,255,210,0.25) 40%,
-    transparent 100%);
+    rgba(255,255,210,0.55) 0%, rgba(255,255,210,0.25) 40%, transparent 100%);
 }
-/* Garis tepi kanan */
 .hw-lane-edge-r {
   position:absolute; bottom:0; height:42%;
-  pointer-events:none;
+  pointer-events:none; width:2px; right:22%;
   background: linear-gradient(to top,
-    rgba(255,255,210,0.55) 0%,
-    rgba(255,255,210,0.25) 40%,
-    transparent 100%);
-  width:2px;
-  right:22%;
+    rgba(255,255,210,0.55) 0%, rgba(255,255,210,0.25) 40%, transparent 100%);
 }
-/* Desktop: geser garis tepi — kiri & kanan simetris terhadap area konten */
-/* Kiri: 160px (sidebar) + 22% dari lebar konten */
-/* Kanan: 22% dari lebar konten = calc(22% * (1 - 160px/100vw)) dari tepi kanan */
+
+/* ── Desktop: offset elemen dari tepi sidebar ── */
+.layout-desktop-portrait .hw-sky  { left: 160px; }
+.layout-desktop-landscape .hw-sky { left: 196px; }
+
+.layout-desktop-portrait .hw-lane-center  { left: 160px; }
+.layout-desktop-landscape .hw-lane-center { left: 196px; }
+
 .layout-desktop-portrait .hw-lane-edge-l  { left:  calc(160px + 0.22 * (100vw - 160px)); }
 .layout-desktop-landscape .hw-lane-edge-l { left:  calc(196px + 0.22 * (100vw - 196px)); }
 .layout-desktop-portrait .hw-lane-edge-r  { right: calc(0.22 * (100vw - 160px)); }
 .layout-desktop-landscape .hw-lane-edge-r { right: calc(0.22 * (100vw - 196px)); }
-/* hw-sky and hw-cloud also offset to not show behind sidebar */
-.layout-desktop-portrait .hw-sky  { left: 160px; }
-.layout-desktop-landscape .hw-sky { left: 196px; }
 
-/* Desktop: geser hw-lane-center agar marka jalan berada di tengah area konten (tidak sidebar) */
-.layout-desktop-portrait .hw-lane-center  { left: 160px; }
-.layout-desktop-landscape .hw-lane-center { left: 196px; }
-
-/* Desktop: geser semua elemen jalan & kota agar mulai dari tepi sidebar, tidak terpotong */
 .layout-desktop-portrait .hw-road,
 .layout-desktop-portrait .hw-road-cap,
 .layout-desktop-portrait .hw-reflect,
@@ -1559,9 +1556,7 @@ input[type='range']::-webkit-slider-thumb {
 .layout-desktop-landscape .hw-horizon,
 .layout-desktop-landscape .hw-neon-lights { left: 196px; }
 
-
-
-/* Pantulan lampu di aspal — lebih berwarna */
+/* ── Pantulan lampu di aspal ── */
 .hw-reflect {
   position:absolute; bottom:0; left:0; right:0; height:26%;
   background:
@@ -1572,14 +1567,10 @@ input[type='range']::-webkit-slider-thumb {
     radial-gradient(ellipse 15% 40% at 50% 0%, rgba(0,180,255,0.06) 0%, transparent 60%);
   pointer-events:none;
 }
-/* Wrapper mobil */
-.hw-cars {
-  position:absolute; inset:0; pointer-events:none; overflow:hidden;
-}
-.hw-car {
-  position:absolute; border-radius:2px; pointer-events:none;
-}
-/* Mobil headlight — lebih terang dengan corona */
+
+/* ── Mobil ── */
+.hw-cars { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+.hw-car  { position:absolute; border-radius:2px; pointer-events:none; }
 .hw-car-hl {
   height:4px; width:22px;
   background:rgba(255,245,200,0.95);
@@ -1588,7 +1579,6 @@ input[type='range']::-webkit-slider-thumb {
     0 0 28px 12px rgba(255,210,80,0.22),
     -24px 0 12px rgba(255,200,80,0.18);
 }
-/* Mobil taillight */
 .hw-car-tl {
   height:4px; width:16px;
   background:rgba(255,30,30,0.92);
@@ -1602,15 +1592,13 @@ input[type='range']::-webkit-slider-thumb {
 .hw-c3 { animation:car-right 11s linear 2s  infinite; }
 .hw-c4 { animation:car-right 15s linear 8s  infinite; }
 
-/* Tiang lampu jalan — lebih realistis */
+/* ── Tiang lampu jalan ── */
 .hw-pole {
   position:absolute; pointer-events:none;
   display:flex; flex-direction:column; align-items:center;
-  z-index:3;
-  bottom:42%;
+  z-index:3; bottom:42%;
   transform-origin:bottom center;
 }
-/* Urutan atas ke bawah: pole-head (kap) -> pole-arm (tiang) */
 .hw-pole .pole-head {
   width:16px; height:6px; border-radius:3px 3px 0 0;
   background:linear-gradient(to bottom, rgba(255,210,90,0.90), rgba(255,180,50,0.75));
@@ -1622,13 +1610,11 @@ input[type='range']::-webkit-slider-thumb {
   background:linear-gradient(to bottom, rgba(130,140,160,0.65), rgba(100,110,130,0.45));
 }
 .hw-pole .pole-cone {
-  flex-shrink:0;
-  width:0; height:0;
+  flex-shrink:0; width:0; height:0;
   border-left:16px solid transparent;
   border-right:16px solid transparent;
   border-top:20px solid rgba(255,200,80,0.12);
 }
-/* Cahaya kerucut lampu */
 .hw-pole .pole-light-cone {
   position:absolute; top:100%; left:50%;
   width:60px; height:80px;
@@ -1637,10 +1623,9 @@ input[type='range']::-webkit-slider-thumb {
   clip-path:polygon(30% 0%, 70% 0%, 100% 100%, 0% 100%);
   pointer-events:none;
 }
-/* Hujan halus — efek drizzle malam */
-.hw-rain {
-  position:absolute; inset:0; overflow:hidden; pointer-events:none;
-}
+
+/* ── Hujan halus ── */
+.hw-rain { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
 .hw-rain-drop {
   position:absolute; width:1px; border-radius:1px;
   background:linear-gradient(to bottom, transparent, rgba(180,210,255,0.35));
@@ -1844,63 +1829,50 @@ input[type='range']::-webkit-slider-thumb {
 .layout-desktop-landscape .garden-pond   { display:none; }
 .layout-mobile-landscape .garden-path,
 .layout-desktop-landscape .garden-path   { display:none; }
+/* ══ LANDSCAPE (mobile & desktop): jalan 50%, langit 50% ══ */
 .layout-mobile-landscape .hw-road,
 .layout-desktop-landscape .hw-road,
 .layout-mobile-landscape .hw-lane-center,
 .layout-desktop-landscape .hw-lane-center,
 .layout-mobile-landscape .hw-reflect,
-.layout-desktop-landscape .hw-reflect    { height:50%; }
+.layout-desktop-landscape .hw-reflect      { height:50%; }
+
 .layout-mobile-landscape .hw-sky,
-.layout-desktop-landscape .hw-sky        { bottom:50%; }
-.layout-mobile-landscape .hw-horizon,
-.layout-desktop-landscape .hw-horizon    { bottom:48%; }
-.layout-mobile-landscape .hw-neon-lights,
-.layout-desktop-landscape .hw-neon-lights { bottom:50%; }
+.layout-desktop-landscape .hw-sky          { bottom:50%; }
+
 .layout-mobile-landscape .hw-city-bg,
-.layout-desktop-landscape .hw-city-bg    { bottom:50%; }
-.layout-mobile-landscape .hw-pole,
-.layout-desktop-landscape .hw-pole       { bottom:50%; transform-origin:bottom center; }
-.layout-mobile-landscape .hw-lane-edge-l,
-.layout-desktop-landscape .hw-lane-edge-l { height:50%; }
-.layout-mobile-landscape .hw-lane-edge-r,
-.layout-desktop-landscape .hw-lane-edge-r { height:50%; }
+.layout-desktop-landscape .hw-city-bg      { bottom:50%; }
 
-/* Mobile portrait: geser elemen kota MASUK ke dalam area jalan (0-42%) agar
-   blur tidak bocor ke atas dan tidak terlihat di area player UI */
-.layout-mobile-portrait .hw-horizon {
-  bottom: 40%;
-  height: 10%;
-  filter: blur(6px);
-}
-.layout-mobile-portrait .hw-city-bg {
-  bottom: 32%;
-  height: 16%;
-}
-.layout-mobile-portrait .hw-neon-lights {
-  bottom: 32%;
-  height: 13%;
-}
+.layout-mobile-landscape .hw-horizon,
+.layout-desktop-landscape .hw-horizon      { bottom:50%; }
 
-/* Portrait: penyambung jalan ke cakrawala tetap di bottom:42% (default sudah benar) */
-/* Landscape hw-road-cap ikut bottom:50% */
+.layout-mobile-landscape .hw-neon-lights,
+.layout-desktop-landscape .hw-neon-lights  { bottom:50%; }
+
 .layout-mobile-landscape .hw-road-cap,
-.layout-desktop-landscape .hw-road-cap   { bottom:50%; }
+.layout-desktop-landscape .hw-road-cap     { bottom:50%; }
 
-/* Mobile portrait: perbesar road-cap agar transisi jalan-ke-langit lebih halus */
+.layout-mobile-landscape .hw-pole,
+.layout-desktop-landscape .hw-pole         { bottom:50%; transform-origin:bottom center; }
+
+.layout-mobile-landscape .hw-lane-edge-l,
+.layout-desktop-landscape .hw-lane-edge-l  { height:50%; }
+.layout-mobile-landscape .hw-lane-edge-r,
+.layout-desktop-landscape .hw-lane-edge-r  { height:50%; }
+
+/* ══ MOBILE PORTRAIT: jalan 42%, langit 58% — sama dengan default ══ */
+/* road-cap lebih tinggi agar transisi halus */
 .layout-mobile-portrait .hw-road-cap {
-  height: 5%;
-  background: linear-gradient(to top, #0a1222 0%, rgba(10,18,34,0.5) 50%, rgba(10,18,34,0) 100%);
+  height: 4%;
+  background: linear-gradient(to top, #0a1222 0%, rgba(10,18,34,0.5) 60%, rgba(10,18,34,0) 100%);
 }
-
-/* ── MOBILE PORTRAIT: highway adjustments ── */
-/* Di layar portrait sempit, jalan sedikit lebih tinggi agar tidak sesak */
+/* Garis tepi lebih ke dalam agar tidak terlalu mepet di layar sempit */
 .layout-mobile-portrait .hw-lane-edge-l { left: 8%; }
 .layout-mobile-portrait .hw-lane-edge-r { right: 8%; }
-/* Garis marka tengah lebih lebar di mobile agar terlihat */
+/* Marka tengah sedikit lebih lebar di mobile */
 .layout-mobile-portrait .hw-lane-center::before {
   clip-path: polygon(44% 0%, 56% 0%, 60% 100%, 40% 100%);
 }
-/* (mobile portrait hw-horizon dan hw-city-bg sudah diatur di blok di atas) */
 
 /* ── HAPUS SEMUA ANIMASI TEMA DEKORATIF ── */
 .wave-layer, .wave-layer2,
@@ -1913,7 +1885,7 @@ input[type='range']::-webkit-slider-thumb {
 .gfw, .garden-dust,
 .moon-garden,
 .hw-neon-lights, .hw-neon-lights *,
-.hw-horizon,
+.hw-horizon, .hw-horizon::after,
 .hw-lane-center,
 .hw-rain-drop,
 .hw-moon,
