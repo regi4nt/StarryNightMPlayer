@@ -96,6 +96,15 @@ const SIDEBAR_W_PORTRAIT  = 160;  // desktop-portrait sidebar width
 const HEADER_H_NORMAL     = 46;   // header height (all modes except mobile-landscape)
 const HEADER_H_LANDSCAPE  = 34;   // header height for mobile-landscape (slimmer padding)
 
+
+// Playlist cover grid cell dengan fallback
+function PlCoverImg({ src, style }) {
+  const [err, setErr] = React.useState(false);
+  React.useEffect(() => { setErr(false); }, [src]);
+  if (err) return <div style={{ width:'100%', height:'100%', background:'rgba(99,102,241,0.2)', ...style }}/>;
+  return <img src={src} loading="lazy" decoding="async" style={{ width:'100%', height:'100%', objectFit:'cover', ...style }} onError={()=>setErr(true)}/>;
+}
+
 export default function App() {
   // ── Mode: Lite (ringan + hemat data) vs Pro (penuh)
   // Lite otomatis mengaktifkan semua penghematan: cover, buffer, prefetch, AI, animasi
@@ -8665,7 +8674,7 @@ Format exactly:
                           )}
                           {wsEmbedUrl && (
                             <div style={{ marginTop:8, borderRadius:10, overflow:'hidden', border:'1px solid rgba(255,255,255,0.1)' }}>
-                              <iframe src={wsEmbedUrl} style={{ width:'100%', height:80, border:'none', display:'block' }} allow="autoplay" title="embed"/>
+                              <iframe src={wsEmbedUrl} style={{ width:'100%', height:80, border:'none', display:'block' }} allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation" title="embed"/>
                             </div>
                           )}
                           {spWsEmbedId && (
@@ -9239,7 +9248,7 @@ Format exactly:
                                               width="100%" height="280" frameBorder="0"
                                               allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
                                               allowFullScreen style={{ display:'block' }}
-                                              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"
+                                              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads"
                                             />
                                             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'4px 8px', background:'rgba(0,0,0,0.3)', gap:6 }}>
                                               <button onClick={e=>{e.stopPropagation();extractViaCobalt(item.externalUrl,item);}}
@@ -9277,7 +9286,7 @@ Format exactly:
                                             width="100%" height="480" frameBorder="0"
                                             allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
                                             allowFullScreen style={{ display:'block' }}
-                                            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"
+                                            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads"
                                           />
                                           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'4px 8px', background:'rgba(0,0,0,0.3)', gap:6 }}>
                                             <button onClick={e=>{e.stopPropagation();extractViaCobalt(item.externalUrl,item);}}
@@ -9305,7 +9314,7 @@ Format exactly:
                                               width="100%" height="560" frameBorder="0"
                                               allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
                                               allowFullScreen style={{ display:'block' }}
-                                              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"
+                                              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads"
                                             />
                                             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'4px 8px', background:'rgba(0,0,0,0.3)', gap:6 }}>
                                               <button onClick={e=>{e.stopPropagation();extractViaCobalt(item.externalUrl,item);}}
@@ -9343,7 +9352,7 @@ Format exactly:
                                             width="100%" height="320" frameBorder="0"
                                             allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
                                             allowFullScreen style={{ display:'block' }}
-                                            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"
+                                            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads"
                                           />
                                           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'4px 8px', background:'rgba(0,0,0,0.3)', gap:6 }}>
                                             <button onClick={e=>{e.stopPropagation();extractViaCobalt(item.externalUrl,item);}}
@@ -9370,7 +9379,7 @@ Format exactly:
                                             width="100%" height="380" frameBorder="0"
                                             allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
                                             allowFullScreen style={{ display:'block' }}
-                                            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"
+                                            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads"
                                           />
                                           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'4px 8px', background:'rgba(0,0,0,0.3)', gap:6 }}>
                                             <button onClick={e=>{e.stopPropagation();extractViaCobalt(item.externalUrl,item);}}
@@ -9397,7 +9406,7 @@ Format exactly:
                                             width="100%" height="280" frameBorder="0"
                                             allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
                                             allowFullScreen scrolling="no" style={{ display:'block' }}
-                                            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"
+                                            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads"
                                           />
                                           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'4px 8px', background:'rgba(0,0,0,0.3)', gap:6 }}>
                                             <span style={{ fontSize:9, color:'rgba(255,255,255,0.3)' }}>⚠️ Mungkin perlu login Bilibili</span>
@@ -9428,7 +9437,7 @@ Format exactly:
                                               width="100%" height="280" frameBorder="0"
                                               allow="autoplay; encrypted-media; picture-in-picture"
                                               allowFullScreen style={{ display:'block' }}
-                                              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"
+                                              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads"
                                             />
                                             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'4px 8px', background:'rgba(0,0,0,0.3)', gap:6 }}>
                                               <span style={{ fontSize:9, color:'rgba(255,255,255,0.3)' }}>⚠️ Mungkin perlu login Vidio</span>
@@ -9513,9 +9522,9 @@ Format exactly:
                                     key={`ws-embed-${wsEmbedUrl}`}
                                     src={wsEmbedUrl}
                                     width="100%" height="200" frameBorder="0"
-                                    allow="autoplay; clipboard-write; encrypted-media; fullscreen"
+                                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                                     style={{ display:'block' }}
-                                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"
+                                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads"
                                     onError={() => { openNewTab(wsEmbedUrl); setWsEmbedUrl(null); }}
                                   />
                                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'5px 10px', background:'rgba(0,0,0,0.35)', gap:8 }}>
@@ -10248,7 +10257,7 @@ Format exactly:
 
             {/* ── Playlist list view */}
             {plView==='list'&&(
-              <div className="scrollbar-hide" style={{ height:'100%', overflowY:'auto', padding:'14px 16px 0', display:'flex', flexDirection:'column', gap:5, paddingBottom:'max(80px, calc(72px + env(safe-area-inset-bottom)))' }}>
+              <div className="scrollbar-hide" style={{ height:'100%', overflow:'hidden', padding:'14px 16px 0', display:'flex', flexDirection:'column', gap:5, paddingBottom:'max(80px, calc(72px + env(safe-area-inset-bottom)))' }}>
                 {/* Header — same style as Stream tab */}
                 <div style={{ marginBottom:10 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom:10 }}>
@@ -10279,7 +10288,7 @@ Format exactly:
 
                 </div>
 
-                <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column', gap:10, paddingBottom:16 }}>
+                <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column', gap:10, paddingBottom:'max(20px, calc(16px + env(safe-area-inset-bottom)))' }}>
 
                   {/* ── GLOBAL SEARCH RESULTS */}
                   {plGlobalSearch.trim() && (() => {
@@ -10307,7 +10316,7 @@ Format exactly:
                             <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
                               {matchedPl.map(pl => {
                                 const songs = allSongs.filter(s=>pl.songIds.includes(s.id));
-                                const covers = songs.slice(0,4).map(s=>s.cover).filter(Boolean);
+                                const covers = songs.slice(0,4).map(s=>s.cover||s.thumbnail||s.favicon).filter(Boolean);
                                 const isActivePl = activePl===pl.id;
                                 return (
                                   <div key={pl.id} onClick={()=>{ setActivePl(pl.id); setPlView('detail'); setPlGlobalSearch(''); }}
@@ -10316,7 +10325,7 @@ Format exactly:
                                     onMouseLeave={e=>e.currentTarget.style.background=isActivePl?'rgba(99,102,241,0.12)':'rgba(255,255,255,0.04)'}>
                                     <div style={{ width:36, height:36, borderRadius:9, overflow:'hidden', flexShrink:0, display:'grid', gridTemplateColumns:'1fr 1fr', gap:1, background:'rgba(99,102,241,0.15)' }}>
                                       {covers.length>0 ? covers.slice(0,4).map((c,idx)=>(
-                                        <img key={idx} src={c} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                                        <PlCoverImg key={idx} src={c} style={covers.length===1?{gridColumn:'span 2',gridRow:'span 2'}:covers.length===2&&idx>1?{display:'none'}:covers.length===3&&idx===3?{display:'none'}:{}}/>
                                       )) : <Music size={15} style={{color:'#a78bfa',margin:'auto',gridColumn:'span 2'}}/>}
                                     </div>
                                     <div style={{ flex:1, minWidth:0 }}>
@@ -10473,7 +10482,7 @@ Format exactly:
                       {playlists.map(pl => {
                         const songs = allSongs.filter(s=>pl.songIds.includes(s.id));
                         const isActivePl = activePl===pl.id;
-                        const covers = songs.slice(0,4).map(s=>s.cover).filter(Boolean);
+                        const covers = songs.slice(0,4).map(s=>s.cover||s.thumbnail||s.favicon).filter(Boolean);
                         return (
                           <div key={pl.id} style={{ borderRadius:14, background: isActivePl?'rgba(99,102,241,0.12)':'rgba(255,255,255,0.03)', border:`1px solid ${isActivePl?'rgba(99,102,241,0.35)':'rgba(255,255,255,0.08)'}`, overflow:'hidden' }}>
                             <div onClick={()=>{ setActivePl(pl.id); setPlView('detail'); }}
@@ -10482,7 +10491,7 @@ Format exactly:
                               onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                               <div style={{ width:38, height:38, borderRadius:10, overflow:'hidden', flexShrink:0, display:'grid', gridTemplateColumns:'1fr 1fr', gap:1, background:'rgba(99,102,241,0.15)' }}>
                                 {covers.length>0 ? covers.slice(0,4).map((c,idx)=>(
-                                  <img key={idx} src={c} style={{ width:'100%', height:'100%', objectFit:'cover', display: covers.length===1&&idx>0?'none':covers.length===2&&idx>1?'none':covers.length===3&&idx===3?'none':'block' }}/>
+                                  <PlCoverImg key={idx} src={c} style={covers.length===1?{gridColumn:'span 2',gridRow:'span 2'}:covers.length===2&&idx>1?{display:'none'}:covers.length===3&&idx===3?{display:'none'}:{}}/>
                                 )) : <Music size={16} style={{color:'#a78bfa',margin:'auto',gridColumn:'span 2'}}/>}
                               </div>
                               <div style={{ flex:1, minWidth:0 }}>
