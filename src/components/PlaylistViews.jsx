@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { CheckCircle, ChevronLeft, ListPlus, Music, PenLine, Search, Trash2, X } from 'lucide-react';
+import { CheckCircle, ChevronLeft, ListPlus, Music, PenLine, Radio, Search, Trash2, X } from 'lucide-react';
 
 function PlaylistFormView({ editingPl, allSongs, lang, isLite, t, setPlaylists, setEditingPl, setPlView, deletePlaylist, onSave }) {
   const isEdit = !!editingPl;
@@ -92,8 +92,14 @@ function PlaylistFormView({ editingPl, allSongs, lang, isLite, t, setPlaylists, 
                 {allSongs.filter(s => formSelected.has(s.id)).map(s => (
                   <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 10, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)' }}>
                     {isLite
-                      ? <div style={{ width: 32, height: 32, borderRadius: 7, background: s.bg || 'rgba(255,255,255,0.07)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Music size={13} color={s.color} /></div>
-                      : <img src={s.cover} loading="lazy" decoding="async" style={{ width: 32, height: 32, borderRadius: 7, objectFit: 'cover', flexShrink: 0 }} />}
+                      ? <div style={{ width: 32, height: 32, borderRadius: 7, background: s.isRadio ? `${s.color}20` : (s.bg || 'rgba(255,255,255,0.07)'), flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {s.isRadio ? <Radio size={13} color={s.color}/> : <Music size={13} color={s.color}/>}
+                        </div>
+                      : s.isDrive && s.cover
+                        ? <img src={s.cover} loading="lazy" decoding="async" style={{ width: 32, height: 32, borderRadius: 7, objectFit: 'cover', flexShrink: 0 }} />
+                        : <div style={{ width: 32, height: 32, borderRadius: 7, background: s.isRadio ? `${s.color}20` : (s.bg || 'rgba(255,255,255,0.07)'), flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {s.isRadio ? <Radio size={13} color={s.color}/> : <Music size={13} color={s.color}/>}
+                          </div>}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'white' }}>{s.title}</div>
                       <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>{s.artist}</div>
@@ -134,8 +140,14 @@ function PlaylistFormView({ editingPl, allSongs, lang, isLite, t, setPlaylists, 
                 <div key={s.id} onClick={() => toggleSong(s.id)}
                   style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 12, cursor: 'pointer', background: on ? 'rgba(99,102,241,0.12)' : 'rgba(255,255,255,0.02)', border: `1px solid ${on ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.06)'}`, transition: 'all 0.1s' }}>
                   {isLite
-                    ? <div style={{ width: 34, height: 34, borderRadius: 8, background: s.bg || 'rgba(255,255,255,0.07)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Music size={14} color={s.color} /></div>
-                    : <img src={s.cover} loading="lazy" decoding="async" style={{ width: 34, height: 34, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />}
+                    ? <div style={{ width: 34, height: 34, borderRadius: 8, background: s.isRadio ? `${s.color}20` : (s.bg || 'rgba(255,255,255,0.07)'), flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {s.isRadio ? <Radio size={14} color={s.color}/> : <Music size={14} color={s.color}/>}
+                      </div>
+                    : s.isDrive && s.cover
+                      ? <img src={s.cover} loading="lazy" decoding="async" style={{ width: 34, height: 34, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+                      : <div style={{ width: 34, height: 34, borderRadius: 8, background: s.isRadio ? `${s.color}20` : (s.bg || 'rgba(255,255,255,0.07)'), flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {s.isRadio ? <Radio size={14} color={s.color}/> : <Music size={14} color={s.color}/>}
+                        </div>}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: on ? 'white' : 'rgba(255,255,255,0.8)' }}>{s.title}</div>
                     <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>{s.artist}</div>
@@ -205,8 +217,14 @@ function PlaylistModal({ onClose, onSave, allSongs, existing, isLite, t, prefill
                   return (
                     <div key={s.id} onClick={()=>toggle(s.id)} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:12, cursor:'pointer', background:on?s.bg:'rgba(255,255,255,0.03)', border:`1px solid ${on?s.color+'50':'rgba(255,255,255,0.08)'}` }}>
                       {isLite
-                        ? <div style={{ width:34, height:34, borderRadius:8, background:s.bg||'rgba(255,255,255,0.07)', flexShrink:0 }}/>
-                        : <img src={s.cover} loading="lazy" decoding="async" style={{ width:34, height:34, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>}
+                        ? <div style={{ width:34, height:34, borderRadius:8, background:s.isRadio?`${s.color}20`:(s.bg||'rgba(255,255,255,0.07)'), flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                            {s.isRadio ? <Radio size={14} color={s.color}/> : <Music size={14} color={s.color}/>}
+                          </div>
+                        : s.isDrive && s.cover
+                          ? <img src={s.cover} loading="lazy" decoding="async" style={{ width:34, height:34, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
+                          : <div style={{ width:34, height:34, borderRadius:8, background:s.isRadio?`${s.color}20`:(s.bg||'rgba(255,255,255,0.07)'), flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                              {s.isRadio ? <Radio size={14} color={s.color}/> : <Music size={14} color={s.color}/>}
+                            </div>}
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ fontWeight:700, fontSize:13, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:on?'white':'rgba(255,255,255,0.8)' }}>{s.title}</div>
                         <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>{s.artist}</div>
@@ -266,8 +284,14 @@ function PlaylistModal({ onClose, onSave, allSongs, existing, isLite, t, prefill
               return (
                 <div key={s.id} onClick={()=>toggle(s.id)} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:12, cursor:'pointer', background:on?s.bg:'rgba(255,255,255,0.03)', border:`1px solid ${on?s.color+'50':'rgba(255,255,255,0.08)'}` }}>
                   {isLite
-                    ? <div style={{ width:34, height:34, borderRadius:8, background:s.bg||'rgba(255,255,255,0.07)', flexShrink:0 }}/>
-                    : <img src={s.cover} loading="lazy" decoding="async" style={{ width:34, height:34, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>}
+                    ? <div style={{ width:34, height:34, borderRadius:8, background:s.isRadio?`${s.color}20`:(s.bg||'rgba(255,255,255,0.07)'), flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                        {s.isRadio ? <Radio size={14} color={s.color}/> : <Music size={14} color={s.color}/>}
+                      </div>
+                    : s.isDrive && s.cover
+                      ? <img src={s.cover} loading="lazy" decoding="async" style={{ width:34, height:34, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
+                      : <div style={{ width:34, height:34, borderRadius:8, background:s.isRadio?`${s.color}20`:(s.bg||'rgba(255,255,255,0.07)'), flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                          {s.isRadio ? <Radio size={14} color={s.color}/> : <Music size={14} color={s.color}/>}
+                        </div>}
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ fontWeight:700, fontSize:13, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:on?'white':'rgba(255,255,255,0.8)' }}>{s.title}</div>
                     <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>{s.artist}</div>
