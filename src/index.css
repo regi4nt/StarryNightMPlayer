@@ -1962,3 +1962,8 @@ input[type='range']::-webkit-slider-thumb {
   animation: none !important;
   animation-play-state: paused !important;
 }
+
+/* Mobile portrait: sesuaikan tiang lampu dengan tinggi jalan yang baru (32%) */
+.layout-mobile-portrait .hw-pole {
+  bottom: 32%;
+}

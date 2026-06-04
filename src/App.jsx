@@ -6773,48 +6773,107 @@ Format exactly:
     // FIX: simpan state playing sebelum popup OAuth muncul.
     // Browser dapat meng-interrupt audio saat popup/focus hilang — kita resume setelah login selesai.
     const wasPlayingBeforeLogin = playingRef.current;
-    const client = window.google.accounts.oauth2.initTokenClient({
-      client_id: GOOGLE_CLIENT_ID, scope: GOOGLE_SCOPES,
-      callback: async resp => {
-        if (resp.error) return setDriveError('Login failed: '+resp.error);
-        const tok=resp.access_token; setAccessToken(tok); tokenRef.current=tok;
-        localStorage.setItem('sn_google_token', JSON.stringify({ token: tok, expiry: Date.now() + 3300 * 1000 }));
-        try {
-          const u=await (await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{ headers:{ Authorization:`Bearer ${tok}` } })).json();
-          setGoogleUser(u); localStorage.setItem('sn_google_user', JSON.stringify(u));
-        } catch(e) { setDriveError('Gagal ambil info user: '+e.message); }
-        // Load playlists dari cloud lalu merge dengan lokal
-        try {
-          const cloudPls = await driveLoadPlaylists(tok);
-          if (cloudPls && Array.isArray(cloudPls)) {
-            setPlaylists(local => {
-              // Merge: gabungkan playlist lokal dan cloud, cloud menang untuk data non-locked
-              const merged = [...local];
-              for (const cp of cloudPls) {
-                const idx = merged.findIndex(p => p.id === cp.id);
-                if (idx >= 0) {
-                  // Merge songIds: gabungkan tanpa duplikat
-                  if (!merged[idx].locked) {
-                    const combined = [...new Set([...merged[idx].songIds, ...cp.songIds])];
-                    merged[idx] = { ...cp, songIds: combined };
-                  }
-                } else {
-                  merged.push(cp);
+
+    // FIX MOBILE: deteksi mobile browser — popup OAuth sering diblokir di mobile.
+    // Gunakan ux_mode 'redirect' pada mobile agar login lebih andal.
+    const isMobileBrowser = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+      (navigator.maxTouchPoints > 1 && window.innerWidth < 768);
+
+    const onSuccess = async (tok) => {
+      setAccessToken(tok); tokenRef.current = tok;
+      localStorage.setItem('sn_google_token', JSON.stringify({ token: tok, expiry: Date.now() + 3300 * 1000 }));
+      try {
+        const u = await (await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: `Bearer ${tok}` } })).json();
+        setGoogleUser(u); localStorage.setItem('sn_google_user', JSON.stringify(u));
+      } catch(e) { setDriveError('Gagal ambil info user: ' + e.message); }
+      try {
+        const cloudPls = await driveLoadPlaylists(tok);
+        if (cloudPls && Array.isArray(cloudPls)) {
+          setPlaylists(local => {
+            const merged = [...local];
+            for (const cp of cloudPls) {
+              const idx = merged.findIndex(p => p.id === cp.id);
+              if (idx >= 0) {
+                if (!merged[idx].locked) {
+                  const combined = [...new Set([...merged[idx].songIds, ...cp.songIds])];
+                  merged[idx] = { ...cp, songIds: combined };
                 }
+              } else {
+                merged.push(cp);
               }
-              return merged;
-            });
-          }
-        } catch {}
-        // Gunakan loadDriveSongs agar error handling konsisten
-        await loadDriveSongs(tok, true);
-        // FIX: resume playback jika sedang diputar sebelum popup login muncul
-        if (wasPlayingBeforeLogin && audioRef.current && audioRef.current.paused) {
-          audioRef.current.play().catch(() => {});
+            }
+            return merged;
+          });
         }
+      } catch {}
+      await loadDriveSongs(tok, true);
+      if (wasPlayingBeforeLogin && audioRef.current && audioRef.current.paused) {
+        audioRef.current.play().catch(() => {});
       }
-    });
-    client.requestAccessToken();
+    };
+
+    if (isMobileBrowser) {
+      // Mobile: gunakan Code flow via redirect agar tidak kena blokir popup
+      try {
+        const codeClient = window.google.accounts.oauth2.initCodeClient({
+          client_id: GOOGLE_CLIENT_ID,
+          scope: GOOGLE_SCOPES,
+          ux_mode: 'popup',  // GIS Token Client tidak mendukung redirect; gunakan popup tapi dengan error handling lebih baik
+          callback: async resp => {
+            if (resp.error) {
+              // popup_closed_by_user bukan error fatal di mobile — user tutup popup
+              if (resp.error === 'popup_closed_by_user' || resp.error === 'access_denied') {
+                setDriveError('Login dibatalkan. Ketuk tombol Google lagi untuk mencoba.');
+                return;
+              }
+              return setDriveError('Login gagal: ' + resp.error);
+            }
+          }
+        });
+        // Token Client dengan error handling lebih toleran untuk mobile
+        const tokenClient = window.google.accounts.oauth2.initTokenClient({
+          client_id: GOOGLE_CLIENT_ID,
+          scope: GOOGLE_SCOPES,
+          error_callback: (err) => {
+            if (err.type === 'popup_closed' || err.type === 'popup_failed_to_open') {
+              setDriveError('Popup login ditutup atau diblokir. Coba ketuk tombol Google lagi.');
+            } else {
+              setDriveError('Login gagal: ' + (err.message || err.type));
+            }
+          },
+          callback: async resp => {
+            if (resp.error) {
+              if (resp.error === 'popup_closed_by_user' || resp.error === 'access_denied') {
+                setDriveError('Login dibatalkan. Ketuk tombol Google lagi untuk mencoba.');
+                return;
+              }
+              return setDriveError('Login failed: ' + resp.error);
+            }
+            await onSuccess(resp.access_token);
+          }
+        });
+        tokenClient.requestAccessToken({ prompt: 'select_account' });
+      } catch(e) {
+        setDriveError('Gagal memulai login: ' + e.message);
+      }
+    } else {
+      // Desktop: flow popup biasa
+      const client = window.google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID, scope: GOOGLE_SCOPES,
+        error_callback: (err) => {
+          if (err.type === 'popup_closed' || err.type === 'popup_failed_to_open') {
+            setDriveError('Popup login ditutup atau diblokir browser.');
+          } else {
+            setDriveError('Login gagal: ' + (err.message || err.type));
+          }
+        },
+        callback: async resp => {
+          if (resp.error) return setDriveError('Login failed: ' + resp.error);
+          await onSuccess(resp.access_token);
+        }
+      });
+      client.requestAccessToken();
+    }
   }, [loadDriveSongs]);
   const handleGoogleLogout = useCallback(() => {
     if (accessToken&&window.google) window.google.accounts.oauth2.revoke(accessToken,()=>{});
@@ -7629,9 +7688,9 @@ Format exactly:
           <button onClick={()=>{ setDriveError(''); loadDriveSongs(tokenRef.current, true); }}
             style={{ padding:'3px 8px', borderRadius:999, border:'1px solid rgba(239,68,68,0.4)', background:'rgba(239,68,68,0.2)', color:'#fca5a5', fontSize:10, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>{t?.refreshBtn||'↺ Refresh'}</button>
         )}
-        {/* Tombol Login Ulang — muncul jika sesi expired */}
-        {(driveError.includes('Sesi') || driveError.includes('401') || driveError.includes('Login')) && (
-          <button onClick={()=>{ setDriveError(''); handleGoogleLogin(); }} style={{ padding:'3px 8px', borderRadius:999, border:'1px solid rgba(239,68,68,0.4)', background:'rgba(239,68,68,0.2)', color:'#fca5a5', fontSize:10, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>{t?.reloginBtn||'Re-login'}</button>
+        {/* Tombol Login Ulang — muncul jika sesi expired atau popup gagal */}
+        {(driveError.includes('Sesi') || driveError.includes('401') || driveError.includes('Login') || driveError.includes('Popup') || driveError.includes('popup') || driveError.includes('dibatalkan') || driveError.includes('diblokir') || driveError.includes('lagi')) && (
+          <button onClick={()=>{ setDriveError(''); handleGoogleLogin(); }} style={{ padding:'3px 8px', borderRadius:999, border:'1px solid rgba(239,68,68,0.4)', background:'rgba(239,68,68,0.2)', color:'#fca5a5', fontSize:10, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>{t?.reloginBtn||'Coba Lagi'}</button>
         )}
         <button onClick={()=>setDriveError('')} style={{ ...btn, padding:2, color:'#fca5a5' }}><X size={13}/></button>
       </div>}
