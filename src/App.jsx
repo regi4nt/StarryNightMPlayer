@@ -8512,7 +8512,7 @@ Format exactly:
                                   ✕ Tutup
                                 </button>
                               </div>
-                              <div style={{ padding:'0 8px 8px', display:'flex', flexDirection:'column', gap:4, maxHeight:'360px', overflowY:'auto' }}>
+                              <div style={{ padding:'0 8px 8px', display:'flex', flexDirection:'column', gap:4 }}>
                                 {results[0]?.resultType === 'channel' && results.map((v, vi) => (
                                   <a key={v.channelId||vi} href={v.channelUrl} target="_blank" rel="noopener noreferrer"
                                     style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', textDecoration:'none' }}
@@ -8622,7 +8622,7 @@ Format exactly:
                                   ✕ Tutup
                                 </button>
                               </div>
-                              <div style={{ padding:'0 8px 8px', display:'flex', flexDirection:'column', gap:4, maxHeight:'360px', overflowY:'auto' }}>
+                              <div style={{ padding:'0 8px 8px', display:'flex', flexDirection:'column', gap:4 }}>
                                 {[...wsResults].sort((a,b) => {
                                   const order = ['jamendo','audius','ccmixter','fma','deezer','soundcloud','spotify'];
                                   const ai = order.indexOf(a.source); const bi = order.indexOf(b.source);
