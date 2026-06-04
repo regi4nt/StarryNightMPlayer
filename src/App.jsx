@@ -7702,7 +7702,7 @@ Format exactly:
           {/* Mini album art */}
           {tab !== 'player' && (
             <div onClick={()=>setTab('player')} style={{ width:38, height:38, borderRadius:10, overflow:'hidden', cursor:'pointer', marginBottom:4, border:`2px solid ${track.color}40`, flexShrink:0 }}>
-              {isLite ? <div style={{ width:'100%', height:'100%', background:track.bg, display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={14} color={track.color}/></div> : <img src={getCover(track)} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>}
+              {(isLite || !track.isDrive) ? <div style={{ width:'100%', height:'100%', background:track.bg||`${track.color}25`, display:'flex', alignItems:'center', justifyContent:'center' }}><Music size={14} color={track.color}/></div> : <img src={getCover(track)} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>}
             </div>
           )}
           {tabs.map(t=>{
@@ -7744,8 +7744,8 @@ Format exactly:
                       <Radio size={13} color={track.color}/>
                       {playing && <div style={{ position:'absolute', top:2, right:2, width:4, height:4, borderRadius:'50%', background:track.color, animation:'pulse 1.2s infinite' }}/>}
                     </div>
-                  : isLite
-                    ? <div style={{ width:30, height:30, borderRadius:7, background:track.bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Music size={13} color={track.color}/></div>
+                  : (isLite || !track.isDrive)
+                    ? <div style={{ width:30, height:30, borderRadius:7, background:track.bg||`${track.color}25`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Music size={13} color={track.color}/></div>
                     : (getCover(track)
                         ? <img src={getCover(track)} style={{ width:30, height:30, borderRadius:7, objectFit:'cover', flexShrink:0 }} onError={e=>{ e.target.onerror=null; e.target.src='/icon-512.png'; }}/>
                         : <div style={{ width:30, height:30, borderRadius:7, background:track.bg||`${track.color}25`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Music size={13} color={track.color}/></div>
@@ -8627,7 +8627,7 @@ Format exactly:
                                 }).map((item, idx) => {
                                   const sc = srcColors2[item.source] || 'rgba(255,255,255,0.4)';
                                   const isAudio = !!item.audioUrl && ['jamendo','ccmixter','audius'].includes(item.source);
-                                  const isCurrentTrack = currentTrack?.id === item.id || currentTrack?.audioUrl === item.audioUrl;
+                                  const isCurrentTrack = track?.id === item.id || track?.audioUrl === item.audioUrl;
                                   const isExternal = !isAudio && !!item.embedUrl;
                                   return (
                                     <div key={item.id||idx}
@@ -12105,8 +12105,8 @@ Format exactly:
                       <Radio size={15} color={track.color}/>
                       {playing && <div style={{ position:'absolute', top:3, right:3, width:5, height:5, borderRadius:'50%', background:track.color, animation:'pulse 1.2s infinite' }}/>}
                     </div>
-                  : isLite
-                    ? <div style={{ width:36, height:36, borderRadius:9, background:track.bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Music size={15} color={track.color}/></div>
+                  : (isLite || !track.isDrive)
+                    ? <div style={{ width:36, height:36, borderRadius:9, background:track.bg||`${track.color}25`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Music size={15} color={track.color}/></div>
                     : (getCover(track)
                         ? <img src={getCover(track)} style={{ width:36, height:36, borderRadius:9, objectFit:'cover', flexShrink:0 }} onError={e=>{ e.target.onerror=null; e.target.src='/icon-512.png'; }}/>
                         : <div style={{ width:36, height:36, borderRadius:9, background:track.bg||`${track.color}25`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Music size={15} color={track.color}/></div>
