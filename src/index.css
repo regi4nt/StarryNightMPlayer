@@ -338,7 +338,7 @@ input[type='range']::-webkit-slider-thumb {
       rgba(160,200,255,0.055) 9px
     );
   background-size: 60px 60px;
-  animation: rain-fall 1.2s linear infinite;
+  /* animation: rain-fall 1.2s linear infinite; — dinonaktifkan */
 }
 @keyframes rain-fall {
   from { transform: translateY(0); }
@@ -373,7 +373,7 @@ input[type='range']::-webkit-slider-thumb {
       rgba(160,200,255,0.13) 6px
     );
   background-size: 40px 40px;
-  animation: rain-slide 1.5s linear infinite;
+  /* animation: rain-slide 1.5s linear infinite; — dinonaktifkan */
   will-change: transform;
 }
 
@@ -1563,7 +1563,7 @@ input[type='range']::-webkit-slider-thumb {
   background-size: 4px 44px;
   background-position: center 0;
   background-repeat: repeat-y;
-  animation: lane-dash 0.7s linear infinite;
+  /* animation: lane-dash 0.7s linear infinite; — dinonaktifkan */
   /* Perspektif: hanya tampil di jalur tengah yang menyempit ke atas */
   clip-path: polygon(46% 0%, 54% 0%, 58% 100%, 42% 100%);
   mask-image: linear-gradient(to top, black 0%, black 30%, transparent 70%);
