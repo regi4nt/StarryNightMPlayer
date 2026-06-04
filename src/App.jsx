@@ -7426,8 +7426,16 @@ Format exactly:
                     transform: `translateX(-50%) ${p.scale ? `scale(${p.scale})` : ''}`,
                     transformOrigin: 'bottom center',
                   }}>
-                    <div className="pole-head" style={{ width:p.headS, height: Math.round(p.headS*0.38) }}/>
-                    <div className="pole-cone"/>
+                    {/* Bohlam lampu - paling atas */}
+                    <div className="pole-head" style={{ width:p.headS, height: Math.round(p.headS*0.44) }}/>
+                    {/* Tudung reflektor */}
+                    <div className="pole-shade" style={{
+                      flexShrink:0, width:0, height:0,
+                      borderLeft:`${Math.round(p.headS*0.62)}px solid transparent`,
+                      borderRight:`${Math.round(p.headS*0.62)}px solid transparent`,
+                      borderTop:`${Math.round(p.headS*0.50)}px solid rgba(180,155,80,0.70)`,
+                    }}/>
+                    {/* Tiang vertikal - paling bawah */}
                     <div className="pole-arm" style={{ height: p.armH }}/>
                   </div>
                 ));

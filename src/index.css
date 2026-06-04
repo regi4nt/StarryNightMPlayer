@@ -1482,8 +1482,11 @@ input[type='range']::-webkit-slider-thumb {
 
 /* ── Penyambung jalan ke cakrawala ── */
 .hw-road-cap {
-  position:absolute; bottom:42%; left:0; right:0; height:3%;
-  background:linear-gradient(to top, #0a1222 0%, rgba(10,18,34,0) 100%);
+  position:absolute; bottom:42%; left:0; right:0; height:4%;
+  background:linear-gradient(to top,
+    #0a1222 0%,
+    rgba(10,18,34,0.60) 55%,
+    rgba(10,18,34,0) 100%);
   pointer-events:none; z-index:0;
 }
 
@@ -1593,28 +1596,44 @@ input[type='range']::-webkit-slider-thumb {
 .hw-c4 { animation:car-right 15s linear 8s  infinite; }
 
 /* ── Tiang lampu jalan ── */
+/* Susunan dari atas ke bawah: bohlam → tudung → tiang vertikal */
+/* pole-head = lampu (paling atas) */
+/* pole-shade = tudung lampu (segitiga di bawah bohlam) */
+/* pole-arm = tiang vertikal (paling bawah) */
 .hw-pole {
   position:absolute; pointer-events:none;
   display:flex; flex-direction:column; align-items:center;
   z-index:3; bottom:42%;
   transform-origin:bottom center;
 }
+/* Bohlam lampu — persegi panjang bercahaya, di paling atas */
 .hw-pole .pole-head {
-  width:16px; height:6px; border-radius:3px 3px 0 0;
-  background:linear-gradient(to bottom, rgba(255,210,90,0.90), rgba(255,180,50,0.75));
-  box-shadow:0 0 12px 5px rgba(255,190,60,0.50), 0 0 24px 10px rgba(255,160,30,0.22);
+  width:16px; height:7px;
+  border-radius:3px 3px 1px 1px;
+  background:linear-gradient(to bottom, rgba(255,230,120,0.98), rgba(255,185,55,0.88));
+  box-shadow:
+    0 0 10px 4px rgba(255,200,80,0.65),
+    0 0 22px 9px rgba(255,160,30,0.30);
   flex-shrink:0;
+  position:relative; z-index:1;
 }
+/* Tudung/reflektor — segitiga di bawah bohlam */
+.hw-pole .pole-shade {
+  flex-shrink:0; width:0; height:0;
+  border-left:10px solid transparent;
+  border-right:10px solid transparent;
+  border-top:8px solid rgba(180,155,80,0.70);
+  filter:drop-shadow(0 2px 4px rgba(255,180,50,0.25));
+}
+/* Tiang vertikal — paling bawah */
 .hw-pole .pole-arm {
   width:2px; flex-shrink:0;
-  background:linear-gradient(to bottom, rgba(130,140,160,0.65), rgba(100,110,130,0.45));
+  background:linear-gradient(to bottom,
+    rgba(140,150,165,0.80),
+    rgba(90,100,115,0.55));
+  border-radius:0 0 1px 1px;
 }
-.hw-pole .pole-cone {
-  flex-shrink:0; width:0; height:0;
-  border-left:16px solid transparent;
-  border-right:16px solid transparent;
-  border-top:20px solid rgba(255,200,80,0.12);
-}
+/* Kerucut cahaya yang menyorot ke bawah (opsional, overlay di bawah tiang) */
 .hw-pole .pole-light-cone {
   position:absolute; top:100%; left:50%;
   width:60px; height:80px;
