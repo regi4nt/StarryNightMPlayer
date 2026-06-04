@@ -1,6 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { CheckCircle, ChevronLeft, ListPlus, Music, PenLine, Radio, Search, Trash2, X } from 'lucide-react';
-import React from 'react';
 // Helper: thumbnail with fallback for YT, Radio, Web sources
 function ThumbImg({ src, size, radius, isRadio, color, iconSize }) {
   const [err, setErr] = React.useState(false);
