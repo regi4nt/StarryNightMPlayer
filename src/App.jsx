@@ -7426,16 +7426,8 @@ Format exactly:
                     transform: `translateX(-50%) ${p.scale ? `scale(${p.scale})` : ''}`,
                     transformOrigin: 'bottom center',
                   }}>
-                    {/* Bohlam lampu - paling atas */}
-                    <div className="pole-head" style={{ width:p.headS, height: Math.round(p.headS*0.44) }}/>
-                    {/* Tudung reflektor */}
-                    <div className="pole-shade" style={{
-                      flexShrink:0, width:0, height:0,
-                      borderLeft:`${Math.round(p.headS*0.62)}px solid transparent`,
-                      borderRight:`${Math.round(p.headS*0.62)}px solid transparent`,
-                      borderTop:`${Math.round(p.headS*0.50)}px solid rgba(180,155,80,0.70)`,
-                    }}/>
-                    {/* Tiang vertikal - paling bawah */}
+                    <div className="pole-head" style={{ width:p.headS, height: Math.round(p.headS*0.38) }}/>
+                    <div className="pole-cone"/>
                     <div className="pole-arm" style={{ height: p.armH }}/>
                   </div>
                 ));
@@ -7557,16 +7549,12 @@ Format exactly:
           return <><div className="stars"/><div className="starsB"/><div className="starsC"/></>;
         };
 
-        const isDesktopLayout = layoutMode === 'desktop-landscape' || layoutMode === 'desktop-portrait';
-        const sidebarOffset = isDesktopLayout
-          ? (layoutMode === 'desktop-landscape' ? SIDEBAR_W_LANDSCAPE : SIDEBAR_W_PORTRAIT)
-          : 0;
         return (
           <>
             {overlays.map((g, i) => (
               <div key={i} style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, background:g }}/>
             ))}
-            <div style={{ position:'fixed', top:0, bottom:0, left:sidebarOffset, right:0, pointerEvents:'none', zIndex:0, overflow:'hidden' }}>
+            <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0, overflow:'hidden' }}>
               <ThemeOverlay/>
             </div>
           </>
