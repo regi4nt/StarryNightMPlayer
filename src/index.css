@@ -1876,33 +1876,47 @@ input[type='range']::-webkit-slider-thumb {
 .layout-mobile-landscape .hw-lane-edge-r,
 .layout-desktop-landscape .hw-lane-edge-r { height:50%; }
 
-/* Mobile portrait: semua elemen pakai batas konsisten 42% agar tidak ada celah */
+/* Mobile portrait: kurangi tinggi jalan agar blok gelap tidak mendominasi */
+.layout-mobile-portrait .hw-road {
+  height: 32%;
+}
+.layout-mobile-portrait .hw-lane-center {
+  height: 32%;
+}
+/* Sky turun menutupi sisa area di atas jalan */
 .layout-mobile-portrait .hw-sky {
-  bottom: 42%;
+  bottom: 32%;
 }
 .layout-mobile-portrait .hw-city-bg {
-  bottom: 42%;
+  bottom: 32%;
   height: 20%;
   z-index: 1;
 }
 .layout-mobile-portrait .hw-horizon {
-  bottom: 40%;
+  bottom: 30%;
   height: 14%;
   filter: blur(3px);
   z-index: 2;
 }
 .layout-mobile-portrait .hw-neon-lights {
-  bottom: 42%;
+  bottom: 32%;
   height: 13%;
+}
+.layout-mobile-portrait .hw-reflect {
+  height: 32%;
+}
+.layout-mobile-portrait .hw-lane-edge-l,
+.layout-mobile-portrait .hw-lane-edge-r {
+  height: 32%;
 }
 
 /* Landscape hw-road-cap ikut bottom:50% */
 .layout-mobile-landscape .hw-road-cap,
 .layout-desktop-landscape .hw-road-cap   { bottom:50%; }
 
-/* Mobile portrait: road-cap tipis untuk memperhalus transisi jalan-ke-langit */
+/* Mobile portrait: road-cap memperhalus transisi jalan-ke-langit */
 .layout-mobile-portrait .hw-road-cap {
-  bottom: 42%;
+  bottom: 32%;
   height: 4%;
   background: linear-gradient(to top, rgba(10,18,34,0.9) 0%, rgba(10,18,34,0.4) 60%, rgba(10,18,34,0) 100%);
 }
