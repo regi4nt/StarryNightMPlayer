@@ -8539,7 +8539,7 @@ Format exactly:
                             )}
                             {/* Results — with thumbnail & playing indicator */}
                             {!loading && results.length > 0 && (
-                              <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:4 }}>
+                              <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:4, maxHeight:340, overflowY:'auto', paddingRight:2 }} className="scrollbar-hide">
                                 {/* ── Tombol tutup hasil ── */}
                                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:2 }}>
                                   <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)', fontWeight:600 }}>{results.length} hasil</span>
@@ -8724,7 +8724,7 @@ Format exactly:
                               )}
                               {/* Results */}
                               {!wsLoading && wsResults.length > 0 && (
-                                <div style={{ display:'flex', flexDirection:'column', gap:4, marginTop:4 }}>
+                                <div style={{ display:'flex', flexDirection:'column', gap:4, marginTop:4, maxHeight:360, overflowY:'auto', paddingRight:2 }} className="scrollbar-hide">
                                   {/* ── Tombol tutup hasil ── */}
                                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:2 }}>
                                     <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)', fontWeight:600 }}>{wsResults.length} sumber</span>
