@@ -8393,7 +8393,7 @@ Format exactly:
           </div>
         )}
         {tab==='stream'&&(
-          <div style={{ height:'100%', display:'flex', flexDirection:'column', padding:'14px 16px 0' }}>
+          <div className="scrollbar-hide" style={{ height:'100%', overflowY:'auto', padding:'14px 16px 0', display:'flex', flexDirection:'column', gap:5, paddingBottom:'max(80px, calc(72px + env(safe-area-inset-bottom)))' }}>
 
             {/* Header */}
             <div style={{ marginBottom:10 }}>
@@ -8686,7 +8686,7 @@ Format exactly:
             </div>
 
             {/* List */}
-            <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column', gap:5, paddingBottom:'max(80px, calc(72px + env(safe-area-inset-bottom)))' }}>
+            <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
 
               {/* ── STREAMING PLATFORMS */}
               <div style={{ marginBottom:10 }}>
@@ -10248,7 +10248,7 @@ Format exactly:
 
             {/* ── Playlist list view */}
             {plView==='list'&&(
-              <div style={{ height:'100%', display:'flex', flexDirection:'column', padding:'14px 16px 0' }}>
+              <div className="scrollbar-hide" style={{ height:'100%', overflowY:'auto', padding:'14px 16px 0', display:'flex', flexDirection:'column', gap:5, paddingBottom:'max(80px, calc(72px + env(safe-area-inset-bottom)))' }}>
                 {/* Header — same style as Stream tab */}
                 <div style={{ marginBottom:10 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom:10 }}>
