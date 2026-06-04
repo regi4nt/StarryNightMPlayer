@@ -1465,13 +1465,16 @@ input[type='range']::-webkit-slider-thumb {
     rgba(30,14,8,0.95) 100%);
   pointer-events:none;
 }
-/* Penyambung jalan ke cakrawala — mengisi celah antara ujung hw-road dan hw-city-bg */
+/* Penyambung jalan ke cakrawala — blur tepi atas jalan agar transisi halus */
 .hw-road-cap {
-  position:absolute; bottom:42%; left:0; right:0; height:3%;
+  position:absolute; bottom:42%; left:0; right:0; height:6%;
   background:linear-gradient(to top,
-    #0a1222 0%,
-    rgba(10,18,34,0) 100%);
-  pointer-events:none; z-index:0;
+    rgba(10,14,26,0.95) 0%,
+    rgba(10,14,26,0.70) 30%,
+    rgba(10,14,26,0.30) 65%,
+    rgba(10,14,26,0) 100%);
+  filter: blur(6px);
+  pointer-events:none; z-index:2;
 }
 /* Tekstur aspal — grain halus */
 .hw-road::before {
@@ -1864,20 +1867,20 @@ input[type='range']::-webkit-slider-thumb {
 .layout-mobile-landscape .hw-lane-edge-r,
 .layout-desktop-landscape .hw-lane-edge-r { height:50%; }
 
-/* Mobile portrait: geser elemen kota MASUK ke dalam area jalan (0-42%) agar
-   blur tidak bocor ke atas dan tidak terlihat di area player UI */
+/* Mobile portrait: tempatkan horizon TEPAT di batas langit-jalan (bottom:42%)
+   agar cahaya orange muncul di cakrawala, bukan di tengah jalan */
 .layout-mobile-portrait .hw-horizon {
-  bottom: 28%;
-  height: 16%;
-  filter: blur(5px);
+  bottom: 40%;
+  height: 14%;
+  filter: blur(3px);
 }
 .layout-mobile-portrait .hw-city-bg {
-  bottom: 32%;
-  height: 16%;
+  bottom: 40%;
+  height: 14%;
 }
 .layout-mobile-portrait .hw-neon-lights {
-  bottom: 32%;
-  height: 13%;
+  bottom: 40%;
+  height: 12%;
 }
 
 /* Portrait: penyambung jalan ke cakrawala tetap di bottom:42% (default sudah benar) */
@@ -1885,10 +1888,12 @@ input[type='range']::-webkit-slider-thumb {
 .layout-mobile-landscape .hw-road-cap,
 .layout-desktop-landscape .hw-road-cap   { bottom:50%; }
 
-/* Mobile portrait: perbesar road-cap agar transisi jalan-ke-langit lebih halus */
+/* Mobile portrait: road-cap blur tepi jalan ke cakrawala */
 .layout-mobile-portrait .hw-road-cap {
-  height: 5%;
-  background: linear-gradient(to top, #0a1222 0%, rgba(10,18,34,0.5) 50%, rgba(10,18,34,0) 100%);
+  bottom: 40%;
+  height: 7%;
+  background: linear-gradient(to top, rgba(10,14,26,0.95) 0%, rgba(10,14,26,0.55) 40%, rgba(10,14,26,0) 100%);
+  filter: blur(7px);
 }
 
 /* ── MOBILE PORTRAIT: highway adjustments ── */
