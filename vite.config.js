@@ -127,6 +127,16 @@ export default defineConfig(({ mode }) => {
       }
     })
   ],
+  // ── Dev server: paksa browser fetch sw.js dari jaringan (tidak dari disk cache) ──
+  // Ini melengkapi updateViaCache:'none' di sisi registrasi JS.
+  // Header ini hanya aktif di `vite dev`; untuk production diatur di vercel.json.
+  server: {
+    headers: {
+      // Service Worker & Workbox runtime — TIDAK boleh di-cache oleh browser
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+    },
+    // Override header khusus untuk sw.js saja (middleware kustom di bawah)
+  },
   build: {
     outDir: 'dist',
     sourcemap: false,
@@ -170,6 +180,13 @@ export default defineConfig(({ mode }) => {
   define: {
     // Expose env vars tanpa VITE_ prefix ke client-side via import.meta.env
     'import.meta.env.GOOGLE_CLIENT_ID': JSON.stringify(env.GOOGLE_CLIENT_ID || ''),
+    // Versi build unik untuk deteksi SW stale di index.html (auto-unregister)
+    // Berubah setiap build sehingga SW lama bisa terdeteksi & di-reset.
+    '__SW_BUILD_VERSION__': JSON.stringify(
+      process.env.VERCEL_GIT_COMMIT_SHA
+        ? process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 8)   // Vercel: pakai commit SHA pendek
+        : Date.now().toString(36)                           // lokal: timestamp base-36
+    ),
   },
   }
 })

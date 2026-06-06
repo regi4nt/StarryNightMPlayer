@@ -138,10 +138,166 @@
         setTimeout(function() { obs.disconnect(); hideSplash(); }, 5000);
       });
 
-      // ── Service Worker registration ──
-      // Dihandle sepenuhnya oleh VitePWA (injectRegister: 'auto') saat build.
-      // Registrasi manual dihapus karena public/sw.js sudah dihapus untuk mencegah
-      // race condition yang menimpa output Workbox di dist/sw.js.
+      // ── Service Worker: Auto-Unregister & Bypass Cache ────────────────────────
+      //
+      // STRATEGI:
+      // 1. BYPASS CACHE  — SW di-fetch dengan `updateViaCache: 'none'` sehingga
+      //    browser SELALU mengambil sw.js langsung dari jaringan (bukan cache HTTP),
+      //    persis seperti `Cache-Control: no-store` pada file sw.js itu sendiri.
+      //    Ini mencegah browser "terjebak" memakai sw.js versi lama yang sudah
+      //    kadaluarsa hanya karena HTTP cache belum expired.
+      //
+      // 2. AUTO-UNREGISTER — Jika SW yang aktif terdeteksi "bug" (versi tidak cocok,
+      //    gagal aktivasi, atau error fatal), semua registrasi SW di-unregister,
+      //    seluruh cache Workbox dihapus, lalu halaman di-reload otomatis sekali.
+      //    Flag `sw_reset` di sessionStorage mencegah reload loop tak terbatas.
+      //
+      // VitePWA (`injectRegister: 'auto'`) tetap menangani registrasi di build mode.
+      // Kode di bawah HANYA mengatur kebijakan update & mekanisme pemulihan darurat.
+      // ────────────────────────────────────────────────────────────────────────────
+      (function () {
+        if (!('serviceWorker' in navigator)) return;
+
+        // ── Konstanta ──
+        var SW_URL        = '/sw.js';
+        var RESET_KEY     = 'sw_reset';          // sessionStorage key anti-loop
+        var BUILD_VERSION = '__SW_BUILD_VERSION__'; // diganti saat build via Vite define
+
+        // ── Helpers ──
+        function log(msg)  { console.info('[SW-Manager]', msg); }
+        function warn(msg) { console.warn('[SW-Manager]', msg); }
+
+        /** Hapus semua cache Workbox lalu reload halaman (sekali). */
+        function nukeAndReload(reason) {
+          if (sessionStorage.getItem(RESET_KEY) === '1') {
+            warn('Reset sudah dilakukan sebelumnya — hentikan untuk cegah loop. Alasan: ' + reason);
+            return;
+          }
+          sessionStorage.setItem(RESET_KEY, '1');
+          warn('Auto-unregister dipicu: ' + reason);
+
+          // Unregister semua SW
+          navigator.serviceWorker.getRegistrations().then(function (regs) {
+            var unregPromises = regs.map(function (r) {
+              return r.unregister().then(function (ok) {
+                log('Unregistered SW scope=' + r.scope + ' ok=' + ok);
+              });
+            });
+            return Promise.all(unregPromises);
+          }).then(function () {
+            // Hapus semua cache (Workbox dan lainnya)
+            if ('caches' in window) {
+              return caches.keys().then(function (keys) {
+                return Promise.all(keys.map(function (k) {
+                  log('Hapus cache: ' + k);
+                  return caches.delete(k);
+                }));
+              });
+            }
+          }).then(function () {
+            log('Semua cache dihapus. Reload…');
+            window.location.reload();
+          }).catch(function (err) {
+            warn('Gagal saat nukeAndReload: ' + err);
+            window.location.reload();
+          });
+        }
+
+        /** Periksa apakah SW yang aktif perlu di-reset. */
+        function inspectRegistration(reg) {
+          var sw = reg.active || reg.installing || reg.waiting;
+          if (!sw) return;
+
+          // Tanda #1 — SW dalam state "redundant" (gagal aktivasi)
+          sw.addEventListener('statechange', function () {
+            if (sw.state === 'redundant') {
+              nukeAndReload('SW masuk state redundant (gagal aktivasi)');
+            }
+          });
+          if (sw.state === 'redundant') {
+            nukeAndReload('SW sudah redundant saat inspeksi awal');
+            return;
+          }
+
+          // Tanda #2 — Versi build tidak cocok (stale SW dari deploy lama)
+          //   SW dapat membalas pesan {type:'SW_VERSION', version:'xxx'}.
+          //   Jika versi tidak sama dengan BUILD_VERSION, reset.
+          if (BUILD_VERSION && BUILD_VERSION !== '__SW_BUILD_VERSION__') {
+            var mc = new MessageChannel();
+            mc.port1.onmessage = function (evt) {
+              if (evt.data && evt.data.type === 'SW_VERSION') {
+                var swVer = evt.data.version;
+                if (swVer && swVer !== BUILD_VERSION) {
+                  nukeAndReload('Versi SW (' + swVer + ') ≠ build (' + BUILD_VERSION + ')');
+                } else {
+                  log('Versi SW cocok: ' + swVer);
+                }
+              }
+            };
+            sw.postMessage({ type: 'GET_VERSION' }, [mc.port2]);
+          }
+        }
+
+        // ── Main: daftar / periksa SW dengan updateViaCache: 'none' ──
+        navigator.serviceWorker.register(SW_URL, {
+          // BYPASS CACHE: browser selalu fetch sw.js dari jaringan,
+          // mengabaikan HTTP cache (setara header Cache-Control: no-store).
+          updateViaCache: 'none',
+          scope: '/',
+        }).then(function (reg) {
+          log('SW terdaftar. Scope=' + reg.scope);
+          inspectRegistration(reg);
+
+          // Paksa cek update segera (tanpa menunggu 24 jam bawaan browser)
+          reg.update().catch(function (e) { warn('reg.update() gagal: ' + e); });
+
+          // Deteksi SW baru yang sudah menunggu — paksa skipWaiting jika beda versi
+          reg.addEventListener('updatefound', function () {
+            var newSW = reg.installing;
+            if (!newSW) return;
+            log('SW baru ditemukan, sedang menginstal…');
+            newSW.addEventListener('statechange', function () {
+              log('SW baru state: ' + newSW.state);
+              if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+                // SW baru siap tapi halaman masih pakai SW lama.
+                // VitePWA sudah set skipWaiting:true di workbox config,
+                // jadi ini harusnya otomatis. Ini sebagai failsafe.
+                log('SW baru installed & waiting — skipWaiting fallback.');
+                newSW.postMessage({ type: 'SKIP_WAITING' });
+              }
+              if (newSW.state === 'redundant') {
+                nukeAndReload('SW baru gagal aktivasi (redundant setelah install)');
+              }
+            });
+          });
+        }).catch(function (err) {
+          // Registrasi awal gagal — kemungkinan besar karena SW lama corrupt/bug.
+          warn('Registrasi SW gagal: ' + err + '. Coba auto-unregister…');
+          nukeAndReload('Registrasi awal gagal: ' + err);
+        });
+
+        // ── Reload otomatis saat SW baru mengambil alih kontrol ──
+        // (controllerchange terjadi setelah skipWaiting + clientsClaim)
+        var refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
+          if (refreshing) return;
+          refreshing = true;
+          log('SW controller berubah — reload untuk pakai SW terbaru.');
+          // Bersihkan flag reset agar pada reload berikutnya bisa reset lagi jika perlu
+          sessionStorage.removeItem(RESET_KEY);
+          window.location.reload();
+        });
+
+        // ── Error handler global — tangkap error fetch dari SW ──
+        window.addEventListener('error', function (evt) {
+          var msg = evt.message || '';
+          // Pola error yang khas dari SW yang corrupt/bug
+          if (/Failed to fetch|NetworkError|fetch.*sw/i.test(msg)) {
+            nukeAndReload('Error fetch global mencurigakan: ' + msg);
+          }
+        });
+
+      }());
 
       // ── Detect standalone mode — sembunyikan elemen browser jika berjalan sebagai PWA ──
       (function() {

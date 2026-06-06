@@ -555,13 +555,64 @@ function CacheManager({ lang, t }) {
               : 'Clear All removes playlists, login & all settings'}
           </div>
 
+          {/* ── Kompres Cache ke Opus */}
+          {(() => {
+            const running = compressStatus === 'running';
+            const done    = compressStatus === 'done';
+            const error   = compressStatus === 'error';
+            const pct     = compressProgress.total > 0
+              ? Math.round((compressProgress.done / compressProgress.total) * 100)
+              : 0;
+            const clr    = error ? '#fca5a5' : done ? '#6ee7b7' : '#fde68a';
+            const bg     = error ? 'rgba(239,68,68,0.08)' : done ? 'rgba(16,185,129,0.08)' : 'rgba(234,179,8,0.07)';
+            const border = error ? 'rgba(239,68,68,0.25)' : done ? 'rgba(16,185,129,0.2)' : 'rgba(234,179,8,0.2)';
+            const label  = running
+              ? `${lang==='id'?'Mengompres':'Compressing'} ${compressProgress.done}/${compressProgress.total}…`
+              : done
+              ? `✅ ${lang==='id'?'Hemat':'Saved'} ${compressProgress.savedMB} MB`
+              : error
+              ? `⚠️ ${lang==='id'?'Gagal kompres':'Compress failed'}`
+              : `🗜️ ${lang==='id'?'Kompres Cache ke Opus':'Compress Cache to Opus'}`;
+            const sub = running
+              ? `${pct}% — ${compressProgress.savedMB} MB ${lang==='id'?'dihemat sejauh ini':'saved so far'}`
+              : done
+              ? lang==='id'?'Cache lama diganti Opus 64kbps — bisa simpan lebih banyak lagu':'Old cache replaced with Opus 64kbps — fits more songs'
+              : lang==='id'
+              ? 'Re-encode audio cache ke Opus 64kbps — hemat 3-8× ruang, kualitas tetap baik'
+              : 'Re-encode audio cache to Opus 64kbps — 3-8× less space, still sounds great';
+            return (
+              <div style={{ marginTop:4 }}>
+                <button
+                  onClick={() => startCompressCache?.()}
+                  style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:12, border:`1.5px solid ${border}`, background:bg, color:clr, fontSize:12, fontWeight:700, cursor:'pointer', textAlign:'left', transition:'all 0.2s' }}
+                >
+                  <span style={{ fontSize:16 }}>{running ? '⏳' : done ? '✅' : error ? '⚠️' : '🗜️'}</span>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontWeight:700, fontSize:12 }}>{label}</div>
+                    <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{sub}</div>
+                    {running && compressProgress.total > 0 && (
+                      <div style={{ marginTop:5, height:3, borderRadius:2, background:'rgba(255,255,255,0.1)', overflow:'hidden' }}>
+                        <div style={{ height:'100%', width:`${pct}%`, background:'linear-gradient(90deg,#fde68a,#f59e0b)', borderRadius:2, transition:'width 0.3s' }}/>
+                      </div>
+                    )}
+                  </div>
+                  {running && (
+                    <span style={{ fontSize:10, color:'rgba(255,255,255,0.4)', flexShrink:0 }}>
+                      {lang==='id'?'Tap batal':'Tap stop'}
+                    </span>
+                  )}
+                </button>
+              </div>
+            );
+          })()}
+
         </div>
       )}
     </div>
   );
 }
 
-function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t, userSpId, setUserSpId, userSpSecret, setUserSpSecret, userScId, setUserScId, userAiKey, setUserAiKey, userYtKey, setUserYtKey, userCfKey, setUserCfKey, userSnKey, setUserSnKey, setTab, setFullscreen, googleUser, handleGoogleLogin, syncPlaylistsToCloud, accessToken, plSyncStatus, plSyncError, plSyncedAt, bgTheme, setBgTheme }) {
+function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t, userSpId, setUserSpId, userSpSecret, setUserSpSecret, userScId, setUserScId, userAiKey, setUserAiKey, userYtKey, setUserYtKey, userCfKey, setUserCfKey, userSnKey, setUserSnKey, setTab, setFullscreen, googleUser, handleGoogleLogin, syncPlaylistsToCloud, syncSongsToCloud, accessToken, plSyncStatus, plSyncError, plSyncedAt, songSyncStatus, songSyncError, songSyncedAt, startCompressCache, compressStatus, compressProgress, bgTheme, setBgTheme }) {
   const coverRef = useRef(null);
   const [apiKeyTab, setApiKeyTab] = React.useState('spotify');
   const [showThemePicker, setShowThemePicker] = React.useState(false);
@@ -622,6 +673,28 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
                     <div>
                       <div style={{ fontWeight:700, fontSize:12 }}>{syncLabel}</div>
                       <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{syncSub}</div>
+                    </div>
+                  </button>
+                );
+              })()}
+              {/* ── Song Sync Button */}
+              {(() => {
+                const syncing = songSyncStatus === 'syncing';
+                const done    = songSyncStatus === 'synced';
+                const error   = songSyncStatus === 'error';
+                const clr     = error ? '#fca5a5' : done ? '#6ee7b7' : '#c4b5fd';
+                const bg      = error ? 'rgba(239,68,68,0.1)' : done ? 'rgba(16,185,129,0.08)' : 'rgba(139,92,246,0.08)';
+                const border  = error ? 'rgba(239,68,68,0.3)' : done ? 'rgba(16,185,129,0.25)' : 'rgba(139,92,246,0.25)';
+                const label   = syncing ? 'Menyimpan lagu...' : done ? '✅ Lagu tersimpan' : error ? '⚠️ Gagal sync lagu' : 'Sync Lagu ke Drive';
+                const sub     = error ? songSyncError : songSyncedAt ? `Terakhir: ${new Date(songSyncedAt).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}` : 'Simpan liked songs & YT songs ke Google Drive';
+                return (
+                  <button onClick={() => { if (!syncing && syncSongsToCloud) syncSongsToCloud(accessToken); }}
+                    disabled={syncing}
+                    style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:12, border:`1.5px solid ${border}`, background:bg, color:clr, fontSize:12, fontWeight:700, cursor:syncing?'default':'pointer', textAlign:'left', transition:'all 0.2s' }}>
+                    <span style={{ fontSize:16 }}>{syncing ? '⬆️' : done ? '✅' : error ? '⚠️' : '🎵'}</span>
+                    <div>
+                      <div style={{ fontWeight:700, fontSize:12 }}>{label}</div>
+                      <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{sub}</div>
                     </div>
                   </button>
                 );

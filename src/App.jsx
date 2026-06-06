@@ -49,6 +49,8 @@ import {
   ytCacheGet, downloadBlobToDevice,
   cacheGet, driveStreamBlob, driveStreamLite, driveDownloadBlob, driveUploadSong,
   driveSavePlaylists, driveLoadPlaylists,
+  driveSaveSongs, driveLoadSongs,
+  recompressCacheEntries,
 } from './constants.js';
 
 // ── Lazy-loaded components ────────────────────────────────
@@ -2739,6 +2741,12 @@ Return ONLY valid JSON, no explanation:
   const [plSyncStatus, setPlSyncStatus]   = useState('idle'); // 'idle'|'syncing'|'synced'|'error'
   const [plSyncError, setPlSyncError]     = useState('');
   const [plSyncedAt, setPlSyncedAt]       = useState(null);   // timestamp terakhir sync berhasil
+  const [songSyncStatus, setSongSyncStatus] = useState('idle'); // 'idle'|'syncing'|'synced'|'error'
+  const [songSyncError, setSongSyncError]   = useState('');
+  const [songSyncedAt, setSongSyncedAt]     = useState(null);
+  const [compressStatus, setCompressStatus] = useState('idle'); // 'idle'|'running'|'done'|'error'
+  const [compressProgress, setCompressProgress] = useState({ done: 0, total: 0, savedMB: 0 });
+  const compressAbortRef = useRef(null);
   const plSyncTimerRef                    = useRef(null);
   const playlistsRef                      = useRef([]); // always-fresh ref untuk menghindari stale closure di setTimeout
   const [activePl, setActivePl]           = useState(null); // null = all songs, else playlist id
@@ -2997,7 +3005,104 @@ Return ONLY valid JSON, no explanation:
   useEffect(() => { try { localStorage.setItem('sn_yt_songs', JSON.stringify(ytSongs)); } catch {} }, [ytSongs]);
   useEffect(() => { try { localStorage.setItem('sn_history', JSON.stringify(history)); } catch {} }, [history]);
 
-  // ── Silent token refresh — dipindah ke sini agar tersedia sebelum useEffect lain
+  // ── Sync favSongs + ytSongs ke Google Drive (debounce 5 detik setelah perubahan)
+  const songSyncTimerRef = useRef(null);
+  const favSongsRef  = useRef(favSongs);
+  const ytSongsRef   = useRef(ytSongs);
+  useEffect(() => { favSongsRef.current = favSongs; }, [favSongs]);
+  useEffect(() => { ytSongsRef.current  = ytSongs;  }, [ytSongs]);
+
+  const syncSongsToCloud = useCallback(async (token, opts = {}, silent = false) => {
+    if (!token) return;
+    if (!silent) setSongSyncStatus('syncing');
+    try {
+      const fav = opts.favSongs ?? favSongsRef.current;
+      const yt  = opts.ytSongs  ?? ytSongsRef.current;
+      await driveSaveSongs(token, { favSongs: fav, ytSongs: yt });
+      setSongSyncStatus('synced');
+      setSongSyncedAt(Date.now());
+      setSongSyncError('');
+      setTimeout(() => setSongSyncStatus('idle'), 3000);
+    } catch (e) {
+      setSongSyncStatus('error');
+      setSongSyncError(e.message || 'Sync gagal');
+      setTimeout(() => setSongSyncStatus('idle'), 5000);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    if (songSyncTimerRef.current) clearTimeout(songSyncTimerRef.current);
+    songSyncTimerRef.current = setTimeout(() => {
+      const tok = tokenRef.current;
+      if (tok) syncSongsToCloud(tok, {}, true);
+    }, 5000); // debounce lebih panjang dari playlist (5 s) — perubahan lagu lebih jarang
+    return () => { if (songSyncTimerRef.current) clearTimeout(songSyncTimerRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [favSongs, ytSongs, accessToken]);
+
+  // ── Kompres semua cache audio yang tersimpan ke Opus
+  // Menghemat 3-8x ruang dibanding MP3/AAC asli menggunakan Web Audio + MediaRecorder.
+  const startCompressCache = useCallback(async () => {
+    if (compressStatus === 'running') {
+      // Abort jika sedang berjalan
+      compressAbortRef.current?.abort();
+      setCompressStatus('idle');
+      return;
+    }
+    const ctrl = new AbortController();
+    compressAbortRef.current = ctrl;
+    setCompressStatus('running');
+    setCompressProgress({ done: 0, total: 0, savedMB: 0 });
+
+    let totalSaved = 0;
+    try {
+      // Hitung total entries dulu untuk progress bar
+      const [ytKeys, favKeys, driveKeys] = await Promise.all([
+        caches.open('sn-yt-v1').then(c => c.keys()).catch(() => []),
+        caches.open('sn-fav-v1').then(c => c.keys()).catch(() => []),
+        caches.open('sn-drive-v1').then(c => c.keys()).catch(() => []),
+      ]);
+      const total = ytKeys.length + favKeys.length + driveKeys.length;
+      let done = 0;
+
+      const onProg = (processed, _total, saved) => {
+        done += (processed === 1 ? 1 : 0); // simpel: tiap callback = +1
+        totalSaved += saved - totalSaved; // update running total
+        setCompressProgress({ done, total, savedMB: +(totalSaved / 1_048_576).toFixed(1) });
+      };
+
+      // Jalankan berurutan agar tidak overwhelm browser
+      const ytSaved  = await recompressCacheEntries('sn-yt-v1', '/yt/', (p, t, s) => {
+        setCompressProgress(prev => ({ done: prev.done + 1, total, savedMB: +((totalSaved + s) / 1_048_576).toFixed(1) }));
+      }, ctrl.signal);
+      totalSaved += ytSaved;
+      if (ctrl.signal.aborted) throw new Error('aborted');
+
+      const favSaved = await recompressCacheEntries('sn-fav-v1', '/fav/', (p, t, s) => {
+        setCompressProgress(prev => ({ done: prev.done + 1, total, savedMB: +((totalSaved + s) / 1_048_576).toFixed(1) }));
+      }, ctrl.signal);
+      totalSaved += favSaved;
+      if (ctrl.signal.aborted) throw new Error('aborted');
+
+      const driveSaved = await recompressCacheEntries('sn-drive-v1', '/drive/', (p, t, s) => {
+        setCompressProgress(prev => ({ done: prev.done + 1, total, savedMB: +((totalSaved + s) / 1_048_576).toFixed(1) }));
+      }, ctrl.signal);
+      totalSaved += driveSaved;
+
+      setCompressProgress({ done: total, total, savedMB: +(totalSaved / 1_048_576).toFixed(1) });
+      setCompressStatus('done');
+      setTimeout(() => setCompressStatus('idle'), 8000);
+    } catch (e) {
+      if (e.message === 'aborted') {
+        setCompressStatus('idle');
+      } else {
+        setCompressStatus('error');
+        setTimeout(() => setCompressStatus('idle'), 5000);
+      }
+    }
+  }, [compressStatus]);
+
   //
   // Guard: simpan promise yang sedang berjalan di ref agar 7 call-site tidak
   // memunculkan OAuth popup berulang secara bersamaan. Semua caller yang datang
@@ -7006,6 +7111,28 @@ Format exactly:
           });
         }
       } catch {}
+      // ── Restore favSongs + ytSongs dari Drive (merge dengan local)
+      try {
+        const cloudSongs = await driveLoadSongs(tok);
+        if (cloudSongs) {
+          // favSongs: merge by id — cloud menang untuk lagu baru, lokal dipertahankan untuk lagu yang sudah ada
+          if (Array.isArray(cloudSongs.favSongs) && cloudSongs.favSongs.length > 0) {
+            setFavSongs(local => {
+              const localIds = new Set(local.map(s => s.id));
+              const toAdd    = cloudSongs.favSongs.filter(s => !localIds.has(s.id));
+              return toAdd.length > 0 ? [...local, ...toAdd] : local;
+            });
+          }
+          // ytSongs: merge by id — lagu YT yang disimpan di perangkat lain ikut masuk
+          if (Array.isArray(cloudSongs.ytSongs) && cloudSongs.ytSongs.length > 0) {
+            setYtSongs(local => {
+              const localIds = new Set(local.map(s => s.id));
+              const toAdd    = cloudSongs.ytSongs.filter(s => !localIds.has(s.id));
+              return toAdd.length > 0 ? [...toAdd, ...local] : local; // prepend agar lagu cloud muncul duluan
+            });
+          }
+        }
+      } catch {}
       await loadDriveSongs(tok, true);
       if (wasPlayingBeforeLogin && audioRef.current && audioRef.current.paused) {
         audioRef.current.play().catch(() => {});
@@ -7977,7 +8104,7 @@ Format exactly:
 
         {/* ── SETTINGS PANEL — menutup semua tab di desktop & landscape, hanya player di portrait */}
         {showSettings && (isDesktop || layoutMode === 'mobile-landscape' || tab === 'player') && (
-          <Suspense fallback={<Spinner/>}><SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userScId={userScId} setUserScId={setUserScId} userAiKey={userAiKey} setUserAiKey={setUserAiKey} userYtKey={userYtKey} setUserYtKey={setUserYtKey} userCfKey={userCfKey} setUserCfKey={setUserCfKey} userSnKey={userSnKey} setUserSnKey={setUserSnKey} setTab={setTab} setFullscreen={setFullscreen} googleUser={googleUser||null} handleGoogleLogin={handleGoogleLogin} syncPlaylistsToCloud={syncPlaylistsToCloud} accessToken={accessToken||null} plSyncStatus={plSyncStatus} plSyncError={plSyncError||null} plSyncedAt={plSyncedAt||null} bgTheme={bgTheme} setBgTheme={(v)=>{ setBgTheme(v); localStorage.setItem('sn_bg_theme', v); }}/></Suspense>
+          <Suspense fallback={<Spinner/>}><SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userScId={userScId} setUserScId={setUserScId} userAiKey={userAiKey} setUserAiKey={setUserAiKey} userYtKey={userYtKey} setUserYtKey={setUserYtKey} userCfKey={userCfKey} setUserCfKey={setUserCfKey} userSnKey={userSnKey} setUserSnKey={setUserSnKey} setTab={setTab} setFullscreen={setFullscreen} googleUser={googleUser||null} handleGoogleLogin={handleGoogleLogin} syncPlaylistsToCloud={syncPlaylistsToCloud} syncSongsToCloud={syncSongsToCloud} accessToken={accessToken||null} plSyncStatus={plSyncStatus} plSyncError={plSyncError||null} plSyncedAt={plSyncedAt||null} songSyncStatus={songSyncStatus} songSyncError={songSyncError||null} songSyncedAt={songSyncedAt||null} startCompressCache={startCompressCache} compressStatus={compressStatus} compressProgress={compressProgress} bgTheme={bgTheme} setBgTheme={(v)=>{ setBgTheme(v); localStorage.setItem('sn_bg_theme', v); }}/></Suspense>
         )}
 
         {/* ─── PLAYER TAB */}

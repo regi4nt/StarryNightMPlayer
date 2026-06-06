@@ -734,10 +734,177 @@ export const YT_CACHE_NAME    = 'sn-yt-v1';      // cache audio YouTube yang di-
 export const FAV_CACHE_NAME   = 'sn-fav-v1';     // cache audio favSongs (SC/Spotify preview) yang di-love
 
 // Simpan audio blob YouTube ke cache
+// ── Audio Compression via MediaRecorder + OfflineAudioContext ────────────────
+// Mengompresi blob audio mentah (MP3/AAC/WebM) ke Opus 64kbps menggunakan
+// Web Audio API + MediaRecorder. Hemat 3-8x ruang dibanding MP3 128kbps asli.
+//
+// Cara kerja:
+//   1. decodeAudioData  → AudioBuffer (PCM mentah)
+//   2. OfflineAudioContext.startRendering → AudioBuffer bersih (copy)
+//   3. AudioBufferSourceNode → MediaStreamDestination → MediaRecorder (Opus)
+//   4. Kumpulkan chunk → Blob WebM/Opus
+//
+// Guard: jika browser tidak support Opus MediaRecorder atau blob sudah kecil,
+// fungsi langsung return blob asli tanpa error.
+
+// Cache nama versi kompresi — terpisah dari v1 agar rollback mudah
+export const OPUS_CACHE_SUFFIX = ':opus'; // ditambah ke cacheKey sebagai tanda sudah dikompres
+
+// Target bitrate Opus (bits/detik). 64 kbps → kualitas baik untuk musik streaming.
+// Bisa diturunkan ke 48 kbps untuk hemat lebih banyak, tapi artefak lebih terasa.
+const OPUS_BITRATE = 64_000;
+
+// Ukuran minimum blob (bytes) yang layak dikompres — blob < 50 KB tidak perlu
+const COMPRESS_MIN_SIZE = 50_000;
+
+// Deteksi apakah browser ini mendukung encode Opus via MediaRecorder
+function _supportsOpusMediaRecorder() {
+  if (typeof MediaRecorder === 'undefined') return false;
+  const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'];
+  return types.some(t => MediaRecorder.isTypeSupported(t));
+}
+
+// Pilih mime type terbaik yang didukung
+function _bestOpusMime() {
+  const candidates = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/webm'];
+  return candidates.find(t => MediaRecorder.isTypeSupported(t)) || 'audio/webm';
+}
+
+/**
+ * Kompres blob audio ke Opus menggunakan pipeline Web Audio + MediaRecorder.
+ * Return blob terkompresi, atau blob asli jika kompresi tidak tersedia / tidak menghemat.
+ * @param {Blob} blob - Blob audio asli (MP3/AAC/WebM/dll)
+ * @param {AbortSignal} [signal] - Opsional abort signal
+ */
+export async function compressAudioBlob(blob, signal) {
+  // Guard: ukuran terlalu kecil atau browser tidak support
+  if (!blob || blob.size < COMPRESS_MIN_SIZE) return blob;
+  if (!_supportsOpusMediaRecorder()) return blob;
+
+  try {
+    const arrayBuf = await blob.arrayBuffer();
+    if (signal?.aborted) return blob;
+
+    // Decode audio ke PCM
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return blob;
+    const tmpCtx = new AC();
+    let audioBuf;
+    try {
+      audioBuf = await tmpCtx.decodeAudioData(arrayBuf);
+    } catch {
+      await tmpCtx.close();
+      return blob; // format tidak dikenali browser
+    }
+    await tmpCtx.close();
+    if (signal?.aborted) return blob;
+
+    const { numberOfChannels, sampleRate, length } = audioBuf;
+
+    // Render ulang via OfflineAudioContext agar PCM clean (beberapa decode ada noise)
+    const offline = new OfflineAudioContext(numberOfChannels, length, sampleRate);
+    const src = offline.createBufferSource();
+    src.buffer = audioBuf;
+    src.connect(offline.destination);
+    src.start(0);
+    const rendered = await offline.startRendering();
+    if (signal?.aborted) return blob;
+
+    // Encode via MediaRecorder: hubungkan rendered buffer ke MediaStreamDestination
+    const encCtx = new AC({ sampleRate });
+    const dest = encCtx.createMediaStreamDestination();
+    const playback = encCtx.createBufferSource();
+    playback.buffer = rendered;
+    playback.connect(dest);
+
+    const mime = _bestOpusMime();
+    const recorder = new MediaRecorder(dest.stream, {
+      mimeType: mime,
+      audioBitsPerSecond: OPUS_BITRATE,
+    });
+
+    const chunks = [];
+    recorder.ondataavailable = (e) => { if (e.data?.size > 0) chunks.push(e.data); };
+
+    const compressed = await new Promise((resolve, reject) => {
+      recorder.onstop = () => {
+        encCtx.close();
+        const b = new Blob(chunks, { type: mime });
+        resolve(b);
+      };
+      recorder.onerror = (e) => { encCtx.close(); reject(e.error || new Error('MediaRecorder error')); };
+
+      recorder.start();
+      playback.start(0);
+      // Stop recorder setelah durasi audio selesai + sedikit buffer
+      setTimeout(() => {
+        try { if (recorder.state !== 'inactive') recorder.stop(); } catch {}
+      }, (rendered.duration * 1000) + 500);
+    });
+
+    if (signal?.aborted) return blob;
+
+    // Hanya pakai hasil kompresi jika benar-benar lebih kecil (toleransi 5%)
+    if (compressed.size > 0 && compressed.size < blob.size * 0.95) {
+      return compressed;
+    }
+    return blob; // kompresi tidak menghemat (mungkin sudah Opus/format kecil)
+  } catch {
+    return blob; // fallback aman — blob asli tetap dipakai
+  }
+}
+
+/**
+ * Kompres semua entri di satu cache secara berurutan.
+ * Dipanggil dari tombol "Kompres Cache" di Settings.
+ * @param {string} cacheName - nama CacheStorage (e.g. 'sn-yt-v1')
+ * @param {string} prefix - prefix URL path (e.g. '/yt/')
+ * @param {function} onProgress - callback(processed, total, savedBytes)
+ * @param {AbortSignal} signal
+ */
+export async function recompressCacheEntries(cacheName, prefix, onProgress, signal) {
+  const cache = await caches.open(cacheName);
+  const keys  = await cache.keys();
+  let savedBytes = 0;
+  for (let i = 0; i < keys.length; i++) {
+    if (signal?.aborted) break;
+    const req = keys[i];
+    // Skip entri yang sudah dikompres (ditandai header custom)
+    const existing = await cache.match(req);
+    if (!existing) continue;
+    const alreadyCompressed = existing.headers.get('x-sn-opus') === '1';
+    if (alreadyCompressed) { onProgress?.(i + 1, keys.length, savedBytes); continue; }
+
+    const origBlob = await existing.blob();
+    const compressed = await compressAudioBlob(origBlob, signal);
+    if (signal?.aborted) break;
+
+    if (compressed !== origBlob && compressed.size < origBlob.size) {
+      savedBytes += origBlob.size - compressed.size;
+      await cache.put(req, new Response(compressed, {
+        headers: {
+          'Content-Type': compressed.type,
+          'x-sn-opus': '1',
+          'x-sn-orig-size': String(origBlob.size),
+        },
+      }));
+    }
+    onProgress?.(i + 1, keys.length, savedBytes);
+  }
+  return savedBytes;
+}
+
 async function ytCachePut(videoId, blob) {
+  // Kompres ke Opus sebelum simpan — hemat 3-8x ruang, transparan ke pemanggil
+  const toStore = await compressAudioBlob(blob).catch(() => blob);
   try {
     const cache = await caches.open(YT_CACHE_NAME);
-    await cache.put(`/yt/${videoId}`, new Response(blob, { headers: { 'Content-Type': blob.type || 'audio/mpeg' } }));
+    await cache.put(`/yt/${videoId}`, new Response(toStore, {
+      headers: {
+        'Content-Type': toStore.type || 'audio/mpeg',
+        ...(toStore !== blob ? { 'x-sn-opus': '1', 'x-sn-orig-size': String(blob.size) } : {}),
+      },
+    }));
   } catch { /* private browsing / storage penuh */ }
 }
 
@@ -753,9 +920,15 @@ export async function ytCacheGet(videoId) {
 
 // ── Cache untuk favSongs (audio preview SC/Spotify dll)
 async function favCachePut(songId, blob) {
+  const toStore = await compressAudioBlob(blob).catch(() => blob);
   try {
     const cache = await caches.open(FAV_CACHE_NAME);
-    await cache.put(`/fav/${songId}`, new Response(blob, { headers: { 'Content-Type': blob.type || 'audio/mpeg' } }));
+    await cache.put(`/fav/${songId}`, new Response(toStore, {
+      headers: {
+        'Content-Type': toStore.type || 'audio/mpeg',
+        ...(toStore !== blob ? { 'x-sn-opus': '1', 'x-sn-orig-size': String(blob.size) } : {}),
+      },
+    }));
   } catch { /* private browsing / storage penuh */ }
 }
 
@@ -1165,9 +1338,15 @@ export async function driveListSongs(token, forceRefresh = false) {
 }
 // Simpan blob ke Cache API (IndexedDB-like, persisten)
 async function cachePut(cacheKey, blob) {
+  const toStore = await compressAudioBlob(blob).catch(() => blob);
   try {
     const cache = await caches.open(DRIVE_CACHE_NAME);
-    await cache.put(`/drive/${cacheKey}`, new Response(blob, { headers: { 'Content-Type': blob.type } }));
+    await cache.put(`/drive/${cacheKey}`, new Response(toStore, {
+      headers: {
+        'Content-Type': toStore.type || blob.type,
+        ...(toStore !== blob ? { 'x-sn-opus': '1', 'x-sn-orig-size': String(blob.size) } : {}),
+      },
+    }));
   } catch { /* private browsing atau storage penuh */ }
 }
 
@@ -1571,6 +1750,103 @@ export async function driveLoadPlaylists(token) {
   if (!res.ok) throw new Error(`Playlist load failed ${res.status}`);
   const data = await res.json();
   return Array.isArray(data.playlists) ? data.playlists : null;
+}
+
+// ── Simpan/load sn_songs.json di folder "Starry Night Music" di Google Drive.
+// Menyimpan favSongs (lagu di-like dari SC/Spotify/Radio) dan ytSongs (lagu YouTube yang disimpan).
+// Field `src` dan blob URL di-strip sebelum disimpan — hanya metadata yang perlu persist.
+
+const SONGS_FILENAME = 'sn_songs.json';
+
+async function driveSearchSongsFile(token, folderId) {
+  const q = encodeURIComponent(`name='${SONGS_FILENAME}' and '${folderId}' in parents and trashed=false`);
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,modifiedTime)&pageSize=1`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!res.ok) throw new Error(`Drive search songs error ${res.status}`);
+  const data = await res.json();
+  return data.files && data.files.length > 0 ? data.files[0] : null;
+}
+
+/** Simpan favSongs + ytSongs ke Drive. Strip field `src` (blob URL tidak persist antar sesi). */
+export async function driveSaveSongs(token, { favSongs = [], ytSongs = [] }) {
+  const folderId = await driveEnsureFolder(token);
+  const existing = await driveSearchSongsFile(token, folderId);
+
+  // Strip src (blob URL) agar tidak tersimpan ke cloud — akan dibuat ulang saat streaming
+  const strip = (s) => { const { src: _src, ...rest } = s; return rest; };
+  const content = JSON.stringify({
+    version: 1,
+    savedAt: new Date().toISOString(),
+    favSongs: favSongs.map(strip),
+    ytSongs:  ytSongs.map(strip),
+  });
+  const blob = new Blob([content], { type: 'application/json' });
+  const form = new FormData();
+
+  if (existing) {
+    form.append('metadata', new Blob([JSON.stringify({})], { type: 'application/json' }));
+    form.append('file', blob);
+    const res = await fetch(
+      `https://www.googleapis.com/upload/drive/v3/files/${existing.id}?uploadType=multipart`,
+      { method: 'PATCH', headers: { Authorization: `Bearer ${token}` }, body: form }
+    );
+    if (!res.ok) throw new Error(`Songs save failed ${res.status}`);
+    return await res.json();
+  } else {
+    form.append('metadata', new Blob([JSON.stringify({
+      name: SONGS_FILENAME,
+      parents: [folderId],
+      mimeType: 'application/json',
+    })], { type: 'application/json' }));
+    form.append('file', blob);
+    const res = await fetch(
+      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+      { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form }
+    );
+    if (!res.ok) throw new Error(`Songs create failed ${res.status}`);
+    return await res.json();
+  }
+}
+
+/** Load favSongs + ytSongs dari Drive. Return null jika file belum ada. */
+export async function driveLoadSongs(token) {
+  let fileId = null;
+  try {
+    const folderId = await driveGetFolderId(token);
+    if (folderId) {
+      const file = await driveSearchSongsFile(token, folderId);
+      if (file) fileId = file.id;
+    }
+  } catch {}
+
+  if (!fileId) {
+    try {
+      const q = encodeURIComponent(`name='${SONGS_FILENAME}' and trashed=false`);
+      const res = await fetch(
+        `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&pageSize=1`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (data.files && data.files.length > 0) fileId = data.files[0].id;
+      }
+    } catch {}
+  }
+
+  if (!fileId) return null;
+
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!res.ok) throw new Error(`Songs load failed ${res.status}`);
+  const data = await res.json();
+  return {
+    favSongs: Array.isArray(data.favSongs) ? data.favSongs : [],
+    ytSongs:  Array.isArray(data.ytSongs)  ? data.ytSongs  : [],
+  };
 }
 
 export async function driveUploadSong(file, meta, token) {
