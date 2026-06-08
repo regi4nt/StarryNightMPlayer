@@ -44,7 +44,9 @@ import {
   markFullyCached, checkCachedBlob,
   _driveCache, _blobCache, DRIVE_CACHE_NAME, DRIVE_CACHE_TTL, YT_CACHE_NAME, FAV_CACHE_NAME,
   btn, driveListSongs, drivePrefetch,
-  searchSpotify, searchSoundCloud,
+  searchSpotify, searchSoundCloud, searchSoundCloudOAuth,
+  getSpotifyInternalToken, getSpotifyFullTrackUrl, hasSpInternalLogin,
+  getScTrackStreamUrl, hasScOAuth,
   downloadYtAudio, downloadToDevice, downloadFavAudio, favCacheGet, favCacheDelete,
   ytCacheGet, downloadBlobToDevice,
   cacheGet, driveStreamBlob, driveStreamLite, driveDownloadBlob, driveUploadSong,
@@ -185,7 +187,10 @@ export default function App() {
   // ── User API keys (localStorage persisted)
   const [userSpId,     setUserSpId]     = useState(() => localStorage.getItem('sn_sp_id')    ||'');
   const [userSpSecret, setUserSpSecret] = useState(() => localStorage.getItem('sn_sp_secret')||'');
+  const [userSpDc,     setUserSpDc]     = useState(() => localStorage.getItem('sn_sp_dc')    ||'');
+  const [userSpKey,    setUserSpKey]    = useState(() => localStorage.getItem('sn_sp_key')   ||'');
   const [userScId,     setUserScId]     = useState(() => localStorage.getItem('sn_sc_id')    ||'');
+  const [userScOAuth,  setUserScOAuth]  = useState(() => localStorage.getItem('sn_sc_oauth') ||'');
   const [userAiKey,    setUserAiKey]    = useState(() => localStorage.getItem('sn_ai_key')   ||'');
   const [userYtKey,    setUserYtKey]    = useState(() => localStorage.getItem('sn_yt_key')   ||'');
   const [userCfKey,    setUserCfKey]    = useState(() => localStorage.getItem('sn_cf_key')   ||'');
@@ -194,7 +199,7 @@ export default function App() {
   // benar-benar diteruskan ke setRuntimeKeys (sebelumnya slot ini selalu '' / diabaikan).
   const [userDsKey,    setUserDsKey]    = useState(() => { try { return localStorage.getItem('sn_ds_key')   ||''; } catch { return ''; } });
   const [userGrokKey,  setUserGrokKey]  = useState(() => { try { return localStorage.getItem('sn_grok_key') ||''; } catch { return ''; } });
-  useEffect(() => { setRuntimeKeys(userSpId, userSpSecret, userScId, userAiKey, userDsKey, userGrokKey, userYtKey, '', userCfKey, '', userSnKey); }, [userSpId, userSpSecret, userScId, userAiKey, userDsKey, userGrokKey, userYtKey, userCfKey, userSnKey]);
+  useEffect(() => { setRuntimeKeys(userSpId, userSpSecret, userScId, userAiKey, userDsKey, userGrokKey, userYtKey, '', userCfKey, '', userSnKey, userSpDc, userSpKey, userScOAuth); }, [userSpId, userSpSecret, userScId, userAiKey, userDsKey, userGrokKey, userYtKey, userCfKey, userSnKey, userSpDc, userSpKey, userScOAuth]);
 
   // ── Startup: cek apakah server punya YOUTUBE_API_KEY (via /api/yt-status)
   // Ini memungkinkan isYtApiEnabled() = true meskipun user tidak input key sendiri
@@ -324,6 +329,7 @@ export default function App() {
   const spPreviewRef  = useRef(null); // Audio element for 30s preview
   const spPlayingRef  = useRef(false); // track spPlaying dalam closure sleep timer
   const spHasKey = !!((userSpId && userSpSecret) || (SP_CLIENT_ID && SP_CLIENT_SECRET));
+  const spHasInternalLogin = !!(userSpDc);
 
   // ── Web Search state
   const [wsQuery,   setWsQuery]   = useState('');
@@ -539,7 +545,48 @@ export default function App() {
       }
       if (archiveM) {
         const identifier = archiveM[1];
-        setWsResults([{ type:'archive', embedUrl:`https://archive.org/embed/${identifier}`, title:identifier, artist:'archive.org', thumbnail:`https://archive.org/services/img/${identifier}`, source:'archive', identifier }]);
+        // Fetch metadata langsung untuk dapatkan file audio
+        setWsLoading(true);
+        try {
+          const metaR = await ft(`https://archive.org/metadata/${identifier}`, 6000);
+          if (metaR.ok) {
+            const meta = await metaR.json();
+            const title = meta.metadata?.title || identifier;
+            const creator = meta.metadata?.creator || meta.metadata?.artist || 'archive.org';
+            const thumb = `https://archive.org/services/img/${identifier}`;
+            const AUDIO_FMTS = ['MP3','VBR MP3','128Kbps MP3','64Kbps MP3','Ogg Vorbis','Ogg Vorbis 64Kbps','FLAC','24bit Flac'];
+            const audioFiles = (meta.files || [])
+              .filter(f => AUDIO_FMTS.includes(f.format) || (f.name||'').match(/\.(mp3|ogg|flac|m4a|wav|opus)$/i))
+              .sort((a,b) => {
+                // Prioritaskan MP3 128kbps, lalu MP3 lainnya, lalu format lain
+                const aScore = a.format?.includes('MP3') ? 1 : 0;
+                const bScore = b.format?.includes('MP3') ? 1 : 0;
+                return bScore - aScore;
+              });
+            if (audioFiles.length > 0) {
+              // Multi-track: satu item per file audio
+              const items = audioFiles.slice(0, 10).map((f, i) => ({
+                type: 'archive',
+                audioUrl: `https://archive.org/download/${identifier}/${encodeURIComponent(f.name)}`,
+                title: f.title || f.name?.replace(/\.[^.]+$/, '') || `${title} (${i + 1})`,
+                artist: creator,
+                thumbnail: thumb,
+                source: 'archive',
+                identifier,
+                duration: f.length ? Math.round(parseFloat(f.length)) : undefined,
+                id: `archive_${identifier}_${i}`,
+              }));
+              setWsResults(items);
+            } else {
+              // Tidak ada file audio — fallback ke embed
+              setWsResults([{ type:'archive', embedUrl:`https://archive.org/embed/${identifier}`, title, artist:creator, thumbnail:thumb, source:'archive', identifier }]);
+            }
+          } else {
+            setWsResults([{ type:'archive', embedUrl:`https://archive.org/embed/${identifier}`, title:identifier, artist:'archive.org', thumbnail:`https://archive.org/services/img/${identifier}`, source:'archive', identifier }]);
+          }
+        } catch {
+          setWsResults([{ type:'archive', embedUrl:`https://archive.org/embed/${identifier}`, title:identifier, artist:'archive.org', thumbnail:`https://archive.org/services/img/${identifier}`, source:'archive', identifier }]);
+        }
         setWsLoading(false); return;
       }
       if (audiomackM) {
@@ -584,6 +631,7 @@ export default function App() {
       // ── Keyword search: semua sumber paralel dengan abort & dedup ────────────
 
       // Archive.org — sort by downloads, batasi 4 hasil, timeout 5 detik
+      // Lalu fetch metadata tiap identifier untuk mendapatkan URL audio langsung
       const archivePromise = (async () => {
         try {
           const r = await ft(
@@ -592,12 +640,46 @@ export default function App() {
           );
           if (!r.ok) return [];
           const d = await r.json();
-          return (d.response?.docs || []).slice(0, 4).map(doc => ({
-            type:'archive', embedUrl:`https://archive.org/embed/${doc.identifier}`,
-            title:doc.title||doc.identifier, artist:doc.creator||'archive.org',
-            thumbnail:`https://archive.org/services/img/${doc.identifier}`,
-            source:'archive', identifier:doc.identifier,
+          const docs = (d.response?.docs || []).slice(0, 4);
+
+          // Fetch metadata semua identifier secara paralel
+          const AUDIO_FMTS = ['MP3','VBR MP3','128Kbps MP3','64Kbps MP3','Ogg Vorbis','FLAC'];
+          const results = await Promise.all(docs.map(async doc => {
+            const identifier = doc.identifier;
+            const title = doc.title || identifier;
+            const creator = doc.creator || 'archive.org';
+            const thumb = `https://archive.org/services/img/${identifier}`;
+            try {
+              const mR = await ft(`https://archive.org/metadata/${identifier}`, 4000);
+              if (!mR.ok) throw new Error('meta fail');
+              const meta = await mR.json();
+              const audioFiles = (meta.files || [])
+                .filter(f => AUDIO_FMTS.includes(f.format) || (f.name||'').match(/\.(mp3|ogg|flac|m4a|opus)$/i))
+                .sort((a,b) => (b.format?.includes('MP3') ? 1 : 0) - (a.format?.includes('MP3') ? 1 : 0));
+              if (audioFiles.length > 0) {
+                // Kembalikan track pertama (terbaik) dari item ini
+                const f = audioFiles[0];
+                return {
+                  type: 'archive',
+                  audioUrl: `https://archive.org/download/${identifier}/${encodeURIComponent(f.name)}`,
+                  title: meta.metadata?.title || title,
+                  artist: meta.metadata?.creator || meta.metadata?.artist || creator,
+                  thumbnail: thumb,
+                  source: 'archive',
+                  identifier,
+                  duration: f.length ? Math.round(parseFloat(f.length)) : undefined,
+                  id: `archive_${identifier}_0`,
+                  _fileCount: audioFiles.length, // berapa banyak track tersedia
+                };
+              }
+            } catch { /* metadata gagal — fallback ke embed */ }
+            // Fallback: embed
+            return {
+              type: 'archive', embedUrl: `https://archive.org/embed/${identifier}`,
+              title, artist: creator, thumbnail: thumb, source: 'archive', identifier,
+            };
           }));
+          return results;
         } catch { return []; }
       })();
 
@@ -678,9 +760,14 @@ export default function App() {
         return []; // Deezer tidak ada hasil, biarkan merged logic pakai sp_embed
       })() : Promise.resolve([]);
 
-      // SoundCloud & Spotify API (jika ada key)
+      // SoundCloud & Spotify API (jika ada key) — OAuth token menghasilkan hasil lebih lengkap
       const scPromise = scHasKey ? (async () => {
-        try { const items = await searchSoundCloud(q, 5); return (items||[]).map(t=>({...t,source:'soundcloud',type:'soundcloud'})); } catch { return []; }
+        try {
+          // Prioritaskan OAuth search (lebih banyak tracks, termasuk yang unlisted)
+          const oauthItems = hasScOAuth() ? await searchSoundCloudOAuth(q, 5) : null;
+          const items = oauthItems || await searchSoundCloud(q, 5);
+          return (items||[]).map(t=>({...t,source:'soundcloud',type:'soundcloud'}));
+        } catch { return []; }
       })() : Promise.resolve([]);
       const spPromise = spHasKey ? (async () => {
         try { const items = await searchSpotify(q, 5); return (items||[]).map(t=>({...t,source:'spotify',type:'spotify_track'})); } catch { return []; }
@@ -744,7 +831,50 @@ export default function App() {
     setSpLoading(false);
   };
 
-  const playSpotifyPreview = (track) => {
+  const playSpotifyPreview = async (track) => {
+    // Jika sp_dc tersedia, coba full track terlebih dahulu
+    if (spHasInternalLogin && track.id) {
+      try {
+        // Ambil stream URL full track dari server
+        const result = await getSpotifyFullTrackUrl(track.id);
+        if (result && result.stream_url && !result.use_embed) {
+          // Full track stream URL tersedia — putar langsung
+          const fullTrack = { ...track, previewUrl: result.stream_url, _isFullTrack: true };
+
+          const startFull = () => {
+            if (spPreviewRef.current) { spPreviewRef.current.pause(); spPreviewRef.current = null; }
+            const audio = new Audio(result.stream_url);
+            audio.crossOrigin = 'anonymous';
+            audio.volume = 0.8;
+            audio.play().then(() => { setSpPlaying(true); setSpTrack(fullTrack); setTab('player'); }).catch(() => {
+              // Fallback ke embed jika stream langsung gagal
+              if (track.spotifyUrl) window.open(track.spotifyUrl, '_blank', 'noopener,noreferrer');
+            });
+            audio.onended = () => setSpPlaying(false);
+            spPreviewRef.current = audio;
+            setSpTrack(fullTrack);
+          };
+
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) {
+            if (!audioCtxRef.current) { try { audioCtxRef.current = new AC(); } catch (_) {} }
+            if (audioCtxRef.current?.state === 'suspended') audioCtxRef.current.resume().catch(() => {});
+          }
+          startFull();
+          return;
+        }
+
+        // use_embed: true → tampilkan Spotify embed player untuk full track
+        if (result && result.use_embed && track.id) {
+          setSpWsEmbedId(track.id);
+          setSpTrack(track);
+          setTab('player');
+          return;
+        }
+      } catch {}
+    }
+
+    // Fallback ke preview 30 detik
     if (!track.previewUrl) {
       // Tidak ada preview: redirect ke Spotify web
       if (track.spotifyUrl) {
@@ -1352,6 +1482,11 @@ Return ONLY valid JSON, no explanation:
   const [duration, setDuration] = useState(0);
   const [volume, setVolume]     = useState(() => { try { const v = parseFloat(localStorage.getItem('sn_volume')); return isFinite(v) ? Math.min(Math.max(v, 0), 1) : 0.75; } catch { return 0.75; } });
   const [muted, setMuted]       = useState(() => { try { return localStorage.getItem('sn_muted') === '1'; } catch { return false; } });
+  // ── Equalizer: 10 band, gains dalam dB (disimpan ke localStorage)
+  const EQ_BANDS = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
+  const [eqEnabled, setEqEnabled] = useState(() => { try { return localStorage.getItem('sn_eq_enabled') === '1'; } catch { return false; } });
+  const [eqGains, setEqGains]     = useState(() => { try { return JSON.parse(localStorage.getItem('sn_eq_gains') || 'null') || Array(10).fill(0); } catch { return Array(10).fill(0); } });
+  const [eqPreset, setEqPreset]   = useState('flat');
   const [liked, setLiked]       = useState(() => {
     try { return JSON.parse(localStorage.getItem('sn_liked') || '{}'); } catch { return {}; }
   });
@@ -1779,13 +1914,13 @@ Return ONLY valid JSON, no explanation:
 
   // ── Play web-search native audio (Jamendo/FMA/ccMixter)
   const playWsTrack = useCallback((item, queue, queueIdx) => {
-    const srcColors = { jamendo:'#f0c020', fma:'#5cb85c', ccmixter:'#e74c3c', audius:'#cc0000', deezer:'#a238ff' };
-    const srcBgs    = { jamendo:'rgba(240,192,32,0.15)', fma:'rgba(92,184,92,0.15)', ccmixter:'rgba(231,76,60,0.15)', audius:'rgba(204,0,0,0.15)', deezer:'rgba(162,56,255,0.15)' };
+    const srcColors = { jamendo:'#f0c020', fma:'#5cb85c', ccmixter:'#e74c3c', audius:'#cc0000', deezer:'#a238ff', archive:'#8b5cf6' };
+    const srcBgs    = { jamendo:'rgba(240,192,32,0.15)', fma:'rgba(92,184,92,0.15)', ccmixter:'rgba(231,76,60,0.15)', audius:'rgba(204,0,0,0.15)', deezer:'rgba(162,56,255,0.15)', archive:'rgba(139,92,246,0.15)' };
     const nativeTrack = {
       id: `ws_${item.source}_${item.id||item.audioUrl}`,
       title: item.title,
       artist: item.artist || item.source,
-      album: item.source === 'jamendo' ? 'Jamendo' : item.source === 'fma' ? 'Free Music Archive' : item.source === 'audius' ? 'Audius' : item.source === 'deezer' ? 'Deezer Preview' : 'ccMixter',
+      album: item.source === 'jamendo' ? 'Jamendo' : item.source === 'fma' ? 'Free Music Archive' : item.source === 'audius' ? 'Audius' : item.source === 'deezer' ? 'Deezer Preview' : item.source === 'archive' ? 'Archive.org' : 'ccMixter',
       cover: item.thumbnail || '',
       src: item.audioUrl,
       color: srcColors[item.source] || '#6366f1',
@@ -2176,6 +2311,25 @@ Return ONLY valid JSON, no explanation:
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
   };
 
+  // ── Helper: download URL via proxy server jika CORS gagal ────────────────
+  // Mengembalikan true jika berhasil, false jika gagal
+  const proxyDownload = async (url, filename) => {
+    if (!url || !url.startsWith('https://')) return false;
+    try {
+      const proxyUrl = `/api/audio-proxy?url=${encodeURIComponent(url)}`;
+      const res = await fetch(proxyUrl, { mode: 'cors' });
+      if (!res.ok) return false;
+      const blob = await res.blob();
+      if (!blob || blob.size < 500) return false;
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl; a.download = filename;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+      return true;
+    } catch { return false; }
+  };
+
   // ── Helper: ekstensi aman dari URL ───────────────────────────────────────
   const safeExtFromUrl = (url, fallback = 'mp3') => {
     const raw = (url || '').split('?')[0];
@@ -2242,7 +2396,7 @@ Return ONLY valid JSON, no explanation:
 
     // ═══════════════════════════════════════════════════════
     // YouTube
-    // Fallback: cache → Piped → Invidious → Cobalt fetch → Cobalt anchor → YT
+    // Fallback: cache → downloadYtAudio (Piped→Invidious→Cobalt via proxy) → Cobalt URL via proxy → YT
     // ═══════════════════════════════════════════════════════
     if (s.type === 'youtube' && s.videoId) {
       // 1. Cache lokal
@@ -2250,17 +2404,20 @@ Return ONLY valid JSON, no explanation:
         const cached = await ytCacheGet(s.videoId);
         if (isBlobValid(cached, 10000)) { downloadBlobToDevice(cached, `${name}.mp3`); return; }
       } catch {}
-      // 2-4. downloadYtAudio: Piped → Invidious → Cobalt, simpan ke cache lalu unduh
+      // 2-4. downloadYtAudio: Piped → Invidious → Cobalt (sudah pakai proxy di _fetchAudioBlob)
       try {
         await downloadYtAudio(s.videoId, null, null);
         const blob = await ytCacheGet(s.videoId);
         if (isBlobValid(blob, 10000)) { downloadBlobToDevice(blob, `${name}.mp3`); return; }
       } catch {}
-      // 5. Cobalt: minta URL langsung lalu picu anchor download
-      //    (jika blob fetch kena CORS, anchor[download] tetap bisa mengunduh dari cobalt URL)
+      // 5. Cobalt: ambil URL lalu download via proxy server
       try {
         const cobaltUrl = await cobaltAudioUrl(`https://www.youtube.com/watch?v=${s.videoId}`);
         if (cobaltUrl) {
+          // Coba proxy download dulu (benar-benar download, bukan redirect)
+          const ok = await proxyDownload(cobaltUrl, `${name}.mp3`);
+          if (ok) return;
+          // Fallback: downloadToDevice (sudah ada proxy fallback di dalamnya)
           await downloadToDevice(cobaltUrl, `${name}.mp3`);
           return;
         }
@@ -2272,45 +2429,110 @@ Return ONLY valid JSON, no explanation:
 
     // ═══════════════════════════════════════════════════════
     // Audius
-    // Fallback: src langsung → cobalt → buka di browser
+    // Fallback: src langsung → proxy → cobalt → tab baru
     // ═══════════════════════════════════════════════════════
     if (s._wsSource === 'audius' && s.src) {
       // 1. Fetch langsung (Audius punya CORS header)
       try { await downloadToDevice(s.src, `${name}.mp3`); return; } catch {}
-      // 2. Cobalt (extract via page URL jika tersedia)
+      // 2. Proxy server
+      if (await proxyDownload(s.src, `${name}.mp3`)) return;
+      // 3. Cobalt (extract via page URL jika tersedia)
       if (s.externalUrl) {
         try {
           const url = await cobaltAudioUrl(s.externalUrl);
+          if (await proxyDownload(url, `${name}.mp3`)) return;
           await downloadToDevice(url, `${name}.mp3`);
           return;
         } catch {}
       }
-      // 3. Buka di tab baru
+      // 4. Buka di tab baru
       openUrlFallback(s.src);
       return;
     }
 
     // ═══════════════════════════════════════════════════════
     // Jamendo
-    // Fallback: src → URL /download/{id} → cobalt → tab baru
+    // Fallback: src → proxy → URL /download/{id} → cobalt → tab baru
     // ═══════════════════════════════════════════════════════
     if (s._wsSource === 'jamendo' && s.src) {
       const jamId = s.id?.replace(/^ws_jamendo_/, '');
-      // 1. Direct stream URL
+      // 1. Direct stream URL (sudah ada proxy di downloadToDevice)
       try { await downloadToDevice(s.src, `${name}.mp3`); return; } catch {}
-      // 2. Jamendo direct download URL (tidak perlu key)
+      // 2. Proxy download langsung
+      if (await proxyDownload(s.src, `${name}.mp3`)) return;
+      // 3. Jamendo direct download URL (tidak perlu key)
       if (jamId) {
+        const jamDownloadUrl = `https://storage.jamendo.com/?trackid=${jamId}&format=mp31&from=app-devsite`;
+        try { await downloadToDevice(jamDownloadUrl, `${name}.mp3`); return; } catch {}
+        if (await proxyDownload(jamDownloadUrl, `${name}.mp3`)) return;
+      }
+      // 4. Cobalt
+      if (s.externalUrl) {
         try {
-          await downloadToDevice(
-            `https://storage.jamendo.com/?trackid=${jamId}&format=mp31&from=app-devsite`,
-            `${name}.mp3`
-          );
-          return;
+          const url = await cobaltAudioUrl(s.externalUrl);
+          if (await proxyDownload(url, `${name}.mp3`)) return;
+          await downloadToDevice(url, `${name}.mp3`); return;
         } catch {}
       }
+      // 5. Tab baru
+      openUrlFallback(s.src);
+      return;
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // Archive.org
+    // Fallback: src langsung → proxy → tab baru
+    // ═══════════════════════════════════════════════════════
+    if (s._wsSource === 'archive' && s.src) {
+      // 1. Direct download URL (archive.org/download/ punya CORS header)
+      try { await downloadToDevice(s.src, `${name}.mp3`); return; } catch {}
+      // 2. Proxy
+      if (await proxyDownload(s.src, `${name}.mp3`)) return;
+      // 3. Tab baru ke halaman detail
+      if (s.identifier) { openUrlFallback(`https://archive.org/details/${s.identifier}`); return; }
+      openUrlFallback(s.src);
+      return;
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // FMA (Free Music Archive)
+    // Fallback: src → proxy → cobalt → tab baru
+    // ═══════════════════════════════════════════════════════
+    if (s._wsSource === 'fma' && s.src) {
+      // 1. Direct audio URL
+      try { await downloadToDevice(s.src, `${name}.mp3`); return; } catch {}
+      // 2. Proxy
+      if (await proxyDownload(s.src, `${name}.mp3`)) return;
+      // 3. Cobalt via externalUrl
+      if (s.externalUrl) {
+        try {
+          const url = await cobaltAudioUrl(s.externalUrl);
+          if (await proxyDownload(url, `${name}.mp3`)) return;
+          await downloadToDevice(url, `${name}.mp3`); return;
+        } catch {}
+      }
+      // 4. Tab baru
+      openUrlFallback(s.externalUrl || s.src);
+      return;
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // CCMixter
+    // Fallback: src → proxy → cobalt → tab baru
+    // ═══════════════════════════════════════════════════════
+    if (s._wsSource === 'ccmixter' && s.src) {
+      const ext = safeExtFromUrl(s.src, 'mp3');
+      // 1. Direct download URL (CCMixter src biasanya sudah download URL)
+      try { await downloadToDevice(s.src, `${name}.${ext}`); return; } catch {}
+      // 2. Proxy
+      if (await proxyDownload(s.src, `${name}.${ext}`)) return;
       // 3. Cobalt
       if (s.externalUrl) {
-        try { const url = await cobaltAudioUrl(s.externalUrl); await downloadToDevice(url, `${name}.mp3`); return; } catch {}
+        try {
+          const url = await cobaltAudioUrl(s.externalUrl);
+          if (await proxyDownload(url, `${name}.mp3`)) return;
+          await downloadToDevice(url, `${name}.mp3`); return;
+        } catch {}
       }
       // 4. Tab baru
       openUrlFallback(s.src);
@@ -2318,46 +2540,14 @@ Return ONLY valid JSON, no explanation:
     }
 
     // ═══════════════════════════════════════════════════════
-    // FMA (Free Music Archive)
-    // Fallback: src → direct .mp3 URL → cobalt → tab baru
-    // ═══════════════════════════════════════════════════════
-    if (s._wsSource === 'fma' && s.src) {
-      // 1. Direct audio URL
-      try { await downloadToDevice(s.src, `${name}.mp3`); return; } catch {}
-      // 2. Cobalt via externalUrl
-      if (s.externalUrl) {
-        try { const url = await cobaltAudioUrl(s.externalUrl); await downloadToDevice(url, `${name}.mp3`); return; } catch {}
-      }
-      // 3. Tab baru
-      openUrlFallback(s.externalUrl || s.src);
-      return;
-    }
-
-    // ═══════════════════════════════════════════════════════
-    // CCMixter
-    // Fallback: src → externalUrl (download_url) → cobalt → tab baru
-    // ═══════════════════════════════════════════════════════
-    if (s._wsSource === 'ccmixter' && s.src) {
-      const ext = safeExtFromUrl(s.src, 'mp3');
-      // 1. Direct download URL (CCMixter src biasanya sudah download URL)
-      try { await downloadToDevice(s.src, `${name}.${ext}`); return; } catch {}
-      // 2. Cobalt
-      if (s.externalUrl) {
-        try { const url = await cobaltAudioUrl(s.externalUrl); await downloadToDevice(url, `${name}.mp3`); return; } catch {}
-      }
-      // 3. Tab baru
-      openUrlFallback(s.src);
-      return;
-    }
-
-    // ═══════════════════════════════════════════════════════
     // Cobalt-extracted (YouTube embed, SoundCloud, dll via cobalt.tools)
     // src berupa signed URL cobalt yang expire — perlu re-extract
-    // Fallback: src (mungkin masih valid) → cobalt re-extract → tab baru
+    // Fallback: proxy src → cobalt re-extract → proxy re-extract → tab baru
     // ═══════════════════════════════════════════════════════
     if (s._wsSource === 'cobalt') {
-      // 1. Coba src langsung (mungkin masih dalam TTL)
+      // 1. Coba src via proxy dulu (cobalt URL biasanya CORS-restricted)
       if (s.src) {
+        if (await proxyDownload(s.src, `${name}.mp3`)) return;
         try { await downloadToDevice(s.src, `${name}.mp3`); return; } catch {}
       }
       // 2. Re-extract via cobalt jika ada originalUrl atau externalUrl
@@ -2365,6 +2555,7 @@ Return ONLY valid JSON, no explanation:
       if (reExtractUrl) {
         try {
           const url = await cobaltAudioUrl(reExtractUrl);
+          if (await proxyDownload(url, `${name}.mp3`)) return;
           await downloadToDevice(url, `${name}.mp3`);
           return;
         } catch {}
@@ -2377,7 +2568,7 @@ Return ONLY valid JSON, no explanation:
 
     // ═══════════════════════════════════════════════════════
     // Spotify / Deezer preview (30 detik)
-    // Fallback: favCache → previewUrl langsung → cobalt → tab baru
+    // Fallback: favCache → previewUrl langsung → proxy → tab baru
     // ═══════════════════════════════════════════════════════
     if (s._wsSource === 'spotify' || s._wsSource === 'deezer' ||
         s.type === 'sp_track' || s.previewUrl) {
@@ -2390,14 +2581,17 @@ Return ONLY valid JSON, no explanation:
           downloadBlobToDevice(cached, `${name}.${ext}`); return;
         }
       } catch {}
-      // 2. Fetch preview URL langsung
+      // 2. Fetch preview URL langsung (sudah ada proxy di downloadToDevice)
       if (previewSrc) {
         try {
           const ext = safeExtFromUrl(previewSrc, 'mp3');
           await downloadToDevice(previewSrc, `${name}.${ext}`); return;
         } catch {}
+        // 3. Proxy langsung
+        const ext2 = safeExtFromUrl(previewSrc, 'mp3');
+        if (await proxyDownload(previewSrc, `${name}.${ext2}`)) return;
       }
-      // 3. Tab baru
+      // 4. Tab baru
       if (previewSrc) openUrlFallback(previewSrc);
       else throw new Error('Preview URL tidak tersedia.');
       return;
@@ -2405,7 +2599,7 @@ Return ONLY valid JSON, no explanation:
 
     // ═══════════════════════════════════════════════════════
     // favSong generik (SC preview, lainnya) yang punya previewUrl/src
-    // Fallback: favCache → src langsung → cobalt → tab baru
+    // Fallback: favCache → src langsung → proxy → cobalt → tab baru
     // ═══════════════════════════════════════════════════════
     if (s.id && s.type !== 'youtube') {
       // 1. Cache lokal
@@ -2423,15 +2617,19 @@ Return ONLY valid JSON, no explanation:
           const ext = safeExtFromUrl(directUrl, 'mp3');
           await downloadToDevice(directUrl, `${name}.${ext}`); return;
         } catch {}
+        // 3. Proxy
+        const ext3 = safeExtFromUrl(directUrl, 'mp3');
+        if (await proxyDownload(directUrl, `${name}.${ext3}`)) return;
       }
-      // 3. Cobalt (untuk SoundCloud dll yang punya permalink)
+      // 4. Cobalt (untuk SoundCloud dll yang punya permalink)
       if (s.permalink || s.externalUrl) {
         try {
           const url = await cobaltAudioUrl(s.permalink || s.externalUrl);
+          if (await proxyDownload(url, `${name}.mp3`)) return;
           await downloadToDevice(url, `${name}.mp3`); return;
         } catch {}
       }
-      // 4. Tab baru
+      // 5. Tab baru
       if (directUrl) { openUrlFallback(directUrl); return; }
     }
 
@@ -2441,11 +2639,13 @@ Return ONLY valid JSON, no explanation:
     if (s.src) {
       const ext = safeExtFromUrl(s.src, 'mp3');
       try { await downloadToDevice(s.src, `${name}.${ext}`); return; } catch {}
+      if (await proxyDownload(s.src, `${name}.${ext}`)) return;
       openUrlFallback(s.src);
     } else {
       throw new Error('Tidak ada sumber audio yang bisa diunduh.');
     }
   }, []);  // tokenRef adalah ref — tidak perlu di deps
+
 
   // ── Jam live (update setiap detik)
   const [nowTime, setNowTime] = useState(() => new Date());
@@ -2831,6 +3031,9 @@ Return ONLY valid JSON, no explanation:
   // ── Refs
   const audioRef            = useRef(null);
   const audioCtxRef         = useRef(null);   // singleton AudioContext — dibuat sekali, di-resume saat user gesture
+  const eqNodesRef          = useRef([]);      // array BiquadFilterNode untuk equalizer (10 band)
+  const eqSourceRef         = useRef(null);    // MediaElementSourceNode yang terhubung ke EQ chain
+  const eqEnabledRef        = useRef(false);   // apakah EQ aktif
   const hlsRef              = useRef(null);   // HLS.js instance untuk stream .m3u8
   const radioReconnectRef   = useRef(null);   // setTimeout handle untuk auto-reconnect
   const radioReconnectCount = useRef(0);       // berapa kali sudah reconnect
@@ -2851,6 +3054,57 @@ Return ONLY valid JSON, no explanation:
   useEffect(() => { repeatRef.current   = repeat;    }, [repeat]);
   useEffect(() => { tokenRef.current    = accessToken; }, [accessToken]);
   useEffect(() => { isLiteRef.current   = isLite;    }, [isLite]);
+
+  // ── Equalizer: bangun/rebuild chain BiquadFilter setiap kali audio element berganti
+  // Hanya aktif jika eqEnabled=true DAN audioCtx tersedia
+  const connectEQ = useCallback(() => {
+    const ctx = audioCtxRef.current;
+    const audio = audioRef.current;
+    if (!ctx || !audio || ctx.state === 'closed') return;
+    // Hindari double-connect: cek apakah source sudah ada dan masih untuk audio ini
+    if (eqSourceRef.current && eqSourceRef.current._audio === audio) {
+      // Source sudah terhubung, hanya update gain jika EQ aktif
+      eqNodesRef.current.forEach((node, i) => {
+        node.gain.value = eqEnabledRef.current ? (eqGains[i] ?? 0) : 0;
+      });
+      return;
+    }
+    // Buat MediaElementSourceNode baru
+    try {
+      const source = ctx.createMediaElementSource(audio);
+      source._audio = audio;
+      eqSourceRef.current = source;
+      // Buat 10 BiquadFilter nodes
+      const EQ_BANDS_FREQ = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
+      const filters = EQ_BANDS_FREQ.map((freq, i) => {
+        const f = ctx.createBiquadFilter();
+        f.type = i === 0 ? 'lowshelf' : i === 9 ? 'highshelf' : 'peaking';
+        f.frequency.value = freq;
+        f.Q.value = 1.0;
+        f.gain.value = eqEnabledRef.current ? (eqGains[i] ?? 0) : 0;
+        return f;
+      });
+      eqNodesRef.current = filters;
+      // Chain: source → f0 → f1 → … → f9 → destination
+      source.connect(filters[0]);
+      for (let i = 0; i < filters.length - 1; i++) filters[i].connect(filters[i + 1]);
+      filters[filters.length - 1].connect(ctx.destination);
+    } catch (err) {
+      console.warn('[EQ] connect failed:', err);
+    }
+  }, [eqGains]); // eslint-disable-line
+
+  // Sinkronkan eqEnabled ke ref agar connectEQ bisa baca nilai terkini
+  useEffect(() => { eqEnabledRef.current = eqEnabled; }, [eqEnabled]);
+
+  // Update gain nodes setiap kali eqGains atau eqEnabled berubah
+  useEffect(() => {
+    eqNodesRef.current.forEach((node, i) => {
+      node.gain.value = eqEnabled ? (eqGains[i] ?? 0) : 0;
+    });
+    try { localStorage.setItem('sn_eq_gains', JSON.stringify(eqGains)); } catch {}
+    try { localStorage.setItem('sn_eq_enabled', eqEnabled ? '1' : '0'); } catch {}
+  }, [eqGains, eqEnabled]);
 
   // ── AudioContext guard: unlock singleton pada interaksi user pertama
   // Browser modern (Safari/Chrome) memblokir AudioContext yang dibuat sebelum ada gesture.
@@ -3780,6 +4034,14 @@ Return ONLY valid JSON, no explanation:
       a.crossOrigin = 'anonymous';
     }
     audioRef.current = a;
+
+    // ── Koneksikan equalizer ke audio element baru (jika AudioContext sudah tersedia)
+    // connectEQ dipanggil dari sini (dan saat EQ pertama kali diaktifkan dari Settings)
+    if (audioCtxRef.current) {
+      // Reset source ref karena audio element baru
+      eqSourceRef.current = null;
+      connectEQ();
+    }
 
     // ── Attach event listeners langsung setelah Audio dibuat (bukan di useEffect terpisah)
     // ── sehingga tidak ada jeda di mana React effects bisa membaca audioRef yang sudah stale
@@ -4793,6 +5055,53 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     }, 1000);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const cancelSleepTimer = useCallback(() => { if (sleepIntervalRef.current) clearInterval(sleepIntervalRef.current); setSleepTimer(null); }, []);
+
+  // ── EQ handlers (dipanggil dari SettingsPanel)
+  const EQ_PRESETS = {
+    flat:     [0,0,0,0,0,0,0,0,0,0],
+    bass:     [6,5,4,2,0,0,0,0,0,0],
+    treble:   [0,0,0,0,0,0,2,4,5,6],
+    vocal:    [-2,-2,0,2,4,4,2,0,-1,-2],
+    pop:      [-1,0,2,3,2,0,-1,-1,-1,-1],
+    rock:     [4,3,2,0,-1,-1,0,2,3,4],
+    jazz:     [3,2,1,0,-1,-1,0,1,2,2],
+    classical:[4,3,2,0,-1,-1,0,2,3,4],
+    dance:    [5,4,2,0,-2,-2,0,3,4,4],
+    acoustic: [3,2,1,0,0,-1,0,1,2,2],
+  };
+  const handleToggleEq = useCallback((enabled) => {
+    setEqEnabled(enabled);
+    // Pastikan AudioContext aktif dan EQ terkoneksi
+    if (enabled) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC && !audioCtxRef.current) {
+        try { audioCtxRef.current = new AC(); } catch {}
+      }
+      if (audioCtxRef.current?.state === 'suspended') {
+        audioCtxRef.current.resume().catch(() => {});
+      }
+      // Koneksikan EQ ke audio element saat ini
+      eqSourceRef.current = null;
+      connectEQ();
+    }
+  }, [connectEQ]);
+
+  const handleEqGainChange = useCallback((index, value) => {
+    setEqGains(prev => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  }, []);
+
+  const handleApplyEqPreset = useCallback((presetName) => {
+    setEqPreset(presetName);
+    const gains = EQ_PRESETS[presetName] || EQ_PRESETS.flat;
+    setEqGains(gains);
+    if (!eqEnabled && presetName !== 'flat') {
+      handleToggleEq(true);
+    }
+  }, [eqEnabled, handleToggleEq]); // eslint-disable-line
 
   // ── Test radio stations: hanya tampilkan yang bisa diputar
   const testStationsInGenre = useCallback(async (genre) => {
@@ -6061,6 +6370,37 @@ Format exactly:
 
     // ── Handle fav tracks from SC / Spotify / Radio
     if (t.type === 'soundcloud') {
+      // Jika OAuth token tersedia, coba stream full track langsung
+      if (hasScOAuth() && (t.id || t._transcodings)) {
+        try {
+          const streamResult = await getScTrackStreamUrl(t._transcodings || t.id);
+          if (streamResult?.url) {
+            stopAllMedia('local');
+            setEmbedTrack(null);
+            const scNativeTrack = {
+              id: `sc_oauth_${t.id || Date.now()}`,
+              title: t.title || 'Unknown',
+              artist: t.artist || t.user?.username || 'SoundCloud',
+              album: 'SoundCloud',
+              cover: t.cover || t.thumbnail || '',
+              src: streamResult.url,
+              color: '#ff5500',
+              bg: 'rgba(255,85,0,0.15)',
+              mood: '',
+              _wsSource: 'soundcloud_oauth',
+              _scFormat: streamResult.format,
+            };
+            setCustomSongs(prev => { const ex = prev.find(s=>s.id===scNativeTrack.id); return ex ? prev : [scNativeTrack, ...prev]; });
+            setTrack(scNativeTrack);
+            setProgress(0); setDuration(0);
+            setPlaying(true);
+            setTab('player');
+            return;
+          }
+        } catch {}
+        // Jika gagal, fallback ke embed widget
+      }
+      // Fallback: embed widget (perilaku lama)
       stopAllMedia('embed');
       setScWidget(p => ({ ...p, soundcloud: t.permalink || t.src }));
       setTab('stream'); return;
@@ -8444,7 +8784,7 @@ Format exactly:
 
         {/* ── SETTINGS PANEL — menutup semua tab di desktop & landscape, hanya player di portrait */}
         {showSettings && (isDesktop || layoutMode === 'mobile-landscape' || tab === 'player') && (
-          <Suspense fallback={<Spinner/>}><SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userScId={userScId} setUserScId={setUserScId} userAiKey={userAiKey} setUserAiKey={setUserAiKey} userYtKey={userYtKey} setUserYtKey={setUserYtKey} userCfKey={userCfKey} setUserCfKey={setUserCfKey} userSnKey={userSnKey} setUserSnKey={setUserSnKey} setTab={setTab} setFullscreen={setFullscreen} googleUser={googleUser||null} handleGoogleLogin={handleGoogleLogin} syncPlaylistsToCloud={syncPlaylistsToCloud} syncSongsToCloud={syncSongsToCloud} accessToken={accessToken||null} plSyncStatus={plSyncStatus} plSyncError={plSyncError||null} plSyncedAt={plSyncedAt||null} songSyncStatus={songSyncStatus} songSyncError={songSyncError||null} songSyncedAt={songSyncedAt||null} startCompressCache={startCompressCache} compressStatus={compressStatus} compressProgress={compressProgress} bgTheme={bgTheme} setBgTheme={(v)=>{ setBgTheme(v); localStorage.setItem('sn_bg_theme', v); }}/></Suspense>
+          <Suspense fallback={<Spinner/>}><SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} eqEnabled={eqEnabled} eqGains={eqGains} eqPreset={eqPreset} onToggleEq={handleToggleEq} onEqGainChange={handleEqGainChange} onApplyEqPreset={handleApplyEqPreset} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userSpDc={userSpDc} setUserSpDc={setUserSpDc} userSpKey={userSpKey} setUserSpKey={setUserSpKey} userScId={userScId} setUserScId={setUserScId} userScOAuth={userScOAuth} setUserScOAuth={setUserScOAuth} userAiKey={userAiKey} setUserAiKey={setUserAiKey} userYtKey={userYtKey} setUserYtKey={setUserYtKey} userCfKey={userCfKey} setUserCfKey={setUserCfKey} userSnKey={userSnKey} setUserSnKey={setUserSnKey} setTab={setTab} setFullscreen={setFullscreen} googleUser={googleUser||null} handleGoogleLogin={handleGoogleLogin} syncPlaylistsToCloud={syncPlaylistsToCloud} syncSongsToCloud={syncSongsToCloud} accessToken={accessToken||null} plSyncStatus={plSyncStatus} plSyncError={plSyncError||null} plSyncedAt={plSyncedAt||null} songSyncStatus={songSyncStatus} songSyncError={songSyncError||null} songSyncedAt={songSyncedAt||null} startCompressCache={startCompressCache} compressStatus={compressStatus} compressProgress={compressProgress} bgTheme={bgTheme} setBgTheme={(v)=>{ setBgTheme(v); localStorage.setItem('sn_bg_theme', v); }}/></Suspense>
         )}
 
         {/* ─── PLAYER TAB */}
@@ -8940,7 +9280,7 @@ Format exactly:
                   : <span style={{ fontSize:20, flexShrink:0 }}>🎵</span>}
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontSize:11, fontWeight:700, color:'#1DB954', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{spTrack.title}</div>
-                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.4)' }}>30s Preview · {spTrack.artist}</div>
+                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.4)' }}>{spTrack._isFullTrack ? '🎵 Full Track' : '30s Preview'} · {spTrack.artist}</div>
                 </div>
                 <button onClick={() => { setSpPlaying(false); if(spPreviewRef.current){spPreviewRef.current.pause();spPreviewRef.current=null;} }}
                   style={{ background:'none', border:'none', color:'rgba(255,255,255,0.4)', cursor:'pointer', padding:'4px', flexShrink:0 }}>
@@ -9250,8 +9590,8 @@ Format exactly:
 
                     {/* ── Hasil WebSearch — tampil di dalam kartu search */}
                     {unifiedPlatform === 'websearch' && (() => {
-                      const wsAudioItems = wsResults.filter(it => it.audioUrl && ['jamendo','ccmixter','audius'].includes(it.source));
-                      const srcColors2 = { jamendo:'#f0c020', fma:'#5cb85c', ccmixter:'#e74c3c', audius:'#cc0000', deezer:'#a238ff' };
+                      const wsAudioItems = wsResults.filter(it => it.audioUrl && ['jamendo','ccmixter','audius','archive','fma'].includes(it.source));
+                      const srcColors2 = { jamendo:'#f0c020', fma:'#5cb85c', ccmixter:'#e74c3c', audius:'#cc0000', deezer:'#a238ff', archive:'#8b5cf6' };
                       if (!wsLoading && wsResults.length === 0 && !wsError && !wsEmbedUrl) return null;
                       return (
                         <div style={{ padding:'0 10px 10px' }}>
@@ -9366,7 +9706,11 @@ Format exactly:
                                               <div key={t2.id||ti}
                                                 onClick={() => {
                                                   if (isAudiusT && t2.audioUrl) { if(isCurrentT) setPlaying(p=>!p); else playWsTrack(t2, item._items.filter(x=>x.audioUrl), item._items.filter(x=>x.audioUrl).indexOf(t2)); }
-                                                  else if (scUrl.includes('soundcloud.com/')) setScWidget(p=>({...p, soundcloud: p.soundcloud===scUrl?null:scUrl}));
+                                                  else if (!isAudiusT && scUrl.includes('soundcloud.com/')) {
+                                                    // Coba full track via OAuth jika tersedia
+                                                    if (hasScOAuth()) { playWsTrack({...t2, type:'soundcloud'}, item._items, ti); }
+                                                    else setScWidget(p=>({...p, soundcloud: p.soundcloud===scUrl?null:scUrl}));
+                                                  }
                                                   else window.open(`https://soundcloud.com/search?q=${encodeURIComponent(t2.title||'')}`, '_blank', 'noopener,noreferrer');
                                                 }}
                                                 style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:8, background: isCurrentT?`${accentColor}20`:'rgba(255,255,255,0.04)', border: isCurrentT?`1px solid ${accentColor}55`:'1px solid rgba(255,255,255,0.08)', cursor:'pointer' }}
@@ -9382,6 +9726,7 @@ Format exactly:
                                                   <div style={{ fontSize:11, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color: isCurrentT?accentColor:'rgba(255,255,255,0.9)' }}>{t2.title}</div>
                                                   <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{t2.artist}</div>
                                                 </div>
+                                                {!isAudiusT && hasScOAuth() && <span style={{ fontSize:9, color:'#ff5500', background:'rgba(255,85,0,0.2)', padding:'2px 5px', borderRadius:4, fontWeight:700, flexShrink:0 }}>▶ Full</span>}
                                                 <button onClick={e=>{ e.stopPropagation(); window.open(scUrl||`https://soundcloud.com/search?q=${encodeURIComponent(t2.title||'')}`, '_blank', 'noopener,noreferrer'); }}
                                                   style={{ background:'none', border:`1px solid ${accentColor}55`, borderRadius:5, color:accentColor, fontSize:9, fontWeight:700, padding:'2px 6px', cursor:'pointer', flexShrink:0 }}>↗</button>
                                               </div>
@@ -9425,7 +9770,7 @@ Format exactly:
                                                   <div style={{ fontSize:11, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color: isPreviewActive?spColor:'rgba(255,255,255,0.9)' }}>{t3.title}</div>
                                                   <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{t3.artist}</div>
                                                 </div>
-                                                {t3.previewUrl && <span style={{ fontSize:9, color:spColor, background:`${spColor}28`, padding:'2px 5px', borderRadius:4, fontWeight:700, flexShrink:0 }}>▶ 30s</span>}
+                                                {(t3.previewUrl || spHasInternalLogin) && <span onClick={e=>{ e.stopPropagation(); playSpotifyPreview(t3); }} style={{ fontSize:9, color:spColor, background:`${spColor}28`, padding:'2px 5px', borderRadius:4, fontWeight:700, flexShrink:0, cursor:'pointer' }} title={spHasInternalLogin ? 'Putar Full Track' : 'Preview 30 detik'}>{spHasInternalLogin ? '▶ Full' : '▶ 30s'}</span>}
                                                 {t3.spotifyUrl && <button onClick={e=>{ e.stopPropagation(); window.open(t3.spotifyUrl,'_blank','noopener,noreferrer'); }}
                                                   style={{ background:'none', border:`1px solid ${spColor}55`, borderRadius:5, color:spColor, fontSize:9, fontWeight:700, padding:'2px 6px', cursor:'pointer', flexShrink:0 }}>↗</button>}
                                               </div>
@@ -9437,14 +9782,15 @@ Format exactly:
                                   }
                                   // ── Regular audio / embed items (Jamendo, ccMixter, Vimeo, archive.org, dll)
                                   const sc = srcColors2[item.source] || 'rgba(255,255,255,0.4)';
-                                  const isAudio = !!item.audioUrl && ['jamendo','ccmixter','audius'].includes(item.source);
-                                  const isCurrentTrack = track?.id === item.id || track?.audioUrl === item.audioUrl;
+                                  const isAudio = !!item.audioUrl && ['jamendo','ccmixter','audius','archive','fma'].includes(item.source);
+                                  const isCurrentTrack = track?.id === item.id || (item.audioUrl && track?.src === item.audioUrl);
+                                  const wsAudioItemsExt = wsResults.filter(it => it.audioUrl && ['jamendo','ccmixter','audius','archive','fma'].includes(it.source));
                                   return (
                                     <div key={item.id||idx}
                                       style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background: isCurrentTrack?'rgba(99,102,241,0.12)':'rgba(255,255,255,0.04)', border: isCurrentTrack?'1px solid rgba(99,102,241,0.35)':'1px solid rgba(255,255,255,0.08)' }}
                                       onMouseEnter={e=>{ if(!isCurrentTrack) e.currentTarget.style.background='rgba(99,102,241,0.08)'; }}
                                       onMouseLeave={e=>{ if(!isCurrentTrack) e.currentTarget.style.background='rgba(255,255,255,0.04)'; }}>
-                                      <div onClick={() => { if(isCurrentTrack) { setPlaying(p=>!p); } else if(isAudio) { playWsTrack(item, wsAudioItems, wsAudioItems.indexOf(item)); } else if(item.embedUrl) { setWsEmbedUrl(item.embedUrl); } }}
+                                      <div onClick={() => { if(isCurrentTrack) { setPlaying(p=>!p); } else if(isAudio) { playWsTrack(item, wsAudioItemsExt, wsAudioItemsExt.indexOf(item)); } else if(item.embedUrl) { setWsEmbedUrl(item.embedUrl); } }}
                                         style={{ width:38, height:38, borderRadius:8, background:`${sc}20`, flexShrink:0, cursor:'pointer', overflow:'hidden', position:'relative' }}>
                                         {item.thumbnail && !isLite && <img src={item.thumbnail} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{ e.target.style.display='none'; }}/>}
                                         <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background: isCurrentTrack?'rgba(0,0,0,0.45)':'rgba(0,0,0,0.2)' }}>
@@ -9453,15 +9799,18 @@ Format exactly:
                                             : <Play size={13} style={{ color:sc, marginLeft:2 }}/>}
                                         </div>
                                       </div>
-                                      <div onClick={() => { if(isAudio) playWsTrack(item, wsAudioItems, wsAudioItems.indexOf(item)); else if(item.embedUrl) setWsEmbedUrl(item.embedUrl); }} style={{ flex:1, minWidth:0, cursor:'pointer' }}>
+                                      <div onClick={() => { if(isAudio) playWsTrack(item, wsAudioItemsExt, wsAudioItemsExt.indexOf(item)); else if(item.embedUrl) setWsEmbedUrl(item.embedUrl); }} style={{ flex:1, minWidth:0, cursor:'pointer' }}>
                                         <div style={{ fontSize:12, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color: isCurrentTrack?sc:'rgba(255,255,255,0.9)' }}>{item.title}</div>
                                         <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1, display:'flex', alignItems:'center', gap:4 }}>
                                           <span style={{ padding:'1px 5px', borderRadius:4, background:`${sc}20`, color:sc, fontWeight:700, fontSize:9 }}>{item.source}</span>
                                           {item.artist && <span>{item.artist}</span>}
+                                          {item._fileCount > 1 && <span style={{ opacity:0.5 }}>{item._fileCount} tracks</span>}
                                         </div>
                                       </div>
                                       <div style={{ display:'flex', gap:4, flexShrink:0, alignItems:'center' }}>
-                                        {item.url && <button onClick={e=>{ e.stopPropagation(); window.open(item.url,'_blank','noopener,noreferrer'); }}
+                                        {item.identifier && <button onClick={e=>{ e.stopPropagation(); window.open(`https://archive.org/details/${item.identifier}`,'_blank','noopener,noreferrer'); }}
+                                          style={{ background:'none', border:`1px solid ${sc}40`, borderRadius:6, color:sc, fontSize:10, fontWeight:700, padding:'3px 7px', cursor:'pointer', lineHeight:1.2 }}>↗</button>}
+                                        {!item.identifier && item.url && <button onClick={e=>{ e.stopPropagation(); window.open(item.url,'_blank','noopener,noreferrer'); }}
                                           style={{ background:'none', border:`1px solid ${sc}40`, borderRadius:6, color:sc, fontSize:10, fontWeight:700, padding:'3px 7px', cursor:'pointer', lineHeight:1.2 }}>↗</button>}
                                       </div>
                                     </div>
@@ -9711,8 +10060,8 @@ Format exactly:
                         })()}
                         {isWebSearch && (() => {
                           // Audio-only sources that can play natively in player
-                          const wsAudioItems = wsResults.filter(it => it.audioUrl && ['jamendo','ccmixter','audius'].includes(it.source));
-                          const srcColors2 = { jamendo:'#f0c020', fma:'#5cb85c', ccmixter:'#e74c3c', audius:'#cc0000', deezer:'#a238ff' };
+                          const wsAudioItems = wsResults.filter(it => it.audioUrl && ['jamendo','ccmixter','audius','archive','fma'].includes(it.source));
+                          const srcColors2 = { jamendo:'#f0c020', fma:'#5cb85c', ccmixter:'#e74c3c', audius:'#cc0000', deezer:'#a238ff', archive:'#8b5cf6' };
                           return (
                             <div style={{ padding:'0 10px 12px' }}>
                               {/* Tips */}
@@ -9963,9 +10312,9 @@ Format exactly:
                                                     <div style={{ fontSize:12, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color: isEmbedActive||isPreviewActive ? spColor : 'rgba(255,255,255,0.9)' }}>{t3.title}</div>
                                                     <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t3.artist}{dur3 ? ` · ${dur3}` : ''}</div>
                                                   </div>
-                                                  {/* Preview 30s badge */}
-                                                  {hasPreview && (
-                                                    <span onClick={e=>{ e.stopPropagation(); isDeezer ? playWsTrack({ ...t3, audioUrl: t3.previewUrl, source:'deezer' }, item._items.filter(x=>x.previewUrl).map(x=>({...x,audioUrl:x.previewUrl,source:'deezer'})), item._items.filter(x=>x.previewUrl).findIndex(x=>x.id===t3.id)) : playSpotifyPreview(t3); }} style={{ fontSize:9, color:spColor, background:`${spColor}28`, padding:'2px 5px', borderRadius:4, fontWeight:700, flexShrink:0, cursor:'pointer' }} title="Preview 30 detik">▶ 30s</span>
+                                                  {/* Preview / Full Track badge */}
+                                                  {(hasPreview || (!isDeezer && spHasInternalLogin)) && (
+                                                    <span onClick={e=>{ e.stopPropagation(); isDeezer ? playWsTrack({ ...t3, audioUrl: t3.previewUrl, source:'deezer' }, item._items.filter(x=>x.previewUrl).map(x=>({...x,audioUrl:x.previewUrl,source:'deezer'})), item._items.filter(x=>x.previewUrl).findIndex(x=>x.id===t3.id)) : playSpotifyPreview(t3); }} style={{ fontSize:9, color:spColor, background:`${spColor}28`, padding:'2px 5px', borderRadius:4, fontWeight:700, flexShrink:0, cursor:'pointer' }} title={!isDeezer && spHasInternalLogin ? 'Putar Full Track (Login Aktif)' : 'Preview 30 detik'}>{!isDeezer && spHasInternalLogin ? '▶ Full' : '▶ 30s'}</span>
                                                   )}
                                                   {/* Open button mirip YT ↗ */}
                                                   {t3.spotifyUrl && <button onClick={e => { e.stopPropagation(); window.open(t3.spotifyUrl, '_blank', 'noopener,noreferrer'); }}

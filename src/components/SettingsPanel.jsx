@@ -612,10 +612,11 @@ function CacheManager({ lang, t, startCompressCache, compressStatus, compressPro
   );
 }
 
-function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t, userSpId, setUserSpId, userSpSecret, setUserSpSecret, userScId, setUserScId, userAiKey, setUserAiKey, userYtKey, setUserYtKey, userCfKey, setUserCfKey, userSnKey, setUserSnKey, setTab, setFullscreen, googleUser, handleGoogleLogin, syncPlaylistsToCloud, syncSongsToCloud, accessToken, plSyncStatus, plSyncError, plSyncedAt, songSyncStatus, songSyncError, songSyncedAt, startCompressCache, compressStatus, compressProgress, bgTheme, setBgTheme }) {
+function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cancelSleepTimer, eqEnabled, eqGains, eqPreset, onToggleEq, onEqGainChange, onApplyEqPreset, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t, userSpId, setUserSpId, userSpSecret, setUserSpSecret, userSpDc, setUserSpDc, userSpKey, setUserSpKey, userScId, setUserScId, userScOAuth, setUserScOAuth, userAiKey, setUserAiKey, userYtKey, setUserYtKey, userCfKey, setUserCfKey, userSnKey, setUserSnKey, setTab, setFullscreen, googleUser, handleGoogleLogin, syncPlaylistsToCloud, syncSongsToCloud, accessToken, plSyncStatus, plSyncError, plSyncedAt, songSyncStatus, songSyncError, songSyncedAt, startCompressCache, compressStatus, compressProgress, bgTheme, setBgTheme }) {
   const coverRef = useRef(null);
   const [apiKeyTab, setApiKeyTab] = React.useState('spotify');
   const [showThemePicker, setShowThemePicker] = React.useState(false);
+  const [settingsTab, setSettingsTab] = React.useState('utama');
   const windowWidth = useWindowWidth();
   const isMobileNarrow = windowWidth < 400;
   // Local state untuk DNS input agar tidak terganggu re-render parent
@@ -636,6 +637,34 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
           <div style={{ fontWeight:900, fontSize:15, letterSpacing:'-0.02em' }}>{t ? t.settings : 'Pengaturan'}</div>
           <button onClick={onClose} style={{ width:28, height:28, borderRadius:999, border:'1px solid rgba(255,255,255,0.12)', background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.7)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:14 }}>×</button>
         </div>
+
+        {/* ── SUBNAV */}
+        <div style={{ display:'flex', gap:6, padding:'10px 18px 4px', position:'sticky', top:0, zIndex:10, background:'#0d0d24' }}>
+          {[
+            { id:'utama', label: lang==='en' ? 'Main' : 'Utama', icon:'🎛️' },
+            { id:'umum',  label: lang==='en' ? 'General' : 'Umum',  icon:'⚙️' },
+          ].map(({ id, label, icon }) => {
+            const active = settingsTab === id;
+            return (
+              <button key={id} onClick={() => setSettingsTab(id)} style={{
+                flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:6,
+                padding:'9px 0', borderRadius:12,
+                border: active ? `1.5px solid ${color}60` : '1.5px solid rgba(255,255,255,0.08)',
+                background: active ? `${color}18` : 'rgba(255,255,255,0.04)',
+                color: active ? color : 'rgba(255,255,255,0.45)',
+                fontSize:12, fontWeight: active ? 800 : 600,
+                cursor:'pointer', transition:'all 0.2s',
+                boxShadow: active ? `0 0 12px ${color}20` : 'none',
+              }}>
+                <span style={{ fontSize:14 }}>{icon}</span>
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ══════ TAB: UMUM ══════ */}
+        {settingsTab === 'umum' && (<>
 
         {/* ── GOOGLE DRIVE */}
         <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
@@ -794,6 +823,12 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
           );
         })()}
 
+        {/* ── end TAB: UMUM (bagian atas: Google Drive + BG Theme) */}
+        </>)}
+
+        {/* ══════ TAB: UTAMA ══════ */}
+        {settingsTab === 'utama' && (<>
+
         {/* ── SLEEP TIMER */}
         <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
@@ -819,6 +854,103 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
             </div>
           )}
         </div>
+
+        {/* ── EQUALIZER */}
+        {(() => {
+          const EQ_BAND_LABELS = ['32','64','125','250','500','1K','2K','4K','8K','16K'];
+          const EQ_PRESETS_LIST = [
+            { id:'flat',     label:'Flat' },
+            { id:'bass',     label:'Bass Boost' },
+            { id:'treble',   label:'Treble' },
+            { id:'vocal',    label:'Vocal' },
+            { id:'pop',      label:'Pop' },
+            { id:'rock',     label:'Rock' },
+            { id:'jazz',     label:'Jazz' },
+            { id:'classical',label:'Klasik' },
+            { id:'dance',    label:'Dance' },
+            { id:'acoustic', label:'Akustik' },
+          ];
+          const gains = eqGains || Array(10).fill(0);
+          return (
+            <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+              {/* Header */}
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+                <svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="9" width="2" height="12" rx="1" fill={eqEnabled?color:'rgba(255,255,255,0.25)'}/>
+                  <rect x="7" y="5" width="2" height="16" rx="1" fill={eqEnabled?color:'rgba(255,255,255,0.25)'}/>
+                  <rect x="11" y="7" width="2" height="14" rx="1" fill={eqEnabled?color:'rgba(255,255,255,0.25)'}/>
+                  <rect x="15" y="3" width="2" height="18" rx="1" fill={eqEnabled?color:'rgba(255,255,255,0.25)'}/>
+                  <rect x="19" y="8" width="2" height="13" rx="1" fill={eqEnabled?color:'rgba(255,255,255,0.25)'}/>
+                </svg>
+                <span style={{ fontWeight:800, fontSize:14 }}>Equalizer</span>
+                {/* Toggle switch */}
+                <div
+                  onClick={() => onToggleEq && onToggleEq(!eqEnabled)}
+                  style={{ marginLeft:'auto', width:40, height:22, borderRadius:11, background: eqEnabled ? color : 'rgba(255,255,255,0.12)', cursor:'pointer', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
+                  <div style={{ position:'absolute', top:3, left: eqEnabled ? 20 : 3, width:16, height:16, borderRadius:8, background:'white', transition:'left 0.2s', boxShadow:'0 1px 4px rgba(0,0,0,0.4)' }}/>
+                </div>
+              </div>
+
+              {/* Preset chips */}
+              <div style={{ display:'flex', flexWrap:'wrap', gap:5, marginBottom:14 }}>
+                {EQ_PRESETS_LIST.map(p => (
+                  <button key={p.id}
+                    onClick={() => onApplyEqPreset && onApplyEqPreset(p.id)}
+                    style={{ padding:'4px 10px', borderRadius:999, fontSize:10, fontWeight:700, cursor:'pointer', border: (eqPreset===p.id && eqEnabled) ? `1px solid ${color}` : '1px solid rgba(255,255,255,0.1)', background: (eqPreset===p.id && eqEnabled) ? `${color}25` : 'rgba(255,255,255,0.04)', color: (eqPreset===p.id && eqEnabled) ? color : 'rgba(255,255,255,0.5)', transition:'all 0.15s' }}>
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Sliders — 10 band vertical */}
+              <div style={{ display:'flex', gap:0, alignItems:'flex-end', justifyContent:'space-between', padding:'0 2px' }}>
+                {EQ_BAND_LABELS.map((label, i) => {
+                  const gain = gains[i] ?? 0;
+                  const pct = ((gain + 12) / 24) * 100; // map -12..+12 dB to 0..100%
+                  return (
+                    <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, flex:1 }}>
+                      {/* dB value */}
+                      <div style={{ fontSize:8, fontWeight:700, color: gain===0 ? 'rgba(255,255,255,0.3)' : gain>0 ? color : '#f87171', fontVariantNumeric:'tabular-nums', minWidth:24, textAlign:'center' }}>
+                        {gain > 0 ? `+${gain}` : gain}
+                      </div>
+                      {/* Vertical range input */}
+                      <div style={{ height:100, display:'flex', alignItems:'center', justifyContent:'center', position:'relative' }}>
+                        <input
+                          type="range"
+                          min={-12} max={12} step={1}
+                          value={gain}
+                          onChange={e => { onEqGainChange && onEqGainChange(i, Number(e.target.value)); setEqPreset && (eqPreset !== 'custom') && (() => {})(); }}
+                          disabled={!eqEnabled}
+                          style={{
+                            WebkitAppearance:'slider-vertical',
+                            appearance:'slider-vertical',
+                            writingMode:'vertical-lr',
+                            direction:'rtl',
+                            width:22, height:96,
+                            cursor: eqEnabled ? 'pointer' : 'default',
+                            opacity: eqEnabled ? 1 : 0.35,
+                            accentColor: color,
+                          }}
+                        />
+                      </div>
+                      {/* Frequency label */}
+                      <div style={{ fontSize:8, color:'rgba(255,255,255,0.3)', fontWeight:600 }}>{label}</div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Reset button */}
+              {eqEnabled && gains.some(g => g !== 0) && (
+                <button
+                  onClick={() => onApplyEqPreset && onApplyEqPreset('flat')}
+                  style={{ marginTop:10, padding:'4px 12px', borderRadius:8, border:'1px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.04)', color:'rgba(255,255,255,0.45)', fontSize:10, cursor:'pointer' }}>
+                  Reset ke Flat
+                </button>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ── FOTO COVER GLOBAL */}
         <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
@@ -1174,6 +1306,14 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
             <Lock size={14}/> {lang==='en' ? 'Lock Screen & Go to Player' : 'Kunci Layar & Buka Player'}
           </button>
         </div>
+
+        {/* ── end TAB: UTAMA */}
+        </>)}
+
+        {/* ══════ TAB: UMUM (bagian bawah: DNS, API Keys, dll) ══════ */}
+        {settingsTab === 'umum' && (<>
+
+        {/* ── DNS Kustom */}
         <div style={{ padding:'16px 18px 20px' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
             <span style={{ fontSize:16 }}>🌐</span>
@@ -1227,8 +1367,8 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
           {/* ── Filter Tab Bar (DNS-style pill selector) */}
           <div style={{ display:'flex', gap:4, marginBottom:14, background:'rgba(255,255,255,0.05)', borderRadius:10, padding:3 }}>
             {[
-              { id:'spotify', label:'Spotify', icon:<svg width={11} height={11} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="12" fill="#1DB954"/><path d="M17.9 10.9C14.7 9 9.35 8.8 6.3 9.75c-.5.15-1-.15-1.15-.6-.15-.5.15-1 .6-1.15C9.65 6.8 15.5 7 19.1 9.15c.45.25.6.85.35 1.3-.25.35-.85.5-1.55.45zM17.75 13.55c-.2.35-.65.45-1 .25-2.65-1.6-6.65-2.05-9.75-1.1-.4.1-.8-.1-.9-.5-.1-.4.1-.8.5-.9 3.55-1.1 7.95-.55 11 1.3.3.15.4.6.15.95zM16.6 16.1c-.15.3-.5.4-.8.25-2.3-1.4-5.2-1.7-8.6-.95-.35.1-.65-.15-.75-.45-.1-.35.15-.65.45-.75 3.75-.85 6.95-.5 9.5 1.1.35.15.4.5.2.8z" fill="white"/></svg>, activeColor:'#1DB954', activeBg:'rgba(29,185,84,0.15)', dot: (userSpId && userSpSecret) },
-              { id:'soundcloud', label:'SoundCloud', icon:<svg width={11} height={11} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="5" fill="#ff5500"/><rect x="5.5" y="10" width="2" height="7" rx="1" fill="white"/><rect x="8.5" y="8.5" width="2" height="8.5" rx="1" fill="white"/><rect x="11.5" y="7" width="2" height="10" rx="1" fill="white"/><rect x="14.5" y="8" width="2" height="9" rx="1" fill="white"/><rect x="17.5" y="9.5" width="2" height="7.5" rx="1" fill="white"/></svg>, activeColor:'#ff5500', activeBg:'rgba(255,85,0,0.15)', dot: !!userScId },
+              { id:'spotify', label:'Spotify', icon:<svg width={11} height={11} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="12" fill="#1DB954"/><path d="M17.9 10.9C14.7 9 9.35 8.8 6.3 9.75c-.5.15-1-.15-1.15-.6-.15-.5.15-1 .6-1.15C9.65 6.8 15.5 7 19.1 9.15c.45.25.6.85.35 1.3-.25.35-.85.5-1.55.45zM17.75 13.55c-.2.35-.65.45-1 .25-2.65-1.6-6.65-2.05-9.75-1.1-.4.1-.8-.1-.9-.5-.1-.4.1-.8.5-.9 3.55-1.1 7.95-.55 11 1.3.3.15.4.6.15.95zM16.6 16.1c-.15.3-.5.4-.8.25-2.3-1.4-5.2-1.7-8.6-.95-.35.1-.65-.15-.75-.45-.1-.35.15-.65.45-.75 3.75-.85 6.95-.5 9.5 1.1.35.15.4.5.2.8z" fill="white"/></svg>, activeColor:'#1DB954', activeBg:'rgba(29,185,84,0.15)', dot: (userSpId && userSpSecret) || userSpDc },
+              { id:'soundcloud', label:'SoundCloud', icon:<svg width={11} height={11} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="5" fill="#ff5500"/><rect x="5.5" y="10" width="2" height="7" rx="1" fill="white"/><rect x="8.5" y="8.5" width="2" height="8.5" rx="1" fill="white"/><rect x="11.5" y="7" width="2" height="10" rx="1" fill="white"/><rect x="14.5" y="8" width="2" height="9" rx="1" fill="white"/><rect x="17.5" y="9.5" width="2" height="7.5" rx="1" fill="white"/></svg>, activeColor:'#ff5500', activeBg:'rgba(255,85,0,0.15)', dot: !!(userScId || userScOAuth) },
               { id:'youtube', label:'YouTube', icon:<svg width={11} height={11} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="5" fill="#FF0000"/><path d="M19.6 7.8a2.5 2.5 0 00-1.76-1.77C16.4 5.7 12 5.7 12 5.7s-4.4 0-5.84.33A2.5 2.5 0 004.4 7.8C4.08 9.24 4.08 12 4.08 12s0 2.76.32 4.2a2.5 2.5 0 001.76 1.77C7.6 18.3 12 18.3 12 18.3s4.4 0 5.84-.33a2.5 2.5 0 001.76-1.77C19.92 14.76 19.92 12 19.92 12s0-2.76-.32-4.2z" fill="white"/><path d="M10.2 14.7V9.3l4.8 2.7-4.8 2.7z" fill="#FF0000"/></svg>, activeColor:'#FF0000', activeBg:'rgba(255,0,0,0.12)', dot: !!userYtKey },
               { id:'ai', label:'AI Key', icon:<svg width={11} height={11} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#6366f1"/><circle cx="12" cy="12" r="4" fill="none" stroke="white" strokeWidth="1.5"/><circle cx="12" cy="12" r="1.5" fill="white"/><line x1="12" y1="4" x2="12" y2="7" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="12" y1="17" x2="12" y2="20" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="4" y1="12" x2="7" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round"/><line x1="17" y1="12" x2="20" y2="12" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>, activeColor:'#818cf8', activeBg:'rgba(99,102,241,0.15)', dot: !!(userAiKey || userCfKey || userSnKey) },
 
@@ -1250,33 +1390,84 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
               <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
                 <svg width={13} height={13} viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="12" fill="#1DB954"/><path d="M17.9 10.9C14.7 9 9.35 8.8 6.3 9.75c-.5.15-1-.15-1.15-.6-.15-.5.15-1 .6-1.15C9.65 6.8 15.5 7 19.1 9.15c.45.25.6.85.35 1.3-.25.35-.85.5-1.55.45zM17.75 13.55c-.2.35-.65.45-1 .25-2.65-1.6-6.65-2.05-9.75-1.1-.4.1-.8-.1-.9-.5-.1-.4.1-.8.5-.9 3.55-1.1 7.95-.55 11 1.3.3.15.4.6.15.95zM16.6 16.1c-.15.3-.5.4-.8.25-2.3-1.4-5.2-1.7-8.6-.95-.35.1-.65-.15-.75-.45-.1-.35.15-.65.45-.75 3.75-.85 6.95-.5 9.5 1.1.35.15.4.5.2.8z" fill="white"/></svg>
                 <span style={{ fontWeight:700, fontSize:12, color:'rgba(255,255,255,0.85)' }}>Spotify API</span>
-                {(userSpId && userSpSecret) && <span style={{ fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:999, background:'rgba(29,185,84,0.2)', color:'#1DB954' }}>✓ Aktif</span>}
+                {(userSpId && userSpSecret) && <span style={{ fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:999, background:'rgba(29,185,84,0.2)', color:'#1DB954' }}>✓ API Aktif</span>}
+                {userSpDc && <span style={{ fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:999, background:'rgba(29,185,84,0.35)', color:'#1DB954', border:'1px solid rgba(29,185,84,0.5)' }}>✓ Login Aktif</span>}
               </div>
-              <div style={{ marginBottom:6 }}>
+
+              {/* ── Section 1: Login Mode (sp_dc + sp_key) — Full Track ── */}
+              <div style={{ marginBottom:10, padding:'8px 10px', borderRadius:10, background:'rgba(29,185,84,0.07)', border:'1px solid rgba(29,185,84,0.2)' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:6 }}>
+                  <span style={{ fontSize:10, fontWeight:800, color:'#1DB954' }}>🎵 Login Mode</span>
+                  <span style={{ fontSize:9, padding:'1px 5px', borderRadius:999, background:'rgba(29,185,84,0.15)', color:'#1DB954', fontWeight:700 }}>Full Track</span>
+                </div>
+                <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', lineHeight:1.6, marginBottom:6 }}>
+                  Masukkan cookie <code style={{ color:'#1DB954', fontFamily:'monospace' }}>sp_dc</code> dari browser Spotify untuk memutar lagu full track seperti Spotube.
+                </div>
+                <div style={{ marginBottom:6 }}>
+                  <MaskedKeyInput
+                    value={userSpDc || ''}
+                    onChange={v => setUserSpDc(v)}
+                    onBlur={v => { try { if (v) localStorage.setItem('sn_sp_dc', v); else localStorage.removeItem('sn_sp_dc'); } catch(e) { console.warn('[SettingsPanel] localStorage error:', e); } }}
+                    placeholder="sp_dc (cookie dari open.spotify.com)"
+                    accentColor="#1DB954"
+                  />
+                </div>
+                <div style={{ marginBottom:4 }}>
+                  <MaskedKeyInput
+                    value={userSpKey || ''}
+                    onChange={v => setUserSpKey(v)}
+                    onBlur={v => { try { if (v) localStorage.setItem('sn_sp_key', v); else localStorage.removeItem('sn_sp_key'); } catch(e) { console.warn('[SettingsPanel] localStorage error:', e); } }}
+                    placeholder="sp_key (opsional)"
+                    accentColor="#1DB954"
+                  />
+                </div>
+                <div style={{ fontSize:9, color:'rgba(255,255,255,0.2)', lineHeight:1.7, marginTop:4 }}>
+                  <b style={{ color:'rgba(255,255,255,0.4)' }}>Cara ambil sp_dc:</b><br/>
+                  1. Buka <span style={{ color:'#1DB954' }}>open.spotify.com</span> di browser, login<br/>
+                  2. F12 → Application → Cookies → open.spotify.com<br/>
+                  3. Salin nilai cookie <code style={{ color:'#1DB954', fontFamily:'monospace' }}>sp_dc</code> (bukan sp_key)<br/>
+                  <span style={{ color:'rgba(255,100,100,0.6)' }}>⚠ Jangan bagikan sp_dc ke siapapun — setara dengan password Spotify kamu</span>
+                </div>
+                {userSpDc && (
+                  <button onClick={() => { setUserSpDc(''); setUserSpKey(''); localStorage.removeItem('sn_sp_dc'); localStorage.removeItem('sn_sp_key'); }}
+                    style={{ marginTop:6, padding:'3px 8px', borderRadius:7, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.08)', color:'#fca5a5', fontSize:9, cursor:'pointer' }}>
+                    Hapus Login Spotify
+                  </button>
+                )}
+              </div>
+
+              {/* ── Section 2: API Keys (Client ID + Secret) — Search Only ── */}
+              <div style={{ padding:'8px 10px', borderRadius:10, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:6 }}>
+                  <span style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.6)' }}>🔑 API Keys</span>
+                  <span style={{ fontSize:9, padding:'1px 5px', borderRadius:999, background:'rgba(255,255,255,0.08)', color:'rgba(255,255,255,0.4)', fontWeight:700 }}>Search + Preview</span>
+                </div>
+                <div style={{ marginBottom:6 }}>
+                  <MaskedKeyInput
+                    value={userSpId}
+                    onChange={v => setUserSpId(v)}
+                    onBlur={v => { try { localStorage.setItem('sn_sp_id', v); } catch(e) { console.warn('[SettingsPanel] localStorage error:', e); } }}
+                    placeholder="Client ID"
+                    accentColor="#1DB954"
+                  />
+                </div>
                 <MaskedKeyInput
-                  value={userSpId}
-                  onChange={v => setUserSpId(v)}
-                  onBlur={v => { try { localStorage.setItem('sn_sp_id', v); } catch(e) { console.warn('[SettingsPanel] localStorage error:', e); } }}
-                  placeholder="Client ID"
+                  value={userSpSecret}
+                  onChange={v => setUserSpSecret(v)}
+                  onBlur={v => { try { localStorage.setItem('sn_sp_secret', v); } catch(e) { console.warn('[SettingsPanel] localStorage error:', e); } }}
+                  placeholder="Client Secret"
                   accentColor="#1DB954"
                 />
+                <div style={{ marginTop:6, fontSize:9, color:'rgba(255,255,255,0.25)', lineHeight:1.6 }}>
+                  Daftarkan app di developer.spotify.com → buat app → salin Client ID & Secret
+                </div>
+                {(userSpId || userSpSecret) && (
+                  <button onClick={() => { setUserSpId(''); setUserSpSecret(''); localStorage.removeItem('sn_sp_id'); localStorage.removeItem('sn_sp_secret'); }}
+                    style={{ marginTop:6, padding:'4px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.08)', color:'#fca5a5', fontSize:10, cursor:'pointer' }}>
+                    Hapus Key Spotify
+                  </button>
+                )}
               </div>
-              <MaskedKeyInput
-                value={userSpSecret}
-                onChange={v => setUserSpSecret(v)}
-                onBlur={v => { try { localStorage.setItem('sn_sp_secret', v); } catch(e) { console.warn('[SettingsPanel] localStorage error:', e); } }}
-                placeholder="Client Secret"
-                accentColor="#1DB954"
-              />
-              <div style={{ marginTop:6, fontSize:9, color:'rgba(255,255,255,0.25)', lineHeight:1.6 }}>
-                Daftarkan app di developer.spotify.com → buat app → salin Client ID & Secret
-              </div>
-              {(userSpId || userSpSecret) && (
-                <button onClick={() => { setUserSpId(''); setUserSpSecret(''); localStorage.removeItem('sn_sp_id'); localStorage.removeItem('sn_sp_secret'); }}
-                  style={{ marginTop:6, padding:'4px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.08)', color:'#fca5a5', fontSize:10, cursor:'pointer' }}>
-                  Hapus Key Spotify
-                </button>
-              )}
             </div>
           )}
 
@@ -1304,6 +1495,40 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
                   Hapus Key SoundCloud
                 </button>
               )}
+
+              {/* ── OAuth Token Section — Full Track Streaming */}
+              <div style={{ marginTop:14, paddingTop:12, borderTop:'1px solid rgba(255,85,0,0.15)' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
+                  <span style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.85)' }}>🎵 OAuth Token</span>
+                  {userScOAuth && <span style={{ fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:999, background:'rgba(255,85,0,0.2)', color:'#ff5500' }}>✓ Full Track</span>}
+                </div>
+                <div style={{ marginBottom:6, fontSize:9, color:'rgba(255,255,255,0.4)', lineHeight:1.6 }}>
+                  Paste <code style={{ color:'#ff5500', fontFamily:'monospace' }}>oauth_token</code> dari cookie SoundCloud untuk memutar lagu full track langsung di player — seperti pola sp_dc Spotify.
+                </div>
+                <MaskedKeyInput
+                  value={userScOAuth}
+                  onChange={v => setUserScOAuth(v)}
+                  onBlur={v => { try { if (v) localStorage.setItem('sn_sc_oauth', v); else localStorage.removeItem('sn_sc_oauth'); } catch(e) { console.warn('[SettingsPanel] localStorage error:', e); } }}
+                  placeholder="oauth_token (cookie dari soundcloud.com)"
+                  accentColor="#ff5500"
+                />
+                <div style={{ marginTop:8, padding:'10px 12px', borderRadius:10, background:'rgba(255,85,0,0.06)', border:'1px solid rgba(255,85,0,0.15)' }}>
+                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.45)', lineHeight:1.7 }}>
+                    🟠 <strong style={{ color:'rgba(255,255,255,0.7)' }}>Manfaat:</strong> Stream full track SoundCloud tanpa batas, kualitas lebih tinggi, tidak bergantung embed iframe.<br/>
+                    <strong style={{ color:'rgba(255,255,255,0.5)' }}>Cara ambil oauth_token:</strong><br/>
+                    1. Buka <code style={{ color:'#ff5500' }}>soundcloud.com</code> di browser, login<br/>
+                    2. Klik kanan → Inspect → Application → Cookies → soundcloud.com<br/>
+                    3. Salin nilai <code style={{ color:'#ff5500' }}>oauth_token</code><br/>
+                    <span style={{ color:'rgba(255,100,100,0.6)' }}>⚠ Jangan bagikan oauth_token ke siapapun</span>
+                  </div>
+                </div>
+                {userScOAuth && (
+                  <button onClick={() => { setUserScOAuth(''); localStorage.removeItem('sn_sc_oauth'); }}
+                    style={{ marginTop:6, padding:'4px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.08)', color:'#fca5a5', fontSize:10, cursor:'pointer' }}>
+                    Hapus OAuth Token
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -1555,6 +1780,9 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
 
         {/* ── HAPUS CACHE */}
         <CacheManager lang={lang} t={t} startCompressCache={startCompressCache} compressStatus={compressStatus} compressProgress={compressProgress} />
+
+        {/* ── end TAB: UMUM */}
+        </>)}
 
       </div>
     </div>

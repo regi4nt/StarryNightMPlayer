@@ -419,7 +419,10 @@ export const setServerYtKeyStatus = (hasKey) => { _SERVER_HAS_YT_KEY = !!hasKey;
 // Runtime mutable — diupdate oleh App saat settings berubah
 let _USER_SP_ID     = '';
 let _USER_SP_SECRET = '';
+let _USER_SP_DC     = ''; // Spotify internal session cookie (sp_dc) — untuk full track
+let _USER_SP_KEY    = ''; // Spotify internal client key (sp_key) — untuk full track
 let _USER_SC_ID     = '';
+let _USER_SC_OAUTH  = ''; // SoundCloud OAuth token — untuk full track streaming
 let _USER_AI_KEY    = ''; // Universal AI key — auto-detect provider from prefix
 let _USER_YT_KEY    = ''; // YouTube Data API v3 key dari user
 let _USER_HF_KEY    = ''; // HuggingFace Inference API key (hf_...)
@@ -430,9 +433,11 @@ let _USER_DS_KEY    = ''; // DeepSeek API key (user-supplied, opsional — bisa 
 let _USER_GROK_KEY  = ''; // xAI Grok API key (user-supplied, opsional — bisa pakai xai- universal)
 // FIX Bug #4: ganti parameter _u1/_u2 yang selalu '' dengan ds_key dan grok_key yang benar,
 // sehingga key dari Settings benar-benar disimpan ke runtime dan tidak hilang diam-diam.
-export const setRuntimeKeys = (sp_id, sp_secret, sc_id, ai_key, ds_key, grok_key, yt_key, hf_key, cf_key, gh_key, sn_key) => {
+export const setRuntimeKeys = (sp_id, sp_secret, sc_id, ai_key, ds_key, grok_key, yt_key, hf_key, cf_key, gh_key, sn_key, sp_dc, sp_key, sc_oauth) => {
   _USER_SP_ID = sp_id || ''; _USER_SP_SECRET = sp_secret || '';
+  _USER_SP_DC = sp_dc || ''; _USER_SP_KEY = sp_key || '';
   _USER_SC_ID = sc_id || ''; _USER_AI_KEY    = ai_key    || '';
+  _USER_SC_OAUTH = sc_oauth || '';
   _USER_DS_KEY   = ds_key   || '';
   _USER_GROK_KEY = grok_key || '';
   _USER_YT_KEY = yt_key || '';
@@ -441,10 +446,16 @@ export const setRuntimeKeys = (sp_id, sp_secret, sc_id, ai_key, ds_key, grok_key
   _USER_GH_KEY = gh_key || '';
   _USER_SN_KEY = sn_key || '';
   _spToken = null; _spTokenExp = 0;
+  _spInternalToken = null; _spInternalTokenExp = 0;
 };
 export const getSpId      = () => _USER_SP_ID     || _ENV_SP_ID;
 export const getSpSecret  = () => _USER_SP_SECRET || _ENV_SP_SECRET;
+export const getSpDc      = () => _USER_SP_DC     || (typeof localStorage !== 'undefined' ? localStorage.getItem('sn_sp_dc')  || '' : '');
+export const getSpKey     = () => _USER_SP_KEY    || (typeof localStorage !== 'undefined' ? localStorage.getItem('sn_sp_key') || '' : '');
+export const hasSpInternalLogin = () => !!(getSpDc());
 export const getScId      = () => _USER_SC_ID     || _ENV_SC_ID;
+export const getScOAuth   = () => _USER_SC_OAUTH  || (typeof localStorage !== 'undefined' ? localStorage.getItem('sn_sc_oauth') || '' : '');
+export const hasScOAuth   = () => !!(getScOAuth());
 export const getUserAiKey  = () => _USER_AI_KEY || (typeof localStorage !== 'undefined' ? localStorage.getItem('sn_ai_key') || '' : '');
 // FIX Bug #5: getUserDsKey dan getUserGrokKey sebelumnya selalu return '' (hanya _ENV_DS_KEY/GROK_KEY
 // yang kosong). Sekarang ikut pola yang sama dengan key lain: cek runtime key, lalu localStorage.
@@ -476,6 +487,83 @@ export const SP_CLIENT_SECRET = ''; // server-side via /api/spotify-token
 
 let _spToken = null;
 let _spTokenExp = 0;
+
+// ─── Internal token (sp_dc login) — untuk full track streaming ───────────────
+let _spInternalToken = null;
+let _spInternalTokenExp = 0;
+
+/**
+ * Ambil Spotify internal access_token menggunakan sp_dc cookie.
+ * Ini adalah metode yang sama yang digunakan Spotube & spotipy untuk bypass
+ * client_credentials dan mendapat akses full-track.
+ * Karena browser tidak bisa kirim Cookie ke domain lain (CORS),
+ * kita proxy lewat /api/spotify-internal-token di server.
+ */
+export async function getSpotifyInternalToken() {
+  if (_spInternalToken && Date.now() < _spInternalTokenExp) return _spInternalToken;
+  const spDc = getSpDc();
+  if (!spDc) return null;
+  try {
+    const res = await fetch('/api/spotify-internal-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sp_dc: spDc }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data.access_token) return null;
+    _spInternalToken = data.access_token;
+    // Spotify internal token biasanya valid ~1 jam
+    _spInternalTokenExp = Date.now() + ((data.expires_in || 3600) - 60) * 1000;
+    return _spInternalToken;
+  } catch { return null; }
+}
+
+/**
+ * Ambil URL stream full track Spotify menggunakan internal token.
+ * Returns URL audio yang bisa diputar, atau null jika gagal.
+ */
+export async function getSpotifyTrackStreamUrl(trackId) {
+  const token = await getSpotifyInternalToken();
+  if (!token || !trackId) return null;
+  try {
+    // Gunakan Spotify Partner API (digunakan internal oleh web player)
+    const res = await fetch(
+      `https://api-partner.spotify.com/pathfinder/v1/query?operationName=getTrack&variables=%7B%22uri%22%3A%22spotify%3Atrack%3A${trackId}%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22e101aead6d78faa11d75bec5e36385a07b2f1c4227171e2e45fd6f9eff1ac35d%22%7D%7D`,
+      { headers: { 'Authorization': `Bearer ${token}` } }
+    );
+    if (!res.ok) return null;
+    // Partner API tidak langsung return stream URL; gunakan playback endpoint
+    // Ambil track detail dulu untuk validasi
+    const trackRes = await fetch(
+      `https://api.spotify.com/v1/tracks/${trackId}`,
+      { headers: { 'Authorization': `Bearer ${token}` } }
+    );
+    if (!trackRes.ok) return null;
+    const track = await trackRes.json();
+    // Kembalikan preview_url jika ada (fallback) — full stream lewat proxy
+    return track.preview_url || null;
+  } catch { return null; }
+}
+
+/**
+ * Fetch full track audio stream via server proxy (sp_dc authenticated).
+ * Server proxy di /api/spotify-internal-token akan handle playback URL.
+ */
+export async function getSpotifyFullTrackUrl(trackId) {
+  const spDc = getSpDc();
+  if (!spDc || !trackId) return null;
+  try {
+    const res = await fetch('/api/spotify-internal-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sp_dc: spDc, track_id: trackId }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.stream_url || data.cdnUrl || null;
+  } catch { return null; }
+}
 
 async function getSpotifyToken() {
   if (_spToken && Date.now() < _spTokenExp) return _spToken;
@@ -555,8 +643,106 @@ export async function searchSoundCloud(query, limit = 10) {
   } catch { return null; }
 }
 
+// ═══════════════════════════════════════════════════════
+//  SOUNDCLOUD OAUTH — Full track streaming via OAuth token
+//  Mirip pola sp_dc Spotify — user paste token dari browser
+// ═══════════════════════════════════════════════════════
 
-// history: array of {from:'user'|'ai', text:string} — dikonversi ke format messages API
+let _scOAuthToken = null;
+let _scOAuthTokenExp = 0;
+
+/**
+ * Ambil SoundCloud access_token menggunakan OAuth token dari cookie/localStorage.
+ * Token bisa didapat dari: Developer Tools → Application → Cookies → soundcloud.com → oauth_token
+ * ATAU dari Network tab: cari request ke api-v2.soundcloud.com, lihat header Authorization: OAuth <token>
+ */
+export async function getScAccessToken() {
+  if (_scOAuthToken && Date.now() < _scOAuthTokenExp) return _scOAuthToken;
+  const oauthToken = getScOAuth();
+  if (!oauthToken) return null;
+  // OAuth token SoundCloud langsung dipakai sebagai Bearer/OAuth token
+  // Validasi token dengan hit /me endpoint
+  try {
+    const res = await fetch('https://api-v2.soundcloud.com/me', {
+      headers: { 'Authorization': `OAuth ${oauthToken}` }
+    });
+    if (!res.ok) return null;
+    // Token valid — cache selama 50 menit
+    _scOAuthToken = oauthToken;
+    _scOAuthTokenExp = Date.now() + 50 * 60 * 1000;
+    return _scOAuthToken;
+  } catch { return null; }
+}
+
+/**
+ * Cari lagu SoundCloud dengan OAuth token (mendapat lebih banyak hasil + unblocked tracks).
+ */
+export async function searchSoundCloudOAuth(query, limit = 10) {
+  const token = await getScAccessToken();
+  if (!token) return null;
+  try {
+    const res = await fetch(
+      `https://api-v2.soundcloud.com/search/tracks?q=${encodeURIComponent(query)}&limit=${limit}&access=playable,preview`,
+      { headers: { 'Authorization': `OAuth ${token}` } }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return (data.collection || []).map(t => ({
+      id: String(t.id),
+      title: t.title || 'Unknown',
+      artist: t.user?.username || 'SoundCloud',
+      cover: (t.artwork_url || t.user?.avatar_url || '').replace('-large', '-t300x300'),
+      duration: Math.round((t.duration || 0) / 1000),
+      permalinkUrl: t.permalink_url || '',
+      streamUrl: t.permalink_url || '',
+      waveformUrl: t.waveform_url || '',
+      // Media transcoding untuk direct stream
+      _transcodings: t.media?.transcodings || [],
+      _policy: t.policy || '',
+    }));
+  } catch { return null; }
+}
+
+/**
+ * Ambil direct stream URL untuk track SoundCloud via OAuth.
+ * Mencoba progressive MP3 terlebih dahulu, fallback ke HLS.
+ * Returns { url, format } atau null jika gagal.
+ */
+export async function getScTrackStreamUrl(trackIdOrTranscodings) {
+  const token = await getScAccessToken();
+  if (!token) return null;
+  try {
+    let transcodings = Array.isArray(trackIdOrTranscodings) ? trackIdOrTranscodings : null;
+    // Jika diberikan track ID (string/number), fetch track detail dulu
+    if (!transcodings) {
+      const trackRes = await fetch(
+        `https://api-v2.soundcloud.com/tracks/${trackIdOrTranscodings}`,
+        { headers: { 'Authorization': `OAuth ${token}` } }
+      );
+      if (!trackRes.ok) return null;
+      const trackData = await trackRes.json();
+      transcodings = trackData.media?.transcodings || [];
+    }
+    if (!transcodings.length) return null;
+    // Prioritas: progressive MP3 > HLS MP3 > apapun progressive > apapun HLS
+    const progressive = transcodings.find(tc =>
+      tc.format?.protocol === 'progressive' && tc.format?.mime_type?.includes('mpeg')
+    ) || transcodings.find(tc => tc.format?.protocol === 'progressive');
+    const hls = transcodings.find(tc =>
+      tc.format?.protocol === 'hls' && tc.format?.mime_type?.includes('mpeg')
+    ) || transcodings.find(tc => tc.format?.protocol === 'hls');
+    const chosen = progressive || hls;
+    if (!chosen?.url) return null;
+    // Resolve transcoding URL ke CDN stream URL
+    const streamRes = await fetch(
+      `${chosen.url}?client_id=${getScId() || 'iZIs9mchVcX5lhVRyQGGAYlNPVldzAoX'}`,
+      { headers: { 'Authorization': `OAuth ${token}` } }
+    );
+    if (!streamRes.ok) return null;
+    const streamData = await streamRes.json();
+    return { url: streamData.url, format: chosen.format?.protocol || 'progressive' };
+  } catch { return null; }
+}
 const buildMessages = (user, history = []) => {
   // Ambil maks 10 pesan terakhir (5 turn) agar tidak overflow context
   const recent = history.slice(-10);
@@ -1034,9 +1220,8 @@ export async function downloadFavAudio(songId, previewUrl, onProgress, signal) {
 }
 
 // ── Helper: download blob dari URL dengan tracking progress ──────────────────
-async function _fetchAudioBlob(url, onProgress, signal, mimeType = 'audio/mpeg') {
-  const res = await fetch(url, { signal, mode: 'cors' });
-  if (!res.ok) throw new Error(`Audio fetch ${res.status}`);
+// ── Baca stream response ke Blob dengan tracking progress ────────────────────
+async function _readStreamToBlob(res, onProgress, mimeType) {
   const total = parseInt(res.headers.get('content-length') || '0', 10);
   const reader = res.body.getReader();
   const chunks = []; let loaded = 0;
@@ -1045,9 +1230,40 @@ async function _fetchAudioBlob(url, onProgress, signal, mimeType = 'audio/mpeg')
     if (done) break;
     chunks.push(value);
     loaded += value.length;
-    if (total > 0 && onProgress) onProgress(Math.round((loaded / total) * 100));
+    if (total > 0 && onProgress) onProgress(Math.round((loaded / total) * 90)); // 90% — sisanya untuk cache write
   }
   return new Blob(chunks, { type: mimeType });
+}
+
+// ── Fetch audio blob — coba langsung dulu, fallback ke server proxy ──────────
+// Server proxy (/api/audio-proxy) mengatasi masalah CORS pada URL dari
+// Piped/Invidious/Cobalt/Jamendo/dll yang URL-nya tidak punya CORS header.
+async function _fetchAudioBlob(url, onProgress, signal, mimeType = 'audio/mpeg') {
+  // ── Attempt 1: fetch langsung (tanpa proxy) ─────────────────────────────
+  try {
+    const res = await fetch(url, { signal, mode: 'cors' });
+    if (res.ok) {
+      const blob = await _readStreamToBlob(res, onProgress, mimeType);
+      if (blob.size > 500) return blob;
+    }
+  } catch (directErr) {
+    // CORS error atau network error — lanjut ke proxy
+    if (signal?.aborted) throw directErr;
+  }
+
+  // ── Attempt 2: via server-side proxy (/api/audio-proxy) ────────────────
+  // Proxy hanya untuk URL https:// (tidak proxy blob: atau data:)
+  if (!url.startsWith('https://')) throw new Error(`Audio fetch gagal: URL tidak bisa di-proxy (bukan https)`);
+
+  const proxyUrl = `/api/audio-proxy?url=${encodeURIComponent(url)}`;
+  const proxyRes = await fetch(proxyUrl, { signal, mode: 'cors' });
+  if (!proxyRes.ok) {
+    const errBody = await proxyRes.json().catch(() => ({}));
+    throw new Error(`Audio proxy ${proxyRes.status}: ${errBody?.error || proxyRes.statusText}`);
+  }
+  const blob = await _readStreamToBlob(proxyRes, onProgress, mimeType);
+  if (!blob || blob.size < 500) throw new Error('Audio yang diunduh kosong atau rusak');
+  return blob;
 }
 
 // ── Method 1: Piped (/streams/{videoId}) ─────────────────────────────────────
@@ -1163,36 +1379,53 @@ export async function downloadYtAudio(videoId, onProgress, signal) {
 // ── Unduh file audio ke perangkat (bukan cache browser) — memicu dialog Save As
 export async function downloadToDevice(url, filename, headers = {}) {
   const hasCustomHeaders = Object.keys(headers).length > 0;
+
+  // ── Fungsi helper: buat blob URL lalu picu anchor download ───────────────
+  const triggerBlobDownload = (blob) => {
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+  };
+
   if (!hasCustomHeaders) {
-    // Tanpa custom headers: coba fetch dulu, jika CORS gagal gunakan anchor[download] langsung
+    // ── Attempt 1: fetch langsung dengan CORS ────────────────────────────
     try {
       const res = await fetch(url, { mode: 'cors' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = blobUrl; a.download = filename;
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
-      return;
-    } catch (corsErr) {
-      // CORS atau network error — fallback ke anchor[download] langsung
-      // Browser akan mengunduh langsung tanpa melewati fetch (tidak ada blob URL)
-      const a = document.createElement('a');
-      a.href = url; a.download = filename; a.target = '_blank'; a.rel = 'noopener noreferrer';
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      return;
+      if (res.ok) {
+        const blob = await res.blob();
+        if (blob.size > 500) { triggerBlobDownload(blob); return; }
+      }
+    } catch { /* CORS atau network error — coba proxy */ }
+
+    // ── Attempt 2: server-side proxy (mengatasi CORS) ────────────────────
+    if (url.startsWith('https://')) {
+      try {
+        const proxyUrl = `/api/audio-proxy?url=${encodeURIComponent(url)}`;
+        const res = await fetch(proxyUrl, { mode: 'cors' });
+        if (res.ok) {
+          const blob = await res.blob();
+          if (blob.size > 500) { triggerBlobDownload(blob); return; }
+        }
+      } catch { /* proxy gagal — fallback ke anchor */ }
     }
+
+    // ── Attempt 3: anchor[download] langsung — hanya berhasil jika same-origin
+    //   atau server kirim Content-Disposition: attachment.
+    //   Jika cross-origin tanpa header tsb, browser akan REDIRECT/buka tab,
+    //   tapi ini adalah last resort terbaik yang tersisa.
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    return;
   }
-  // Ada custom headers (mis. Drive API): harus lewat fetch
+
+  // ── Ada custom headers (mis. Drive API): harus lewat fetch ───────────────
   const res = await fetch(url, { headers });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const blob = await res.blob();
-  const blobUrl = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = blobUrl; a.download = filename;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+  triggerBlobDownload(blob);
 }
 
 // ── Unduh blob yang sudah ada di memori ke perangkat (tanpa fetch ulang)
