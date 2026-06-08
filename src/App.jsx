@@ -198,8 +198,6 @@ export default function App() {
   const ytDlTriggerRef  = useRef(null); // forward-ref ke triggerYtDownload (di-set setelah didefinisikan)
   const ytEndedFiredRef = useRef(false); // prevent double-fire of ytNext on video end
   const ytRepeatSeekingRef = useRef(false); // true selama seekTo(0) untuk repeat-one (blokir ended palsu)
-  const ytEmbedNocookieFailed = useRef(false); // true saat youtube-nocookie juga error 101/150 → skip next
-  const [ytEmbedUseFallback, setYtEmbedUseFallback] = useState(false); // saat true: pakai youtube.com sebagai domain
   const [ytSongs, setYtSongs]         = useState(() => {
     try { return JSON.parse(localStorage.getItem('sn_yt_songs') || '[]'); } catch { return []; }
   }); // YT tracks saved to playlist/liked
@@ -1676,8 +1674,6 @@ Return ONLY valid JSON, no explanation:
       stopAllMedia('embed');
       setEmbedTrack(ytTrack);
       setYtProgress(0); setYtDuration(secs||0); ytProgressRef.current = 0; ytDurationRef.current = secs||0; ytEndedFiredRef.current = false;
-      ytEmbedNocookieFailed.current = false;
-      setYtEmbedUseFallback(false);
       setEmbedMinimized(false);
       if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
@@ -4154,17 +4150,8 @@ Return ONLY valid JSON, no explanation:
         // FIX Bug 2: handle iframe error (video private / geo-block / embedding disabled)
         // YT error codes: 2=bad param, 5=HTML5 error, 100=not found, 101/150=embedding disabled
         if (data.event === 'onError') {
-          console.warn('[YT] iframe error code:', data.info);
-          // Error 101/150 = embedding disabled di youtube.com tapi mungkin OK di youtube-nocookie.com
-          if ((data.info === 101 || data.info === 150) && !ytEmbedNocookieFailed.current) {
-            // Coba fallback ke youtube.com (karena default kita sudah nocookie, fallback = youtube.com)
-            console.warn('[YT] embedding disabled — mencoba fallback domain');
-            ytEmbedNocookieFailed.current = true;
-            setYtEmbedUseFallback(prev => !prev); // toggle untuk paksa re-mount iframe
-          } else {
-            console.warn('[YT] skip ke lagu berikutnya');
-            if (!ytEndedFiredRef.current) { ytEndedFiredRef.current = true; setTimeout(() => { if (ytNextRef.current) ytNextRef.current({ auto: true }); }, 500); }
-          }
+          console.warn('[YT] iframe error code:', data.info, '— skip ke lagu berikutnya');
+          if (!ytEndedFiredRef.current) { ytEndedFiredRef.current = true; setTimeout(() => { if (ytNextRef.current) ytNextRef.current({ auto: true }); }, 500); }
         }
       } catch(_) {}
     };
@@ -12509,21 +12496,16 @@ Format exactly:
 
       {/* ══ YOUTUBE HIDDEN AUDIO IFRAME — persistent, single instance ══ */}
       {/* CATATAN: display:none memblokir autoplay di Chrome/mobile — gunakan position off-screen */}
-      {embedTrack && embedTrack.type === 'youtube' && (() => {
-        // Default: youtube-nocookie.com (lebih permisif soal embedding, tidak ada cookie tracking).
-        // Fallback ke youtube.com jika youtube-nocookie error 101/150.
-        const embedDomain = ytEmbedUseFallback ? 'www.youtube.com' : 'www.youtube-nocookie.com';
-        return (
-          <iframe
-            ref={ytIframeRef}
-            key={`${embedTrack.videoId}-${ytEmbedUseFallback}`}
-            src={`https://${embedDomain}/embed/${embedTrack.videoId}?autoplay=1&enablejsapi=1&rel=0&modestbranding=1&playsinline=1&origin=${encodeURIComponent(window.location.origin)}`}
-            title={embedTrack.title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; background-fetch"
-            style={{ position:'fixed', top:'-9999px', left:'-9999px', width:320, height:180, pointerEvents:'none', border:'none', zIndex:-1 }}
-          />
-        );
-      })()}
+      {embedTrack && embedTrack.type === 'youtube' && (
+        <iframe
+          ref={ytIframeRef}
+          key={embedTrack.videoId}
+          src={`https://www.youtube.com/embed/${embedTrack.videoId}?autoplay=1&enablejsapi=1&rel=0&modestbranding=1&playsinline=1&origin=${encodeURIComponent(window.location.origin)}`}
+          title={embedTrack.title}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; background-fetch"
+          style={{ position:'fixed', top:'-9999px', left:'-9999px', width:320, height:180, pointerEvents:'none', border:'none', zIndex:-1 }}
+        />
+      )}
 
       <style>{`
         *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
