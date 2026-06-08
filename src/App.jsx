@@ -11642,8 +11642,8 @@ Format exactly:
 
 
 
-              {/* Sub-nav tabs — centered */}
-              <div style={{ display:'flex', justifyContent:'center', gap:0, marginBottom:0, borderBottom:'1px solid rgba(255,255,255,0.06)', overflowX:'auto' }} className="scrollbar-hide">
+              {/* Sub-nav tabs — scrollable on mobile */}
+              <div style={{ display:'flex', gap:0, marginBottom:0, borderBottom:'1px solid rgba(255,255,255,0.06)', overflowX:'auto', WebkitOverflowScrolling:'touch' }} className="scrollbar-hide">
                 {[
                   { id:'grid',    label:'🏠' },
                   { id:'chat',    label:'💬 Chat' },
@@ -11653,7 +11653,7 @@ Format exactly:
                   { id:'stats',   label:`📊 ${t?.statsTab||'Stats'}` },
                 ].map(({id, label})=>(
                   <button key={id} onClick={()=>{ setAiSubView(id); if(id==='lyrics' && !lyrics && !lyricsLoading) getLyricsRef.current?.(); }}
-                    style={{ padding:'9px 16px', borderRadius:0, border:'none', background:'none', color:aiSubView===id?'white':'rgba(255,255,255,0.4)', fontSize:12, fontWeight:aiSubView===id?800:600, cursor:'pointer', borderBottom:aiSubView===id?`2px solid ${track.color}`:'2px solid transparent', marginBottom:-1, flexShrink:0, whiteSpace:'nowrap' }}>
+                    style={{ flex:'1 0 auto', minWidth:'max-content', padding:'9px 14px', borderRadius:0, border:'none', background:'none', color:aiSubView===id?'white':'rgba(255,255,255,0.4)', fontSize:12, fontWeight:aiSubView===id?800:600, cursor:'pointer', borderBottom:aiSubView===id?`2px solid ${track.color}`:'2px solid transparent', marginBottom:-1, whiteSpace:'nowrap' }}>
                     {label}
                   </button>
                 ))}
