@@ -98,20 +98,48 @@ function AppLogo({ size = 32 }) {
   );
 }
 
-// ── Radio ring: pakai CSS animation + animation-play-state agar tidak jump ke 0 saat resume
+// ── Radio ring: gunakan SVG-native animateTransform agar rotasi di tengah
+// bekerja di semua browser tanpa masalah transform-origin pada elemen SVG.
 function RadioRing({ cx, cy, ringR, circ, color, isLite, isPlaying }) {
+  const animRef = useRef(null);
+
+  useEffect(() => {
+    const anim = animRef.current;
+    if (!anim) return;
+    try {
+      if (isPlaying) {
+        anim.beginElement();
+      } else {
+        anim.endElement();
+      }
+    } catch (_) {}
+  }, [isPlaying]);
+
+  // Saat pertama mount, langsung mulai jika sudah playing
+  useEffect(() => {
+    if (!isPlaying) return;
+    const anim = animRef.current;
+    if (!anim) return;
+    try { anim.beginElement(); } catch (_) {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <g>
       <circle cx={cx} cy={cy} r={ringR} stroke={color} strokeWidth="4.5" fill="none"
         strokeDasharray={`${circ*0.35} ${circ*0.65}`} strokeLinecap="round"
-        style={{
-          filter: isLite ? 'none' : `drop-shadow(0 0 6px ${color})`,
-          animation: 'rotate-ring 9s linear infinite',
-          animationPlayState: isPlaying ? 'running' : 'paused',
-          transformOrigin: `${cx}px ${cy}px`,
-          transformBox: 'view-box',
-        }}
-      />
+        style={{ filter:isLite?'none':`drop-shadow(0 0 6px ${color})` }}>
+        <animateTransform
+          ref={animRef}
+          attributeName="transform"
+          type="rotate"
+          from={`0 ${cx} ${cy}`}
+          to={`360 ${cx} ${cy}`}
+          dur="9s"
+          repeatCount="indefinite"
+          begin="indefinite"
+        />
+      </circle>
     </g>
   );
 }
@@ -139,46 +167,60 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
   // Apakah cover seharusnya berputar
   const shouldSpin = !isLite && coverSpin && (!isRadio || !!cover) && !imgError;
 
-  // Cover spin via WAAPI — buat sekali, lalu hanya pause/play (tidak pernah cancel+recreate).
-  // Ini menghilangkan jank karena tidak ada animasi yang di-destroy/dibuat ulang saat pause/resume.
-  const waapiRef = useRef(null);
+  // Ambil sudut rotasi saat ini dari matrix transform yang dihitung browser
+  const getCurrentAngle = (el) => {
+    const st = window.getComputedStyle(el);
+    const tr = st.transform || st.webkitTransform;
+    if (!tr || tr === 'none') return 0;
+    const [a, b] = tr.replace('matrix(','').split(',').map(parseFloat);
+    return Math.round(Math.atan2(b, a) * (180 / Math.PI));
+  };
 
-  // Buat animasi satu kali saat shouldSpin pertama kali true
+  // Fix 2: Gunakan Web Animations API (WAAPI) sebagai pengganti el.style.animation.
+  // WAAPI berjalan murni di compositor thread dan tidak di-reset saat parent re-render.
+  const waapiRef = useRef(null); // menyimpan referensi Animation object
+
   useEffect(() => {
     const el = coverRef.current;
     if (!el) return;
 
     if (!shouldSpin) {
-      if (waapiRef.current) {
-        waapiRef.current.cancel();
-        waapiRef.current = null;
-      }
+      // Nonaktifkan: batalkan animasi WAAPI dan freeze di posisi 0
+      if (waapiRef.current) { waapiRef.current.cancel(); waapiRef.current = null; }
       el.style.transform = '';
       return;
     }
 
-    if (!waapiRef.current) {
-      // Buat animasi baru — mulai dari 0, infinitely
+    if (isPlaying) {
+      if (waapiRef.current) {
+        // Sudah ada animasi yang berjalan — lanjutkan saja (jangan buat ulang)
+        if (waapiRef.current.playState === 'paused') {
+          waapiRef.current.play();
+        }
+        return;
+      }
+      // Buat animasi baru mulai dari sudut saat ini
+      const angle = getCurrentAngle(el);
+      const startDeg = ((angle % 360) + 360) % 360;
       const anim = el.animate(
-        [{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }],
+        [
+          { transform: `rotate(${startDeg}deg)` },
+          { transform: `rotate(${startDeg + 360}deg)` },
+        ],
         { duration: 36000, iterations: Infinity, easing: 'linear' }
       );
-      // Langsung pause jika belum playing
-      if (!isPlaying) anim.pause();
       waapiRef.current = anim;
-    }
-  }, [shouldSpin]); // eslint-disable-line
-
-  // Hanya pause / play — tidak pernah buat ulang animasi
-  useEffect(() => {
-    const anim = waapiRef.current;
-    if (!anim) return;
-    if (isPlaying) {
-      if (anim.playState !== 'running') anim.play();
+      el.style.transform = ''; // biarkan WAAPI yang mengontrol
     } else {
-      if (anim.playState === 'running') anim.pause();
+      // Pause: freeze di posisi compositor, hentikan WAAPI
+      if (waapiRef.current) {
+        const angle = getCurrentAngle(el);
+        waapiRef.current.cancel();
+        waapiRef.current = null;
+        el.style.transform = `rotate(${angle}deg)`;
+      }
     }
-  }, [isPlaying]);
+  }, [isPlaying, shouldSpin]); // eslint-disable-line
 
   const getPct = (clientX, clientY) => {
     const rect = svgRef.current.getBoundingClientRect();
