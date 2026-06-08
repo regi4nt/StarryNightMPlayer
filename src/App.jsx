@@ -11301,10 +11301,10 @@ Format exactly:
                 {[
                   { id:'grid',    label:'🏠' },
                   { id:'insight', label:`✨ ${t?.insightTab||'Info Lagu'}` },
-                  { id:'stats',   label:`📊 ${t?.statsTab||'Stats'}` },
                   { id:'chat',    label:'💬 Chat' },
                   { id:'foryou',  label:'🎯 For You' },
                   { id:'lyrics',  label:`🎵 ${t?.lyricsTab||'Lyrics'}` },
+                  { id:'stats',   label:`📊 ${t?.statsTab||'Stats'}` },
                 ].map(({id, label})=>(
                   <button key={id} onClick={()=>{ setAiSubView(id); if(id==='lyrics' && aiSubView==='lyrics') getLyricsRef.current?.(); }}
                     style={{ padding:'9px 16px', borderRadius:0, border:'none', background:'none', color:aiSubView===id?'white':'rgba(255,255,255,0.4)', fontSize:12, fontWeight:aiSubView===id?800:600, cursor:'pointer', borderBottom:aiSubView===id?`2px solid ${track.color}`:'2px solid transparent', marginBottom:-1, flexShrink:0, whiteSpace:'nowrap' }}>
@@ -11390,6 +11390,7 @@ Format exactly:
                         display: item.wide ? 'flex' : 'block',
                         alignItems: item.wide ? 'center' : undefined,
                         gap: item.wide ? 14 : undefined,
+                        minHeight: item.wide ? undefined : 90,
                       }}
                       onMouseEnter={e=>{ e.currentTarget.style.transform='scale(1.03)'; e.currentTarget.style.boxShadow=`0 6px 24px ${item.accent}30`; }}
                       onMouseLeave={e=>{ e.currentTarget.style.transform='scale(1)'; e.currentTarget.style.boxShadow=`0 2px 16px ${item.accent}15`; }}
@@ -11410,7 +11411,7 @@ Format exactly:
                 {/* Quick stats row */}
                 <div style={{ display:'flex', gap:8, marginTop:14 }}>
                   {[
-                    { label: lang==='en'?'Now Playing':'Sekarang', val: (track.title||'—').slice(0,18)+'…' },
+                    { label: lang==='en'?'Now Playing':'Sekarang', val: (() => { const t2 = track.title||'—'; return t2.length > 18 ? t2.slice(0,18)+'…' : t2; })() },
                     { label: lang==='en'?'AI':'AI', val: hasKey() ? '🟢 On' : '🔴 Off' },
                   ].map((s,i) => (
                     <div key={i} style={{ flex:1, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:'9px 12px' }}>
@@ -11428,7 +11429,7 @@ Format exactly:
                 {/* Cover + Meta */}
                 <div style={{ margin:'0 16px 16px', borderRadius:20, overflow:'hidden', background:'rgba(255,255,255,0.03)', border:`1px solid ${track.color}20` }}>
                   {/* Hero gradient banner */}
-                  <div style={{ height:100, background:`linear-gradient(135deg,${track.color}40,${track.bg||'rgba(0,0,0,0)'}80)`, display:'flex', alignItems:'flex-end', padding:'0 16px 14px', gap:14, position:'relative', overflow:'hidden' }}>
+                  <div style={{ height:100, background:`linear-gradient(135deg,${track.color}40,${track.color}18)`, display:'flex', alignItems:'flex-end', padding:'0 16px 14px', gap:14, position:'relative', overflow:'hidden' }}>
                     <div style={{ position:'absolute', top:-20, right:-20, width:120, height:120, borderRadius:'50%', background:`${track.color}20`, filter:'blur(30px)' }}/>
                     {track.cover
                       ? <img src={track.cover} alt={track.title} style={{ width:60, height:60, borderRadius:14, objectFit:'cover', flexShrink:0, boxShadow:`0 4px 16px ${track.color}50`, border:`2px solid ${track.color}60` }}/>
@@ -11507,7 +11508,7 @@ Format exactly:
                   {[
                     { label: lang==='en'?'Played':'Diputar', value: history.length, icon:'▶️' },
                     { label: lang==='en'?'Artists':'Artis', value: new Set(history.map(s=>s.artist).filter(Boolean)).size, icon:'🎤' },
-                    { label: lang==='en'?'Albums':'Album', value: new Set(history.map(s=>s.album).filter(Boolean)).size || '—', icon:'💿' },
+                    { label: lang==='en'?'Albums':'Album', value: new Set(history.map(s=>s.album).filter(Boolean)).size, icon:'💿' },
                   ].map(({label,value,icon},i)=>(
                     <div key={i} style={{ padding:'12px 10px', borderRadius:16, background:'rgba(255,255,255,0.04)', border:`1px solid ${track.color}18`, textAlign:'center' }}>
                       <div style={{ fontSize:20, marginBottom:4 }}>{icon}</div>
@@ -11558,14 +11559,14 @@ Format exactly:
                       {history.slice(0,15).map((s,i)=>(
                         <div key={`${s.id}-${i}`}
                           onClick={()=>{ if(s.src||s.driveId) { play(s); } }}
-                          style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:14, background: i===0 ? `${track.color}15` : 'rgba(255,255,255,0.03)', border: i===0 ? `1px solid ${track.color}30` : '1px solid rgba(255,255,255,0.05)', cursor:'pointer', transition:'background 0.15s' }}
-                          onMouseEnter={e=>{ if(i!==0) e.currentTarget.style.background='rgba(255,255,255,0.07)'; }}
-                          onMouseLeave={e=>{ if(i!==0) e.currentTarget.style.background='rgba(255,255,255,0.03)'; }}>
+                          style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:14, background: s.id===track.id ? `${track.color}15` : 'rgba(255,255,255,0.03)', border: s.id===track.id ? `1px solid ${track.color}30` : '1px solid rgba(255,255,255,0.05)', cursor:'pointer', transition:'background 0.15s' }}
+                          onMouseEnter={e=>{ if(s.id!==track.id) e.currentTarget.style.background='rgba(255,255,255,0.07)'; }}
+                          onMouseLeave={e=>{ if(s.id!==track.id) e.currentTarget.style.background='rgba(255,255,255,0.03)'; }}>
                           {/* Rank or playing indicator */}
-                          <div style={{ width:24, height:24, borderRadius:8, background: i===0 ? track.color : `rgba(255,255,255,0.06)`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                            {i===0 && playing
+                          <div style={{ width:24, height:24, borderRadius:8, background: s.id===track.id ? track.color : `rgba(255,255,255,0.06)`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                            {s.id===track.id && playing
                               ? <div style={{ display:'flex', gap:2, alignItems:'flex-end', height:12 }}>{[6,10,8].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:'white', borderRadius:1, animation:`bounce 1.4s ease-in-out ${j*0.2}s infinite` }}/>))}</div>
-                              : <span style={{ fontSize:9, fontWeight:800, color: i===0?'white':'rgba(255,255,255,0.3)' }}>{i+1}</span>
+                              : <span style={{ fontSize:9, fontWeight:800, color: s.id===track.id?'white':'rgba(255,255,255,0.3)' }}>{i+1}</span>
                             }
                           </div>
                           {/* Cover */}
@@ -11577,7 +11578,7 @@ Format exactly:
                             <div style={{ fontSize:12, fontWeight:700, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.title||'Unknown'}</div>
                             <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.artist||'Unknown Artist'}</div>
                           </div>
-                          {i===0 && <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:999, background:`${track.color}30`, color:track.color, flexShrink:0 }}>NOW</span>}
+                          {s.id===track.id && playing && <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:999, background:`${track.color}30`, color:track.color, flexShrink:0 }}>NOW</span>}
                         </div>
                       ))}
                     </div>
@@ -12464,7 +12465,7 @@ Format exactly:
                 )}
                 </div>{/* end scrollable lyrics content */}
               </div>
-            ) : (
+            ) : aiSubView==='chat' ? (
               /* ── CHAT VIEW */
               <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'10px 16px', display:'flex', flexDirection:'column', gap:9 }}>
                 {/* Vibe result card */}
