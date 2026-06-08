@@ -9148,6 +9148,7 @@ Format exactly:
                   {embedTrack && <button onClick={()=>{ closeEmbed(); setShowSettings(false); }} style={{ background:'none', border:'none', cursor:'pointer', color:'#fca5a5', padding:'4px 7px' }}><X size={16}/></button>}
                   {!embedTrack && track.isRadio && radioStation && <button onClick={()=>{ if(audioRef.current){audioRef.current.pause();audioRef.current.src='';} if(hlsRef.current){hlsRef.current.destroy();hlsRef.current=null;} if(radioReconnectRef.current){clearTimeout(radioReconnectRef.current);radioReconnectRef.current=null;} radioReconnectCount.current=0; setStreamBuffering(false); setPlaying(false); setRadioStation(null); setRadioPlaying(false); setTrack(SONGS[0]); }} style={{ background:'none', border:'none', cursor:'pointer', color:'#fbbf24', padding:'4px 7px' }}><X size={16}/></button>}
                   {!embedTrack && !track.isRadio && track.isDrive && <button onClick={()=>{ if(audioRef.current){audioRef.current.pause();audioRef.current.src='';} setPlaying(false); setTrack(SONGS[0]); }} title="Exit Drive" style={{ background:'none', border:'none', cursor:'pointer', color:'#93c5fd', padding:'4px 7px' }}><X size={16}/></button>}
+                  {!embedTrack && !track.isRadio && !track.isDrive && track._wsSource && <button onClick={()=>{ if(audioRef.current){audioRef.current.pause();audioRef.current.src='';} wsQueueRef.current=[]; wsQueueIdxRef.current=-1; setPlaying(false); setTrack(SONGS[0]); }} title="Exit Web Search" style={{ background:'none', border:'none', cursor:'pointer', color:'#a78bfa', padding:'4px 7px' }}><X size={16}/></button>}
                 </div>
 
               </div>
@@ -9385,6 +9386,12 @@ Format exactly:
               {/* Tutup drive — hanya muncul saat lagu Drive sedang aktif */}
               {!embedTrack && !track.isRadio && track.isDrive && (
                 <button onClick={()=>{ if(audioRef.current){audioRef.current.pause();audioRef.current.src='';} setPlaying(false); setTrack(SONGS[0]); setShowSettings(false); }} title={t?.closeDriveBtn||"Exit Drive"} style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:layoutVars.actionPad, borderRadius:12, background:'none', border:'none', color:'#93c5fd' }}>
+                  <X size={16}/>
+                </button>
+              )}
+              {/* Tutup web search — hanya muncul saat lagu web search sedang aktif */}
+              {!embedTrack && !track.isRadio && !track.isDrive && track._wsSource && (
+                <button onClick={()=>{ if(audioRef.current){audioRef.current.pause();audioRef.current.src='';} wsQueueRef.current=[]; wsQueueIdxRef.current=-1; setPlaying(false); setTrack(SONGS[0]); setShowSettings(false); }} title={t?.closeWsBtn||"Exit Web Search"} style={{ ...btn, flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:layoutVars.actionPad, borderRadius:12, background:'none', border:'none', color:'#a78bfa' }}>
                   <X size={16}/>
                 </button>
               )}
@@ -9822,11 +9829,21 @@ Format exactly:
                           {wsEmbedUrl && (
                             <div style={{ marginTop:8, borderRadius:10, overflow:'hidden', border:'1px solid rgba(255,255,255,0.1)' }}>
                               <iframe src={wsEmbedUrl} style={{ width:'100%', height:80, border:'none', display:'block' }} allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation" title="embed"/>
+                              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'4px 10px', background:'rgba(0,0,0,0.35)', gap:8 }}>
+                                <span style={{ fontSize:10, color:'rgba(255,255,255,0.35)', flex:1 }}>🌐 Web Embed</span>
+                                <button onClick={() => setWsEmbedUrl(null)}
+                                  style={{ fontSize:13, lineHeight:1, color:'rgba(255,255,255,0.5)', background:'none', border:'none', cursor:'pointer', padding:'2px 4px' }}>✕</button>
+                              </div>
                             </div>
                           )}
                           {spWsEmbedId && (
-                            <div style={{ marginTop:8, borderRadius:10, overflow:'hidden' }}>
+                            <div style={{ marginTop:8, borderRadius:10, overflow:'hidden', border:'1px solid rgba(30,215,96,0.2)' }}>
                               <iframe src={`https://open.spotify.com/embed/track/${spWsEmbedId}`} style={{ width:'100%', height:80, border:'none', display:'block' }} allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" title="spotify"/>
+                              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'4px 10px', background:'rgba(0,0,0,0.35)', gap:8 }}>
+                                <span style={{ fontSize:10, color:'rgba(255,255,255,0.35)', flex:1 }}>🎵 Spotify Embed</span>
+                                <button onClick={() => setSpWsEmbedId(null)}
+                                  style={{ fontSize:13, lineHeight:1, color:'rgba(255,255,255,0.5)', background:'none', border:'none', cursor:'pointer', padding:'2px 4px' }}>✕</button>
+                              </div>
                             </div>
                           )}
                           {!wsLoading && !wsError && wsResults.length===0 && !wsEmbedUrl && (
