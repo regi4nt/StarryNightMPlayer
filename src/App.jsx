@@ -1745,6 +1745,8 @@ Return ONLY valid JSON, no explanation:
     setSpPlaying(false);
     // Stop radio jika incoming bukan radio — tanpa syarat trackRef.isRadio karena
     // radioAudioRef/HLS bisa aktif bahkan ketika track sudah beralih ke sumber lain
+    // FIX: saat radio→radio (ganti station), audio lama HARUS di-stop dulu sebelum play baru
+    // Tanpa ini, dua stream berjalan bersamaan selama beberapa detik
     if (incomingMode !== 'radio') {
       if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
@@ -1753,6 +1755,13 @@ Return ONLY valid JSON, no explanation:
       setStreamBuffering(false);
       setRadioPlaying(false);
       setRadioStation(null); // wajib: bersihkan state station agar tombol X radio tidak ghost
+    } else {
+      // Incoming adalah radio baru — stop audio & HLS lama dulu, tapi pertahankan state
+      if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
+      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
+      if (radioReconnectRef.current) { clearTimeout(radioReconnectRef.current); radioReconnectRef.current = null; }
+      radioReconnectCount.current = 0;
+      setStreamBuffering(false);
     }
     // Stop Drive jika incoming bukan local — tanpa syarat trackRef.isDrive (konsisten dengan fix radio)
     if (incomingMode !== 'local') {
@@ -3956,7 +3965,10 @@ Return ONLY valid JSON, no explanation:
       a.pause(); a.src = '';
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
     };
-  }, [track.src]); // eslint-disable-line react-hooks/exhaustive-deps
+  // FIX Bug 3: pakai track.id sebagai dependency tambahan untuk radio
+  // Kalau dua station berbeda kebetulan punya URL sama, track.src tidak berubah
+  // tapi track.id berbeda → useEffect tetap re-run dan audio direset dengan benar
+  }, [track.src, track.isRadio ? track.id : null]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Sync playingRef
   useEffect(() => { playingRef.current = playing; }, [playing]);
@@ -5446,12 +5458,20 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       if (!a || !trackObj.isRadio) return;
       // Jangan restart jika user sudah pause manual (playing state false)
       if (!playingRef.current) return;
+      // FIX Bug 2+4: cek apakah trackObj masih station yang aktif saat ini
+      // Jika user sudah ganti station/track, batalkan reconnect ini
+      if (trackRef.current?.src !== trackObj.src) {
+        console.warn('[Radio] Reconnect cancelled — track changed while waiting');
+        return;
+      }
       const src = trackObj.src;
       if (src.includes('.m3u8')) {
         attachHls(a, src, () => { a.play().catch(() => {}); });
       } else {
         a.src = '';
         setTimeout(() => {
+          // Double-check lagi setelah 500ms inner delay
+          if (trackRef.current?.src !== trackObj.src) return;
           a.src = src + (src.includes('?') ? '&' : '?') + '_t=' + Date.now(); // cache-bust agar server kirim stream baru
           a.load();
           a.play().catch(() => {});
