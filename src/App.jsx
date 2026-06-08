@@ -7379,7 +7379,7 @@ Format exactly:
   const tabs = [
     { id:'stream',   icon:<Radio size={17}/>,       label:'Stream' },
     { id:'playlist', icon:<FolderOpen size={17}/>, label:'Playlist' },
-    { id:'ai',       icon:<Bot size={17}/>,        label:'Buat Playlist' },
+    { id:'ai',       icon:<Bot size={17}/>,        label:'Other' },
   ];
 
   return (
