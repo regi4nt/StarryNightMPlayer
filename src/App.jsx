@@ -2434,6 +2434,10 @@ Return ONLY valid JSON, no explanation:
   const [shuffle, setShuffle] = useState(() => localStorage.getItem('sn_shuffle') === 'true');
   const [repeat, setRepeat]   = useState(() => localStorage.getItem('sn_repeat') || 'off');
   const [history, setHistory]   = useState(() => { try { return JSON.parse(localStorage.getItem('sn_history') || '[]'); } catch { return []; } });
+  // ── Play Stats (per-song play count, duration, dates)
+  const [playStats, setPlayStats] = useState(() => { try { return JSON.parse(localStorage.getItem('sn_playstats') || '{}'); } catch { return {}; } });
+  const playStatsTimerRef = useRef(null); // interval id for tracking listen time
+  const playStatsKeyRef   = useRef(null); // current track key being timed
 
   // ── Sleep timer
   const [sleepTimer, setSleepTimer]   = useState(null);
@@ -2623,6 +2627,10 @@ Return ONLY valid JSON, no explanation:
   // ── AI
   const [insight, setInsight]   = useState('');
   const [insightLoading, setIL] = useState(false);
+  // ── Song Info (Info Lagu tab)
+  const [songInfo, setSongInfo]         = useState(null);
+  const [songInfoLoading, setSongInfoL] = useState(false);
+  const songInfoCacheRef                = useRef({});
   const [messages, setMessages] = useState(() => {
     const _lang = (() => { try { return localStorage.getItem('sn_lang') || 'id'; } catch { return 'id'; } })();
     const greetings = _lang === 'en' ? [
@@ -3006,6 +3014,7 @@ Return ONLY valid JSON, no explanation:
   useEffect(() => { try { localStorage.setItem('sn_fav_songs', JSON.stringify(favSongs)); } catch {} }, [favSongs]);
   useEffect(() => { try { localStorage.setItem('sn_yt_songs', JSON.stringify(ytSongs)); } catch {} }, [ytSongs]);
   useEffect(() => { try { localStorage.setItem('sn_history', JSON.stringify(history)); } catch {} }, [history]);
+  useEffect(() => { try { localStorage.setItem('sn_playstats', JSON.stringify(playStats)); } catch {} }, [playStats]);
   useEffect(() => { try { localStorage.setItem('sn_aiSubView', aiSubView); } catch {} }, [aiSubView]);
 
   // ── Sync favSongs + ytSongs ke Google Drive (debounce 5 detik setelah perubahan)
@@ -4193,7 +4202,7 @@ Return ONLY valid JSON, no explanation:
   // ── Track history + prefetch lagu berikutnya
   useEffect(() => {
     setHistory(prev => { const f=prev.filter(s=>s.id!==track.id); return [track,...f].slice(0,15); });
-    setLyrics(''); setInsight(''); setLyricsRomanized(''); setLyricsRomanizing(false); setLyricsNeedGenerate(false); setLyricsGenerated(false); setLrcLines([]); setRomanizedLrcLines([]);
+    setLyrics(''); setInsight(''); setSongInfo(null); setLyricsRomanized(''); setLyricsRomanizing(false); setLyricsNeedGenerate(false); setLyricsGenerated(false); setLrcLines([]); setRomanizedLrcLines([]);
     // Prefetch lagu berikutnya di background
     const allSongs = [...builtinSongs, ...customSongs];
     const idx = allSongs.findIndex(s => s.id === track.id);
@@ -4224,6 +4233,48 @@ Return ONLY valid JSON, no explanation:
       return [embedAsTrack, ...f].slice(0, 15);
     });
   }, [embedTrack?.videoId]); // trigger setiap ganti video embed
+
+  // ── Record playStats saat lagu mulai (track atau embed) ──
+  const recordPlayStart = (id, title, artist, cover, color) => {
+    const today = new Date().toISOString().slice(0, 10);
+    setPlayStats(prev => {
+      const existing = prev[id] || { playCount: 0, totalSecs: 0, dates: [] };
+      const dates = existing.dates.includes(today) ? existing.dates : [...existing.dates.slice(-29), today];
+      return { ...prev, [id]: { id, title, artist, cover: cover || '', color: color || '#6366f1', playCount: existing.playCount + 1, totalSecs: existing.totalSecs, dates, lastPlayed: Date.now() } };
+    });
+  };
+
+  // Record play when local track changes
+  useEffect(() => {
+    if (!track?.id) return;
+    recordPlayStart(track.id, track.title, track.artist, track.cover || track.thumbnail, track.color);
+  }, [track.id]); // eslint-disable-line
+
+  // Record play when embed track changes
+  useEffect(() => {
+    if (!embedTrack?.videoId) return;
+    const id = `yt_${embedTrack.videoId}`;
+    recordPlayStart(id, embedTrack.title, embedTrack.artist, embedTrack.thumbnail, '#ff4444');
+  }, [embedTrack?.videoId]); // eslint-disable-line
+
+  // ── Timer: tambah totalSecs setiap detik saat playing ──
+  useEffect(() => {
+    if (playing) {
+      const currentId = embedTrack?.videoId ? `yt_${embedTrack.videoId}` : track?.id;
+      playStatsKeyRef.current = currentId;
+      playStatsTimerRef.current = setInterval(() => {
+        const key = playStatsKeyRef.current;
+        if (!key) return;
+        setPlayStats(prev => {
+          if (!prev[key]) return prev;
+          return { ...prev, [key]: { ...prev[key], totalSecs: (prev[key].totalSecs || 0) + 1 } };
+        });
+      }, 1000);
+    } else {
+      if (playStatsTimerRef.current) { clearInterval(playStatsTimerRef.current); playStatsTimerRef.current = null; }
+    }
+    return () => { if (playStatsTimerRef.current) { clearInterval(playStatsTimerRef.current); playStatsTimerRef.current = null; } };
+  }, [playing, track?.id, embedTrack?.videoId]); // eslint-disable-line
 
   // ── Auto-fetch lirik DINONAKTIFKAN — lirik hanya dimuat saat tombol ditekan
   const getLyricsRef = useRef(null);
@@ -6659,6 +6710,63 @@ Format exactly:
     setActiveModelLabel(activeModel());
     setIL(false);
   };
+
+  // ── Get Song Info (Info Lagu) ──────────────────────────────
+  const getSongInfo = async (forceRefresh = false) => {
+    if (isLite) return;
+    const iTrack       = embedTrack || track;
+    const activeTitle  = iTrack.title  || 'Unknown';
+    const activeArtist = iTrack.artist || 'Unknown Artist';
+    const cacheKey     = `${activeTitle}__${activeArtist}`;
+    if (!forceRefresh && songInfoCacheRef.current[cacheKey]) {
+      setSongInfo(songInfoCacheRef.current[cacheKey]);
+      return;
+    }
+    setSongInfoL(true);
+    const isEn = lang === 'en';
+    const prompt = isEn
+      ? `You are a music expert. For the song "${activeTitle}" by ${activeArtist}, respond ONLY with a valid JSON object (no markdown, no explanation) with exactly these keys:
+{
+  "genre": "main genre (1-2 words)",
+  "year": "release year or decade e.g. 2019 or 1990s",
+  "language": "main language of lyrics",
+  "bpm": "approximate BPM range e.g. 90-100 or just a number",
+  "key": "musical key e.g. C Major or A Minor",
+  "mood": "2-3 mood words separated by comma",
+  "about": "2-3 sentence description of the song theme and vibe in English",
+  "facts": ["fact 1 in English", "fact 2 in English", "fact 3 in English"],
+  "similarArtists": ["Artist 1", "Artist 2", "Artist 3"],
+  "tags": ["#tag1", "#tag2", "#tag3", "#tag4", "#tag5"]
+}`
+      : `Kamu ahli musik. Untuk lagu "${activeTitle}" oleh ${activeArtist}, balas HANYA dengan JSON valid (tanpa markdown, tanpa penjelasan) dengan key berikut:
+{
+  "genre": "genre utama (1-2 kata)",
+  "year": "tahun rilis atau dekade misal 2019 atau 1990-an",
+  "language": "bahasa utama lirik",
+  "bpm": "kisaran BPM misal 90-100 atau angka saja",
+  "key": "kunci musik misal C Mayor atau A Minor",
+  "mood": "2-3 kata mood dipisah koma",
+  "about": "deskripsi 2-3 kalimat tentang tema dan vibe lagu dalam Bahasa Indonesia",
+  "facts": ["fakta 1 dalam Bahasa Indonesia", "fakta 2", "fakta 3"],
+  "similarArtists": ["Artis 1", "Artis 2", "Artis 3"],
+  "tags": ["#tag1", "#tag2", "#tag3", "#tag4", "#tag5"]
+}`;
+    const raw = await askAIRace(prompt, isEn
+      ? 'You are a music expert. Reply ONLY with a valid JSON object, no markdown backticks, no extra text.'
+      : 'Kamu ahli musik. Balas HANYA dengan JSON valid, tanpa backtick markdown, tanpa teks tambahan.'
+    );
+    try {
+      const cleaned = (raw || '').replace(/```json|```/g, '').trim();
+      const parsed  = JSON.parse(cleaned);
+      songInfoCacheRef.current[cacheKey] = parsed;
+      setSongInfo(parsed);
+    } catch {
+      setSongInfo({ about: raw || (isEn ? 'Could not load info.' : 'Gagal memuat info.'), facts: [], similarArtists: [], tags: [] });
+    }
+    setActiveModelLabel(activeModel());
+    setSongInfoL(false);
+  };
+
   const sendChat = async () => {
     if (!input.trim()) return;
     if (dataSaver) {
@@ -11448,71 +11556,166 @@ Format exactly:
             {/* ── INSIGHT: Info Lagu ── */}
             {aiSubView==='insight' && (() => {
               const iTrack = embedTrack || track;
+              const accentColor = iTrack.color || track.color || '#6366f1';
+              // Auto-load on first open
+              if (!songInfo && !songInfoLoading && !isLite) { getSongInfo(); }
+              const chipDefs = [
+                { label: lang==='en'?'Genre':'Genre',    val: songInfo?.genre,    icon:'🎸', bg:'rgba(99,102,241,0.12)',  color:'#a5b4fc' },
+                { label: lang==='en'?'Year':'Tahun',     val: songInfo?.year,     icon:'📅', bg:'rgba(34,197,94,0.12)',   color:'#86efac' },
+                { label: lang==='en'?'Language':'Bahasa',val: songInfo?.language, icon:'🌐', bg:'rgba(6,182,212,0.12)',   color:'#67e8f9' },
+                { label: 'BPM',                          val: songInfo?.bpm,      icon:'🥁', bg:'rgba(245,158,11,0.12)',  color:'#fcd34d' },
+                { label: lang==='en'?'Key':'Kunci',      val: songInfo?.key,      icon:'🎵', bg:'rgba(239,68,68,0.12)',   color:'#fca5a5' },
+                { label: 'Mood',                         val: songInfo?.mood,     icon:'💫', bg:`${accentColor}18`,       color: accentColor },
+              ];
               return (
-              <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'0 0 24px' }}>
-                {/* Cover + Meta */}
-                <div style={{ margin:'0 16px 16px', borderRadius:20, overflow:'hidden', background:'rgba(255,255,255,0.03)', border:`1px solid ${iTrack.color||track.color}20` }}>
-                  {/* Hero gradient banner */}
-                  <div style={{ height:100, background:`linear-gradient(135deg,${iTrack.color||track.color}40,${iTrack.color||track.color}18)`, display:'flex', alignItems:'flex-end', padding:'0 16px 14px', gap:14, position:'relative', overflow:'hidden' }}>
-                    <div style={{ position:'absolute', top:-20, right:-20, width:120, height:120, borderRadius:'50%', background:`${iTrack.color||track.color}20`, filter:'blur(30px)' }}/>
-                    {iTrack.cover||iTrack.thumbnail
-                      ? <img src={iTrack.cover||iTrack.thumbnail} alt={iTrack.title} style={{ width:60, height:60, borderRadius:14, objectFit:'cover', flexShrink:0, boxShadow:`0 4px 16px ${iTrack.color||track.color}50`, border:`2px solid ${iTrack.color||track.color}60` }}/>
-                      : <div style={{ width:60, height:60, borderRadius:14, background:`${iTrack.color||track.color}30`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><span style={{ fontSize:28 }}>🎵</span></div>
-                    }
-                    <div style={{ minWidth:0 }}>
-                      <div style={{ fontSize:15, fontWeight:800, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginBottom:3, letterSpacing:'-0.01em' }}>{iTrack.title||'Unknown'}</div>
-                      <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{iTrack.artist||'Unknown Artist'}</div>
-                      {iTrack.album && <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{iTrack.album}</div>}
-                    </div>
-                  </div>
-                  {/* Metadata pills */}
-                  <div style={{ padding:'12px 14px', display:'flex', flexWrap:'wrap', gap:7 }}>
-                    {iTrack.mood && iTrack.mood.split(',').slice(0,3).map((m,i)=>(
-                      <span key={i} style={{ fontSize:10, fontWeight:700, padding:'4px 10px', borderRadius:999, background:`${iTrack.color||track.color}18`, color:iTrack.color||track.color, border:`1px solid ${iTrack.color||track.color}30`, whiteSpace:'nowrap' }}>{m.trim()}</span>
-                    ))}
-                    {iTrack.genre && <span style={{ fontSize:10, fontWeight:700, padding:'4px 10px', borderRadius:999, background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.5)', border:'1px solid rgba(255,255,255,0.08)', whiteSpace:'nowrap' }}>{iTrack.genre}</span>}
-                    {iTrack.isRadio && <span style={{ fontSize:10, fontWeight:700, padding:'4px 10px', borderRadius:999, background:'rgba(239,68,68,0.1)', color:'#fca5a5', border:'1px solid rgba(239,68,68,0.2)', whiteSpace:'nowrap' }}>📻 Radio</span>}
-                    {iTrack.isDrive && <span style={{ fontSize:10, fontWeight:700, padding:'4px 10px', borderRadius:999, background:'rgba(99,102,241,0.1)', color:'#a5b4fc', border:'1px solid rgba(99,102,241,0.2)', whiteSpace:'nowrap' }}>☁️ Drive</span>}
-                  </div>
-                </div>
+              <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'0 0 28px' }}>
 
-                {/* Cosmic Insight card */}
-                <div style={{ margin:'0 16px 14px', padding:'14px', borderRadius:18, background:`linear-gradient(135deg,rgba(99,102,241,0.1),rgba(168,85,247,0.08))`, border:'1px solid rgba(99,102,241,0.2)' }}>
-                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:7 }}>
-                      <span style={{ fontSize:16 }}>✨</span>
-                      <span style={{ fontSize:11, fontWeight:800, color:'rgba(165,180,252,0.9)', letterSpacing:'0.05em', textTransform:'uppercase' }}>{t?.cosmicInsightTitle||'Cosmic Insight'}</span>
+                {/* ── Hero banner ── */}
+                <div style={{ margin:'0 16px 14px', borderRadius:20, overflow:'hidden', background:'rgba(255,255,255,0.03)', border:`1px solid ${accentColor}22` }}>
+                  <div style={{ height:96, background:`linear-gradient(135deg,${accentColor}45,${accentColor}18)`, display:'flex', alignItems:'flex-end', padding:'0 16px 13px', gap:13, position:'relative', overflow:'hidden' }}>
+                    <div style={{ position:'absolute', top:-20, right:-20, width:110, height:110, borderRadius:'50%', background:`${accentColor}18`, filter:'blur(28px)' }}/>
+                    {iTrack.cover||iTrack.thumbnail
+                      ? <img src={iTrack.cover||iTrack.thumbnail} alt={iTrack.title} style={{ width:58, height:58, borderRadius:13, objectFit:'cover', flexShrink:0, boxShadow:`0 4px 14px ${accentColor}50`, border:`2px solid ${accentColor}60` }}/>
+                      : <div style={{ width:58, height:58, borderRadius:13, background:`${accentColor}30`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:26 }}>💿</div>
+                    }
+                    <div style={{ minWidth:0, flex:1 }}>
+                      <div style={{ fontSize:14, fontWeight:800, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>{iTrack.title||'Unknown'}</div>
+                      <div style={{ fontSize:11.5, color:'rgba(255,255,255,0.58)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop:2 }}>{iTrack.artist||'Unknown Artist'}</div>
                     </div>
-                    <button onClick={getInsight} disabled={insightLoading}
-                      style={{ padding:'4px 12px', borderRadius:999, border:'1px solid rgba(99,102,241,0.4)', background:'rgba(99,102,241,0.15)', color:'#a5b4fc', fontSize:10, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:5, opacity:insightLoading?0.5:1 }}>
-                      {insightLoading ? <Loader2 size={11} style={{ animation:'spin 1s linear infinite' }}/> : <Sparkles size={11}/>}
-                      {insightLoading ? (lang==='en'?'Writing…':'Menulis…') : (insight ? (lang==='en'?'Refresh':'Perbarui') : (lang==='en'?'Generate':'Generate'))}
+                    {/* Refresh button */}
+                    <button onClick={()=>getSongInfo(true)} disabled={songInfoLoading}
+                      style={{ flexShrink:0, width:30, height:30, borderRadius:999, border:`1px solid ${accentColor}40`, background:`${accentColor}18`, color:accentColor, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:14, opacity:songInfoLoading?0.4:1, transition:'opacity 0.2s' }}
+                      title={lang==='en'?'Refresh Info':'Perbarui Info'}>
+                      {songInfoLoading ? <Loader2 size={13} style={{ animation:'spin 1s linear infinite' }}/> : '↻'}
                     </button>
                   </div>
-                  {insight ? (
-                    <div style={{ fontSize:13, color:'rgba(255,255,255,0.75)', lineHeight:1.7, fontStyle:'italic', letterSpacing:'0.01em' }}>"{insight}"</div>
-                  ) : insightLoading ? (
-                    <div style={{ display:'flex', alignItems:'center', gap:8, color:'rgba(255,255,255,0.35)', fontSize:12 }}>
-                      <Loader2 size={13} style={{ animation:'spin 1s linear infinite', color:'#6366f1' }}/>
-                      {lang==='en' ? 'Crafting poetic insight…' : 'Sedang merangkai wawasan puitis…'}
-                    </div>
-                  ) : (
-                    <div style={{ fontSize:12, color:'rgba(255,255,255,0.3)', fontStyle:'italic' }}>
-                      {lang==='en' ? 'Tap Generate to get a poetic take on this song.' : 'Tekan Generate untuk mendapatkan kiasan puitis lagu ini.'}
-                    </div>
-                  )}
                 </div>
 
-                {/* Quick actions */}
+                {/* ── Loading skeleton ── */}
+                {songInfoLoading && !songInfo && (
+                  <div style={{ margin:'0 16px 14px', padding:'16px', borderRadius:18, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', display:'flex', flexDirection:'column', gap:10, alignItems:'center' }}>
+                    <Loader2 size={22} style={{ animation:'spin 1s linear infinite', color:accentColor }}/>
+                    <div style={{ fontSize:12, color:'rgba(255,255,255,0.35)' }}>{lang==='en'?'Loading song info…':'Memuat info lagu…'}</div>
+                  </div>
+                )}
+
+                {/* ── Lite gate ── */}
+                {isLite && (
+                  <div style={{ margin:'0 16px 14px', padding:'16px', borderRadius:18, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', textAlign:'center' }}>
+                    <div style={{ fontSize:28, marginBottom:8 }}>⚡</div>
+                    <div style={{ fontSize:13, fontWeight:700, color:'white', marginBottom:4 }}>Info Lagu — Pro Only</div>
+                    <div style={{ fontSize:11.5, color:'rgba(255,255,255,0.4)', lineHeight:1.7 }}>{lang==='en'?'Switch to Pro Mode to unlock AI-powered song info.':'Aktifkan Pro Mode untuk fitur Info Lagu berbasis AI.'}</div>
+                    <button onClick={toggleMode} style={{ marginTop:12, padding:'8px 20px', borderRadius:999, border:'none', background:`linear-gradient(135deg,#6366f1,#a855f7)`, color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}>✨ Pro Mode</button>
+                  </div>
+                )}
+
+                {songInfo && !isLite && (<>
+
+                  {/* ── Metadata chips ── */}
+                  <div style={{ margin:'0 16px 14px' }}>
+                    <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.25)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:9 }}>📋 {lang==='en'?'Metadata':'Metadata'}</div>
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:7 }}>
+                      {chipDefs.filter(c=>c.val).map((c,i)=>(
+                        <div key={i} style={{ padding:'9px 10px', borderRadius:13, background:c.bg, border:`1px solid ${c.color}25`, display:'flex', flexDirection:'column', gap:3 }}>
+                          <div style={{ fontSize:9, fontWeight:800, color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.06em' }}>{c.icon} {c.label}</div>
+                          <div style={{ fontSize:11, fontWeight:700, color:c.color, lineHeight:1.3, wordBreak:'break-word' }}>{c.val}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ── Tentang Lagu ── */}
+                  {songInfo.about && (
+                    <div style={{ margin:'0 16px 14px', padding:'14px', borderRadius:18, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)' }}>
+                      <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.25)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:9 }}>💿 {lang==='en'?'About This Song':'Tentang Lagu'}</div>
+                      <div style={{ fontSize:12.5, color:'rgba(255,255,255,0.72)', lineHeight:1.75 }}>{songInfo.about}</div>
+                    </div>
+                  )}
+
+                  {/* ── Fun Facts ── */}
+                  {songInfo.facts?.length > 0 && (
+                    <div style={{ margin:'0 16px 14px', padding:'14px', borderRadius:18, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)' }}>
+                      <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.25)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>🎲 Fun Facts</div>
+                      <div style={{ display:'flex', flexDirection:'column', gap:9 }}>
+                        {songInfo.facts.map((fact,i)=>(
+                          <div key={i} style={{ display:'flex', gap:10, alignItems:'flex-start' }}>
+                            <div style={{ width:22, height:22, borderRadius:8, background:`${accentColor}20`, border:`1px solid ${accentColor}30`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:10, fontWeight:800, color:accentColor }}>{i+1}</div>
+                            <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', lineHeight:1.65, paddingTop:2 }}>{fact}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Artis Serupa ── */}
+                  {songInfo.similarArtists?.length > 0 && (
+                    <div style={{ margin:'0 16px 14px' }}>
+                      <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.25)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:9 }}>🎤 {lang==='en'?'Similar Artists':'Artis Serupa'}</div>
+                      <div style={{ display:'flex', flexWrap:'wrap', gap:7 }}>
+                        {songInfo.similarArtists.map((artist,i)=>(
+                          <button key={i}
+                            onClick={()=>{ setUnifiedPlatform('ytmusic'); setUnifiedQuery(artist); setTab('search'); }}
+                            style={{ padding:'7px 13px', borderRadius:999, border:`1px solid ${accentColor}35`, background:`${accentColor}12`, color:'rgba(255,255,255,0.75)', fontSize:11.5, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:5, transition:'background 0.15s' }}
+                            onMouseEnter={e=>e.currentTarget.style.background=`${accentColor}25`}
+                            onMouseLeave={e=>e.currentTarget.style.background=`${accentColor}12`}>
+                            🔍 {artist}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Tags ── */}
+                  {songInfo.tags?.length > 0 && (
+                    <div style={{ margin:'0 16px 14px' }}>
+                      <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.25)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:9 }}>🏷️ Tags</div>
+                      <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                        {songInfo.tags.map((tag,i)=>(
+                          <span key={i} style={{ padding:'4px 10px', borderRadius:999, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', color:'rgba(255,255,255,0.45)', fontSize:11, fontWeight:600 }}>{tag}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Cosmic Insight (preserved) ── */}
+                  <div style={{ margin:'0 16px 14px', padding:'14px', borderRadius:18, background:`linear-gradient(135deg,rgba(99,102,241,0.1),rgba(168,85,247,0.08))`, border:'1px solid rgba(99,102,241,0.2)' }}>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+                        <span style={{ fontSize:15 }}>✨</span>
+                        <span style={{ fontSize:11, fontWeight:800, color:'rgba(165,180,252,0.9)', letterSpacing:'0.05em', textTransform:'uppercase' }}>{t?.cosmicInsightTitle||'Cosmic Insight'}</span>
+                      </div>
+                      <button onClick={getInsight} disabled={insightLoading}
+                        style={{ padding:'4px 12px', borderRadius:999, border:'1px solid rgba(99,102,241,0.4)', background:'rgba(99,102,241,0.15)', color:'#a5b4fc', fontSize:10, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:5, opacity:insightLoading?0.5:1 }}>
+                        {insightLoading ? <Loader2 size={11} style={{ animation:'spin 1s linear infinite' }}/> : <Sparkles size={11}/>}
+                        {insightLoading ? (lang==='en'?'Writing…':'Menulis…') : (insight ? (lang==='en'?'Refresh':'Perbarui') : (lang==='en'?'Generate':'Generate'))}
+                      </button>
+                    </div>
+                    {insight ? (
+                      <div style={{ fontSize:13, color:'rgba(255,255,255,0.75)', lineHeight:1.7, fontStyle:'italic', letterSpacing:'0.01em' }}>"{insight}"</div>
+                    ) : insightLoading ? (
+                      <div style={{ display:'flex', alignItems:'center', gap:8, color:'rgba(255,255,255,0.35)', fontSize:12 }}>
+                        <Loader2 size={13} style={{ animation:'spin 1s linear infinite', color:'#6366f1' }}/>
+                        {lang==='en' ? 'Crafting poetic insight…' : 'Sedang merangkai wawasan puitis…'}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize:12, color:'rgba(255,255,255,0.3)', fontStyle:'italic' }}>
+                        {lang==='en' ? 'Tap Generate for a poetic take.' : 'Tekan Generate untuk kiasan puitis.'}
+                      </div>
+                    )}
+                  </div>
+
+                </>)}
+
+                {/* ── Quick Actions ── */}
                 <div style={{ margin:'0 16px', display:'flex', flexDirection:'column', gap:8 }}>
                   <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.2)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:2 }}>{lang==='en'?'Quick Actions':'Aksi Cepat'}</div>
                   {[
                     { icon:'🎵', label: lang==='en'?'View Lyrics':'Lihat Lirik', action:()=>setAiSubView('lyrics') },
-                    { icon:'💬', label: lang==='en'?'Chat About This Song':'Obrolan Lagu Ini', action:()=>{ setAiSubView('chat'); } },
+                    { icon:'💬', label: lang==='en'?'Chat About This Song':'Obrolan Lagu Ini', action:()=>setAiSubView('chat') },
                     { icon:'🎯', label: lang==='en'?'Find Similar Songs':'Cari Lagu Serupa', action:()=>setAiSubView('foryou') },
                   ].map(({icon,label,action},i)=>(
                     <button key={i} onClick={action}
-                      style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', borderRadius:14, border:`1px solid rgba(255,255,255,0.06)`, background:'rgba(255,255,255,0.03)', color:'rgba(255,255,255,0.7)', fontSize:12, fontWeight:600, cursor:'pointer', textAlign:'left', transition:'background 0.15s' }}
+                      style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', borderRadius:14, border:'1px solid rgba(255,255,255,0.06)', background:'rgba(255,255,255,0.03)', color:'rgba(255,255,255,0.7)', fontSize:12, fontWeight:600, cursor:'pointer', textAlign:'left', transition:'background 0.15s' }}
                       onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.07)'}
                       onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.03)'}>
                       <span style={{ fontSize:18, flexShrink:0 }}>{icon}</span>
@@ -11526,99 +11729,162 @@ Format exactly:
             })()}
 
             {/* ── STATS: Riwayat & Statistik Mendengarkan ── */}
-            {aiSubView==='stats' && (
-              <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'0 0 24px' }}>
-                {/* Summary bar */}
-                <div style={{ margin:'12px 16px', display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+            {aiSubView==='stats' && (() => {
+              // ── Compute derived stats ──────────────────────────
+              const statsArr   = Object.values(playStats);
+              const totalSecs  = statsArr.reduce((a, s) => a + (s.totalSecs || 0), 0);
+              const totalMins  = Math.floor(totalSecs / 60);
+              const totalHrs   = (totalSecs / 3600).toFixed(1);
+              const uniqueSongs   = statsArr.length;
+              // Active days = union of all dates
+              const allDatesSet = new Set(statsArr.flatMap(s => s.dates || []));
+              const activeDays  = allDatesSet.size;
+              // 7-day bar chart
+              const today = new Date();
+              const last7 = Array.from({length:7}, (_,i) => {
+                const d = new Date(today); d.setDate(d.getDate() - (6 - i));
+                return d.toISOString().slice(0,10);
+              });
+              const dayCounts = last7.map(day => statsArr.filter(s => (s.dates||[]).includes(day)).length);
+              const maxDay    = Math.max(...dayCounts, 1);
+              const dayLabels = last7.map(d => { const dt=new Date(d); return ['Min','Sen','Sel','Rab','Kam','Jum','Sab'][dt.getDay()]; });
+              // Top 7 songs by play count
+              const topSongs = [...statsArr].sort((a,b)=>(b.playCount||0)-(a.playCount||0)).slice(0,7);
+              const maxPlays = topSongs[0]?.playCount || 1;
+              // Top 5 artists by total play count
+              const artistMap = {};
+              statsArr.forEach(s => {
+                if (!s.artist) return;
+                const k = s.artist;
+                artistMap[k] = (artistMap[k]||0) + (s.playCount||0);
+              });
+              const topArtists = Object.entries(artistMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+              const maxArt = topArtists[0]?.[1] || 1;
+              // Format duration helper
+              const fmtTime = (secs) => {
+                if (secs < 60)  return `${secs}d`;
+                if (secs < 3600) return `${Math.floor(secs/60)}m`;
+                return `${(secs/3600).toFixed(1)}j`;
+              };
+              const accentColor = track.color || '#6366f1';
+              const hasData = statsArr.length > 0;
+              return (
+              <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'0 0 28px' }}>
+
+                {/* ── Summary Cards ── */}
+                <div style={{ margin:'12px 16px 14px', display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
                   {[
-                    { label: lang==='en'?'Played':'Diputar', value: history.length, icon:'▶️' },
-                    { label: lang==='en'?'Artists':'Artis', value: new Set(history.map(s=>s.artist).filter(Boolean)).size, icon:'🎤' },
-                    { label: lang==='en'?'Albums':'Album', value: new Set(history.map(s=>s.album).filter(Boolean)).size, icon:'💿' },
-                  ].map(({label,value,icon},i)=>(
-                    <div key={i} style={{ padding:'12px 10px', borderRadius:16, background:'rgba(255,255,255,0.04)', border:`1px solid ${track.color}18`, textAlign:'center' }}>
+                    { icon:'⏱️', label: lang==='en'?'Listen Time':'Total Dengar', value: totalSecs < 3600 ? `${totalMins}m` : `${totalHrs}j` },
+                    { icon:'🎵', label: lang==='en'?'Unique Songs':'Lagu Berbeda', value: uniqueSongs },
+                    { icon:'📅', label: lang==='en'?'Active Days':'Hari Aktif',   value: activeDays },
+                  ].map(({icon,label,value},i)=>(
+                    <div key={i} style={{ padding:'12px 8px', borderRadius:16, background:'rgba(255,255,255,0.04)', border:`1px solid ${accentColor}18`, textAlign:'center' }}>
                       <div style={{ fontSize:20, marginBottom:4 }}>{icon}</div>
-                      <div style={{ fontSize:18, fontWeight:800, color:'white' }}>{value}</div>
-                      <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em', marginTop:2 }}>{label}</div>
+                      <div style={{ fontSize:18, fontWeight:800, color:'white', letterSpacing:'-0.02em' }}>{value}</div>
+                      <div style={{ fontSize:9, color:'rgba(255,255,255,0.3)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em', marginTop:2 }}>{label}</div>
                     </div>
                   ))}
                 </div>
 
-                {/* Top moods pie-ish */}
-                {history.length > 0 && (() => {
-                  const moodCount = {};
-                  history.forEach(s => { if (s.mood) { s.mood.split(',').forEach(m => { const k=m.trim(); if(k) moodCount[k]=(moodCount[k]||0)+1; }); } });
-                  const topMoods = Object.entries(moodCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
-                  if (!topMoods.length) return null;
-                  const total = topMoods.reduce((acc,[,v])=>acc+v,0);
-                  const colors = [track.color,'#a855f7','#06b6d4','#22c55e','#f59e0b'];
-                  return (
-                    <div style={{ margin:'0 16px 14px', padding:'14px', borderRadius:18, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)' }}>
-                      <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:12 }}>🎭 {lang==='en'?'Your Mood Palette':'Palet Mood Kamu'}</div>
-                      {topMoods.map(([mood,count],i)=>(
-                        <div key={mood} style={{ marginBottom:8 }}>
-                          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
-                            <span style={{ fontSize:11, color:'rgba(255,255,255,0.65)', fontWeight:600 }}>{mood}</span>
-                            <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)' }}>{count}x</span>
-                          </div>
-                          <div style={{ height:4, borderRadius:999, background:'rgba(255,255,255,0.06)', overflow:'hidden' }}>
-                            <div style={{ height:'100%', borderRadius:999, background:colors[i]||track.color, width:`${Math.round((count/total)*100)}%`, transition:'width 0.6s ease' }}/>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
-
-                {/* History list */}
-                <div style={{ margin:'0 16px' }}>
-                  <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>
-                    🕐 {lang==='en'?'Recently Played':'Baru Diputar'} ({Math.min(history.length,15)})
+                {!hasData ? (
+                  <div style={{ textAlign:'center', padding:'48px 20px', color:'rgba(255,255,255,0.2)', fontSize:12 }}>
+                    <div style={{ fontSize:40, marginBottom:12 }}>📊</div>
+                    <div style={{ fontWeight:700, marginBottom:6, color:'rgba(255,255,255,0.35)' }}>{lang==='en'?'No data yet':'Belum ada data'}</div>
+                    <div>{lang==='en'?'Play some songs to see your stats!':'Putar lagu dulu untuk lihat statistikmu!'}</div>
                   </div>
-                  {history.length === 0 ? (
-                    <div style={{ textAlign:'center', padding:'32px 0', color:'rgba(255,255,255,0.25)', fontSize:12 }}>
-                      <div style={{ fontSize:36, marginBottom:10 }}>🎵</div>
-                      {lang==='en' ? 'No songs played yet.' : 'Belum ada lagu yang diputar.'}
-                    </div>
-                  ) : (
-                    <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                      {history.slice(0,15).map((s,i)=>(
-                        <div key={`${s.id}-${i}`}
-                          onClick={()=>{ if(s.src||s.driveId) { play(s); } }}
-                          style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:14, background: s.id===track.id ? `${track.color}15` : 'rgba(255,255,255,0.03)', border: s.id===track.id ? `1px solid ${track.color}30` : '1px solid rgba(255,255,255,0.05)', cursor:'pointer', transition:'background 0.15s' }}
-                          onMouseEnter={e=>{ if(s.id!==track.id) e.currentTarget.style.background='rgba(255,255,255,0.07)'; }}
-                          onMouseLeave={e=>{ if(s.id!==track.id) e.currentTarget.style.background='rgba(255,255,255,0.03)'; }}>
-                          {/* Rank or playing indicator */}
-                          <div style={{ width:24, height:24, borderRadius:8, background: s.id===track.id ? track.color : `rgba(255,255,255,0.06)`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                            {s.id===track.id && playing
-                              ? <div style={{ display:'flex', gap:2, alignItems:'flex-end', height:12 }}>{[6,10,8].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:'white', borderRadius:1, animation:`bounce 1.4s ease-in-out ${j*0.2}s infinite` }}/>))}</div>
-                              : <span style={{ fontSize:9, fontWeight:800, color: s.id===track.id?'white':'rgba(255,255,255,0.3)' }}>{i+1}</span>
-                            }
-                          </div>
-                          {/* Cover */}
-                          {s.cover
-                            ? <img src={s.cover} alt={s.title} style={{ width:36, height:36, borderRadius:10, objectFit:'cover', flexShrink:0 }}/>
-                            : <div style={{ width:36, height:36, borderRadius:10, background:`${s.color||track.color}25`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><span style={{ fontSize:16 }}>🎵</span></div>
-                          }
-                          <div style={{ flex:1, minWidth:0 }}>
-                            <div style={{ fontSize:12, fontWeight:700, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.title||'Unknown'}</div>
-                            <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.artist||'Unknown Artist'}</div>
-                          </div>
-                          {s.id===track.id && playing && <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:999, background:`${track.color}30`, color:track.color, flexShrink:0 }}>NOW</span>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {history.length > 0 && (
-                    <button
-                      onClick={()=>{ setHistory([]); }}
-                      style={{ width:'100%', marginTop:14, padding:'9px 0', borderRadius:12, border:'1px solid rgba(239,68,68,0.2)', background:'rgba(239,68,68,0.06)', color:'rgba(239,68,68,0.6)', fontSize:11, fontWeight:700, cursor:'pointer' }}>
-                      🗑️ {lang==='en'?'Clear History':'Hapus Riwayat'}
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
+                ) : (<>
 
+                  {/* ── Bar chart 7 hari ── */}
+                  <div style={{ margin:'0 16px 14px', padding:'14px', borderRadius:18, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)' }}>
+                    <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.25)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:12 }}>
+                      📈 {lang==='en'?'Activity — Last 7 Days':'Aktivitas 7 Hari Terakhir'}
+                    </div>
+                    <div style={{ display:'flex', alignItems:'flex-end', gap:6, height:56 }}>
+                      {dayCounts.map((cnt,i)=>{
+                        const isToday = i===6;
+                        const h = Math.max(4, Math.round((cnt/maxDay)*48));
+                        return (
+                          <div key={i} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
+                            <div style={{ fontSize:9, color: cnt>0 ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.15)', fontWeight:700 }}>{cnt||''}</div>
+                            <div style={{ width:'100%', height:48, display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
+                              <div style={{ width:'100%', height:h, borderRadius:'4px 4px 2px 2px', background: isToday ? accentColor : cnt>0 ? `${accentColor}60` : 'rgba(255,255,255,0.06)', transition:'height 0.4s ease' }}/>
+                            </div>
+                            <div style={{ fontSize:9, fontWeight:isToday?800:500, color: isToday?accentColor:'rgba(255,255,255,0.3)' }}>{dayLabels[i]}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* ── Top 7 Lagu ── */}
+                  {topSongs.length > 0 && (
+                    <div style={{ margin:'0 16px 14px', padding:'14px', borderRadius:18, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)' }}>
+                      <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.25)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:12 }}>
+                        🏆 {lang==='en'?'Top Songs':'Lagu Terbanyak Diputar'}
+                      </div>
+                      <div style={{ display:'flex', flexDirection:'column', gap:9 }}>
+                        {topSongs.map((s,i)=>(
+                          <div key={s.id} style={{ display:'flex', alignItems:'center', gap:9 }}>
+                            <div style={{ width:20, flexShrink:0, fontSize:10, fontWeight:800, color: i===0?'#fcd34d': i===1?'rgba(255,255,255,0.5)': i===2?'#cd7c4b':'rgba(255,255,255,0.25)', textAlign:'center' }}>{i+1}</div>
+                            {s.cover
+                              ? <img src={s.cover} alt={s.title} style={{ width:32, height:32, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
+                              : <div style={{ width:32, height:32, borderRadius:8, background:`${s.color||accentColor}25`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:14 }}>🎵</div>
+                            }
+                            <div style={{ flex:1, minWidth:0 }}>
+                              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
+                                <span style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.8)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'65%' }}>{s.title||'Unknown'}</span>
+                                <span style={{ fontSize:10, color:'rgba(255,255,255,0.35)', flexShrink:0 }}>{s.playCount}x · {fmtTime(s.totalSecs||0)}</span>
+                              </div>
+                              <div style={{ height:3, borderRadius:999, background:'rgba(255,255,255,0.06)', overflow:'hidden' }}>
+                                <div style={{ height:'100%', borderRadius:999, background: i===0?`linear-gradient(90deg,${accentColor},#a855f7)`:`${accentColor}70`, width:`${Math.round((s.playCount/maxPlays)*100)}%`, transition:'width 0.5s ease' }}/>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Top 5 Artis ── */}
+                  {topArtists.length > 0 && (
+                    <div style={{ margin:'0 16px 14px', padding:'14px', borderRadius:18, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)' }}>
+                      <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.25)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:12 }}>
+                        🎤 {lang==='en'?'Top Artists':'Artis Favorit'}
+                      </div>
+                      <div style={{ display:'flex', flexDirection:'column', gap:9 }}>
+                        {topArtists.map(([artist,cnt],i)=>(
+                          <div key={artist} style={{ display:'flex', alignItems:'center', gap:9 }}>
+                            <div style={{ width:20, flexShrink:0, fontSize:11, textAlign:'center' }}>
+                              {i===0?'🥇':i===1?'🥈':i===2?'🥉':<span style={{ fontSize:10, color:'rgba(255,255,255,0.3)', fontWeight:700 }}>{i+1}</span>}
+                            </div>
+                            <div style={{ flex:1, minWidth:0 }}>
+                              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
+                                <span style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.8)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{artist}</span>
+                                <span style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>{cnt} {lang==='en'?'plays':'putar'}</span>
+                              </div>
+                              <div style={{ height:3, borderRadius:999, background:'rgba(255,255,255,0.06)', overflow:'hidden' }}>
+                                <div style={{ height:'100%', borderRadius:999, background: ['#6366f1','#a855f7','#06b6d4','#22c55e','#f59e0b'][i]||accentColor, width:`${Math.round((cnt/maxArt)*100)}%`, transition:'width 0.5s ease' }}/>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Reset button ── */}
+                  <div style={{ margin:'0 16px' }}>
+                    <button
+                      onClick={()=>{ setPlayStats({}); setHistory([]); }}
+                      style={{ width:'100%', padding:'10px 0', borderRadius:13, border:'1px solid rgba(239,68,68,0.2)', background:'rgba(239,68,68,0.06)', color:'rgba(239,68,68,0.6)', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                      🗑️ {lang==='en'?'Reset All Statistics':'Reset Semua Statistik'}
+                    </button>
+                  </div>
+
+                </>)}
+              </div>
+              );
+            })()}
             {aiSubView==='foryou' ? (
               /* ── FOR YOU / DISCOVER FEED VIEW */
               <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'0 0 24px' }}>
