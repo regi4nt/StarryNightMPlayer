@@ -11365,8 +11365,10 @@ Format exactly:
                   { id:'chat', label:'💬 Chat' },
                   { id:'foryou', label:'🎯 For You' },
                   { id:'lyrics', label:`🎵 ${t?.lyricsTab||'Lyrics'}` },
+                  { id:'info', label:'💿 Info Lagu' },
+                  { id:'stats', label:'📊 Statistik' },
                 ].map(({id, label})=>(
-                  <button key={id} onClick={()=>{ setAiSubView(id); if(id==='lyrics' && aiSubView==='lyrics') getLyricsRef.current?.(); }}
+                  <button key={id} onClick={()=>{ setAiSubView(id); if(id==='lyrics' && aiSubView==='lyrics') getLyricsRef.current?.(); if(id==='info') doFetchSongInfo(); }}
                     style={{ padding:'9px 22px', borderRadius:0, border:'none', background:'none', color:aiSubView===id?'white':'rgba(255,255,255,0.4)', fontSize:13, fontWeight:aiSubView===id?800:600, cursor:'pointer', borderBottom:aiSubView===id?`2px solid ${track.color}`:'2px solid transparent', marginBottom:-1, flexShrink:0, whiteSpace:'nowrap' }}>
                     {label}
                   </button>
@@ -11896,449 +11898,33 @@ Format exactly:
                           )}
                         </div>
 
-                        {/* ── OTHER: Pembuat Playlist ── */}
+                        {/* ── OTHER: Subnav Launcher ── */}
                         <div style={{ marginTop:0 }}>
-                          <div style={{ padding:'14px 16px 12px', display:'flex', alignItems:'center', justifyContent:'space-between', borderTop:'1px solid rgba(255,255,255,0.05)' }}>
-                            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                              <div style={{ width:30, height:30, borderRadius:10, background:'linear-gradient(135deg,rgba(99,102,241,0.3),rgba(168,85,247,0.2))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14 }}>✨</div>
-                              <div>
-                                <div style={{ fontSize:13, fontWeight:800, color:'white', letterSpacing:'-0.01em' }}>Other</div>
-                                <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>Buat playlist dengan AI</div>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Inner tab: Preferensi | Populer | Info Lagu | Statistik */}
-                          <div style={{ display:'flex', gap:0, margin:'0 16px 14px', background:'rgba(255,255,255,0.05)', borderRadius:12, padding:3, flexWrap:'wrap' }}>
-                            {[
-                              { id:'pref',    label:'🎯 Preferensi' },
-                              { id:'popular', label:'🔥 Populer'    },
-                              { id:'info',    label:'💿 Info Lagu'  },
-                              { id:'stats',   label:'📊 Statistik'  },
-                            ].map(({ id, label }) => (
-                              <button key={id} onClick={() => { setOtherInnerTab(id); if(id==='info') doFetchSongInfo(); }}
-                                style={{ flex:'1 0 45%', padding:'7px 0', borderRadius:10, border:'none', fontSize:10.5, fontWeight:700, cursor:'pointer', transition:'all 0.18s',
-                                  background: otherInnerTab === id ? track.color : 'transparent',
-                                  color:      otherInnerTab === id ? 'white' : 'rgba(255,255,255,0.4)',
-                                }}>
-                                {label}
-                              </button>
-                            ))}
-                          </div>
-
-                          {/* ── Tab: Sesuai Preferensi ── */}
-                          {otherInnerTab === 'pref' && (
-                            <div style={{ padding:'0 16px 16px' }}>
-                              {!prefPlaylist && !prefPlaylistLoading && (
-                                <div style={{ textAlign:'center', paddingTop:16, paddingBottom:8 }}>
-                                  <div style={{ fontSize:12, color:'rgba(255,255,255,0.35)', marginBottom:14, lineHeight:1.6 }}>
-                                    AI akan membuat 10 lagu berdasarkan genre, mood,<br/>dan preferensi bahasa kamu.
-                                  </div>
-                                  <button onClick={generatePrefPlaylist}
-                                    style={{ padding:'9px 22px', borderRadius:999, border:'none', background:`linear-gradient(135deg,${track.color},#a855f7)`, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:7 }}>
-                                    <Sparkles size={13}/> Generate Playlist
-                                  </button>
-                                </div>
-                              )}
-                              {prefPlaylistLoading && (
-                                <div style={{ textAlign:'center', padding:'20px 0', color:'rgba(255,255,255,0.4)', fontSize:12, display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
-                                  <Loader2 size={14} style={{ animation:'spin 1s linear infinite', color:track.color }}/> Starry AI sedang menyusun playlist…
-                                </div>
-                              )}
-                              {prefPlaylist && !prefPlaylistLoading && (
-                                <>
-                                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
-                                    <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.1em' }}>
-                                      🎯 Playlist Personalmu ({prefPlaylist.length} lagu)
-                                    </div>
-                                    <button onClick={generatePrefPlaylist} style={{ background:'none', border:'none', color:track.color, fontSize:11, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:4 }}>
-                                      <Sparkles size={11}/> Refresh
-                                    </button>
-                                  </div>
-                                  {/* Tombol Play All */}
-                                  <button onClick={playPrefPlaylistQueue} disabled={prefPlaylistQueueLoading}
-                                    style={{ width:'100%', marginBottom:12, padding:'11px 0', borderRadius:14, border:'none', background:`linear-gradient(135deg,${track.color},#a855f7)`, color:'white', fontSize:13, fontWeight:800, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, opacity:prefPlaylistQueueLoading?0.65:1, boxShadow:isLite?'none':`0 4px 18px ${track.color}40` }}>
-                                    {prefPlaylistQueueLoading ? <><Loader2 size={14} style={{ animation:'spin 1s linear infinite' }}/> Memuat Antrean…</> : <><Play size={14}/> Play All {prefPlaylist.length} Lagu</>}
-                                  </button>
-                                  <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                                    {prefPlaylist.map((m, i) => (
-                                      <div key={i}
-                                        onClick={() => { const q = `${m.title} ${m.artist}`; setUnifiedPlatform('ytmusic'); setUnifiedQuery(q); setYtQuery(p=>({...p, ytmusic:q})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic', q); ytMusicSectionRef.current?.scrollIntoView({ behavior:'smooth', block:'start' }); }, 300); }}
-                                        style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:`1px solid ${track.color}18`, cursor:'pointer', transition:'background 0.15s' }}
-                                        onMouseEnter={e=>e.currentTarget.style.background=`${track.color}14`}
-                                        onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
-                                        <div style={{ width:28, height:28, borderRadius:8, background:`${track.color}25`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800, color:track.color, flexShrink:0 }}>
-                                          {i+1}
-                                        </div>
-                                        <div style={{ flex:1, minWidth:0 }}>
-                                          <div style={{ fontSize:12, fontWeight:700, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.title}</div>
-                                          <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.artist}</div>
-                                          {m.reason && <div style={{ fontSize:9.5, color:`${track.color}90`, marginTop:2 }}>{m.reason}</div>}
-                                        </div>
-                                        <div style={{ fontSize:16, flexShrink:0 }}>▶</div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                  {/* Tombol simpan */}
-                                  <div style={{ display:'flex', gap:8, marginTop:14 }}>
-                                    <button onClick={() => openSaveAIPlaylist(prefPlaylist, '🎯 Playlist Preferensiku')}
-                                      style={{ flex:1, padding:'10px 0', borderRadius:12, border:'none', background:`linear-gradient(135deg,${track.color},#a855f7)`, color:'white', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-                                      <ListPlus size={14}/> Playlist Baru
-                                    </button>
-                                    <button onClick={() => openAddToExistingPlaylist(prefPlaylist)}
-                                      style={{ flex:1, padding:'10px 0', borderRadius:12, border:`1px solid ${track.color}50`, background:`${track.color}15`, color:track.color, fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-                                      <ListPlus size={14}/> Tambah ke Playlist
-                                    </button>
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          )}
-
-                          {/* ── Tab: Populer Sekarang ── */}
-                          {otherInnerTab === 'popular' && (
-                            <div style={{ padding:'0 16px 16px' }}>
-                              {!popularPlaylist && !popularPlaylistLoading && (
-                                <div style={{ textAlign:'center', paddingTop:16, paddingBottom:8 }}>
-                                  <div style={{ fontSize:12, color:'rgba(255,255,255,0.35)', marginBottom:14, lineHeight:1.6 }}>
-                                    AI akan membuat 10 lagu yang sedang trending<br/>secara global dan lokal Indonesia.
-                                  </div>
-                                  <button onClick={generatePopularPlaylist}
-                                    style={{ padding:'9px 22px', borderRadius:999, border:'none', background:'linear-gradient(135deg,#ef4444,#f59e0b)', color:'white', fontSize:12, fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:7 }}>
-                                    🔥 Generate Playlist
-                                  </button>
-                                </div>
-                              )}
-                              {popularPlaylistLoading && (
-                                <div style={{ textAlign:'center', padding:'20px 0', color:'rgba(255,255,255,0.4)', fontSize:12, display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
-                                  <Loader2 size={14} style={{ animation:'spin 1s linear infinite', color:'#ef4444' }}/> Starry AI sedang kurasi playlist populer…
-                                </div>
-                              )}
-                              {popularPlaylist && !popularPlaylistLoading && (
-                                <>
-                                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
-                                    <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.1em' }}>
-                                      🔥 Trending Sekarang ({popularPlaylist.length} lagu)
-                                    </div>
-                                    <button onClick={generatePopularPlaylist} style={{ background:'none', border:'none', color:'#f59e0b', fontSize:11, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:4 }}>
-                                      <Sparkles size={11}/> Refresh
-                                    </button>
-                                  </div>
-                                  {/* Tombol Play All */}
-                                  <button onClick={playPopularPlaylistQueue} disabled={popularPlaylistQueueLoading}
-                                    style={{ width:'100%', marginBottom:12, padding:'11px 0', borderRadius:14, border:'none', background:'linear-gradient(135deg,#ef4444,#f59e0b)', color:'white', fontSize:13, fontWeight:800, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, opacity:popularPlaylistQueueLoading?0.65:1, boxShadow:isLite?'none':'0 4px 18px rgba(239,68,68,0.4)' }}>
-                                    {popularPlaylistQueueLoading ? <><Loader2 size={14} style={{ animation:'spin 1s linear infinite' }}/> Memuat Antrean…</> : <><Play size={14}/> Play All {popularPlaylist.length} Lagu</>}
-                                  </button>
-                                  <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                                    {popularPlaylist.map((m, i) => (
-                                      <div key={i}
-                                        onClick={() => { const q = `${m.title} ${m.artist}`; setUnifiedPlatform('ytmusic'); setUnifiedQuery(q); setYtQuery(p=>({...p, ytmusic:q})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic', q); ytMusicSectionRef.current?.scrollIntoView({ behavior:'smooth', block:'start' }); }, 300); }}
-                                        style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(239,68,68,0.18)', cursor:'pointer', transition:'background 0.15s' }}
-                                        onMouseEnter={e=>e.currentTarget.style.background='rgba(239,68,68,0.08)'}
-                                        onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
-                                        <div style={{ width:28, height:28, borderRadius:8, background:'rgba(239,68,68,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800, color:'#f87171', flexShrink:0 }}>
-                                          {i+1}
-                                        </div>
-                                        <div style={{ flex:1, minWidth:0 }}>
-                                          <div style={{ fontSize:12, fontWeight:700, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.title}</div>
-                                          <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.artist}</div>
-                                          {m.reason && <div style={{ fontSize:9.5, color:'#fbbf2490', marginTop:2 }}>{m.reason}</div>}
-                                        </div>
-                                        <div style={{ fontSize:16, flexShrink:0 }}>▶</div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                  {/* Tombol simpan */}
-                                  <div style={{ display:'flex', gap:8, marginTop:14 }}>
-                                    <button onClick={() => openSaveAIPlaylist(popularPlaylist, '🔥 Playlist Populer')}
-                                      style={{ flex:1, padding:'10px 0', borderRadius:12, border:'none', background:'linear-gradient(135deg,#ef4444,#f59e0b)', color:'white', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-                                      <ListPlus size={14}/> Playlist Baru
-                                    </button>
-                                    <button onClick={() => openAddToExistingPlaylist(popularPlaylist)}
-                                      style={{ flex:1, padding:'10px 0', borderRadius:12, border:'1px solid rgba(239,68,68,0.4)', background:'rgba(239,68,68,0.1)', color:'#f87171', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-                                      <ListPlus size={14}/> Tambah ke Playlist
-                                    </button>
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          )}
-
-                          {/* ── Tab: Info Lagu ── */}
-                          {otherInnerTab === 'info' && (() => {
-                            const activeTitle  = embedTrack ? (embedTrack.title  || track.title)  : track.title;
-                            const activeArtist = embedTrack ? (embedTrack.artist || track.artist) : track.artist;
-                            const coverUrl     = embedTrack?.thumbnail || track.cover || '';
-                            const cacheId      = embedTrack?.videoId || track.id;
-                            const isCached     = songInfoData?.trackId === cacheId;
-                            return (
-                              <div style={{ padding:'0 16px 16px' }}>
-                                {/* Header: cover kecil + judul */}
-                                <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14, padding:'10px 12px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:`1px solid ${track.color}20` }}>
-                                  <div style={{ width:44, height:44, borderRadius:10, overflow:'hidden', flexShrink:0, background:`${track.color}20` }}>
-                                    {coverUrl && <img src={coverUrl} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{e.target.style.display='none';}}/>}
-                                  </div>
+                          <div style={{ padding:'14px 16px 10px', borderTop:'1px solid rgba(255,255,255,0.05)' }}>
+                            <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:12 }}>Menu</div>
+                            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                              {[
+                                { id:'chat',   icon:'💬', label:'Chat',       desc:'Tanya apa saja ke Starry AI' },
+                                { id:'foryou', icon:'🎯', label:'For You',    desc:'Rekomendasi musik untukmu' },
+                                { id:'lyrics', icon:'🎵', label:'Lyrics',     desc:'Lirik & terjemahan lagu' },
+                                { id:'info',   icon:'💿', label:'Info Lagu',  desc:'Detail & fakta tentang lagu ini' },
+                                { id:'stats',  icon:'📊', label:'Statistik',  desc:'Riwayat mendengarkanmu' },
+                              ].map(({ id, icon, label, desc }) => (
+                                <button key={id}
+                                  onClick={() => { setAiSubView(id); if (id === 'info') doFetchSongInfo(); }}
+                                  style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', borderRadius:14, border:`1px solid ${track.color}20`, background: aiSubView === id ? `${track.color}18` : 'rgba(255,255,255,0.03)', cursor:'pointer', textAlign:'left', transition:'all 0.15s' }}
+                                  onMouseEnter={e => { e.currentTarget.style.background = `${track.color}22`; e.currentTarget.style.borderColor = `${track.color}40`; }}
+                                  onMouseLeave={e => { e.currentTarget.style.background = aiSubView === id ? `${track.color}18` : 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = `${track.color}20`; }}>
+                                  <div style={{ width:36, height:36, borderRadius:10, background: aiSubView === id ? `${track.color}30` : 'rgba(255,255,255,0.06)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:17, flexShrink:0 }}>{icon}</div>
                                   <div style={{ flex:1, minWidth:0 }}>
-                                    <div style={{ fontSize:12, fontWeight:800, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{activeTitle || '—'}</div>
-                                    <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{activeArtist || '—'}</div>
+                                    <div style={{ fontSize:13, fontWeight:700, color: aiSubView === id ? 'white' : 'rgba(255,255,255,0.75)', marginBottom:2 }}>{label}</div>
+                                    <div style={{ fontSize:10.5, color:'rgba(255,255,255,0.35)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{desc}</div>
                                   </div>
-                                  <button onClick={() => doFetchSongInfo()}
-                                    disabled={songInfoLoading}
-                                    title="Refresh info"
-                                    style={{ background:`${track.color}25`, border:`1px solid ${track.color}40`, borderRadius:8, color:track.color, fontSize:11, fontWeight:800, padding:'5px 10px', cursor:'pointer', flexShrink:0, opacity:songInfoLoading?0.5:1, display:'flex', alignItems:'center', gap:4 }}>
-                                    {songInfoLoading ? <><Loader2 size={11} style={{ animation:'spin 1s linear infinite' }}/></> : '↻'}
-                                  </button>
-                                </div>
-
-                                {/* Loading */}
-                                {songInfoLoading && (
-                                  <div style={{ textAlign:'center', padding:'24px 0', display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
-                                    <Loader2 size={22} style={{ animation:'spin 1s linear infinite', color:track.color }}/>
-                                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)' }}>Starry AI sedang mencari info lagu…</div>
-                                  </div>
-                                )}
-
-                                {/* Error */}
-                                {songInfoError && !songInfoLoading && (
-                                  <div style={{ padding:'10px 12px', borderRadius:10, background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.2)', fontSize:11, color:'#fca5a5', marginBottom:10 }}>
-                                    {songInfoError}
-                                  </div>
-                                )}
-
-                                {/* No track */}
-                                {!activeTitle && !songInfoLoading && (
-                                  <div style={{ textAlign:'center', padding:'20px 0', color:'rgba(255,255,255,0.25)', fontSize:11 }}>Putar lagu terlebih dahulu.</div>
-                                )}
-
-                                {/* Info cards */}
-                                {isCached && songInfoData?.info && !songInfoLoading && (() => {
-                                  const info = songInfoData.info;
-                                  return (
-                                    <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-
-                                      {/* Metadata chips row */}
-                                      <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-                                        {[
-                                          { label:'Genre',    val: info.genre    },
-                                          { label:'Tahun',    val: info.year     },
-                                          { label:'Bahasa',   val: info.language },
-                                          { label:'BPM',      val: info.bpm      },
-                                          { label:'Key',      val: info.key      },
-                                          { label:'Mood',     val: info.mood     },
-                                        ].filter(x => x.val && x.val !== 'null').map(({ label, val }) => (
-                                          <div key={label} style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:'6px 12px', borderRadius:10, background:`${track.color}15`, border:`1px solid ${track.color}30`, minWidth:60 }}>
-                                            <div style={{ fontSize:9, color:`${track.color}90`, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em' }}>{label}</div>
-                                            <div style={{ fontSize:11, color:'white', fontWeight:700, marginTop:2, textAlign:'center' }}>{val}</div>
-                                          </div>
-                                        ))}
-                                      </div>
-
-                                      {/* About */}
-                                      {info.about && (
-                                        <div style={{ padding:'12px 14px', borderRadius:12, background:'rgba(255,255,255,0.04)', border:`1px solid ${track.color}20` }}>
-                                          <div style={{ fontSize:9, color:`${track.color}90`, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:6 }}>✨ Tentang Lagu</div>
-                                          <div style={{ fontSize:12, color:'rgba(255,255,255,0.8)', lineHeight:1.6 }}>{info.about}</div>
-                                        </div>
-                                      )}
-
-                                      {/* Fun Facts */}
-                                      {info.funFacts?.filter(Boolean).length > 0 && (
-                                        <div style={{ padding:'12px 14px', borderRadius:12, background:'rgba(255,255,255,0.04)', border:`1px solid ${track.color}20` }}>
-                                          <div style={{ fontSize:9, color:`${track.color}90`, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8 }}>🎲 Fun Facts</div>
-                                          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                                            {info.funFacts.filter(Boolean).map((fact, fi) => (
-                                              <div key={fi} style={{ display:'flex', gap:8, alignItems:'flex-start' }}>
-                                                <div style={{ width:18, height:18, borderRadius:6, background:`${track.color}25`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:800, color:track.color, flexShrink:0, marginTop:1 }}>{fi+1}</div>
-                                                <div style={{ fontSize:11.5, color:'rgba(255,255,255,0.7)', lineHeight:1.5 }}>{fact}</div>
-                                              </div>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      )}
-
-                                      {/* Similar Artists */}
-                                      {info.similarArtists?.filter(Boolean).length > 0 && (
-                                        <div style={{ padding:'12px 14px', borderRadius:12, background:'rgba(255,255,255,0.04)', border:`1px solid ${track.color}20` }}>
-                                          <div style={{ fontSize:9, color:`${track.color}90`, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8 }}>🎤 Artis Serupa</div>
-                                          <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-                                            {info.similarArtists.filter(Boolean).map((a2, ai) => (
-                                              <button key={ai}
-                                                onClick={() => { const q2 = a2; setUnifiedPlatform('ytmusic'); setUnifiedQuery(q2); setYtQuery(p=>({...p, ytmusic:q2})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic', q2); ytMusicSectionRef.current?.scrollIntoView({ behavior:'smooth', block:'start' }); }, 300); }}
-                                                style={{ padding:'5px 12px', borderRadius:999, background:`${track.color}18`, border:`1px solid ${track.color}35`, color:'white', fontSize:11, fontWeight:600, cursor:'pointer' }}>
-                                                {a2}
-                                              </button>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      )}
-
-                                      {/* Tags */}
-                                      {info.tags?.filter(Boolean).length > 0 && (
-                                        <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
-                                          {info.tags.filter(Boolean).map((tag, ti) => (
-                                            <div key={ti} style={{ padding:'3px 10px', borderRadius:999, background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', color:'rgba(255,255,255,0.5)', fontSize:10, fontWeight:600 }}>
-                                              #{tag}
-                                            </div>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })()}
-                              </div>
-                            );
-                          })()}
-
-                          {/* ── Tab: Statistik Mendengarkan ── */}
-                          {otherInnerTab === 'stats' && (() => {
-                            // Hitung statistik dari listenLog
-                            const totalSecs = listenLog.reduce((s, e) => s + (e.secs||0), 0);
-                            const totalMins = Math.round(totalSecs / 60);
-                            const totalHours = (totalSecs / 3600).toFixed(1);
-                            const totalSongs = new Set(listenLog.map(e => e.id)).size;
-
-                            // Top songs (aggregate by id)
-                            const songMap = {};
-                            listenLog.forEach(e => {
-                              if (!songMap[e.id]) songMap[e.id] = { ...e, secs: 0 };
-                              songMap[e.id].secs += e.secs;
-                            });
-                            const topSongs = Object.values(songMap).sort((a,b) => b.secs - a.secs).slice(0, 7);
-
-                            // Daily activity (last 7 days)
-                            const last7 = Array.from({ length:7 }, (_, i) => {
-                              const d = new Date(); d.setDate(d.getDate() - (6-i));
-                              return d.toISOString().slice(0,10);
-                            });
-                            const dailySecs = last7.map(date => ({
-                              date,
-                              label: new Date(date + 'T12:00:00').toLocaleDateString('id-ID', { weekday:'short' }),
-                              secs: listenLog.filter(e => e.date === date).reduce((s,e) => s+e.secs, 0),
-                            }));
-                            const maxSecs = Math.max(...dailySecs.map(d=>d.secs), 1);
-
-                            // Top artists
-                            const artistMap = {};
-                            listenLog.forEach(e => {
-                              const a = e.artist || 'Unknown';
-                              artistMap[a] = (artistMap[a]||0) + (e.secs||0);
-                            });
-                            const topArtists = Object.entries(artistMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
-
-                            const hasData = listenLog.length > 0;
-
-                            return (
-                              <div style={{ padding:'0 16px 16px' }}>
-                                {!hasData ? (
-                                  <div style={{ textAlign:'center', padding:'32px 0', display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
-                                    <div style={{ fontSize:32 }}>📊</div>
-                                    <div style={{ fontSize:12, color:'rgba(255,255,255,0.35)', lineHeight:1.6 }}>
-                                      Statistik akan muncul setelah<br/>kamu mendengarkan musik selama 30 detik.
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-
-                                    {/* Summary cards */}
-                                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
-                                      {[
-                                        { icon:'⏱️', val: totalMins >= 60 ? `${totalHours}j` : `${totalMins}m`, label:'Total Diputar' },
-                                        { icon:'🎵', val: totalSongs,        label:'Lagu Berbeda' },
-                                        { icon:'📅', val: new Set(listenLog.map(e=>e.date)).size, label:'Hari Aktif' },
-                                      ].map(({ icon, val, label }) => (
-                                        <div key={label} style={{ padding:'12px 8px', borderRadius:14, background:`${track.color}12`, border:`1px solid ${track.color}25`, textAlign:'center' }}>
-                                          <div style={{ fontSize:18, marginBottom:4 }}>{icon}</div>
-                                          <div style={{ fontSize:16, fontWeight:900, color:'white' }}>{val}</div>
-                                          <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', marginTop:2, fontWeight:600, lineHeight:1.3 }}>{label}</div>
-                                        </div>
-                                      ))}
-                                    </div>
-
-                                    {/* Activity chart — 7 hari terakhir */}
-                                    <div style={{ padding:'12px 14px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:`1px solid ${track.color}20` }}>
-                                      <div style={{ fontSize:9, color:`${track.color}90`, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>📅 Aktivitas 7 Hari Terakhir</div>
-                                      <div style={{ display:'flex', alignItems:'flex-end', gap:4, height:60 }}>
-                                        {dailySecs.map(({ date, label, secs }) => {
-                                          const pct = secs / maxSecs;
-                                          const mins2 = Math.round(secs/60);
-                                          const isToday = date === new Date().toISOString().slice(0,10);
-                                          return (
-                                            <div key={date} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:3, height:'100%', justifyContent:'flex-end' }} title={`${mins2} menit`}>
-                                              <div style={{ width:'100%', borderRadius:'4px 4px 0 0', background: isToday ? track.color : `${track.color}55`, minHeight: secs>0 ? 4 : 0, height:`${Math.max(pct*52,secs>0?4:0)}px`, transition:'height 0.4s ease' }}/>
-                                              <div style={{ fontSize:8, color: isToday ? track.color : 'rgba(255,255,255,0.3)', fontWeight: isToday?800:600 }}>{label}</div>
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-                                    </div>
-
-                                    {/* Top Songs */}
-                                    {topSongs.length > 0 && (
-                                      <div style={{ padding:'12px 14px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:`1px solid ${track.color}20` }}>
-                                        <div style={{ fontSize:9, color:`${track.color}90`, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>🎶 Lagu Paling Sering Diputar</div>
-                                        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                                          {topSongs.map((s, si) => {
-                                            const pct2 = topSongs[0].secs > 0 ? s.secs / topSongs[0].secs : 0;
-                                            const m2 = Math.round(s.secs/60);
-                                            return (
-                                              <div key={s.id} style={{ display:'flex', alignItems:'center', gap:8 }}
-                                                onClick={() => { const q2=`${s.title} ${s.artist}`; setUnifiedPlatform('ytmusic'); setUnifiedQuery(q2); setYtQuery(p=>({...p,ytmusic:q2})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic',q2); ytMusicSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },300); }}
-                                                style={{ cursor:'pointer' }}>
-                                                <div style={{ width:18, fontSize:10, fontWeight:800, color:`${track.color}80`, textAlign:'right', flexShrink:0 }}>{si+1}</div>
-                                                <div style={{ width:32, height:32, borderRadius:8, overflow:'hidden', flexShrink:0, background:`${s.color||track.color}25` }}>
-                                                  {s.cover && <img src={s.cover} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{e.target.style.display='none';}}/>}
-                                                </div>
-                                                <div style={{ flex:1, minWidth:0 }}>
-                                                  <div style={{ fontSize:11, fontWeight:700, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.title}</div>
-                                                  <div style={{ position:'relative', height:3, borderRadius:99, background:'rgba(255,255,255,0.08)', marginTop:4, overflow:'hidden' }}>
-                                                    <div style={{ position:'absolute', left:0, top:0, height:'100%', borderRadius:99, background:s.color||track.color, width:`${pct2*100}%`, transition:'width 0.4s ease' }}/>
-                                                  </div>
-                                                </div>
-                                                <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', flexShrink:0, fontWeight:600 }}>{m2}m</div>
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {/* Top Artists */}
-                                    {topArtists.length > 0 && (
-                                      <div style={{ padding:'12px 14px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:`1px solid ${track.color}20` }}>
-                                        <div style={{ fontSize:9, color:`${track.color}90`, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>🎤 Artis Favorit</div>
-                                        <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
-                                          {topArtists.map(([artist, secs2], ai) => {
-                                            const pct3 = topArtists[0][1] > 0 ? secs2 / topArtists[0][1] : 0;
-                                            return (
-                                              <div key={artist} style={{ display:'flex', alignItems:'center', gap:8 }}>
-                                                <div style={{ width:18, fontSize:10, fontWeight:800, color:`${track.color}80`, textAlign:'right', flexShrink:0 }}>{ai+1}</div>
-                                                <div style={{ flex:1, minWidth:0 }}>
-                                                  <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
-                                                    <div style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.85)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'70%' }}>{artist}</div>
-                                                    <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', fontWeight:600 }}>{Math.round(secs2/60)}m</div>
-                                                  </div>
-                                                  <div style={{ height:3, borderRadius:99, background:'rgba(255,255,255,0.08)', overflow:'hidden' }}>
-                                                    <div style={{ height:'100%', borderRadius:99, background:track.color, width:`${pct3*100}%`, transition:'width 0.4s ease' }}/>
-                                                  </div>
-                                                </div>
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {/* Reset button */}
-                                    <button onClick={() => { if(window.confirm('Reset semua data statistik?')) { setListenLog([]); localStorage.removeItem('sn_listen_log'); } }}
-                                      style={{ padding:'8px', borderRadius:10, border:'1px solid rgba(239,68,68,0.2)', background:'rgba(239,68,68,0.06)', color:'rgba(239,68,68,0.6)', fontSize:10, fontWeight:700, cursor:'pointer', marginTop:2 }}>
-                                      🗑 Reset Statistik
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })()}
-
+                                  <div style={{ fontSize:14, color: aiSubView === id ? track.color : 'rgba(255,255,255,0.2)', flexShrink:0 }}>›</div>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
                         </div>{/* end Other section */}
 
                   </div>
@@ -12649,6 +12235,295 @@ Format exactly:
             )}
 
 
+
+            {/* ── Info Lagu View ── */}
+            {aiSubView==='info' && (
+              <div style={{ flex:1, overflowY:'auto', padding:'0 0 24px' }} className="scrollbar-hide">
+                {/* ── Tab: Info Lagu ── */}
+                { true && (() => {
+                  const activeTitle  = embedTrack ? (embedTrack.title  || track.title)  : track.title;
+                  const activeArtist = embedTrack ? (embedTrack.artist || track.artist) : track.artist;
+                  const coverUrl     = embedTrack?.thumbnail || track.cover || '';
+                  const cacheId      = embedTrack?.videoId || track.id;
+                  const isCached     = songInfoData?.trackId === cacheId;
+                  return (
+                    <div style={{ padding:'0 16px 16px' }}>
+                      {/* Header: cover kecil + judul */}
+                      <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14, padding:'10px 12px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:`1px solid ${track.color}20` }}>
+                        <div style={{ width:44, height:44, borderRadius:10, overflow:'hidden', flexShrink:0, background:`${track.color}20` }}>
+                          {coverUrl && <img src={coverUrl} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{e.target.style.display='none';}}/>}
+                        </div>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontSize:12, fontWeight:800, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{activeTitle || '—'}</div>
+                          <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{activeArtist || '—'}</div>
+                        </div>
+                        <button onClick={() => doFetchSongInfo()}
+                          disabled={songInfoLoading}
+                          title="Refresh info"
+                          style={{ background:`${track.color}25`, border:`1px solid ${track.color}40`, borderRadius:8, color:track.color, fontSize:11, fontWeight:800, padding:'5px 10px', cursor:'pointer', flexShrink:0, opacity:songInfoLoading?0.5:1, display:'flex', alignItems:'center', gap:4 }}>
+                          {songInfoLoading ? <><Loader2 size={11} style={{ animation:'spin 1s linear infinite' }}/></> : '↻'}
+                        </button>
+                      </div>
+
+                      {/* Loading */}
+                      {songInfoLoading && (
+                        <div style={{ textAlign:'center', padding:'24px 0', display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
+                          <Loader2 size={22} style={{ animation:'spin 1s linear infinite', color:track.color }}/>
+                          <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)' }}>Starry AI sedang mencari info lagu…</div>
+                        </div>
+                      )}
+
+                      {/* Error */}
+                      {songInfoError && !songInfoLoading && (
+                        <div style={{ padding:'10px 12px', borderRadius:10, background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.2)', fontSize:11, color:'#fca5a5', marginBottom:10 }}>
+                          {songInfoError}
+                        </div>
+                      )}
+
+                      {/* No track */}
+                      {!activeTitle && !songInfoLoading && (
+                        <div style={{ textAlign:'center', padding:'20px 0', color:'rgba(255,255,255,0.25)', fontSize:11 }}>Putar lagu terlebih dahulu.</div>
+                      )}
+
+                      {/* Info cards */}
+                      {isCached && songInfoData?.info && !songInfoLoading && (() => {
+                        const info = songInfoData.info;
+                        return (
+                          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+
+                            {/* Metadata chips row */}
+                            <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                              {[
+                                { label:'Genre',    val: info.genre    },
+                                { label:'Tahun',    val: info.year     },
+                                { label:'Bahasa',   val: info.language },
+                                { label:'BPM',      val: info.bpm      },
+                                { label:'Key',      val: info.key      },
+                                { label:'Mood',     val: info.mood     },
+                              ].filter(x => x.val && x.val !== 'null').map(({ label, val }) => (
+                                <div key={label} style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:'6px 12px', borderRadius:10, background:`${track.color}15`, border:`1px solid ${track.color}30`, minWidth:60 }}>
+                                  <div style={{ fontSize:9, color:`${track.color}90`, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em' }}>{label}</div>
+                                  <div style={{ fontSize:11, color:'white', fontWeight:700, marginTop:2, textAlign:'center' }}>{val}</div>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* About */}
+                            {info.about && (
+                              <div style={{ padding:'12px 14px', borderRadius:12, background:'rgba(255,255,255,0.04)', border:`1px solid ${track.color}20` }}>
+                                <div style={{ fontSize:9, color:`${track.color}90`, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:6 }}>✨ Tentang Lagu</div>
+                                <div style={{ fontSize:12, color:'rgba(255,255,255,0.8)', lineHeight:1.6 }}>{info.about}</div>
+                              </div>
+                            )}
+
+                            {/* Fun Facts */}
+                            {info.funFacts?.filter(Boolean).length > 0 && (
+                              <div style={{ padding:'12px 14px', borderRadius:12, background:'rgba(255,255,255,0.04)', border:`1px solid ${track.color}20` }}>
+                                <div style={{ fontSize:9, color:`${track.color}90`, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8 }}>🎲 Fun Facts</div>
+                                <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                                  {info.funFacts.filter(Boolean).map((fact, fi) => (
+                                    <div key={fi} style={{ display:'flex', gap:8, alignItems:'flex-start' }}>
+                                      <div style={{ width:18, height:18, borderRadius:6, background:`${track.color}25`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:800, color:track.color, flexShrink:0, marginTop:1 }}>{fi+1}</div>
+                                      <div style={{ fontSize:11.5, color:'rgba(255,255,255,0.7)', lineHeight:1.5 }}>{fact}</div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Similar Artists */}
+                            {info.similarArtists?.filter(Boolean).length > 0 && (
+                              <div style={{ padding:'12px 14px', borderRadius:12, background:'rgba(255,255,255,0.04)', border:`1px solid ${track.color}20` }}>
+                                <div style={{ fontSize:9, color:`${track.color}90`, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8 }}>🎤 Artis Serupa</div>
+                                <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                                  {info.similarArtists.filter(Boolean).map((a2, ai) => (
+                                    <button key={ai}
+                                      onClick={() => { const q2 = a2; setUnifiedPlatform('ytmusic'); setUnifiedQuery(q2); setYtQuery(p=>({...p, ytmusic:q2})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic', q2); ytMusicSectionRef.current?.scrollIntoView({ behavior:'smooth', block:'start' }); }, 300); }}
+                                      style={{ padding:'5px 12px', borderRadius:999, background:`${track.color}18`, border:`1px solid ${track.color}35`, color:'white', fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                                      {a2}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Tags */}
+                            {info.tags?.filter(Boolean).length > 0 && (
+                              <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
+                                {info.tags.filter(Boolean).map((tag, ti) => (
+                                  <div key={ti} style={{ padding:'3px 10px', borderRadius:999, background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', color:'rgba(255,255,255,0.5)', fontSize:10, fontWeight:600 }}>
+                                    #{tag}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  );
+                })()}
+
+
+              </div>
+            )}
+
+            {/* ── Statistik View ── */}
+            {aiSubView==='stats' && (
+              <div style={{ flex:1, overflowY:'auto', padding:'0 0 24px' }} className="scrollbar-hide">
+                {/* ── Tab: Statistik Mendengarkan ── */}
+                { true && (() => {
+                  // Hitung statistik dari listenLog
+                  const totalSecs = listenLog.reduce((s, e) => s + (e.secs||0), 0);
+                  const totalMins = Math.round(totalSecs / 60);
+                  const totalHours = (totalSecs / 3600).toFixed(1);
+                  const totalSongs = new Set(listenLog.map(e => e.id)).size;
+
+                  // Top songs (aggregate by id)
+                  const songMap = {};
+                  listenLog.forEach(e => {
+                    if (!songMap[e.id]) songMap[e.id] = { ...e, secs: 0 };
+                    songMap[e.id].secs += e.secs;
+                  });
+                  const topSongs = Object.values(songMap).sort((a,b) => b.secs - a.secs).slice(0, 7);
+
+                  // Daily activity (last 7 days)
+                  const last7 = Array.from({ length:7 }, (_, i) => {
+                    const d = new Date(); d.setDate(d.getDate() - (6-i));
+                    return d.toISOString().slice(0,10);
+                  });
+                  const dailySecs = last7.map(date => ({
+                    date,
+                    label: new Date(date + 'T12:00:00').toLocaleDateString('id-ID', { weekday:'short' }),
+                    secs: listenLog.filter(e => e.date === date).reduce((s,e) => s+e.secs, 0),
+                  }));
+                  const maxSecs = Math.max(...dailySecs.map(d=>d.secs), 1);
+
+                  // Top artists
+                  const artistMap = {};
+                  listenLog.forEach(e => {
+                    const a = e.artist || 'Unknown';
+                    artistMap[a] = (artistMap[a]||0) + (e.secs||0);
+                  });
+                  const topArtists = Object.entries(artistMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+                  const hasData = listenLog.length > 0;
+
+                  return (
+                    <div style={{ padding:'0 16px 16px' }}>
+                      {!hasData ? (
+                        <div style={{ textAlign:'center', padding:'32px 0', display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
+                          <div style={{ fontSize:32 }}>📊</div>
+                          <div style={{ fontSize:12, color:'rgba(255,255,255,0.35)', lineHeight:1.6 }}>
+                            Statistik akan muncul setelah<br/>kamu mendengarkan musik selama 30 detik.
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+
+                          {/* Summary cards */}
+                          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+                            {[
+                              { icon:'⏱️', val: totalMins >= 60 ? `${totalHours}j` : `${totalMins}m`, label:'Total Diputar' },
+                              { icon:'🎵', val: totalSongs,        label:'Lagu Berbeda' },
+                              { icon:'📅', val: new Set(listenLog.map(e=>e.date)).size, label:'Hari Aktif' },
+                            ].map(({ icon, val, label }) => (
+                              <div key={label} style={{ padding:'12px 8px', borderRadius:14, background:`${track.color}12`, border:`1px solid ${track.color}25`, textAlign:'center' }}>
+                                <div style={{ fontSize:18, marginBottom:4 }}>{icon}</div>
+                                <div style={{ fontSize:16, fontWeight:900, color:'white' }}>{val}</div>
+                                <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', marginTop:2, fontWeight:600, lineHeight:1.3 }}>{label}</div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Activity chart — 7 hari terakhir */}
+                          <div style={{ padding:'12px 14px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:`1px solid ${track.color}20` }}>
+                            <div style={{ fontSize:9, color:`${track.color}90`, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>📅 Aktivitas 7 Hari Terakhir</div>
+                            <div style={{ display:'flex', alignItems:'flex-end', gap:4, height:60 }}>
+                              {dailySecs.map(({ date, label, secs }) => {
+                                const pct = secs / maxSecs;
+                                const mins2 = Math.round(secs/60);
+                                const isToday = date === new Date().toISOString().slice(0,10);
+                                return (
+                                  <div key={date} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:3, height:'100%', justifyContent:'flex-end' }} title={`${mins2} menit`}>
+                                    <div style={{ width:'100%', borderRadius:'4px 4px 0 0', background: isToday ? track.color : `${track.color}55`, minHeight: secs>0 ? 4 : 0, height:`${Math.max(pct*52,secs>0?4:0)}px`, transition:'height 0.4s ease' }}/>
+                                    <div style={{ fontSize:8, color: isToday ? track.color : 'rgba(255,255,255,0.3)', fontWeight: isToday?800:600 }}>{label}</div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Top Songs */}
+                          {topSongs.length > 0 && (
+                            <div style={{ padding:'12px 14px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:`1px solid ${track.color}20` }}>
+                              <div style={{ fontSize:9, color:`${track.color}90`, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>🎶 Lagu Paling Sering Diputar</div>
+                              <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                                {topSongs.map((s, si) => {
+                                  const pct2 = topSongs[0].secs > 0 ? s.secs / topSongs[0].secs : 0;
+                                  const m2 = Math.round(s.secs/60);
+                                  return (
+                                    <div key={s.id} style={{ display:'flex', alignItems:'center', gap:8 }}
+                                      onClick={() => { const q2=`${s.title} ${s.artist}`; setUnifiedPlatform('ytmusic'); setUnifiedQuery(q2); setYtQuery(p=>({...p,ytmusic:q2})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic',q2); ytMusicSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },300); }}
+                                      style={{ cursor:'pointer' }}>
+                                      <div style={{ width:18, fontSize:10, fontWeight:800, color:`${track.color}80`, textAlign:'right', flexShrink:0 }}>{si+1}</div>
+                                      <div style={{ width:32, height:32, borderRadius:8, overflow:'hidden', flexShrink:0, background:`${s.color||track.color}25` }}>
+                                        {s.cover && <img src={s.cover} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{e.target.style.display='none';}}/>}
+                                      </div>
+                                      <div style={{ flex:1, minWidth:0 }}>
+                                        <div style={{ fontSize:11, fontWeight:700, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.title}</div>
+                                        <div style={{ position:'relative', height:3, borderRadius:99, background:'rgba(255,255,255,0.08)', marginTop:4, overflow:'hidden' }}>
+                                          <div style={{ position:'absolute', left:0, top:0, height:'100%', borderRadius:99, background:s.color||track.color, width:`${pct2*100}%`, transition:'width 0.4s ease' }}/>
+                                        </div>
+                                      </div>
+                                      <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', flexShrink:0, fontWeight:600 }}>{m2}m</div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Top Artists */}
+                          {topArtists.length > 0 && (
+                            <div style={{ padding:'12px 14px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:`1px solid ${track.color}20` }}>
+                              <div style={{ fontSize:9, color:`${track.color}90`, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>🎤 Artis Favorit</div>
+                              <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
+                                {topArtists.map(([artist, secs2], ai) => {
+                                  const pct3 = topArtists[0][1] > 0 ? secs2 / topArtists[0][1] : 0;
+                                  return (
+                                    <div key={artist} style={{ display:'flex', alignItems:'center', gap:8 }}>
+                                      <div style={{ width:18, fontSize:10, fontWeight:800, color:`${track.color}80`, textAlign:'right', flexShrink:0 }}>{ai+1}</div>
+                                      <div style={{ flex:1, minWidth:0 }}>
+                                        <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
+                                          <div style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.85)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'70%' }}>{artist}</div>
+                                          <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', fontWeight:600 }}>{Math.round(secs2/60)}m</div>
+                                        </div>
+                                        <div style={{ height:3, borderRadius:99, background:'rgba(255,255,255,0.08)', overflow:'hidden' }}>
+                                          <div style={{ height:'100%', borderRadius:99, background:track.color, width:`${pct3*100}%`, transition:'width 0.4s ease' }}/>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Reset button */}
+                          <button onClick={() => { if(window.confirm('Reset semua data statistik?')) { setListenLog([]); localStorage.removeItem('sn_listen_log'); } }}
+                            style={{ padding:'8px', borderRadius:10, border:'1px solid rgba(239,68,68,0.2)', background:'rgba(239,68,68,0.06)', color:'rgba(239,68,68,0.6)', fontSize:10, fontWeight:700, cursor:'pointer', marginTop:2 }}>
+                            🗑 Reset Statistik
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+
+              </div>
+            )}
 
             {/* Input area — only in chat view */}
             {aiSubView==='chat'&&(
