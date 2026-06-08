@@ -198,6 +198,8 @@ export default function App() {
   const ytDlTriggerRef  = useRef(null); // forward-ref ke triggerYtDownload (di-set setelah didefinisikan)
   const ytEndedFiredRef = useRef(false); // prevent double-fire of ytNext on video end
   const ytRepeatSeekingRef = useRef(false); // true selama seekTo(0) untuk repeat-one (blokir ended palsu)
+  const ytEmbedNocookieFailed = useRef(false); // true saat youtube-nocookie juga error 101/150 → skip next
+  const [ytEmbedUseFallback, setYtEmbedUseFallback] = useState(false); // saat true: pakai youtube.com sebagai domain
   const [ytSongs, setYtSongs]         = useState(() => {
     try { return JSON.parse(localStorage.getItem('sn_yt_songs') || '[]'); } catch { return []; }
   }); // YT tracks saved to playlist/liked
@@ -1674,6 +1676,8 @@ Return ONLY valid JSON, no explanation:
       stopAllMedia('embed');
       setEmbedTrack(ytTrack);
       setYtProgress(0); setYtDuration(secs||0); ytProgressRef.current = 0; ytDurationRef.current = secs||0; ytEndedFiredRef.current = false;
+      ytEmbedNocookieFailed.current = false;
+      setYtEmbedUseFallback(false);
       setEmbedMinimized(false);
       if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
@@ -2609,7 +2613,15 @@ Return ONLY valid JSON, no explanation:
   const [popularRecs, setPopularRecs] = useState(null);
   const [popularLoading, setPopularLoading] = useState(false);
   // ── Other: Playlist Generator ──────────────────────────────────────────
-  const [otherInnerTab, setOtherInnerTab] = useState('pref'); // 'pref' | 'popular'
+  const [otherInnerTab, setOtherInnerTab] = useState('pref'); // 'pref' | 'popular' | 'info' | 'stats'
+  // ── Other: Song Info (AI) ──────────────────────────────────────────────────
+  const [songInfoData, setSongInfoData] = useState(null);   // { trackId, info: {...} }
+  const [songInfoLoading, setSongInfoLoading] = useState(false);
+  const [songInfoError, setSongInfoError] = useState(null);
+  // ── Other: Listen Stats ────────────────────────────────────────────────────
+  const [listenLog, setListenLog] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('sn_listen_log') || '[]'); } catch { return []; }
+  }); // array of { id, title, artist, cover, color, ts, secs }
   const [prefPlaylist, setPrefPlaylist] = useState(null);
   const [prefPlaylistLoading, setPrefPlaylistLoading] = useState(false);
   const [prefPlaylistQueueLoading, setPrefPlaylistQueueLoading] = useState(false);
@@ -3004,6 +3016,25 @@ Return ONLY valid JSON, no explanation:
   useEffect(() => { try { localStorage.setItem('sn_fav_songs', JSON.stringify(favSongs)); } catch {} }, [favSongs]);
   useEffect(() => { try { localStorage.setItem('sn_yt_songs', JSON.stringify(ytSongs)); } catch {} }, [ytSongs]);
   useEffect(() => { try { localStorage.setItem('sn_history', JSON.stringify(history)); } catch {} }, [history]);
+
+  // ── Persist listenLog to localStorage
+  useEffect(() => { try { localStorage.setItem('sn_listen_log', JSON.stringify(listenLog.slice(0, 500))); } catch {} }, [listenLog]);
+
+  // ── Track play duration for listen stats (log every 30s of playback)
+  useEffect(() => {
+    if (!playing || !track?.id || track.isRadio) return;
+    const interval = setInterval(() => {
+      setListenLog(prev => {
+        const today = new Date().toISOString().slice(0,10);
+        const existing = prev.find(e => e.id === track.id && e.date === today);
+        if (existing) {
+          return prev.map(e => e.id === track.id && e.date === today ? { ...e, secs: e.secs + 30 } : e);
+        }
+        return [{ id: track.id, title: track.title, artist: track.artist, cover: track.cover||'', color: track.color||'#6366f1', date: today, secs: 30 }, ...prev].slice(0, 500);
+      });
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [playing, track?.id]); // eslint-disable-line
 
   // ── Sync favSongs + ytSongs ke Google Drive (debounce 5 detik setelah perubahan)
   const songSyncTimerRef = useRef(null);
@@ -4150,8 +4181,17 @@ Return ONLY valid JSON, no explanation:
         // FIX Bug 2: handle iframe error (video private / geo-block / embedding disabled)
         // YT error codes: 2=bad param, 5=HTML5 error, 100=not found, 101/150=embedding disabled
         if (data.event === 'onError') {
-          console.warn('[YT] iframe error code:', data.info, '— skip ke lagu berikutnya');
-          if (!ytEndedFiredRef.current) { ytEndedFiredRef.current = true; setTimeout(() => { if (ytNextRef.current) ytNextRef.current({ auto: true }); }, 500); }
+          console.warn('[YT] iframe error code:', data.info);
+          // Error 101/150 = embedding disabled di youtube.com tapi mungkin OK di youtube-nocookie.com
+          if ((data.info === 101 || data.info === 150) && !ytEmbedNocookieFailed.current) {
+            // Coba fallback ke youtube.com (karena default kita sudah nocookie, fallback = youtube.com)
+            console.warn('[YT] embedding disabled — mencoba fallback domain');
+            ytEmbedNocookieFailed.current = true;
+            setYtEmbedUseFallback(prev => !prev); // toggle untuk paksa re-mount iframe
+          } else {
+            console.warn('[YT] skip ke lagu berikutnya');
+            if (!ytEndedFiredRef.current) { ytEndedFiredRef.current = true; setTimeout(() => { if (ytNextRef.current) ytNextRef.current({ auto: true }); }, 500); }
+          }
         }
       } catch(_) {}
     };
@@ -4426,6 +4466,56 @@ Return ONLY valid JSON, no explanation:
 
   // ── For You: fetch AI popular recs once per session
   const POPULAR_TTL_MS = 60 * 60 * 1000; // 1 jam
+
+  // ── Fetch song info via AI ────────────────────────────────────────────────
+  const doFetchSongInfo = async (forceTrack) => {
+    const t = forceTrack || track;
+    const activeTitle  = embedTrack ? (embedTrack.title  || t.title)  : t.title;
+    const activeArtist = embedTrack ? (embedTrack.artist || t.artist) : t.artist;
+    if (!activeTitle) return;
+    const cacheId = embedTrack?.videoId || t.id;
+    if (songInfoData?.trackId === cacheId && !forceTrack) return; // sudah ada cache
+    setSongInfoLoading(true); setSongInfoError(null); setSongInfoData(null);
+    try {
+      const aiProvider = localStorage.getItem('sn_ai_provider') || 'anthropic';
+      const aiKey = localStorage.getItem(`sn_ai_key_${aiProvider}`) || '';
+      const endpoint = aiKey ? `/api/${aiProvider}` : '/api/anthropic';
+      const systemPrompt = 'You are a music encyclopedia. Return ONLY valid JSON, no markdown, no extra text.';
+      const userPrompt = `Give detailed info about the song "${activeTitle}" by "${activeArtist}". Return JSON with these exact keys:
+{
+  "genre": "main genre(s)",
+  "year": "release year or era",
+  "mood": "2-4 mood words",
+  "bpm": "estimated BPM or tempo description",
+  "key": "musical key if known, else null",
+  "language": "language of lyrics",
+  "about": "2-3 sentence description of the song's story/theme/vibe",
+  "funFacts": ["fact 1", "fact 2", "fact 3"],
+  "similarArtists": ["artist1", "artist2", "artist3"],
+  "tags": ["tag1", "tag2", "tag3", "tag4", "tag5"]
+}
+If info is unknown, use null. Return ONLY the JSON object.`;
+      const body = {
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 800,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
+      };
+      const headers = { 'Content-Type': 'application/json' };
+      if (aiKey) headers['x-api-key'] = aiKey;
+      const res = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(body) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const rawText = (data.content?.[0]?.text || data.text || data.result || '').trim();
+      const jsonStr = rawText.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
+      const info = JSON.parse(jsonStr);
+      setSongInfoData({ trackId: cacheId, title: activeTitle, artist: activeArtist, info });
+    } catch(e) {
+      setSongInfoError('Gagal memuat info lagu: ' + (e.message || 'error'));
+    }
+    setSongInfoLoading(false);
+  };
+
   // ── Generate playlist sesuai preferensi ──────────────────────────────────
   const generatePrefPlaylist = async () => {
     if (prefPlaylistLoading) return;
@@ -7099,7 +7189,12 @@ Format exactly:
             for (const cp of cloudPls) {
               const idx = merged.findIndex(p => p.id === cp.id);
               if (idx >= 0) {
-                if (!merged[idx].locked) {
+                // pl_fav (locked) tetap dimerge songIds-nya dari cloud
+                // agar favorit dari perangkat lain ikut masuk
+                if (merged[idx].id === 'pl_fav') {
+                  const combined = [...new Set([...merged[idx].songIds, ...(cp.songIds || [])])];
+                  merged[idx] = { ...merged[idx], songIds: combined };
+                } else if (!merged[idx].locked) {
                   const combined = [...new Set([...merged[idx].songIds, ...cp.songIds])];
                   merged[idx] = { ...cp, songIds: combined };
                 }
@@ -8946,14 +9041,135 @@ Format exactly:
                               </div>
                               <div style={{ padding:'0 8px 8px', display:'flex', flexDirection:'column', gap:4 }}>
                                 {[...wsResults].sort((a,b) => {
-                                  const order = ['jamendo','audius','ccmixter','fma','deezer','soundcloud','spotify'];
-                                  const ai = order.indexOf(a.source); const bi = order.indexOf(b.source);
-                                  return (ai===-1?999:ai) - (bi===-1?999:bi);
+                                  const EMBED_TYPES = new Set(['sc_embed','sp_embed','sc_section','sp_section','sc_redirect','facebook','instagram','tiktok','twitter','threads','bilibili','vidio','vimeo','dailymotion','archive','audiomack','mixcloud','odysee','rumble','peertube','newgrounds','fma']);
+                                  const aEmbed = EMBED_TYPES.has(a.type) || EMBED_TYPES.has(a.source);
+                                  const bEmbed = EMBED_TYPES.has(b.type) || EMBED_TYPES.has(b.source);
+                                  if (aEmbed === bEmbed) return 0;
+                                  return aEmbed ? 1 : -1;
                                 }).map((item, idx) => {
+                                  // ── sc_embed fallback
+                                  if (item.type === 'sc_embed') return (
+                                    <div key={idx} style={{ marginBottom:4 }}>
+                                      <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:4, paddingLeft:2 }}>
+                                        <PlatformLogo id="soundcloud" size={11}/>
+                                        <span style={{ fontSize:10, fontWeight:700, color:'#ff5500' }}>SoundCloud</span>
+                                        <span style={{ fontSize:9, color:'rgba(255,85,0,0.5)', marginLeft:2 }}>· Embed</span>
+                                      </div>
+                                      <div style={{ borderRadius:10, overflow:'hidden', border:'1px solid rgba(255,85,0,0.3)', background:'rgba(255,85,0,0.04)' }}>
+                                        <iframe key={`sc-u-embed-${item.query}`}
+                                          src={`https://w.soundcloud.com/player/?url=${encodeURIComponent('https://soundcloud.com/search?q='+encodeURIComponent(item.query))}&color=%23ff5500&auto_play=false&buying=false&liking=false&download=false&sharing=false&show_artwork=true&show_comments=false&show_playcount=false&show_user=true&hide_related=true&visual=false`}
+                                          width="100%" height="120" frameBorder="0" allow="autoplay" style={{ display:'block' }}/>
+                                        <div style={{ display:'flex', justifyContent:'flex-end', padding:'4px 8px', background:'rgba(0,0,0,0.3)' }}>
+                                          <button onClick={()=>window.open(`https://soundcloud.com/search?q=${encodeURIComponent(item.query)}`,'_blank','noopener,noreferrer')} style={{ fontSize:10, color:'#ff5500', background:'none', border:'none', cursor:'pointer', fontWeight:700 }}>Buka di SoundCloud ↗</button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                  // ── sp_embed fallback
+                                  if (item.type === 'sp_embed') return (
+                                    <div key={idx} style={{ marginBottom:4 }}>
+                                      <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:4, paddingLeft:2 }}>
+                                        <PlatformLogo id="spotify" size={11}/>
+                                        <span style={{ fontSize:10, fontWeight:700, color:'#1DB954' }}>Spotify</span>
+                                        <span style={{ fontSize:9, color:'rgba(29,185,84,0.5)', marginLeft:2 }}>· Embed</span>
+                                      </div>
+                                      <div style={{ borderRadius:10, overflow:'hidden', border:'1px solid rgba(29,185,84,0.3)', background:'rgba(29,185,84,0.04)' }}>
+                                        <iframe key={`sp-u-search-embed-${item.query}`}
+                                          src={`https://open.spotify.com/embed/search/${encodeURIComponent(item.query)}?utm_source=generator&theme=0`}
+                                          width="100%" height="152" frameBorder="0"
+                                          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                                          loading="lazy" style={{ display:'block' }}/>
+                                        <div style={{ display:'flex', justifyContent:'flex-end', padding:'4px 8px', background:'rgba(0,0,0,0.3)' }}>
+                                          <button onClick={()=>window.open(`https://open.spotify.com/search/${encodeURIComponent(item.query)}`,'_blank','noopener,noreferrer')} style={{ fontSize:10, color:'#1DB954', background:'none', border:'none', cursor:'pointer', fontWeight:700 }}>Buka di Spotify ↗</button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                  // ── sc_section (SoundCloud/Audius API results)
+                                  if (item.type === 'sc_section' && item._items?.length > 0) {
+                                    const sectionAudioItems = item._items.filter(x => x.audioUrl);
+                                    return (
+                                      <div key={idx} style={{ marginBottom:4 }}>
+                                        <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:4, paddingLeft:2 }}>
+                                          {item._items[0]?.source === 'audius'
+                                            ? <span style={{ fontSize:10, fontWeight:700, color:'#cc0000' }}>🎵 Audius</span>
+                                            : <><PlatformLogo id="soundcloud" size={11}/><span style={{ fontSize:10, fontWeight:700, color:'#ff5500' }}>SoundCloud</span></>}
+                                        </div>
+                                        <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                                          {item._items.map((t2, ti) => {
+                                            const isAudius = t2.source === 'audius';
+                                            const accentColor = isAudius ? '#cc0000' : '#ff5500';
+                                            const isCurrentTrack = isAudius && track?.id === `ws_audius_${t2.id}` && !embedTrack;
+                                            return (
+                                              <div key={t2.id||ti} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background: isCurrentTrack?`${accentColor}20`:'rgba(255,255,255,0.04)', border: isCurrentTrack?`1px solid ${accentColor}55`:'1px solid rgba(255,255,255,0.08)', cursor:'pointer' }}
+                                                onClick={() => { if(isAudius && t2.audioUrl) { if(isCurrentTrack) setPlaying(p=>!p); else playWsTrack(t2, sectionAudioItems, sectionAudioItems.indexOf(t2)); } else window.open(t2.permalinkUrl||`https://soundcloud.com/search?q=${encodeURIComponent(t2.title||'')}`, '_blank', 'noopener,noreferrer'); }}>
+                                                <div style={{ width:38, height:38, borderRadius:8, background:`${accentColor}20`, flexShrink:0, overflow:'hidden', position:'relative' }}>
+                                                  {t2.thumbnail && !isLite && <img src={t2.thumbnail} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{ e.target.style.display='none'; }}/>}
+                                                  <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background: isCurrentTrack?'rgba(0,0,0,0.45)':'rgba(0,0,0,0.25)' }}>
+                                                    {isCurrentTrack && playing ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12 }}>{[8,5,7].map((h,i)=>(<div key={i} style={{ width:2.5, height:h, background:accentColor, borderRadius:1, animation:`bounce 1.4s ease-in-out ${i*0.25}s infinite` }}/>))}</div> : <Play size={13} style={{ color:accentColor, marginLeft:2 }}/>}
+                                                  </div>
+                                                </div>
+                                                <div style={{ flex:1, minWidth:0 }}>
+                                                  <div style={{ fontSize:12, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color: isCurrentTrack?accentColor:'rgba(255,255,255,0.9)' }}>{t2.title}</div>
+                                                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{t2.artist}</div>
+                                                </div>
+                                                <button onClick={e=>{ e.stopPropagation(); window.open(t2.permalinkUrl||`https://soundcloud.com/search?q=${encodeURIComponent(t2.title||'')}`, '_blank', 'noopener,noreferrer'); }} style={{ background:'none', border:`1px solid ${accentColor}55`, borderRadius:6, color:accentColor, fontSize:10, fontWeight:700, padding:'3px 7px', cursor:'pointer', flexShrink:0, lineHeight:1.2 }}>↗</button>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                  // ── sp_section (Spotify/Deezer API results)
+                                  if (item.type === 'sp_section' && item._items?.length > 0) {
+                                    const isDeezerSection = item._items[0]?.source === 'deezer';
+                                    const spColor = isDeezerSection ? '#a238ff' : '#1DB954';
+                                    const sectionPreviewItems = item._items.filter(x => x.previewUrl);
+                                    return (
+                                      <div key={idx} style={{ marginBottom:4 }}>
+                                        <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:4, paddingLeft:2 }}>
+                                          {isDeezerSection
+                                            ? <span style={{ fontSize:10, fontWeight:700, color:'#a238ff' }}>🎵 Deezer <span style={{ fontSize:9, color:'rgba(162,56,255,0.5)' }}>· Preview 30s</span></span>
+                                            : <><PlatformLogo id="spotify" size={11}/><span style={{ fontSize:10, fontWeight:700, color:'#1DB954' }}>Spotify</span></>}
+                                        </div>
+                                        <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                                          {item._items.map((t3, ti) => {
+                                            const hasPreview = !!t3.previewUrl;
+                                            const isDeezer = t3.source === 'deezer';
+                                            const isPreviewActive = isDeezer ? (track?.id === `ws_deezer_${t3.id}` && !embedTrack) : false;
+                                            const coverUrl = t3.cover || t3.thumbnail || null;
+                                            return (
+                                              <div key={t3.id||ti} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background: isPreviewActive?`${spColor}20`:'rgba(255,255,255,0.04)', border: isPreviewActive?`1px solid ${spColor}55`:'1px solid rgba(255,255,255,0.08)', cursor:'pointer' }}
+                                                onClick={() => { if(isDeezer && hasPreview) { if(isPreviewActive) setPlaying(p=>!p); else playWsTrack(t3, sectionPreviewItems, sectionPreviewItems.indexOf(t3)); } else window.open(t3.spotifyUrl||`https://open.spotify.com/search/${encodeURIComponent(t3.title||'')}`, '_blank', 'noopener,noreferrer'); }}>
+                                                <div style={{ width:38, height:38, borderRadius:8, background:`${spColor}20`, flexShrink:0, overflow:'hidden', position:'relative' }}>
+                                                  {coverUrl && !isLite && <img src={coverUrl} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{ e.target.style.display='none'; }}/>}
+                                                  <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background: isPreviewActive?'rgba(0,0,0,0.45)':'rgba(0,0,0,0.25)' }}>
+                                                    {isPreviewActive && playing ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12 }}>{[8,5,7].map((h,i)=>(<div key={i} style={{ width:2.5, height:h, background:spColor, borderRadius:1, animation:`bounce 1.4s ease-in-out ${i*0.25}s infinite` }}/>))}</div> : <Play size={13} style={{ color:spColor, marginLeft:2 }}/>}
+                                                  </div>
+                                                </div>
+                                                <div style={{ flex:1, minWidth:0 }}>
+                                                  <div style={{ fontSize:12, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color: isPreviewActive?spColor:'rgba(255,255,255,0.9)' }}>{t3.title}</div>
+                                                  <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1, display:'flex', alignItems:'center', gap:4 }}>
+                                                    <span style={{ padding:'1px 5px', borderRadius:4, background:`${spColor}20`, color:spColor, fontWeight:700, fontSize:9 }}>{isDeezer?'deezer':'spotify'}</span>
+                                                    {t3.artist && <span>{t3.artist}</span>}
+                                                    {!hasPreview && !isDeezer && <span style={{ fontSize:9, color:'rgba(255,255,255,0.2)' }}>· Buka di app</span>}
+                                                  </div>
+                                                </div>
+                                                <button onClick={e=>{ e.stopPropagation(); window.open(t3.spotifyUrl||`https://open.spotify.com/search/${encodeURIComponent(t3.title||'')}`, '_blank', 'noopener,noreferrer'); }} style={{ background:'none', border:`1px solid ${spColor}55`, borderRadius:6, color:spColor, fontSize:10, fontWeight:700, padding:'3px 7px', cursor:'pointer', flexShrink:0, lineHeight:1.2 }}>↗</button>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                  // ── Skip unknown section types
+                                  if (item.type?.includes('section') || item.type?.includes('embed') || item.type === 'sc_redirect') return null;
+                                  // ── Regular item (jamendo, archive, ccmixter, audius individual, deezer individual, etc)
                                   const sc = srcColors2[item.source] || 'rgba(255,255,255,0.4)';
                                   const isAudio = !!item.audioUrl && ['jamendo','ccmixter','audius'].includes(item.source);
                                   const isCurrentTrack = track?.id === item.id || track?.audioUrl === item.audioUrl;
-                                  const isExternal = !isAudio && !!item.embedUrl;
                                   return (
                                     <div key={item.id||idx}
                                       style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background: isCurrentTrack?'rgba(99,102,241,0.12)':'rgba(255,255,255,0.04)', border: isCurrentTrack?'1px solid rgba(99,102,241,0.35)':'1px solid rgba(255,255,255,0.08)' }}
@@ -11692,14 +11908,16 @@ Format exactly:
                             </div>
                           </div>
 
-                          {/* Inner tab: Preferensi | Populer */}
-                          <div style={{ display:'flex', gap:0, margin:'0 16px 14px', background:'rgba(255,255,255,0.05)', borderRadius:12, padding:3 }}>
+                          {/* Inner tab: Preferensi | Populer | Info Lagu | Statistik */}
+                          <div style={{ display:'flex', gap:0, margin:'0 16px 14px', background:'rgba(255,255,255,0.05)', borderRadius:12, padding:3, flexWrap:'wrap' }}>
                             {[
-                              { id:'pref',    label:'🎯 Sesuai Preferensi' },
-                              { id:'popular', label:'🔥 Populer Sekarang'  },
+                              { id:'pref',    label:'🎯 Preferensi' },
+                              { id:'popular', label:'🔥 Populer'    },
+                              { id:'info',    label:'💿 Info Lagu'  },
+                              { id:'stats',   label:'📊 Statistik'  },
                             ].map(({ id, label }) => (
-                              <button key={id} onClick={() => setOtherInnerTab(id)}
-                                style={{ flex:1, padding:'7px 0', borderRadius:10, border:'none', fontSize:11, fontWeight:700, cursor:'pointer', transition:'all 0.18s',
+                              <button key={id} onClick={() => { setOtherInnerTab(id); if(id==='info') doFetchSongInfo(); }}
+                                style={{ flex:'1 0 45%', padding:'7px 0', borderRadius:10, border:'none', fontSize:10.5, fontWeight:700, cursor:'pointer', transition:'all 0.18s',
                                   background: otherInnerTab === id ? track.color : 'transparent',
                                   color:      otherInnerTab === id ? 'white' : 'rgba(255,255,255,0.4)',
                                 }}>
@@ -11845,6 +12063,281 @@ Format exactly:
                               )}
                             </div>
                           )}
+
+                          {/* ── Tab: Info Lagu ── */}
+                          {otherInnerTab === 'info' && (() => {
+                            const activeTitle  = embedTrack ? (embedTrack.title  || track.title)  : track.title;
+                            const activeArtist = embedTrack ? (embedTrack.artist || track.artist) : track.artist;
+                            const coverUrl     = embedTrack?.thumbnail || track.cover || '';
+                            const cacheId      = embedTrack?.videoId || track.id;
+                            const isCached     = songInfoData?.trackId === cacheId;
+                            return (
+                              <div style={{ padding:'0 16px 16px' }}>
+                                {/* Header: cover kecil + judul */}
+                                <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14, padding:'10px 12px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:`1px solid ${track.color}20` }}>
+                                  <div style={{ width:44, height:44, borderRadius:10, overflow:'hidden', flexShrink:0, background:`${track.color}20` }}>
+                                    {coverUrl && <img src={coverUrl} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{e.target.style.display='none';}}/>}
+                                  </div>
+                                  <div style={{ flex:1, minWidth:0 }}>
+                                    <div style={{ fontSize:12, fontWeight:800, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{activeTitle || '—'}</div>
+                                    <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{activeArtist || '—'}</div>
+                                  </div>
+                                  <button onClick={() => doFetchSongInfo()}
+                                    disabled={songInfoLoading}
+                                    title="Refresh info"
+                                    style={{ background:`${track.color}25`, border:`1px solid ${track.color}40`, borderRadius:8, color:track.color, fontSize:11, fontWeight:800, padding:'5px 10px', cursor:'pointer', flexShrink:0, opacity:songInfoLoading?0.5:1, display:'flex', alignItems:'center', gap:4 }}>
+                                    {songInfoLoading ? <><Loader2 size={11} style={{ animation:'spin 1s linear infinite' }}/></> : '↻'}
+                                  </button>
+                                </div>
+
+                                {/* Loading */}
+                                {songInfoLoading && (
+                                  <div style={{ textAlign:'center', padding:'24px 0', display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
+                                    <Loader2 size={22} style={{ animation:'spin 1s linear infinite', color:track.color }}/>
+                                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)' }}>Starry AI sedang mencari info lagu…</div>
+                                  </div>
+                                )}
+
+                                {/* Error */}
+                                {songInfoError && !songInfoLoading && (
+                                  <div style={{ padding:'10px 12px', borderRadius:10, background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.2)', fontSize:11, color:'#fca5a5', marginBottom:10 }}>
+                                    {songInfoError}
+                                  </div>
+                                )}
+
+                                {/* No track */}
+                                {!activeTitle && !songInfoLoading && (
+                                  <div style={{ textAlign:'center', padding:'20px 0', color:'rgba(255,255,255,0.25)', fontSize:11 }}>Putar lagu terlebih dahulu.</div>
+                                )}
+
+                                {/* Info cards */}
+                                {isCached && songInfoData?.info && !songInfoLoading && (() => {
+                                  const info = songInfoData.info;
+                                  return (
+                                    <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+
+                                      {/* Metadata chips row */}
+                                      <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                                        {[
+                                          { label:'Genre',    val: info.genre    },
+                                          { label:'Tahun',    val: info.year     },
+                                          { label:'Bahasa',   val: info.language },
+                                          { label:'BPM',      val: info.bpm      },
+                                          { label:'Key',      val: info.key      },
+                                          { label:'Mood',     val: info.mood     },
+                                        ].filter(x => x.val && x.val !== 'null').map(({ label, val }) => (
+                                          <div key={label} style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:'6px 12px', borderRadius:10, background:`${track.color}15`, border:`1px solid ${track.color}30`, minWidth:60 }}>
+                                            <div style={{ fontSize:9, color:`${track.color}90`, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em' }}>{label}</div>
+                                            <div style={{ fontSize:11, color:'white', fontWeight:700, marginTop:2, textAlign:'center' }}>{val}</div>
+                                          </div>
+                                        ))}
+                                      </div>
+
+                                      {/* About */}
+                                      {info.about && (
+                                        <div style={{ padding:'12px 14px', borderRadius:12, background:'rgba(255,255,255,0.04)', border:`1px solid ${track.color}20` }}>
+                                          <div style={{ fontSize:9, color:`${track.color}90`, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:6 }}>✨ Tentang Lagu</div>
+                                          <div style={{ fontSize:12, color:'rgba(255,255,255,0.8)', lineHeight:1.6 }}>{info.about}</div>
+                                        </div>
+                                      )}
+
+                                      {/* Fun Facts */}
+                                      {info.funFacts?.filter(Boolean).length > 0 && (
+                                        <div style={{ padding:'12px 14px', borderRadius:12, background:'rgba(255,255,255,0.04)', border:`1px solid ${track.color}20` }}>
+                                          <div style={{ fontSize:9, color:`${track.color}90`, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8 }}>🎲 Fun Facts</div>
+                                          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                                            {info.funFacts.filter(Boolean).map((fact, fi) => (
+                                              <div key={fi} style={{ display:'flex', gap:8, alignItems:'flex-start' }}>
+                                                <div style={{ width:18, height:18, borderRadius:6, background:`${track.color}25`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:800, color:track.color, flexShrink:0, marginTop:1 }}>{fi+1}</div>
+                                                <div style={{ fontSize:11.5, color:'rgba(255,255,255,0.7)', lineHeight:1.5 }}>{fact}</div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Similar Artists */}
+                                      {info.similarArtists?.filter(Boolean).length > 0 && (
+                                        <div style={{ padding:'12px 14px', borderRadius:12, background:'rgba(255,255,255,0.04)', border:`1px solid ${track.color}20` }}>
+                                          <div style={{ fontSize:9, color:`${track.color}90`, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8 }}>🎤 Artis Serupa</div>
+                                          <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                                            {info.similarArtists.filter(Boolean).map((a2, ai) => (
+                                              <button key={ai}
+                                                onClick={() => { const q2 = a2; setUnifiedPlatform('ytmusic'); setUnifiedQuery(q2); setYtQuery(p=>({...p, ytmusic:q2})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic', q2); ytMusicSectionRef.current?.scrollIntoView({ behavior:'smooth', block:'start' }); }, 300); }}
+                                                style={{ padding:'5px 12px', borderRadius:999, background:`${track.color}18`, border:`1px solid ${track.color}35`, color:'white', fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                                                {a2}
+                                              </button>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Tags */}
+                                      {info.tags?.filter(Boolean).length > 0 && (
+                                        <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
+                                          {info.tags.filter(Boolean).map((tag, ti) => (
+                                            <div key={ti} style={{ padding:'3px 10px', borderRadius:999, background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', color:'rgba(255,255,255,0.5)', fontSize:10, fontWeight:600 }}>
+                                              #{tag}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            );
+                          })()}
+
+                          {/* ── Tab: Statistik Mendengarkan ── */}
+                          {otherInnerTab === 'stats' && (() => {
+                            // Hitung statistik dari listenLog
+                            const totalSecs = listenLog.reduce((s, e) => s + (e.secs||0), 0);
+                            const totalMins = Math.round(totalSecs / 60);
+                            const totalHours = (totalSecs / 3600).toFixed(1);
+                            const totalSongs = new Set(listenLog.map(e => e.id)).size;
+
+                            // Top songs (aggregate by id)
+                            const songMap = {};
+                            listenLog.forEach(e => {
+                              if (!songMap[e.id]) songMap[e.id] = { ...e, secs: 0 };
+                              songMap[e.id].secs += e.secs;
+                            });
+                            const topSongs = Object.values(songMap).sort((a,b) => b.secs - a.secs).slice(0, 7);
+
+                            // Daily activity (last 7 days)
+                            const last7 = Array.from({ length:7 }, (_, i) => {
+                              const d = new Date(); d.setDate(d.getDate() - (6-i));
+                              return d.toISOString().slice(0,10);
+                            });
+                            const dailySecs = last7.map(date => ({
+                              date,
+                              label: new Date(date + 'T12:00:00').toLocaleDateString('id-ID', { weekday:'short' }),
+                              secs: listenLog.filter(e => e.date === date).reduce((s,e) => s+e.secs, 0),
+                            }));
+                            const maxSecs = Math.max(...dailySecs.map(d=>d.secs), 1);
+
+                            // Top artists
+                            const artistMap = {};
+                            listenLog.forEach(e => {
+                              const a = e.artist || 'Unknown';
+                              artistMap[a] = (artistMap[a]||0) + (e.secs||0);
+                            });
+                            const topArtists = Object.entries(artistMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+                            const hasData = listenLog.length > 0;
+
+                            return (
+                              <div style={{ padding:'0 16px 16px' }}>
+                                {!hasData ? (
+                                  <div style={{ textAlign:'center', padding:'32px 0', display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
+                                    <div style={{ fontSize:32 }}>📊</div>
+                                    <div style={{ fontSize:12, color:'rgba(255,255,255,0.35)', lineHeight:1.6 }}>
+                                      Statistik akan muncul setelah<br/>kamu mendengarkan musik selama 30 detik.
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+
+                                    {/* Summary cards */}
+                                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+                                      {[
+                                        { icon:'⏱️', val: totalMins >= 60 ? `${totalHours}j` : `${totalMins}m`, label:'Total Diputar' },
+                                        { icon:'🎵', val: totalSongs,        label:'Lagu Berbeda' },
+                                        { icon:'📅', val: new Set(listenLog.map(e=>e.date)).size, label:'Hari Aktif' },
+                                      ].map(({ icon, val, label }) => (
+                                        <div key={label} style={{ padding:'12px 8px', borderRadius:14, background:`${track.color}12`, border:`1px solid ${track.color}25`, textAlign:'center' }}>
+                                          <div style={{ fontSize:18, marginBottom:4 }}>{icon}</div>
+                                          <div style={{ fontSize:16, fontWeight:900, color:'white' }}>{val}</div>
+                                          <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', marginTop:2, fontWeight:600, lineHeight:1.3 }}>{label}</div>
+                                        </div>
+                                      ))}
+                                    </div>
+
+                                    {/* Activity chart — 7 hari terakhir */}
+                                    <div style={{ padding:'12px 14px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:`1px solid ${track.color}20` }}>
+                                      <div style={{ fontSize:9, color:`${track.color}90`, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>📅 Aktivitas 7 Hari Terakhir</div>
+                                      <div style={{ display:'flex', alignItems:'flex-end', gap:4, height:60 }}>
+                                        {dailySecs.map(({ date, label, secs }) => {
+                                          const pct = secs / maxSecs;
+                                          const mins2 = Math.round(secs/60);
+                                          const isToday = date === new Date().toISOString().slice(0,10);
+                                          return (
+                                            <div key={date} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:3, height:'100%', justifyContent:'flex-end' }} title={`${mins2} menit`}>
+                                              <div style={{ width:'100%', borderRadius:'4px 4px 0 0', background: isToday ? track.color : `${track.color}55`, minHeight: secs>0 ? 4 : 0, height:`${Math.max(pct*52,secs>0?4:0)}px`, transition:'height 0.4s ease' }}/>
+                                              <div style={{ fontSize:8, color: isToday ? track.color : 'rgba(255,255,255,0.3)', fontWeight: isToday?800:600 }}>{label}</div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+
+                                    {/* Top Songs */}
+                                    {topSongs.length > 0 && (
+                                      <div style={{ padding:'12px 14px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:`1px solid ${track.color}20` }}>
+                                        <div style={{ fontSize:9, color:`${track.color}90`, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>🎶 Lagu Paling Sering Diputar</div>
+                                        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                                          {topSongs.map((s, si) => {
+                                            const pct2 = topSongs[0].secs > 0 ? s.secs / topSongs[0].secs : 0;
+                                            const m2 = Math.round(s.secs/60);
+                                            return (
+                                              <div key={s.id} style={{ display:'flex', alignItems:'center', gap:8 }}
+                                                onClick={() => { const q2=`${s.title} ${s.artist}`; setUnifiedPlatform('ytmusic'); setUnifiedQuery(q2); setYtQuery(p=>({...p,ytmusic:q2})); setTab('stream'); setTimeout(()=>{ searchYouTube('ytmusic',q2); ytMusicSectionRef.current?.scrollIntoView({behavior:'smooth',block:'start'}); },300); }}
+                                                style={{ cursor:'pointer' }}>
+                                                <div style={{ width:18, fontSize:10, fontWeight:800, color:`${track.color}80`, textAlign:'right', flexShrink:0 }}>{si+1}</div>
+                                                <div style={{ width:32, height:32, borderRadius:8, overflow:'hidden', flexShrink:0, background:`${s.color||track.color}25` }}>
+                                                  {s.cover && <img src={s.cover} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{e.target.style.display='none';}}/>}
+                                                </div>
+                                                <div style={{ flex:1, minWidth:0 }}>
+                                                  <div style={{ fontSize:11, fontWeight:700, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.title}</div>
+                                                  <div style={{ position:'relative', height:3, borderRadius:99, background:'rgba(255,255,255,0.08)', marginTop:4, overflow:'hidden' }}>
+                                                    <div style={{ position:'absolute', left:0, top:0, height:'100%', borderRadius:99, background:s.color||track.color, width:`${pct2*100}%`, transition:'width 0.4s ease' }}/>
+                                                  </div>
+                                                </div>
+                                                <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', flexShrink:0, fontWeight:600 }}>{m2}m</div>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Top Artists */}
+                                    {topArtists.length > 0 && (
+                                      <div style={{ padding:'12px 14px', borderRadius:14, background:'rgba(255,255,255,0.04)', border:`1px solid ${track.color}20` }}>
+                                        <div style={{ fontSize:9, color:`${track.color}90`, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>🎤 Artis Favorit</div>
+                                        <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
+                                          {topArtists.map(([artist, secs2], ai) => {
+                                            const pct3 = topArtists[0][1] > 0 ? secs2 / topArtists[0][1] : 0;
+                                            return (
+                                              <div key={artist} style={{ display:'flex', alignItems:'center', gap:8 }}>
+                                                <div style={{ width:18, fontSize:10, fontWeight:800, color:`${track.color}80`, textAlign:'right', flexShrink:0 }}>{ai+1}</div>
+                                                <div style={{ flex:1, minWidth:0 }}>
+                                                  <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
+                                                    <div style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.85)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'70%' }}>{artist}</div>
+                                                    <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', fontWeight:600 }}>{Math.round(secs2/60)}m</div>
+                                                  </div>
+                                                  <div style={{ height:3, borderRadius:99, background:'rgba(255,255,255,0.08)', overflow:'hidden' }}>
+                                                    <div style={{ height:'100%', borderRadius:99, background:track.color, width:`${pct3*100}%`, transition:'width 0.4s ease' }}/>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Reset button */}
+                                    <button onClick={() => { if(window.confirm('Reset semua data statistik?')) { setListenLog([]); localStorage.removeItem('sn_listen_log'); } }}
+                                      style={{ padding:'8px', borderRadius:10, border:'1px solid rgba(239,68,68,0.2)', background:'rgba(239,68,68,0.06)', color:'rgba(239,68,68,0.6)', fontSize:10, fontWeight:700, cursor:'pointer', marginTop:2 }}>
+                                      🗑 Reset Statistik
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
 
                         </div>{/* end Other section */}
 
@@ -12491,16 +12984,21 @@ Format exactly:
 
       {/* ══ YOUTUBE HIDDEN AUDIO IFRAME — persistent, single instance ══ */}
       {/* CATATAN: display:none memblokir autoplay di Chrome/mobile — gunakan position off-screen */}
-      {embedTrack && embedTrack.type === 'youtube' && (
-        <iframe
-          ref={ytIframeRef}
-          key={embedTrack.videoId}
-          src={`https://www.youtube.com/embed/${embedTrack.videoId}?autoplay=1&enablejsapi=1&rel=0&modestbranding=1&playsinline=1&origin=${encodeURIComponent(window.location.origin)}`}
-          title={embedTrack.title}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; background-fetch"
-          style={{ position:'fixed', top:'-9999px', left:'-9999px', width:320, height:180, pointerEvents:'none', border:'none', zIndex:-1 }}
-        />
-      )}
+      {embedTrack && embedTrack.type === 'youtube' && (() => {
+        // Default: youtube-nocookie.com (lebih permisif soal embedding, tidak ada cookie tracking).
+        // Fallback ke youtube.com jika youtube-nocookie error 101/150.
+        const embedDomain = ytEmbedUseFallback ? 'www.youtube.com' : 'www.youtube-nocookie.com';
+        return (
+          <iframe
+            ref={ytIframeRef}
+            key={`${embedTrack.videoId}-${ytEmbedUseFallback}`}
+            src={`https://${embedDomain}/embed/${embedTrack.videoId}?autoplay=1&enablejsapi=1&rel=0&modestbranding=1&playsinline=1&origin=${encodeURIComponent(window.location.origin)}`}
+            title={embedTrack.title}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; background-fetch"
+            style={{ position:'fixed', top:'-9999px', left:'-9999px', width:320, height:180, pointerEvents:'none', border:'none', zIndex:-1 }}
+          />
+        );
+      })()}
 
       <style>{`
         *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
