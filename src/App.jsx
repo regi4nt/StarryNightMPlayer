@@ -6724,40 +6724,58 @@ Format exactly:
     }
     setSongInfoL(true);
     const isEn = lang === 'en';
+    const systemPrompt = isEn
+      ? `You are a music database. You only state facts you are confident about for well-known songs. For obscure or unknown songs, use "Unknown" for uncertain fields rather than guessing. Reply ONLY with a raw JSON object — no markdown fences, no explanation, no extra text.`
+      : `Kamu adalah database musik. Hanya tulis fakta yang kamu yakin benar untuk lagu-lagu terkenal. Untuk lagu yang tidak dikenal, gunakan "Tidak diketahui" untuk field yang tidak yakin daripada mengarang. Balas HANYA dengan JSON mentah — tanpa markdown, tanpa penjelasan, tanpa teks lain.`;
     const prompt = isEn
-      ? `You are a music expert. For the song "${activeTitle}" by ${activeArtist}, respond ONLY with a valid JSON object (no markdown, no explanation) with exactly these keys:
-{
-  "genre": "main genre (1-2 words)",
-  "year": "release year or decade e.g. 2019 or 1990s",
-  "language": "main language of lyrics",
-  "bpm": "approximate BPM range e.g. 90-100 or just a number",
-  "key": "musical key e.g. C Major or A Minor",
-  "mood": "2-3 mood words separated by comma",
-  "about": "2-3 sentence description of the song theme and vibe in English",
-  "facts": ["fact 1 in English", "fact 2 in English", "fact 3 in English"],
-  "similarArtists": ["Artist 1", "Artist 2", "Artist 3"],
-  "tags": ["#tag1", "#tag2", "#tag3", "#tag4", "#tag5"]
-}`
-      : `Kamu ahli musik. Untuk lagu "${activeTitle}" oleh ${activeArtist}, balas HANYA dengan JSON valid (tanpa markdown, tanpa penjelasan) dengan key berikut:
-{
-  "genre": "genre utama (1-2 kata)",
-  "year": "tahun rilis atau dekade misal 2019 atau 1990-an",
-  "language": "bahasa utama lirik",
-  "bpm": "kisaran BPM misal 90-100 atau angka saja",
-  "key": "kunci musik misal C Mayor atau A Minor",
-  "mood": "2-3 kata mood dipisah koma",
-  "about": "deskripsi 2-3 kalimat tentang tema dan vibe lagu dalam Bahasa Indonesia",
-  "facts": ["fakta 1 dalam Bahasa Indonesia", "fakta 2", "fakta 3"],
-  "similarArtists": ["Artis 1", "Artis 2", "Artis 3"],
-  "tags": ["#tag1", "#tag2", "#tag3", "#tag4", "#tag5"]
-}`;
-    const raw = await askAIRace(prompt, isEn
-      ? 'You are a music expert. Reply ONLY with a valid JSON object, no markdown backticks, no extra text.'
-      : 'Kamu ahli musik. Balas HANYA dengan JSON valid, tanpa backtick markdown, tanpa teks tambahan.'
-    );
+      ? `Song: "${activeTitle}" by ${activeArtist}.
+
+If you recognize this song, fill in the JSON accurately. If you do NOT recognize it, still fill what you can logically infer, and mark uncertain fields as "Unknown".
+
+Respond with ONLY this JSON (no markdown, no text before or after):
+{"genre":"","year":"","language":"","bpm":"","key":"","mood":"","about":"","facts":["","",""],"similarArtists":["","",""],"tags":["","","","",""]}
+
+Rules:
+- genre: 1-2 word music genre
+- year: exact year if known, else decade like "2010s", else "Unknown"  
+- language: language of the lyrics
+- bpm: numeric range like "120-130" or single number, else "Unknown"
+- key: musical key like "C Major", else "Unknown"
+- mood: 2-3 descriptive mood words, comma separated
+- about: 2-3 sentences describing the song's theme, sound and vibe — be specific to THIS song
+- facts: 3 true, interesting, specific facts about this song or its artist — NO generic statements
+- similarArtists: 3 artists with similar style to ${activeArtist}
+- tags: 5 hashtags like #indie #chill #2020s`
+      : `Lagu: "${activeTitle}" oleh ${activeArtist}.
+
+Jika kamu mengenali lagu ini, isi JSON dengan akurat. Jika TIDAK mengenali, isi semampunya secara logis, dan tandai field yang tidak yakin dengan "Tidak diketahui".
+
+Balas HANYA dengan JSON ini (tanpa markdown, tanpa teks lain):
+{"genre":"","year":"","language":"","bpm":"","key":"","mood":"","about":"","facts":["","",""],"similarArtists":["","",""],"tags":["","","","",""]}
+
+Aturan:
+- genre: genre musik 1-2 kata
+- year: tahun tepat jika tahu, atau dekade misal "2010-an", atau "Tidak diketahui"
+- language: bahasa lirik
+- bpm: kisaran angka misal "120-130" atau angka tunggal, atau "Tidak diketahui"
+- key: kunci musik misal "C Mayor", atau "Tidak diketahui"
+- mood: 2-3 kata mood deskriptif, dipisah koma
+- about: 2-3 kalimat yang mendeskripsikan tema, suara, dan vibe lagu ini — spesifik ke LAGU INI
+- facts: 3 fakta benar, menarik, dan spesifik tentang lagu ini atau artisnya — BUKAN pernyataan umum
+- similarArtists: 3 artis dengan gaya mirip ${activeArtist}
+- tags: 5 hashtag seperti #indie #chill #2020an`;
+    const raw = await askAIRace(prompt, systemPrompt, [], 900);
     try {
-      const cleaned = (raw || '').replace(/```json|```/g, '').trim();
+      const cleaned = (raw || '').replace(/```json[\s\S]*?```|```[\s\S]*?```/g, s => s.replace(/```json|```/g,'')).replace(/^[^{]*({[\s\S]*})[^}]*$/, '$1').trim();
       const parsed  = JSON.parse(cleaned);
+      // Sanitize: replace empty strings with fallback
+      if (!parsed.about) parsed.about = isEn ? 'No description available.' : 'Deskripsi tidak tersedia.';
+      if (!Array.isArray(parsed.facts)) parsed.facts = [];
+      if (!Array.isArray(parsed.similarArtists)) parsed.similarArtists = [];
+      if (!Array.isArray(parsed.tags)) parsed.tags = [];
+      parsed.facts = parsed.facts.filter(Boolean);
+      parsed.similarArtists = parsed.similarArtists.filter(Boolean);
+      parsed.tags = parsed.tags.filter(Boolean);
       songInfoCacheRef.current[cacheKey] = parsed;
       setSongInfo(parsed);
     } catch {
@@ -11436,7 +11454,7 @@ Format exactly:
                   { id:'lyrics',  label:`🎵 ${t?.lyricsTab||'Lyrics'}` },
                   { id:'stats',   label:`📊 ${t?.statsTab||'Stats'}` },
                 ].map(({id, label})=>(
-                  <button key={id} onClick={()=>{ setAiSubView(id); if(id==='lyrics' && aiSubView==='lyrics') getLyricsRef.current?.(); }}
+                  <button key={id} onClick={()=>{ setAiSubView(id); if(id==='lyrics' && !lyrics && !lyricsLoading) getLyricsRef.current?.(); }}
                     style={{ padding:'9px 16px', borderRadius:0, border:'none', background:'none', color:aiSubView===id?'white':'rgba(255,255,255,0.4)', fontSize:12, fontWeight:aiSubView===id?800:600, cursor:'pointer', borderBottom:aiSubView===id?`2px solid ${track.color}`:'2px solid transparent', marginBottom:-1, flexShrink:0, whiteSpace:'nowrap' }}>
                     {label}
                   </button>
@@ -11505,7 +11523,7 @@ Format exactly:
                     },
                   ].map(item => (
                     <div key={item.id}
-                      onClick={() => { setAiSubView(item.id); if(item.id==='lyrics') getLyricsRef.current?.(); }}
+                      onClick={() => { setAiSubView(item.id); if(item.id==='lyrics' && !lyrics && !lyricsLoading) getLyricsRef.current?.(); }}
                       style={{
                         gridColumn: item.wide ? '1 / -1' : undefined,
                         borderRadius:18,
@@ -11571,8 +11589,8 @@ Format exactly:
               <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'0 0 28px' }}>
 
                 {/* ── Hero banner ── */}
-                <div style={{ margin:'0 16px 14px', borderRadius:20, overflow:'hidden', background:'rgba(255,255,255,0.03)', border:`1px solid ${accentColor}22` }}>
-                  <div style={{ height:96, background:`linear-gradient(135deg,${accentColor}45,${accentColor}18)`, display:'flex', alignItems:'flex-end', padding:'0 16px 13px', gap:13, position:'relative', overflow:'hidden' }}>
+                <div style={{ margin:'0 16px 14px', borderRadius:20, overflow:'hidden', background:'rgba(255,255,255,0.03)', border:`1px solid ${accentColor}22`, position:'relative' }}>
+                  <div style={{ height:96, background:`linear-gradient(135deg,${accentColor}45,${accentColor}18)`, display:'flex', alignItems:'flex-end', padding:'0 52px 13px 16px', gap:13, position:'relative' }}>
                     <div style={{ position:'absolute', top:-20, right:-20, width:110, height:110, borderRadius:'50%', background:`${accentColor}18`, filter:'blur(28px)' }}/>
                     {iTrack.cover||iTrack.thumbnail
                       ? <img src={iTrack.cover||iTrack.thumbnail} alt={iTrack.title} style={{ width:58, height:58, borderRadius:13, objectFit:'cover', flexShrink:0, boxShadow:`0 4px 14px ${accentColor}50`, border:`2px solid ${accentColor}60` }}/>
@@ -11582,13 +11600,13 @@ Format exactly:
                       <div style={{ fontSize:14, fontWeight:800, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', letterSpacing:'-0.01em' }}>{iTrack.title||'Unknown'}</div>
                       <div style={{ fontSize:11.5, color:'rgba(255,255,255,0.58)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop:2 }}>{iTrack.artist||'Unknown Artist'}</div>
                     </div>
-                    {/* Refresh button */}
-                    <button onClick={()=>getSongInfo(true)} disabled={songInfoLoading}
-                      style={{ flexShrink:0, width:30, height:30, borderRadius:999, border:`1px solid ${accentColor}40`, background:`${accentColor}18`, color:accentColor, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:14, opacity:songInfoLoading?0.4:1, transition:'opacity 0.2s' }}
-                      title={lang==='en'?'Refresh Info':'Perbarui Info'}>
-                      {songInfoLoading ? <Loader2 size={13} style={{ animation:'spin 1s linear infinite' }}/> : '↻'}
-                    </button>
                   </div>
+                  {/* Refresh button — outside overflow:hidden parent so borderRadius & click work */}
+                  <button onClick={()=>getSongInfo(true)} disabled={songInfoLoading}
+                    style={{ position:'absolute', top:10, right:10, width:32, height:32, borderRadius:999, border:`1px solid ${accentColor}50`, background:`${accentColor}25`, color:accentColor, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:15, fontWeight:700, opacity:songInfoLoading?0.4:1, transition:'opacity 0.2s', zIndex:2 }}
+                    title={lang==='en'?'Refresh Info':'Perbarui Info'}>
+                    {songInfoLoading ? <Loader2 size={13} style={{ animation:'spin 1s linear infinite' }}/> : '↻'}
+                  </button>
                 </div>
 
                 {/* ── Loading skeleton ── */}
