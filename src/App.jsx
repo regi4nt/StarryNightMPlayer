@@ -2591,7 +2591,9 @@ Return ONLY valid JSON, no explanation:
   const [searchQuery, setSearchQuery]   = useState('');
 
   // ── AI
-  const [aiSubView, setAiSubView] = useState('chat'); // 'chat' | 'lyrics' | 'foryou'
+  const [aiSubView, setAiSubView] = useState(() => {
+    try { return localStorage.getItem('sn_aiSubView') || 'grid'; } catch { return 'grid'; }
+  }); // 'chat' | 'lyrics' | 'foryou' | 'insight' | 'stats'
 
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
@@ -3004,6 +3006,7 @@ Return ONLY valid JSON, no explanation:
   useEffect(() => { try { localStorage.setItem('sn_fav_songs', JSON.stringify(favSongs)); } catch {} }, [favSongs]);
   useEffect(() => { try { localStorage.setItem('sn_yt_songs', JSON.stringify(ytSongs)); } catch {} }, [ytSongs]);
   useEffect(() => { try { localStorage.setItem('sn_history', JSON.stringify(history)); } catch {} }, [history]);
+  useEffect(() => { try { localStorage.setItem('sn_aiSubView', aiSubView); } catch {} }, [aiSubView]);
 
   // ── Sync favSongs + ytSongs ke Google Drive (debounce 5 detik setelah perubahan)
   const songSyncTimerRef = useRef(null);
@@ -11296,19 +11299,300 @@ Format exactly:
               {/* Sub-nav tabs — centered */}
               <div style={{ display:'flex', justifyContent:'center', gap:0, marginBottom:0, borderBottom:'1px solid rgba(255,255,255,0.06)', overflowX:'auto' }} className="scrollbar-hide">
                 {[
-                  { id:'chat', label:'💬 Chat' },
-                  { id:'foryou', label:'🎯 For You' },
-                  { id:'lyrics', label:`🎵 ${t?.lyricsTab||'Lyrics'}` },
+                  { id:'grid',    label:'🏠' },
+                  { id:'insight', label:`✨ ${t?.insightTab||'Info Lagu'}` },
+                  { id:'stats',   label:`📊 ${t?.statsTab||'Stats'}` },
+                  { id:'chat',    label:'💬 Chat' },
+                  { id:'foryou',  label:'🎯 For You' },
+                  { id:'lyrics',  label:`🎵 ${t?.lyricsTab||'Lyrics'}` },
                 ].map(({id, label})=>(
                   <button key={id} onClick={()=>{ setAiSubView(id); if(id==='lyrics' && aiSubView==='lyrics') getLyricsRef.current?.(); }}
-                    style={{ padding:'9px 22px', borderRadius:0, border:'none', background:'none', color:aiSubView===id?'white':'rgba(255,255,255,0.4)', fontSize:13, fontWeight:aiSubView===id?800:600, cursor:'pointer', borderBottom:aiSubView===id?`2px solid ${track.color}`:'2px solid transparent', marginBottom:-1, flexShrink:0, whiteSpace:'nowrap' }}>
+                    style={{ padding:'9px 16px', borderRadius:0, border:'none', background:'none', color:aiSubView===id?'white':'rgba(255,255,255,0.4)', fontSize:12, fontWeight:aiSubView===id?800:600, cursor:'pointer', borderBottom:aiSubView===id?`2px solid ${track.color}`:'2px solid transparent', marginBottom:-1, flexShrink:0, whiteSpace:'nowrap' }}>
                     {label}
                   </button>
                 ))}
               </div>
             </div>{/* end AI Header */}
 
-            {/* Chat + Vibe result area OR Lyrics OR For You */}
+            {/* Chat + Vibe result area OR Lyrics OR For You OR Insight OR Stats OR Grid */}
+
+            {/* ── GRID: Menu Utama Other ── */}
+            {aiSubView==='grid' && (
+              <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'16px 14px 24px' }}>
+                {/* Welcome banner */}
+                <div style={{ borderRadius:20, overflow:'hidden', background:`linear-gradient(135deg,${track.color}25,${track.color}08)`, border:`1px solid ${track.color}30`, padding:'18px 18px 16px', marginBottom:18, position:'relative' }}>
+                  <div style={{ position:'absolute', top:-30, right:-20, width:120, height:120, borderRadius:'50%', background:`${track.color}18`, filter:'blur(40px)', pointerEvents:'none' }}/>
+                  <div style={{ fontSize:22 }}>🌌</div>
+                  <div style={{ fontWeight:800, fontSize:16, marginTop:6, marginBottom:4 }}>Starry AI</div>
+                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)', lineHeight:1.6 }}>
+                    {lang==='en' ? 'Choose a feature to explore' : 'Pilih fitur yang ingin kamu jelajahi'}
+                  </div>
+                </div>
+
+                {/* 5-card grid */}
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                  {[
+                    {
+                      id:'insight',
+                      emoji:'✨',
+                      label: lang==='en' ? 'Song Info' : 'Info Lagu',
+                      desc: lang==='en' ? 'Details, mood & song analysis' : 'Detail, mood & analisis lagu',
+                      gradient:'linear-gradient(135deg,#6366f133,#818cf820)',
+                      accent:'#818cf8',
+                    },
+                    {
+                      id:'stats',
+                      emoji:'📊',
+                      label:'Stats',
+                      desc: lang==='en' ? 'Listening stats & history' : 'Statistik & riwayat dengar',
+                      gradient:'linear-gradient(135deg,#22d3ee33,#06b6d420)',
+                      accent:'#22d3ee',
+                    },
+                    {
+                      id:'chat',
+                      emoji:'💬',
+                      label:'Chat',
+                      desc: lang==='en' ? 'Chat with Starry AI' : 'Ngobrol dengan Starry AI',
+                      gradient:'linear-gradient(135deg,#a855f733,#ec489920)',
+                      accent:'#a855f7',
+                    },
+                    {
+                      id:'foryou',
+                      emoji:'🎯',
+                      label:'For You',
+                      desc: lang==='en' ? 'Personalized recommendations' : 'Rekomendasi untukmu',
+                      gradient:'linear-gradient(135deg,#f59e0b33,#ef444420)',
+                      accent:'#f59e0b',
+                    },
+                    {
+                      id:'lyrics',
+                      emoji:'🎵',
+                      label: lang==='en' ? 'Lyrics' : 'Lirik',
+                      desc: lang==='en' ? 'Synced lyrics & romanization' : 'Lirik tersinkron & romanisasi',
+                      gradient:'linear-gradient(135deg,#10b98133,#06b6d420)',
+                      accent:'#10b981',
+                      wide: true,
+                    },
+                  ].map(item => (
+                    <div key={item.id}
+                      onClick={() => { setAiSubView(item.id); if(item.id==='lyrics') getLyricsRef.current?.(); }}
+                      style={{
+                        gridColumn: item.wide ? '1 / -1' : undefined,
+                        borderRadius:18,
+                        background: item.gradient,
+                        border:`1px solid ${item.accent}30`,
+                        padding:'16px 16px 14px',
+                        cursor:'pointer',
+                        position:'relative',
+                        overflow:'hidden',
+                        transition:'transform 0.15s, box-shadow 0.15s',
+                        boxShadow:`0 2px 16px ${item.accent}15`,
+                        display: item.wide ? 'flex' : 'block',
+                        alignItems: item.wide ? 'center' : undefined,
+                        gap: item.wide ? 14 : undefined,
+                      }}
+                      onMouseEnter={e=>{ e.currentTarget.style.transform='scale(1.03)'; e.currentTarget.style.boxShadow=`0 6px 24px ${item.accent}30`; }}
+                      onMouseLeave={e=>{ e.currentTarget.style.transform='scale(1)'; e.currentTarget.style.boxShadow=`0 2px 16px ${item.accent}15`; }}
+                      onTouchStart={e=>{ e.currentTarget.style.transform='scale(0.97)'; }}
+                      onTouchEnd={e=>{ e.currentTarget.style.transform='scale(1)'; }}
+                    >
+                      <div style={{ position:'absolute', top:-16, right:-16, width:64, height:64, borderRadius:'50%', background:`${item.accent}15`, filter:'blur(20px)', pointerEvents:'none' }}/>
+                      <div style={{ fontSize: item.wide ? 26 : 28, lineHeight:1, marginBottom: item.wide ? 0 : 8, flexShrink:0 }}>{item.emoji}</div>
+                      <div>
+                        <div style={{ fontWeight:800, fontSize:13, color:'white', marginBottom:3 }}>{item.label}</div>
+                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)', lineHeight:1.5 }}>{item.desc}</div>
+                      </div>
+                      <div style={{ position:'absolute', bottom:10, right:12, fontSize:16, color:`${item.accent}80`, fontWeight:900 }}>›</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Quick stats row */}
+                <div style={{ display:'flex', gap:8, marginTop:14 }}>
+                  {[
+                    { label: lang==='en'?'Now Playing':'Sekarang', val: (track.title||'—').slice(0,18)+'…' },
+                    { label: lang==='en'?'AI':'AI', val: hasKey() ? '🟢 On' : '🔴 Off' },
+                  ].map((s,i) => (
+                    <div key={i} style={{ flex:1, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:'9px 12px' }}>
+                      <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:3 }}>{s.label}</div>
+                      <div style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.75)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.val}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── INSIGHT: Info Lagu ── */}
+            {aiSubView==='insight' && (
+              <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'0 0 24px' }}>
+                {/* Cover + Meta */}
+                <div style={{ margin:'0 16px 16px', borderRadius:20, overflow:'hidden', background:'rgba(255,255,255,0.03)', border:`1px solid ${track.color}20` }}>
+                  {/* Hero gradient banner */}
+                  <div style={{ height:100, background:`linear-gradient(135deg,${track.color}40,${track.bg||'rgba(0,0,0,0)'}80)`, display:'flex', alignItems:'flex-end', padding:'0 16px 14px', gap:14, position:'relative', overflow:'hidden' }}>
+                    <div style={{ position:'absolute', top:-20, right:-20, width:120, height:120, borderRadius:'50%', background:`${track.color}20`, filter:'blur(30px)' }}/>
+                    {track.cover
+                      ? <img src={track.cover} alt={track.title} style={{ width:60, height:60, borderRadius:14, objectFit:'cover', flexShrink:0, boxShadow:`0 4px 16px ${track.color}50`, border:`2px solid ${track.color}60` }}/>
+                      : <div style={{ width:60, height:60, borderRadius:14, background:`${track.color}30`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><span style={{ fontSize:28 }}>🎵</span></div>
+                    }
+                    <div style={{ minWidth:0 }}>
+                      <div style={{ fontSize:15, fontWeight:800, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginBottom:3, letterSpacing:'-0.01em' }}>{track.title||'Unknown'}</div>
+                      <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{track.artist||'Unknown Artist'}</div>
+                      {track.album && <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{track.album}</div>}
+                    </div>
+                  </div>
+                  {/* Metadata pills */}
+                  <div style={{ padding:'12px 14px', display:'flex', flexWrap:'wrap', gap:7 }}>
+                    {track.mood && track.mood.split(',').slice(0,3).map((m,i)=>(
+                      <span key={i} style={{ fontSize:10, fontWeight:700, padding:'4px 10px', borderRadius:999, background:`${track.color}18`, color:track.color, border:`1px solid ${track.color}30`, whiteSpace:'nowrap' }}>{m.trim()}</span>
+                    ))}
+                    {track.genre && <span style={{ fontSize:10, fontWeight:700, padding:'4px 10px', borderRadius:999, background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.5)', border:'1px solid rgba(255,255,255,0.08)', whiteSpace:'nowrap' }}>{track.genre}</span>}
+                    {track.isRadio && <span style={{ fontSize:10, fontWeight:700, padding:'4px 10px', borderRadius:999, background:'rgba(239,68,68,0.1)', color:'#fca5a5', border:'1px solid rgba(239,68,68,0.2)', whiteSpace:'nowrap' }}>📻 Radio</span>}
+                    {track.isDrive && <span style={{ fontSize:10, fontWeight:700, padding:'4px 10px', borderRadius:999, background:'rgba(99,102,241,0.1)', color:'#a5b4fc', border:'1px solid rgba(99,102,241,0.2)', whiteSpace:'nowrap' }}>☁️ Drive</span>}
+                  </div>
+                </div>
+
+                {/* Cosmic Insight card */}
+                <div style={{ margin:'0 16px 14px', padding:'14px', borderRadius:18, background:`linear-gradient(135deg,rgba(99,102,241,0.1),rgba(168,85,247,0.08))`, border:'1px solid rgba(99,102,241,0.2)' }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+                      <span style={{ fontSize:16 }}>✨</span>
+                      <span style={{ fontSize:11, fontWeight:800, color:'rgba(165,180,252,0.9)', letterSpacing:'0.05em', textTransform:'uppercase' }}>{t?.cosmicInsightTitle||'Cosmic Insight'}</span>
+                    </div>
+                    <button onClick={getInsight} disabled={insightLoading}
+                      style={{ padding:'4px 12px', borderRadius:999, border:'1px solid rgba(99,102,241,0.4)', background:'rgba(99,102,241,0.15)', color:'#a5b4fc', fontSize:10, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:5, opacity:insightLoading?0.5:1 }}>
+                      {insightLoading ? <Loader2 size={11} style={{ animation:'spin 1s linear infinite' }}/> : <Sparkles size={11}/>}
+                      {insightLoading ? (lang==='en'?'Writing…':'Menulis…') : (insight ? (lang==='en'?'Refresh':'Perbarui') : (lang==='en'?'Generate':'Generate'))}
+                    </button>
+                  </div>
+                  {insight ? (
+                    <div style={{ fontSize:13, color:'rgba(255,255,255,0.75)', lineHeight:1.7, fontStyle:'italic', letterSpacing:'0.01em' }}>"{insight}"</div>
+                  ) : insightLoading ? (
+                    <div style={{ display:'flex', alignItems:'center', gap:8, color:'rgba(255,255,255,0.35)', fontSize:12 }}>
+                      <Loader2 size={13} style={{ animation:'spin 1s linear infinite', color:'#6366f1' }}/>
+                      {lang==='en' ? 'Crafting poetic insight…' : 'Sedang merangkai wawasan puitis…'}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize:12, color:'rgba(255,255,255,0.3)', fontStyle:'italic' }}>
+                      {lang==='en' ? 'Tap Generate to get a poetic take on this song.' : 'Tekan Generate untuk mendapatkan kiasan puitis lagu ini.'}
+                    </div>
+                  )}
+                </div>
+
+                {/* Quick actions */}
+                <div style={{ margin:'0 16px', display:'flex', flexDirection:'column', gap:8 }}>
+                  <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.2)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:2 }}>{lang==='en'?'Quick Actions':'Aksi Cepat'}</div>
+                  {[
+                    { icon:'🎵', label: lang==='en'?'View Lyrics':'Lihat Lirik', action:()=>setAiSubView('lyrics') },
+                    { icon:'💬', label: lang==='en'?'Chat About This Song':'Obrolan Lagu Ini', action:()=>{ setAiSubView('chat'); } },
+                    { icon:'🎯', label: lang==='en'?'Find Similar Songs':'Cari Lagu Serupa', action:()=>setAiSubView('foryou') },
+                  ].map(({icon,label,action},i)=>(
+                    <button key={i} onClick={action}
+                      style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', borderRadius:14, border:`1px solid rgba(255,255,255,0.06)`, background:'rgba(255,255,255,0.03)', color:'rgba(255,255,255,0.7)', fontSize:12, fontWeight:600, cursor:'pointer', textAlign:'left', transition:'background 0.15s' }}
+                      onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.07)'}
+                      onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.03)'}>
+                      <span style={{ fontSize:18, flexShrink:0 }}>{icon}</span>
+                      {label}
+                      <span style={{ marginLeft:'auto', color:'rgba(255,255,255,0.2)', fontSize:14 }}>›</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── STATS: Riwayat & Statistik Mendengarkan ── */}
+            {aiSubView==='stats' && (
+              <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'0 0 24px' }}>
+                {/* Summary bar */}
+                <div style={{ margin:'12px 16px', display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+                  {[
+                    { label: lang==='en'?'Played':'Diputar', value: history.length, icon:'▶️' },
+                    { label: lang==='en'?'Artists':'Artis', value: new Set(history.map(s=>s.artist).filter(Boolean)).size, icon:'🎤' },
+                    { label: lang==='en'?'Albums':'Album', value: new Set(history.map(s=>s.album).filter(Boolean)).size || '—', icon:'💿' },
+                  ].map(({label,value,icon},i)=>(
+                    <div key={i} style={{ padding:'12px 10px', borderRadius:16, background:'rgba(255,255,255,0.04)', border:`1px solid ${track.color}18`, textAlign:'center' }}>
+                      <div style={{ fontSize:20, marginBottom:4 }}>{icon}</div>
+                      <div style={{ fontSize:18, fontWeight:800, color:'white' }}>{value}</div>
+                      <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em', marginTop:2 }}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Top moods pie-ish */}
+                {history.length > 0 && (() => {
+                  const moodCount = {};
+                  history.forEach(s => { if (s.mood) { s.mood.split(',').forEach(m => { const k=m.trim(); if(k) moodCount[k]=(moodCount[k]||0)+1; }); } });
+                  const topMoods = Object.entries(moodCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
+                  if (!topMoods.length) return null;
+                  const total = topMoods.reduce((acc,[,v])=>acc+v,0);
+                  const colors = [track.color,'#a855f7','#06b6d4','#22c55e','#f59e0b'];
+                  return (
+                    <div style={{ margin:'0 16px 14px', padding:'14px', borderRadius:18, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)' }}>
+                      <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:12 }}>🎭 {lang==='en'?'Your Mood Palette':'Palet Mood Kamu'}</div>
+                      {topMoods.map(([mood,count],i)=>(
+                        <div key={mood} style={{ marginBottom:8 }}>
+                          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
+                            <span style={{ fontSize:11, color:'rgba(255,255,255,0.65)', fontWeight:600 }}>{mood}</span>
+                            <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)' }}>{count}x</span>
+                          </div>
+                          <div style={{ height:4, borderRadius:999, background:'rgba(255,255,255,0.06)', overflow:'hidden' }}>
+                            <div style={{ height:'100%', borderRadius:999, background:colors[i]||track.color, width:`${Math.round((count/total)*100)}%`, transition:'width 0.6s ease' }}/>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+
+                {/* History list */}
+                <div style={{ margin:'0 16px' }}>
+                  <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>
+                    🕐 {lang==='en'?'Recently Played':'Baru Diputar'} ({Math.min(history.length,15)})
+                  </div>
+                  {history.length === 0 ? (
+                    <div style={{ textAlign:'center', padding:'32px 0', color:'rgba(255,255,255,0.25)', fontSize:12 }}>
+                      <div style={{ fontSize:36, marginBottom:10 }}>🎵</div>
+                      {lang==='en' ? 'No songs played yet.' : 'Belum ada lagu yang diputar.'}
+                    </div>
+                  ) : (
+                    <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                      {history.slice(0,15).map((s,i)=>(
+                        <div key={`${s.id}-${i}`}
+                          onClick={()=>{ if(s.src||s.driveId) { play(s); } }}
+                          style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:14, background: i===0 ? `${track.color}15` : 'rgba(255,255,255,0.03)', border: i===0 ? `1px solid ${track.color}30` : '1px solid rgba(255,255,255,0.05)', cursor:'pointer', transition:'background 0.15s' }}
+                          onMouseEnter={e=>{ if(i!==0) e.currentTarget.style.background='rgba(255,255,255,0.07)'; }}
+                          onMouseLeave={e=>{ if(i!==0) e.currentTarget.style.background='rgba(255,255,255,0.03)'; }}>
+                          {/* Rank or playing indicator */}
+                          <div style={{ width:24, height:24, borderRadius:8, background: i===0 ? track.color : `rgba(255,255,255,0.06)`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                            {i===0 && playing
+                              ? <div style={{ display:'flex', gap:2, alignItems:'flex-end', height:12 }}>{[6,10,8].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:'white', borderRadius:1, animation:`bounce 1.4s ease-in-out ${j*0.2}s infinite` }}/>))}</div>
+                              : <span style={{ fontSize:9, fontWeight:800, color: i===0?'white':'rgba(255,255,255,0.3)' }}>{i+1}</span>
+                            }
+                          </div>
+                          {/* Cover */}
+                          {s.cover
+                            ? <img src={s.cover} alt={s.title} style={{ width:36, height:36, borderRadius:10, objectFit:'cover', flexShrink:0 }}/>
+                            : <div style={{ width:36, height:36, borderRadius:10, background:`${s.color||track.color}25`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><span style={{ fontSize:16 }}>🎵</span></div>
+                          }
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontSize:12, fontWeight:700, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.title||'Unknown'}</div>
+                            <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.artist||'Unknown Artist'}</div>
+                          </div>
+                          {i===0 && <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:999, background:`${track.color}30`, color:track.color, flexShrink:0 }}>NOW</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {history.length > 0 && (
+                    <button
+                      onClick={()=>{ setHistory([]); }}
+                      style={{ width:'100%', marginTop:14, padding:'9px 0', borderRadius:12, border:'1px solid rgba(239,68,68,0.2)', background:'rgba(239,68,68,0.06)', color:'rgba(239,68,68,0.6)', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                      🗑️ {lang==='en'?'Clear History':'Hapus Riwayat'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
             {aiSubView==='foryou' ? (
               /* ── FOR YOU / DISCOVER FEED VIEW */
               <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'0 0 24px' }}>
