@@ -1331,25 +1331,33 @@ async function _ytAudioUrlViaInvidious(videoId, signal) {
 
 // ── Method 3: Cobalt.tools (public API — tidak butuh key) ────────────────────
 // Instance cobalt publik — dicoba berurutan jika instance sebelumnya gagal/butuh auth
+// Updated Juni 2026 — dari list.cobalt.tools (hanya instance tanpa auth)
 const COBALT_INSTANCES = [
   'https://api.cobalt.tools/',
   'https://cobalt.api.timelessnesses.me/',
-  'https://cobalt.esmBot.net/',
+  'https://coapi.vlad.yt/',
+  'https://cobalt.drgns.space/',
 ];
 
 async function _callCobaltInstance(instanceUrl, body, signal) {
   const res = await fetch(instanceUrl, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
     body: JSON.stringify(body),
     signal,
   });
   if (!res.ok) return null;
   const data = await res.json();
-  // cobalt v10 response: { status, url } or { status, picker }
-  // status: 'redirect'|'tunnel'|'stream'|'picker'|'error'
-  if (data.status === 'error') return null; // auth error, unsupported, etc
-  const url = data.url || (Array.isArray(data.picker) ? data.picker[0]?.url : null);
+  // cobalt v10+ response: { status, url } or { status, tunnel } or { status, picker }
+  // status: 'redirect' | 'tunnel' | 'stream' | 'picker' | 'error' | 'rate-limit'
+  if (data.status === 'error' || data.status === 'rate-limit') return null;
+  // 'redirect' = URL langsung ke CDN (perlu proxy karena CORS)
+  // 'tunnel'   = URL ke cobalt tunnel (CORS-safe, bisa langsung di-fetch)
+  // 'stream'   = alias tunnel di beberapa versi
+  const url = data.url || data.tunnel || (Array.isArray(data.picker) ? data.picker[0]?.url : null);
   if (!url) return null;
   return { url, mime: 'audio/mpeg' };
 }
@@ -1370,33 +1378,50 @@ async function _ytAudioUrlViaCobalt(videoId, signal) {
 }
 
 // Download audio YouTube → simpan ke cache
-// Fallback berlapis: Piped → Invidious → Cobalt
+// Menggunakan /api/yt-audio (server-side proxy) sebagai metode utama.
+// Alasan: URL dari Piped/Invidious adalah IP-locked ke server mereka — tidak bisa
+// di-fetch dari browser atau server proxy biasa. Endpoint /api/yt-audio mengatasi
+// ini dengan mem-proxy stream server-to-server (server kita → Piped → YT CDN → client).
+// Fallback: Cobalt (jika /api/yt-audio gagal)
 export async function downloadYtAudio(videoId, onProgress, signal) {
   // Cek cache dulu
   const existing = await ytCacheGet(videoId);
   if (existing && existing.size > 10000) { onProgress && onProgress(100); return; }
 
-  // Coba semua method satu per satu
-  let audioInfo = null;
-  const methods = [
-    () => _ytAudioUrlViaPiped(videoId, signal),
-    () => _ytAudioUrlViaInvidious(videoId, signal),
-    () => _ytAudioUrlViaCobalt(videoId, signal),
-  ];
-  for (const method of methods) {
-    try {
-      audioInfo = await method();
-      if (audioInfo?.url) break;
-    } catch { continue; }
+  // ── Method 1: /api/yt-audio (server-side Piped/Invidious proxy) ──────────
+  // Ini adalah cara yang benar: server kita fetch audio stream dari YT CDN
+  // menggunakan kredensial Piped (Referer/Origin), lalu stream ke browser.
+  try {
+    const proxyUrl = `/api/yt-audio?videoId=${videoId}`;
+    const res = await fetch(proxyUrl, { signal, mode: 'cors' });
+    if (res.ok) {
+      const blob = await _readStreamToBlob(res, onProgress, 'audio/mpeg');
+      if (blob && blob.size > 10000) {
+        await ytCachePut(videoId, blob);
+        onProgress && onProgress(100);
+        return;
+      }
+    }
+  } catch (e) {
+    if (signal?.aborted) throw e;
   }
 
-  if (!audioInfo?.url) throw new Error('Semua sumber audio YouTube tidak tersedia (Piped/Invidious/Cobalt gagal)');
+  // ── Method 2: Cobalt (fallback jika /api/yt-audio gagal) ─────────────────
+  try {
+    const cobaltInfo = await _ytAudioUrlViaCobalt(videoId, signal);
+    if (cobaltInfo?.url) {
+      const blob = await _fetchAudioBlob(cobaltInfo.url, onProgress, signal, cobaltInfo.mime);
+      if (blob && blob.size > 10000) {
+        await ytCachePut(videoId, blob);
+        onProgress && onProgress(100);
+        return;
+      }
+    }
+  } catch (e) {
+    if (signal?.aborted) throw e;
+  }
 
-  // Download blob dengan progress
-  const blob = await _fetchAudioBlob(audioInfo.url, onProgress, signal, audioInfo.mime);
-  if (!blob || blob.size < 1000) throw new Error('Audio yang diunduh kosong atau rusak');
-  await ytCachePut(videoId, blob);
-  onProgress && onProgress(100);
+  throw new Error('Download audio YouTube gagal: /api/yt-audio dan Cobalt tidak tersedia');
 }
 
 // ── Unduh file audio ke perangkat (bukan cache browser) — memicu dialog Save As

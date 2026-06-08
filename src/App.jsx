@@ -793,19 +793,60 @@ export default function App() {
         return []; // Deezer tidak ada hasil, biarkan merged logic pakai sp_embed
       })() : Promise.resolve([]);
 
-      // SoundCloud & Spotify API (jika ada key) — OAuth token menghasilkan hasil lebih lengkap
+      // SoundCloud — OAuth > client_id. Resolve direct stream URL per track.
       const scPromise = scHasKey ? (async () => {
         try {
-          // Prioritaskan OAuth search (lebih banyak tracks, termasuk yang unlisted)
+          // Prioritaskan OAuth (mendapat _transcodings untuk direct stream)
           const oauthItems = hasScOAuth() ? await searchSoundCloudOAuth(q, 8) : null;
           const items = oauthItems || await searchSoundCloud(q, 8);
-          return (items||[]).map(t=>({...t,source:'soundcloud',type:'soundcloud',
-            _relevance: relevanceScore(t.title, t.artist||t.user?.username||'', q)}));
+          if (!items?.length) return [];
+          // Resolve stream URL paralel (maks 8 track sekaligus)
+          const resolved = await Promise.all((items||[]).map(async t => {
+            let audioUrl = null;
+            // Jika punya _transcodings (OAuth), resolve langsung
+            if (t._transcodings?.length) {
+              try {
+                const r = await getScTrackStreamUrl(t._transcodings);
+                audioUrl = r?.url || null;
+              } catch {}
+            }
+            // Fallback: resolve via track ID jika OAuth tersedia
+            if (!audioUrl && hasScOAuth() && t.id) {
+              try {
+                const r = await getScTrackStreamUrl(t.id);
+                audioUrl = r?.url || null;
+              } catch {}
+            }
+            return {
+              ...t,
+              audioUrl,
+              streamUrl: audioUrl || t.streamUrl || t.permalinkUrl || '',
+              source: 'soundcloud',
+              type: 'soundcloud',
+              _relevance: relevanceScore(t.title, t.artist || '', q),
+            };
+          }));
+          // Kembalikan semua — yang punya audioUrl langsung diputar, yang tidak punya masuk sc_section
+          return resolved;
         } catch { return []; }
       })() : Promise.resolve([]);
+
+      // Spotify — sp_dc > client_id+secret > server proxy. audioUrl = previewUrl atau full via sp_dc.
       const spPromise = spHasKey ? (async () => {
-        try { const items = await searchSpotify(q, 8); return (items||[]).map(t=>({...t,source:'spotify',type:'spotify_track',
-          _relevance: relevanceScore(t.name||t.title, t.artists?.join(',')||t.artist||'', q)})); } catch { return []; }
+        try {
+          const items = await searchSpotify(q, 8);
+          if (!items?.length) return [];
+          return (items||[]).map(t => ({
+            ...t,
+            // previewUrl (30s) tersedia langsung dari Spotify API
+            // Jika sp_dc tersedia, full track bisa di-resolve saat diputar (via getSpotifyFullTrackUrl)
+            audioUrl: t.previewUrl || null,
+            source: 'spotify',
+            type: 'spotify_track',
+            _spHasDc: spHasInternalLogin, // flag agar renderer tahu full track tersedia
+            _relevance: relevanceScore(t.name||t.title, t.artists?.join(',')||t.artist||'', q),
+          }));
+        } catch { return []; }
       })() : Promise.resolve([]);
 
       // Jalankan semua paralel — tidak ada yang saling menunggu
@@ -837,35 +878,47 @@ export default function App() {
         return sb - sa;
       });
 
-      const merged = [...dedupedAudio];
-
-      // SC & SP ditaruh paling bawah (sebagai section dengan items ter-sort by relevance)
       const sortByRelevance = (items) => [...items].sort((a, b) =>
         ((b._relevance ?? 0) - (a._relevance ?? 0)));
 
-      // SoundCloud: tampilkan section jika ada hasil, SELALU tambahkan embed sebagai fallback
+      // SC items (API key = SoundCloud, tanpa key = Audius) — normalise ke audioUrl
       const scItems = scHasKey ? scWsRes : scPubRes;
-      if (scItems.length > 0) {
-        merged.push({ type:'sc_section', source:'soundcloud_section', _items: dedup(sortByRelevance(scItems)) });
-      }
-      merged.push({ type:'sc_embed', source:'soundcloud_embed', query: q });
+      const scFlat = scItems.map(t => ({
+        ...t,
+        audioUrl: t.audioUrl || t.streamUrl || null,
+        source: t.source || (scHasKey ? 'soundcloud' : 'audius'),
+      })).filter(t => t.audioUrl);
 
-      // Spotify: tampilkan section jika ada hasil, SELALU tambahkan embed sebagai fallback
+      // SP items (API key = Spotify, tanpa key = Deezer) — normalise ke audioUrl
       const spItems = spHasKey ? spWsRes : spPubRes;
-      if (spItems.length > 0) {
-        merged.push({ type:'sp_section', source:'spotify_section', _items: dedup(sortByRelevance(spItems)) });
+      const spFlat = spItems.map(t => ({
+        ...t,
+        audioUrl: t.audioUrl || t.previewUrl || null,
+        source: t.source || (spHasKey ? 'spotify' : 'deezer'),
+      })).filter(t => t.audioUrl);
+
+      // Gabungkan semua audio: Jamendo/archive + SC/SP — sort by relevance, dedup
+      const merged = dedup(sortByRelevance([...dedupedAudio, ...scFlat, ...spFlat]));
+
+      // Jika API key tersedia tapi tidak ada audioUrl (SC full track tanpa stream URL),
+      // tampilkan sebagai sc_section/sp_section dengan tombol buka eksternal
+      const scNoAudio = scHasKey && scWsRes.length > 0 && scFlat.length === 0;
+      if (scNoAudio) {
+        merged.push({ type:'sc_section', source:'soundcloud_section', _items: dedup(sortByRelevance(scWsRes)) });
       }
-      merged.push({ type:'sp_embed', source:'spotify_embed', query: q });
+      const spNoAudio = spHasKey && spWsRes.length > 0 && spFlat.length === 0;
+      if (spNoAudio) {
+        merged.push({ type:'sp_section', source:'spotify_section', _items: dedup(sortByRelevance(spWsRes)) });
+      }
 
-      const dedupedMerged = merged; // main list sudah di-dedup di atas
+      const dedupedMerged = merged;
 
-      const hasRealResults = archRes.length+jamRes.length+ccRes.length+scWsRes.length+spWsRes.length
-        +scPubRes.length
-        +spPubRes.length > 0;
+      const hasRealResults = archRes.length+jamRes.length+ccRes.length
+        +scFlat.length+spFlat.length+scWsRes.length+spWsRes.length > 0;
 
       setWsResults(dedupedMerged);
       if (!hasRealResults) {
-        setWsError('Tidak ada hasil audio langsung. SoundCloud & Spotify tersedia sebagai embed di bawah.');
+        setWsError('Tidak ada hasil audio. Coba kata kunci lain atau cari langsung di tab SoundCloud/Spotify.');
       }
     } catch(e) {
       if (sig.aborted) { setWsLoading(false); return; } // jangan set error jika memang sengaja di-abort
@@ -1964,22 +2017,57 @@ Return ONLY valid JSON, no explanation:
     }
   };
 
-  // ── Play web-search native audio (Jamendo/FMA/ccMixter)
-  const playWsTrack = useCallback((item, queue, queueIdx) => {
-    const srcColors = { jamendo:'#f0c020', fma:'#5cb85c', ccmixter:'#e74c3c', audius:'#cc0000', deezer:'#a238ff', archive:'#8b5cf6' };
-    const srcBgs    = { jamendo:'rgba(240,192,32,0.15)', fma:'rgba(92,184,92,0.15)', ccmixter:'rgba(231,76,60,0.15)', audius:'rgba(204,0,0,0.15)', deezer:'rgba(162,56,255,0.15)', archive:'rgba(139,92,246,0.15)' };
+  // ── Play web-search native audio (Jamendo/FMA/ccMixter/Audius/Deezer/SC/SP)
+  const playWsTrack = useCallback(async (item, queue, queueIdx) => {
+    const srcColors = { jamendo:'#f0c020', fma:'#5cb85c', ccmixter:'#e74c3c', audius:'#cc0000', deezer:'#a238ff', archive:'#8b5cf6', soundcloud:'#ff5500', spotify:'#1DB954' };
+    const srcBgs    = { jamendo:'rgba(240,192,32,0.15)', fma:'rgba(92,184,92,0.15)', ccmixter:'rgba(231,76,60,0.15)', audius:'rgba(204,0,0,0.15)', deezer:'rgba(162,56,255,0.15)', archive:'rgba(139,92,246,0.15)', soundcloud:'rgba(255,85,0,0.15)', spotify:'rgba(29,185,84,0.15)' };
+
+    let resolvedAudioUrl = item.audioUrl || null;
+
+    // ── SoundCloud: jika audioUrl kosong, coba resolve via OAuth sekarang
+    if (!resolvedAudioUrl && item.source === 'soundcloud' && hasScOAuth()) {
+      try {
+        const transcodings = item._transcodings?.length ? item._transcodings : null;
+        const r = transcodings
+          ? await getScTrackStreamUrl(transcodings)
+          : item.id ? await getScTrackStreamUrl(item.id) : null;
+        resolvedAudioUrl = r?.url || null;
+      } catch {}
+    }
+
+    // ── Spotify: sp_dc tersedia → coba full track, fallback ke previewUrl
+    if (item.source === 'spotify' && item._spHasDc && item.id) {
+      try {
+        const fullUrl = await getSpotifyFullTrackUrl(item.id);
+        if (fullUrl) resolvedAudioUrl = fullUrl;
+      } catch {}
+      if (!resolvedAudioUrl) resolvedAudioUrl = item.previewUrl || item.audioUrl || null;
+    }
+
+    const isSpPreview = item.source === 'spotify' && !item._spHasDc;
     const nativeTrack = {
       id: `ws_${item.source}_${item.id||item.audioUrl}`,
       title: item.title,
       artist: item.artist || item.source,
-      album: item.source === 'jamendo' ? 'Jamendo' : item.source === 'fma' ? 'Free Music Archive' : item.source === 'audius' ? 'Audius' : item.source === 'deezer' ? 'Deezer Preview' : item.source === 'archive' ? 'Archive.org' : 'ccMixter',
-      cover: item.thumbnail || '',
-      src: item.audioUrl,
+      album: item.source === 'jamendo' ? 'Jamendo' : item.source === 'fma' ? 'Free Music Archive' : item.source === 'audius' ? 'Audius' : item.source === 'deezer' ? 'Deezer Preview' : item.source === 'archive' ? 'Archive.org' : item.source === 'soundcloud' ? 'SoundCloud' : item.source === 'spotify' ? (isSpPreview ? 'Spotify Preview (30s)' : 'Spotify') : 'ccMixter',
+      cover: item.cover || item.thumbnail || '',
+      src: resolvedAudioUrl,
       color: srcColors[item.source] || '#6366f1',
       bg: srcBgs[item.source] || 'rgba(99,102,241,0.15)',
       mood: '',
       _wsSource: item.source,
+      _spTrackId: item.source === 'spotify' ? item.id : undefined,
+      _scTrackId: item.source === 'soundcloud' ? item.id : undefined,
+      _transcodings: item._transcodings,
     };
+
+    if (!resolvedAudioUrl) {
+      // Tidak ada audio — buka di browser sebagai fallback
+      const fallbackUrl = item.permalinkUrl || item.spotifyUrl || item.externalUrl || '';
+      if (fallbackUrl) window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
     if (queue) {
       wsQueueRef.current   = queue;
       wsQueueIdxRef.current = queueIdx ?? 0;
@@ -2015,7 +2103,8 @@ Return ONLY valid JSON, no explanation:
       const _COBALT_INSTANCES = [
         'https://api.cobalt.tools/',
         'https://cobalt.api.timelessnesses.me/',
-        'https://cobalt.esmBot.net/',
+        'https://coapi.vlad.yt/',
+        'https://cobalt.drgns.space/',
       ];
       const _cobaltBody = { url: sourceUrl, downloadMode: 'audio', audioFormat: 'mp3' };
       let audioUrl = null;
@@ -2029,8 +2118,8 @@ Return ONLY valid JSON, no explanation:
           });
           if (!res.ok) { lastCobaltErr = new Error(`cobalt HTTP ${res.status}`); continue; }
           const data = await res.json();
-          if (data.status === 'error') { lastCobaltErr = new Error(data.error?.code || 'cobalt error'); continue; }
-          audioUrl = data.url || (Array.isArray(data.picker) ? data.picker[0]?.url : null);
+          if (data.status === 'error' || data.status === 'rate-limit') { lastCobaltErr = new Error(data.error?.code || 'cobalt error'); continue; }
+          audioUrl = data.url || data.tunnel || (Array.isArray(data.picker) ? data.picker[0]?.url : null);
           if (audioUrl) break;
         } catch (e) { lastCobaltErr = e; continue; }
       }
@@ -2366,10 +2455,13 @@ Return ONLY valid JSON, no explanation:
   // ── Helper: download URL via proxy server jika CORS gagal ────────────────
   // Mengembalikan true jika berhasil, false jika gagal
   const proxyDownload = async (url, filename) => {
-    if (!url || !url.startsWith('https://')) return false;
+    if (!url) return false;
     try {
-      const proxyUrl = `/api/audio-proxy?url=${encodeURIComponent(url)}`;
-      const res = await fetch(proxyUrl, { mode: 'cors' });
+      // URL relatif (/api/...) — fetch langsung, tidak perlu proxy tambahan
+      // URL https:// eksternal — lewat /api/audio-proxy untuk atasi CORS
+      const fetchUrl = url.startsWith('/') ? url : `/api/audio-proxy?url=${encodeURIComponent(url)}`;
+      if (!url.startsWith('/') && !url.startsWith('https://')) return false;
+      const res = await fetch(fetchUrl, { mode: 'cors' });
       if (!res.ok) return false;
       const blob = await res.blob();
       if (!blob || blob.size < 500) return false;
@@ -2394,7 +2486,8 @@ Return ONLY valid JSON, no explanation:
     const COBALT_INSTANCES_APP = [
       'https://api.cobalt.tools/',
       'https://cobalt.api.timelessnesses.me/',
-      'https://cobalt.esmBot.net/',
+      'https://coapi.vlad.yt/',
+      'https://cobalt.drgns.space/',
     ];
     const body = { url: pageUrl, downloadMode: 'audio', audioFormat: 'mp3' };
     let lastErr = null;
@@ -2407,8 +2500,8 @@ Return ONLY valid JSON, no explanation:
         });
         if (!res.ok) { lastErr = new Error(`cobalt ${res.status}`); continue; }
         const data = await res.json();
-        if (data.status === 'error') { lastErr = new Error(data.error?.code || 'cobalt error'); continue; }
-        const url = data.url || (Array.isArray(data.picker) ? data.picker[0]?.url : null);
+        if (data.status === 'error' || data.status === 'rate-limit') { lastErr = new Error(data.error?.code || 'cobalt error'); continue; }
+        const url = data.url || data.tunnel || (Array.isArray(data.picker) ? data.picker[0]?.url : null);
         if (url) return url;
         lastErr = new Error('cobalt: no url');
       } catch (e) { lastErr = e; continue; }
@@ -2448,7 +2541,7 @@ Return ONLY valid JSON, no explanation:
 
     // ═══════════════════════════════════════════════════════
     // YouTube
-    // Fallback: cache → downloadYtAudio (Piped→Invidious→Cobalt via proxy) → Cobalt URL via proxy → YT
+    // Fallback: cache → /api/yt-audio (server proxy) → Cobalt → buka YT
     // ═══════════════════════════════════════════════════════
     if (s.type === 'youtube' && s.videoId) {
       // 1. Cache lokal
@@ -2456,13 +2549,20 @@ Return ONLY valid JSON, no explanation:
         const cached = await ytCacheGet(s.videoId);
         if (isBlobValid(cached, 10000)) { downloadBlobToDevice(cached, `${name}.mp3`); return; }
       } catch {}
-      // 2-4. downloadYtAudio: Piped → Invidious → Cobalt (sudah pakai proxy di _fetchAudioBlob)
+      // 2. /api/yt-audio: server-side proxy (Piped/Invidious → YT CDN, server-to-server)
+      //    Ini metode utama — tidak IP-locked, stream langsung dari server
+      try {
+        const ytAudioUrl = `/api/yt-audio?videoId=${s.videoId}`;
+        const ok = await proxyDownload(ytAudioUrl, `${name}.mp3`);
+        if (ok) return;
+      } catch {}
+      // 3. downloadYtAudio: juga pakai /api/yt-audio tapi simpan ke cache dulu
       try {
         await downloadYtAudio(s.videoId, null, null);
         const blob = await ytCacheGet(s.videoId);
         if (isBlobValid(blob, 10000)) { downloadBlobToDevice(blob, `${name}.mp3`); return; }
       } catch {}
-      // 5. Cobalt: ambil URL lalu download via proxy server
+      // 4. Cobalt: ambil URL lalu download via proxy server
       try {
         const cobaltUrl = await cobaltAudioUrl(`https://www.youtube.com/watch?v=${s.videoId}`);
         if (cobaltUrl) {
@@ -2474,7 +2574,7 @@ Return ONLY valid JSON, no explanation:
           return;
         }
       } catch {}
-      // 6. Last resort: buka YouTube di browser (redirect)
+      // 5. Last resort: buka YouTube di browser (redirect)
       openUrlFallback(`https://www.youtube.com/watch?v=${s.videoId}`);
       return;
     }
@@ -9649,8 +9749,8 @@ Format exactly:
 
                     {/* ── Hasil WebSearch — tampil di dalam kartu search */}
                     {unifiedPlatform === 'websearch' && (() => {
-                      const wsAudioItems = wsResults.filter(it => it.audioUrl && ['jamendo','ccmixter','audius','archive','fma'].includes(it.source));
-                      const srcColors2 = { jamendo:'#f0c020', fma:'#5cb85c', ccmixter:'#e74c3c', audius:'#cc0000', deezer:'#a238ff', archive:'#8b5cf6' };
+                      const wsAudioItems = wsResults.filter(it => it.audioUrl && ['jamendo','ccmixter','audius','archive','fma','deezer','soundcloud'].includes(it.source));
+                      const srcColors2 = { jamendo:'#f0c020', fma:'#5cb85c', ccmixter:'#e74c3c', audius:'#cc0000', deezer:'#a238ff', archive:'#8b5cf6', soundcloud:'#ff5500', spotify:'#1DB954' };
                       if (!wsLoading && wsResults.length === 0 && !wsError && !wsEmbedUrl) return null;
                       return (
                         <div style={{ padding:'0 10px 10px' }}>
@@ -9694,42 +9794,36 @@ Format exactly:
                                 }).map((item, idx) => {
                                   // ── sc_embed: SoundCloud iframe search
                                   if (item.type === 'sc_embed') return (
-                                    <div key={idx} style={{ marginBottom:4 }}>
-                                      <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:4, paddingLeft:2 }}>
-                                        <PlatformLogo id="soundcloud" size={11}/>
-                                        <span style={{ fontSize:10, fontWeight:700, color:'#ff5500' }}>SoundCloud</span>
-                                        <span style={{ fontSize:9, color:'rgba(255,85,0,0.5)', marginLeft:2 }}>· Embed</span>
+                                    <div key={idx}
+                                      onClick={() => window.open(`https://soundcloud.com/search?q=${encodeURIComponent(item.query)}`, '_blank', 'noopener,noreferrer')}
+                                      style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background:'rgba(255,85,0,0.08)', border:'1px solid rgba(255,85,0,0.25)', marginBottom:4, cursor:'pointer' }}
+                                      onMouseEnter={e=>e.currentTarget.style.background='rgba(255,85,0,0.15)'}
+                                      onMouseLeave={e=>e.currentTarget.style.background='rgba(255,85,0,0.08)'}>
+                                      <div style={{ width:36, height:36, borderRadius:8, background:'rgba(255,85,0,0.18)', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                                        <PlatformLogo id="soundcloud" size={20}/>
                                       </div>
-                                      <div style={{ borderRadius:10, overflow:'hidden', border:'1px solid rgba(255,85,0,0.3)' }}>
-                                        <iframe key={`sc-ws1-${item.query}`}
-                                          src={`https://w.soundcloud.com/player/?url=${encodeURIComponent('https://soundcloud.com/search?q='+encodeURIComponent(item.query))}&color=%23ff5500&auto_play=false&buying=false&liking=false&download=false&sharing=false&show_artwork=true&show_comments=false&show_playcount=false&show_user=true&hide_related=true&visual=false`}
-                                          width="100%" height="120" frameBorder="0" allow="autoplay" style={{ display:'block' }}/>
-                                        <div style={{ display:'flex', justifyContent:'flex-end', padding:'4px 8px', background:'rgba(0,0,0,0.3)' }}>
-                                          <button onClick={()=>window.open(`https://soundcloud.com/search?q=${encodeURIComponent(item.query)}`,'_blank','noopener,noreferrer')}
-                                            style={{ fontSize:10, color:'#ff5500', background:'none', border:'none', cursor:'pointer', fontWeight:700 }}>Buka di SoundCloud ↗</button>
-                                        </div>
+                                      <div style={{ flex:1, minWidth:0 }}>
+                                        <div style={{ fontSize:11, fontWeight:700, color:'#ff5500' }}>SoundCloud</div>
+                                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>Cari "{item.query}" di SoundCloud</div>
                                       </div>
+                                      <span style={{ padding:'5px 12px', borderRadius:999, background:'#ff5500', color:'white', fontSize:11, fontWeight:800, flexShrink:0 }}>Buka ↗</span>
                                     </div>
                                   );
-                                  // ── sp_embed: Spotify iframe search
+                                  // ── sp_embed: Spotify redirect card
                                   if (item.type === 'sp_embed') return (
-                                    <div key={idx} style={{ marginBottom:4 }}>
-                                      <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:4, paddingLeft:2 }}>
-                                        <PlatformLogo id="spotify" size={11}/>
-                                        <span style={{ fontSize:10, fontWeight:700, color:'#1DB954' }}>Spotify</span>
-                                        <span style={{ fontSize:9, color:'rgba(29,185,84,0.5)', marginLeft:2 }}>· Embed</span>
+                                    <div key={idx}
+                                      onClick={() => window.open(`https://open.spotify.com/search/${encodeURIComponent(item.query)}`, '_blank', 'noopener,noreferrer')}
+                                      style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background:'rgba(29,185,84,0.08)', border:'1px solid rgba(29,185,84,0.25)', marginBottom:4, cursor:'pointer' }}
+                                      onMouseEnter={e=>e.currentTarget.style.background='rgba(29,185,84,0.15)'}
+                                      onMouseLeave={e=>e.currentTarget.style.background='rgba(29,185,84,0.08)'}>
+                                      <div style={{ width:36, height:36, borderRadius:8, background:'rgba(29,185,84,0.18)', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                                        <PlatformLogo id="spotify" size={20}/>
                                       </div>
-                                      <div style={{ borderRadius:10, overflow:'hidden', border:'1px solid rgba(29,185,84,0.3)' }}>
-                                        <iframe key={`sp-ws1-${item.query}`}
-                                          src={`https://open.spotify.com/embed/search/${encodeURIComponent(item.query)}?utm_source=generator&theme=0`}
-                                          width="100%" height="152" frameBorder="0"
-                                          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                                          loading="lazy" style={{ display:'block' }}/>
-                                        <div style={{ display:'flex', justifyContent:'flex-end', padding:'4px 8px', background:'rgba(0,0,0,0.3)' }}>
-                                          <button onClick={()=>window.open(`https://open.spotify.com/search/${encodeURIComponent(item.query)}`,'_blank','noopener,noreferrer')}
-                                            style={{ fontSize:10, color:'#1DB954', background:'none', border:'none', cursor:'pointer', fontWeight:700 }}>Buka di Spotify ↗</button>
-                                        </div>
+                                      <div style={{ flex:1, minWidth:0 }}>
+                                        <div style={{ fontSize:11, fontWeight:700, color:'#1DB954' }}>Spotify</div>
+                                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>Cari "{item.query}" di Spotify</div>
                                       </div>
+                                      <span style={{ padding:'5px 12px', borderRadius:999, background:'#1DB954', color:'black', fontSize:11, fontWeight:800, flexShrink:0 }}>Buka ↗</span>
                                     </div>
                                   );
                                   // ── sc_redirect: SoundCloud direct URL embed
@@ -9838,19 +9932,23 @@ Format exactly:
                                       </div>
                                     );
                                   }
-                                  // ── Regular audio / embed items (Jamendo, ccMixter, Vimeo, archive.org, dll)
+                                  // ── Regular audio / embed items (Jamendo, ccMixter, archive.org, Audius, Deezer, SC, SP)
                                   const sc = srcColors2[item.source] || 'rgba(255,255,255,0.4)';
-                                  const isAudio = !!item.audioUrl && ['jamendo','ccmixter','audius','archive','fma'].includes(item.source);
+                                  const isAudio = !!item.audioUrl && ['jamendo','ccmixter','audius','archive','fma','deezer','soundcloud','spotify'].includes(item.source);
                                   const isCurrentTrack = track?.id === item.id || (item.audioUrl && track?.src === item.audioUrl);
-                                  const wsAudioItemsExt = wsResults.filter(it => it.audioUrl && ['jamendo','ccmixter','audius','archive','fma'].includes(it.source));
+                                  const wsAudioItemsExt = wsResults.filter(it => it.audioUrl && ['jamendo','ccmixter','audius','archive','fma','deezer','soundcloud','spotify'].includes(it.source));
+                                  const isScItem = item.source === 'soundcloud';
+                                  const isSpItem = item.source === 'spotify';
+                                  const spIsPreview = isSpItem && !item._spHasDc;
+                                  const externalUrl = item.permalinkUrl || item.spotifyUrl || item.externalUrl || item.url || '';
                                   return (
                                     <div key={item.id||idx}
-                                      style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background: isCurrentTrack?'rgba(99,102,241,0.12)':'rgba(255,255,255,0.04)', border: isCurrentTrack?'1px solid rgba(99,102,241,0.35)':'1px solid rgba(255,255,255,0.08)' }}
-                                      onMouseEnter={e=>{ if(!isCurrentTrack) e.currentTarget.style.background='rgba(99,102,241,0.08)'; }}
+                                      style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background: isCurrentTrack?`${sc}18`:'rgba(255,255,255,0.04)', border: isCurrentTrack?`1px solid ${sc}45`:'1px solid rgba(255,255,255,0.08)' }}
+                                      onMouseEnter={e=>{ if(!isCurrentTrack) e.currentTarget.style.background=`${sc}0c`; }}
                                       onMouseLeave={e=>{ if(!isCurrentTrack) e.currentTarget.style.background='rgba(255,255,255,0.04)'; }}>
                                       <div onClick={() => { if(isCurrentTrack) { setPlaying(p=>!p); } else if(isAudio) { playWsTrack(item, wsAudioItemsExt, wsAudioItemsExt.indexOf(item)); } else if(item.embedUrl) { setWsEmbedUrl(item.embedUrl); } }}
                                         style={{ width:38, height:38, borderRadius:8, background:`${sc}20`, flexShrink:0, cursor:'pointer', overflow:'hidden', position:'relative' }}>
-                                        {item.thumbnail && !isLite && <img src={item.thumbnail} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{ e.target.style.display='none'; }}/>}
+                                        {(item.cover || item.thumbnail) && !isLite && <img src={item.cover || item.thumbnail} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{ e.target.style.display='none'; }}/>}
                                         <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background: isCurrentTrack?'rgba(0,0,0,0.45)':'rgba(0,0,0,0.2)' }}>
                                           {isCurrentTrack && playing
                                             ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12 }}>{[8,5,7].map((h,i)=>(<div key={i} style={{ width:2.5, height:h, background:sc, borderRadius:1, animation:`bounce 1.4s ease-in-out ${i*0.25}s infinite` }}/>))}</div>
@@ -9860,15 +9958,17 @@ Format exactly:
                                       <div onClick={() => { if(isAudio) playWsTrack(item, wsAudioItemsExt, wsAudioItemsExt.indexOf(item)); else if(item.embedUrl) setWsEmbedUrl(item.embedUrl); }} style={{ flex:1, minWidth:0, cursor:'pointer' }}>
                                         <div style={{ fontSize:12, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color: isCurrentTrack?sc:'rgba(255,255,255,0.9)' }}>{item.title}</div>
                                         <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1, display:'flex', alignItems:'center', gap:4 }}>
-                                          <span style={{ padding:'1px 5px', borderRadius:4, background:`${sc}20`, color:sc, fontWeight:700, fontSize:9 }}>{item.source}</span>
+                                          {isScItem && <PlatformLogo id="soundcloud" size={9}/>}
+                                          {isSpItem && <PlatformLogo id="spotify" size={9}/>}
+                                          {!isScItem && !isSpItem && <span style={{ padding:'1px 5px', borderRadius:4, background:`${sc}20`, color:sc, fontWeight:700, fontSize:9 }}>{item.source}</span>}
                                           {item.artist && <span>{item.artist}</span>}
+                                          {spIsPreview && <span style={{ color:sc, fontWeight:700, fontSize:9 }}>· 30s preview</span>}
+                                          {isSpItem && item._spHasDc && <span style={{ color:sc, fontWeight:700, fontSize:9 }}>· Full Track</span>}
                                           {item._fileCount > 1 && <span style={{ opacity:0.5 }}>{item._fileCount} tracks</span>}
                                         </div>
                                       </div>
                                       <div style={{ display:'flex', gap:4, flexShrink:0, alignItems:'center' }}>
-                                        {item.identifier && <button onClick={e=>{ e.stopPropagation(); window.open(`https://archive.org/details/${item.identifier}`,'_blank','noopener,noreferrer'); }}
-                                          style={{ background:'none', border:`1px solid ${sc}40`, borderRadius:6, color:sc, fontSize:10, fontWeight:700, padding:'3px 7px', cursor:'pointer', lineHeight:1.2 }}>↗</button>}
-                                        {!item.identifier && item.url && <button onClick={e=>{ e.stopPropagation(); window.open(item.url,'_blank','noopener,noreferrer'); }}
+                                        {externalUrl && <button onClick={e=>{ e.stopPropagation(); window.open(externalUrl,'_blank','noopener,noreferrer'); }}
                                           style={{ background:'none', border:`1px solid ${sc}40`, borderRadius:6, color:sc, fontSize:10, fontWeight:700, padding:'3px 7px', cursor:'pointer', lineHeight:1.2 }}>↗</button>}
                                       </div>
                                     </div>
@@ -10128,8 +10228,8 @@ Format exactly:
                         })()}
                         {isWebSearch && (() => {
                           // Audio-only sources that can play natively in player
-                          const wsAudioItems = wsResults.filter(it => it.audioUrl && ['jamendo','ccmixter','audius','archive','fma'].includes(it.source));
-                          const srcColors2 = { jamendo:'#f0c020', fma:'#5cb85c', ccmixter:'#e74c3c', audius:'#cc0000', deezer:'#a238ff', archive:'#8b5cf6' };
+                          const wsAudioItems = wsResults.filter(it => it.audioUrl && ['jamendo','ccmixter','audius','archive','fma','deezer','soundcloud'].includes(it.source));
+                          const srcColors2 = { jamendo:'#f0c020', fma:'#5cb85c', ccmixter:'#e74c3c', audius:'#cc0000', deezer:'#a238ff', archive:'#8b5cf6', soundcloud:'#ff5500', spotify:'#1DB954' };
                           return (
                             <div style={{ padding:'0 10px 12px' }}>
                               {/* Tips */}
@@ -10196,48 +10296,38 @@ Format exactly:
                                         )}
                                       </div>
                                     );
-                                    // ── SoundCloud embed (pihak ketiga, tanpa API key) — iframe widget search
+                                    // ── SoundCloud redirect card (iframe widget tidak support URL search)
                                     if (item.type === 'sc_embed') return (
-                                      <div key={idx} style={{ marginBottom:8 }}>
-                                        <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:5, paddingLeft:2 }}>
-                                          <PlatformLogo id="soundcloud" size={11}/>
-                                          <span style={{ fontSize:10, fontWeight:700, color:'#ff5500' }}>SoundCloud</span>
-                                          <span style={{ fontSize:9, color:'rgba(255,85,0,0.5)', marginLeft:2 }}>· Embed</span>
+                                      <div key={idx}
+                                        onClick={() => window.open(`https://soundcloud.com/search?q=${encodeURIComponent(item.query)}`, '_blank', 'noopener,noreferrer')}
+                                        style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background:'rgba(255,85,0,0.08)', border:'1px solid rgba(255,85,0,0.25)', marginBottom:8, cursor:'pointer' }}
+                                        onMouseEnter={e=>e.currentTarget.style.background='rgba(255,85,0,0.15)'}
+                                        onMouseLeave={e=>e.currentTarget.style.background='rgba(255,85,0,0.08)'}>
+                                        <div style={{ width:36, height:36, borderRadius:8, background:'rgba(255,85,0,0.18)', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                                          <PlatformLogo id="soundcloud" size={20}/>
                                         </div>
-                                        <div style={{ borderRadius:10, overflow:'hidden', border:'1px solid rgba(255,85,0,0.3)', background:'rgba(255,85,0,0.04)' }}>
-                                          <iframe
-                                            key={`sc-ws-embed-${item.query}`}
-                                            src={`https://w.soundcloud.com/player/?url=${encodeURIComponent('https://soundcloud.com/search?q='+encodeURIComponent(item.query))}&color=%23ff5500&auto_play=false&buying=false&liking=false&download=false&sharing=false&show_artwork=true&show_comments=false&show_playcount=false&show_user=true&hide_related=true&visual=false`}
-                                            width="100%" height="120" frameBorder="0" allow="autoplay" style={{ display:'block' }}
-                                          />
-                                          <div style={{ display:'flex', justifyContent:'flex-end', alignItems:'center', padding:'4px 8px', background:'rgba(0,0,0,0.3)', gap:6 }}>
-                                            <button onClick={()=>window.open(`https://soundcloud.com/search?q=${encodeURIComponent(item.query)}`, '_blank', 'noopener,noreferrer')}
-                                              style={{ fontSize:10, color:'#ff5500', background:'none', border:'none', cursor:'pointer', fontWeight:700 }}>Buka di SoundCloud ↗</button>
-                                          </div>
+                                        <div style={{ flex:1, minWidth:0 }}>
+                                          <div style={{ fontSize:11, fontWeight:700, color:'#ff5500' }}>SoundCloud</div>
+                                          <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>Cari "{item.query}" di SoundCloud</div>
                                         </div>
+                                        <span style={{ padding:'5px 12px', borderRadius:999, background:'#ff5500', color:'white', fontSize:11, fontWeight:800, flexShrink:0 }}>Buka ↗</span>
                                       </div>
                                     );
-                                    // ── Spotify embed (pihak ketiga, tanpa API key) — iframe search + tombol buka
+                                    // ── Spotify redirect card (embed search tidak tersedia)
                                     if (item.type === 'sp_embed') return (
-                                      <div key={idx} style={{ marginBottom:8 }}>
-                                        <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:5, paddingLeft:2 }}>
-                                          <PlatformLogo id="spotify" size={11}/>
-                                          <span style={{ fontSize:10, fontWeight:700, color:'#1DB954' }}>Spotify</span>
-                                          <span style={{ fontSize:9, color:'rgba(29,185,84,0.5)', marginLeft:2 }}>· Embed</span>
+                                      <div key={idx}
+                                        onClick={() => window.open(`https://open.spotify.com/search/${encodeURIComponent(item.query)}`, '_blank', 'noopener,noreferrer')}
+                                        style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background:'rgba(29,185,84,0.08)', border:'1px solid rgba(29,185,84,0.25)', marginBottom:8, cursor:'pointer' }}
+                                        onMouseEnter={e=>e.currentTarget.style.background='rgba(29,185,84,0.15)'}
+                                        onMouseLeave={e=>e.currentTarget.style.background='rgba(29,185,84,0.08)'}>
+                                        <div style={{ width:36, height:36, borderRadius:8, background:'rgba(29,185,84,0.18)', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                                          <PlatformLogo id="spotify" size={20}/>
                                         </div>
-                                        <div style={{ borderRadius:10, overflow:'hidden', border:'1px solid rgba(29,185,84,0.3)', background:'rgba(29,185,84,0.04)' }}>
-                                          <iframe
-                                            key={`sp-ws-search-embed-${item.query}`}
-                                            src={`https://open.spotify.com/embed/search/${encodeURIComponent(item.query)}?utm_source=generator&theme=0`}
-                                            width="100%" height="152" frameBorder="0"
-                                            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                                            loading="lazy" style={{ display:'block' }}
-                                          />
-                                          <div style={{ display:'flex', justifyContent:'flex-end', alignItems:'center', padding:'4px 8px', background:'rgba(0,0,0,0.3)', gap:6 }}>
-                                            <button onClick={()=>window.open(`https://open.spotify.com/search/${encodeURIComponent(item.query)}`, '_blank', 'noopener,noreferrer')}
-                                              style={{ fontSize:10, color:'#1DB954', background:'none', border:'none', cursor:'pointer', fontWeight:700 }}>Buka di Spotify ↗</button>
-                                          </div>
+                                        <div style={{ flex:1, minWidth:0 }}>
+                                          <div style={{ fontSize:11, fontWeight:700, color:'#1DB954' }}>Spotify</div>
+                                          <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>Cari "{item.query}" di Spotify</div>
                                         </div>
+                                        <span style={{ padding:'5px 12px', borderRadius:999, background:'#1DB954', color:'black', fontSize:11, fontWeight:800, flexShrink:0 }}>Buka ↗</span>
                                       </div>
                                     );
                                     // ── Spotify redirect card (legacy — jika masih ada di results lama)
@@ -10414,37 +10504,48 @@ Format exactly:
                                         </div>
                                       </div>
                                     );
-                                    // ── Native audio items (Jamendo, FMA, ccMixter) — in-app player, queue
-                                    if (item.audioUrl && ['jamendo','ccmixter','audius'].includes(item.source)) {
+                                    // ── Native audio items (Jamendo, FMA, ccMixter, Audius, Deezer, SC, SP) — in-app player, queue
+                                    if (item.audioUrl && ['jamendo','ccmixter','audius','archive','fma','deezer','soundcloud','spotify'].includes(item.source)) {
                                       const srcC = srcColors2[item.source] || '#6366f1';
                                       const dur2 = item.duration ? `${Math.floor(item.duration/60)}:${String(item.duration%60).padStart(2,'0')}` : '';
-                                      const srcLabels = { jamendo:'Jamendo', fma:'FMA', ccmixter:'ccMixter', audius:'Audius' };
+                                      const srcLabels = { jamendo:'Jamendo', fma:'FMA', ccmixter:'ccMixter', audius:'Audius', deezer:'Deezer', soundcloud:'SoundCloud', spotify:'Spotify', archive:'Archive' };
                                       const currentId = `ws_${item.source}_${item.id||item.audioUrl}`;
                                       const isCurrentTrack = track.id === currentId && !embedTrack;
                                       const isPlaying2 = isCurrentTrack && playing;
+                                      const isScItem2 = item.source === 'soundcloud';
+                                      const isSpItem2 = item.source === 'spotify';
+                                      const spIsPreview2 = isSpItem2 && !item._spHasDc;
+                                      const extUrl2 = item.permalinkUrl || item.spotifyUrl || item.externalUrl || item.url || '';
                                       return (
                                         <div key={idx}
                                           style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background: isCurrentTrack ? `${srcC}18` : 'rgba(255,255,255,0.04)', border: isCurrentTrack ? `1px solid ${srcC}40` : '1px solid rgba(255,255,255,0.08)' }}
                                           onMouseEnter={e=>{ if(!isCurrentTrack) e.currentTarget.style.background=`${srcC}10`; }}
                                           onMouseLeave={e=>{ if(!isCurrentTrack) e.currentTarget.style.background='rgba(255,255,255,0.04)'; }}>
-                                          {/* Play button */}
+                                          {/* Album art / Play button */}
                                           <div onClick={() => { if(isCurrentTrack) { setPlaying(p=>!p); } else { playWsTrack(item, wsAudioItems, wsAudioItems.indexOf(item)); } }}
-                                            style={{ width:32, height:32, borderRadius:8, background:`${srcC}25`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, cursor:'pointer' }}>
-                                            {isPlaying2
-                                              ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12 }}>{[8,5,7].map((h2,i2)=>(<div key={i2} style={{ width:2.5, height:h2, background:srcC, borderRadius:1, animation:`bounce 1.4s ease-in-out ${i2*0.25}s infinite` }}/>))}</div>
-                                              : <Play size={13} style={{ color:srcC, marginLeft:2 }}/>}
+                                            style={{ width:36, height:36, borderRadius:8, background:`${srcC}25`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, cursor:'pointer', overflow:'hidden', position:'relative' }}>
+                                            {(item.cover || item.thumbnail) && !isLite && <img src={item.cover||item.thumbnail} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>e.target.style.display='none'}/>}
+                                            <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background: isCurrentTrack?'rgba(0,0,0,0.5)':'rgba(0,0,0,0.25)' }}>
+                                              {isPlaying2
+                                                ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12 }}>{[8,5,7].map((h2,i2)=>(<div key={i2} style={{ width:2.5, height:h2, background:srcC, borderRadius:1, animation:`bounce 1.4s ease-in-out ${i2*0.25}s infinite` }}/>))}</div>
+                                                : <Play size={13} style={{ color:srcC, marginLeft:2 }}/>}
+                                            </div>
                                           </div>
                                           {/* Info */}
                                           <div onClick={() => playWsTrack(item, wsAudioItems, wsAudioItems.indexOf(item))} style={{ flex:1, minWidth:0, cursor:'pointer' }}>
                                             <div style={{ fontSize:12, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color: isCurrentTrack ? srcC : 'rgba(255,255,255,0.9)' }}>{item.title}</div>
-                                            <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{item.artist}{dur2 ? ` · ${dur2}` : ''}</div>
+                                            <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1, display:'flex', alignItems:'center', gap:3 }}>
+                                              {isScItem2 && <PlatformLogo id="soundcloud" size={9}/>}
+                                              {isSpItem2 && <PlatformLogo id="spotify" size={9}/>}
+                                              <span>{item.artist}</span>
+                                              {dur2 && <span>· {dur2}</span>}
+                                              {spIsPreview2 && <span style={{ color:srcC, fontWeight:700 }}>· 30s</span>}
+                                              {isSpItem2 && item._spHasDc && <span style={{ color:srcC, fontWeight:700 }}>· Full</span>}
+                                            </div>
                                           </div>
-                                          {/* Badge */}
-                                          <span style={{ fontSize:9, fontWeight:800, color:srcC, background:`${srcC}18`, padding:'2px 5px', borderRadius:4, flexShrink:0 }}>{srcLabels[item.source]}</span>
-                                          {/* Add to queue */}
-                                          <button onClick={e => { e.stopPropagation(); setCustomSongs(prev => { const nid = `ws_${item.source}_${item.id||item.audioUrl}`; const ex = prev.find(s=>s.id===nid); if(ex) return prev; const srcColors3={jamendo:'#f0c020',fma:'#5cb85c',ccmixter:'#e74c3c',audius:'#cc0000'}; return [{ id:nid, title:item.title, artist:item.artist||item.source, album:srcLabels[item.source], cover:item.thumbnail||'', src:item.audioUrl, color:srcColors3[item.source]||'#6366f1', bg:`rgba(99,102,241,0.15)`, mood:'', _wsSource:item.source }, ...prev]; }); }}
-                                            title="Add to queue"
-                                            style={{ background:'none', border:`1px solid ${srcC}40`, borderRadius:6, color:srcC, fontSize:10, fontWeight:700, padding:'3px 7px', cursor:'pointer', flexShrink:0, lineHeight:1.2 }}>+</button>
+                                          {/* External link */}
+                                          {extUrl2 && <button onClick={e => { e.stopPropagation(); window.open(extUrl2,'_blank','noopener,noreferrer'); }}
+                                            style={{ background:'none', border:`1px solid ${srcC}40`, borderRadius:6, color:srcC, fontSize:10, fontWeight:700, padding:'3px 7px', cursor:'pointer', flexShrink:0, lineHeight:1.2 }}>↗</button>}
                                         </div>
                                       );
                                     }

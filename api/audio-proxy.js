@@ -46,6 +46,8 @@ const ALLOWED_HOSTS = new Set([
   'api.cobalt.tools',
   'cobalt.api.timelessnesses.me',
   'cobalt.esmBot.net',
+  'coapi.vlad.yt',
+  'cobalt.drgns.space',
   // Jamendo
   'storage.jamendo.com',
   'mp3l.jamendo.com',
@@ -95,6 +97,8 @@ const ALLOWED_HOST_SUFFIXES = [
   '.cobalt.tools',         // cobalt tunnel subdomains
   '.timelessnesses.me',    // cobalt instance
   '.esmBot.net',           // cobalt instance
+  '.vlad.yt',              // cobalt instance
+  '.drgns.space',          // cobalt instance
   '.scdn.co',              // Spotify CDN (preview + full track)
   '.spotifycdn.com',       // Spotify CDN full track
   '.spotify.com',          // Spotify audio CDN
