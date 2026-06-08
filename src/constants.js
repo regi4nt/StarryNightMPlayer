@@ -593,7 +593,9 @@ async function getSpotifyToken() {
 }
 
 export async function searchSpotify(query, limit = 10) {
-  const token = await getSpotifyToken();
+  let token = await getSpotifyToken();
+  // Fallback: gunakan internal token dari sp_dc jika client credentials gagal
+  if (!token) token = await getSpotifyInternalToken();
   if (!token) return null;
   try {
     const res = await fetch(
@@ -624,12 +626,33 @@ export async function searchSoundCloud(query, limit = 10) {
   const scId = getScId();
   if (!scId) return null;
   try {
-    const res = await fetch(
+    // Coba api-v2 terlebih dahulu (lebih andal)
+    let res = await fetch(
+      `https://api-v2.soundcloud.com/search/tracks?q=${encodeURIComponent(query)}&limit=${limit}&client_id=${scId}`,
+      { headers: { Accept: 'application/json; charset=utf-8' } }
+    );
+    let data = null;
+    if (res.ok) {
+      data = await res.json();
+      const items = data.collection || [];
+      if (items.length > 0) return items.map(t => ({
+        id: String(t.id),
+        title: t.title || 'Unknown',
+        artist: t.user?.username || 'SoundCloud',
+        cover: (t.artwork_url || t.user?.avatar_url || '').replace('-large', '-t300x300'),
+        duration: Math.round((t.duration || 0) / 1000),
+        permalinkUrl: t.permalink_url || '',
+        streamUrl: t.permalink_url || '',
+        waveformUrl: t.waveform_url || '',
+      }));
+    }
+    // Fallback ke api v1
+    res = await fetch(
       `https://api.soundcloud.com/tracks?q=${encodeURIComponent(query)}&limit=${limit}&client_id=${scId}`,
       { headers: { Accept: 'application/json; charset=utf-8' } }
     );
     if (!res.ok) return null;
-    const data = await res.json();
+    data = await res.json();
     return (Array.isArray(data) ? data : data.collection || []).map(t => ({
       id: String(t.id),
       title: t.title || 'Unknown',

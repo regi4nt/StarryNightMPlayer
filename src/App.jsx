@@ -275,7 +275,7 @@ export default function App() {
   const [scLoading, setScLoading] = useState({});
   const [scError,   setScError]   = useState({});
   const [scWidget,  setScWidget]  = useState({}); // { [platformId]: activeWidgetUrl }
-  const scHasKey = !!(userScId || SC_CLIENT_ID);
+  const scHasKey = !!(userScId || SC_CLIENT_ID || userScOAuth);
 
   // ── Redirect platforms search
   const [platformSearch, setPlatformSearch] = useState({});
@@ -328,7 +328,7 @@ export default function App() {
   const [spEmbedUrl, setSpEmbedUrl] = useState(null); // Spotify embed iframe URL
   const spPreviewRef  = useRef(null); // Audio element for 30s preview
   const spPlayingRef  = useRef(false); // track spPlaying dalam closure sleep timer
-  const spHasKey = !!((userSpId && userSpSecret) || (SP_CLIENT_ID && SP_CLIENT_SECRET));
+  const spHasKey = !!((userSpId && userSpSecret) || (SP_CLIENT_ID && SP_CLIENT_SECRET) || userSpDc);
   const spHasInternalLogin = !!(userSpDc);
 
   // ── Web Search state
