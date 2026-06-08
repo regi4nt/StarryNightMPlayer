@@ -690,7 +690,7 @@ export const askAIRace = async (user, system='', history=[], maxTokens=500) => {
         // Update slotIdx & lastWinner label supaya tampilan "model aktif" akurat
         const idx = PROVIDERS.findIndex(p => p.endpoint === slot.endpoint && p.model === slot.model);
         if (idx !== -1) slotIdx = (idx + 1) % PROVIDERS.length;
-        const winnerLabel = `${slot.provider}·${slot.model.split('/').pop()?.replace(':free','') || slot.model}`;
+        const winnerLabel = formatModelLabel(slot.provider, slot.model);
         _lastWinnerLabel = winnerLabel;
         console.log(`[Chat/race] Winner: ${slot.provider}/${slot.model}`);
         return (typeof txt === "string" ? txt : JSON.stringify(txt)).trim();
@@ -713,11 +713,54 @@ export const askAIRace = async (user, system='', history=[], maxTokens=500) => {
 // lastWinnerModel: diupdate oleh askAIRace setiap kali ada provider yang menang
 let _lastWinnerLabel = '';
 export const setLastWinnerLabel = (label) => { _lastWinnerLabel = label; };
+
+// Format nama model jadi label pendek yang ramah ditampilkan di UI
+export const formatModelLabel = (provider, model) => {
+  // Ambil bagian akhir model path: "meta-llama/llama-3.3-70b-instruct:free" -> "llama-3.3-70b-instruct"
+  const m = model.split('/').pop()?.replace(':free','').replace('@cf/','') || model;
+  const modelMap = {
+    // Anthropic Claude
+    'claude-haiku-4-5-20251001': 'Haiku 4.5',
+    'claude-sonnet-4-6':         'Sonnet 4.6',
+    'claude-opus-4-6':           'Opus 4.6',
+    // OpenAI
+    'gpt-4o-mini':     'GPT-4o mini',
+    'gpt-4o':          'GPT-4o',
+    'gpt-3.5-turbo':   'GPT-3.5',
+    // Gemini
+    'gemini-2.0-flash':      'Flash 2.0',
+    'gemini-2.0-flash-lite': 'Flash Lite',
+    // Groq
+    'llama-3.3-70b-versatile': 'Llama 3.3 70B',
+    'gemma2-9b-it':            'Gemma2 9B',
+    'llama-3.1-8b-instant':    'Llama 3.1 8B',
+    // DeepSeek
+    'deepseek-chat':     'DeepSeek V3',
+    'deepseek-reasoner': 'DeepSeek R1',
+    // Grok
+    'grok-3':      'Grok 3',
+    'grok-3-mini': 'Grok 3 Mini',
+    // OpenRouter / HuggingFace
+    'deepseek-chat':                     'DeepSeek V3',
+    'llama-3.3-70b-instruct':            'Llama 3.3 70B',
+    'Llama-3.3-70B-Instruct':            'Llama 3.3 70B',
+    'meta-llama-3.3-70b-instruct':       'Llama 3.3 70B',
+    'Meta-Llama-3.3-70B-Instruct':       'Llama 3.3 70B',
+    'llama-3.3-70b-instruct-fp8-fast':   'Llama 3.3 70B',
+    'qwen3-4b':                          'Qwen3 4B',
+    'Qwen2.5-72B-Instruct':              'Qwen2.5 72B',
+    'qwen2.5-72b-instruct':              'Qwen2.5 72B',
+    'mistral-7b-instruct':               'Mistral 7B',
+    'Phi-4':                             'Phi-4',
+  };
+  const shortModel = modelMap[m] || m;
+  return `${provider} · ${shortModel}`;
+};
 export const activeModel = () => {
   if (!getProviders().length) return 'no-key';
   if (_lastWinnerLabel) return _lastWinnerLabel;
   const s = getProviders()[slotIdx % getProviders().length];
-  return `${s.provider}·${s.model.split('/').pop()?.replace(':free','') || s.model}`;
+  return formatModelLabel(s.provider, s.model);
 };
 export const hasKey = () => getProviders().length > 0;
 

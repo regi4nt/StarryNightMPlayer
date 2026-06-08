@@ -38,7 +38,7 @@ import {
   getUserAiKey, getUserDsKey, getUserGrokKey, getUserHfKey, getUserCfKey, getUserGhKey, getUserSnKey,
   getYtKey, isYtApiEnabled, setServerYtKeyStatus,
   SP_CLIENT_ID, SP_CLIENT_SECRET, SC_CLIENT_ID,
-  askAI, askAIRace, activeModel, hasKey,
+  askAI, askAIRace, activeModel, hasKey, formatModelLabel,
   AUDIO_EXTS, isAudioExt, AUDIO_MIME_EXTRAS, guessMime,
   fmt, fmtSec, isPhoneDevice,
   markFullyCached, checkCachedBlob,
@@ -11599,9 +11599,23 @@ Format exactly:
                 <div style={{ width:36, height:36, borderRadius:12, background:'linear-gradient(135deg,#6366f1,#a855f7)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 0 16px #6366f160' }}><Bot size={18} style={{ color:'white' }}/></div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontWeight:800, fontSize:14 }}>Starry AI</div>
-                  <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:2 }}>
-                    <div style={{ width:5, height:5, borderRadius:'50%', background:hasKey()?'#22c55e':'#ef4444', animation:hasKey()?'pulse 2s infinite':'none', flexShrink:0 }}/>
-                    <span style={{ fontSize:10, color:hasKey()?'#86efac':'#fca5a5', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{hasKey() ? (activeModelLabel || activeModel()) : t?.aiOffline||'Offline — add API key'}</span>
+                  <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:3, flexWrap:'wrap' }}>
+                    {hasKey() ? (
+                      <span style={{
+                        display:'inline-flex', alignItems:'center', gap:4,
+                        background:'rgba(99,102,241,0.18)', border:'1px solid rgba(99,102,241,0.35)',
+                        borderRadius:999, padding:'1px 7px', fontSize:10, color:'#a5b4fc',
+                        maxWidth:'100%', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+                      }}>
+                        <span style={{ width:5, height:5, borderRadius:'50%', background:'#22c55e', flexShrink:0, boxShadow:'0 0 4px #22c55e' }}/>
+                        {activeModelLabel || activeModel()}
+                      </span>
+                    ) : (
+                      <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:10, color:'#fca5a5' }}>
+                        <span style={{ width:5, height:5, borderRadius:'50%', background:'#ef4444', flexShrink:0 }}/>
+                        {t?.aiOffline||'Offline — add API key'}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
