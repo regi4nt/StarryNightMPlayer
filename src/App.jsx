@@ -7379,7 +7379,7 @@ Format exactly:
   const tabs = [
     { id:'stream',   icon:<Radio size={17}/>,       label:'Stream' },
     { id:'playlist', icon:<FolderOpen size={17}/>, label:'Playlist' },
-    { id:'ai',       icon:<Bot size={17}/>,        label:'Other' },
+    { id:'ai',       icon:<Bot size={17}/>,        label:'Buat Playlist' },
   ];
 
   return (
@@ -8951,14 +8951,159 @@ Format exactly:
                               </div>
                               <div style={{ padding:'0 8px 8px', display:'flex', flexDirection:'column', gap:4 }}>
                                 {[...wsResults].sort((a,b) => {
+                                  // Section/embed types selalu di bawah audio items
+                                  const BOTTOM_TYPES = new Set(['sc_section','sp_section','sc_embed','sp_embed','sc_redirect']);
+                                  const aBottom = BOTTOM_TYPES.has(a.type); const bBottom = BOTTOM_TYPES.has(b.type);
+                                  if (aBottom !== bBottom) return aBottom ? 1 : -1;
                                   const order = ['jamendo','audius','ccmixter','fma','deezer','soundcloud','spotify'];
                                   const ai = order.indexOf(a.source); const bi = order.indexOf(b.source);
                                   return (ai===-1?999:ai) - (bi===-1?999:bi);
                                 }).map((item, idx) => {
+                                  // ── sc_embed: SoundCloud iframe search
+                                  if (item.type === 'sc_embed') return (
+                                    <div key={idx} style={{ marginBottom:4 }}>
+                                      <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:4, paddingLeft:2 }}>
+                                        <PlatformLogo id="soundcloud" size={11}/>
+                                        <span style={{ fontSize:10, fontWeight:700, color:'#ff5500' }}>SoundCloud</span>
+                                        <span style={{ fontSize:9, color:'rgba(255,85,0,0.5)', marginLeft:2 }}>· Embed</span>
+                                      </div>
+                                      <div style={{ borderRadius:10, overflow:'hidden', border:'1px solid rgba(255,85,0,0.3)' }}>
+                                        <iframe key={`sc-ws1-${item.query}`}
+                                          src={`https://w.soundcloud.com/player/?url=${encodeURIComponent('https://soundcloud.com/search?q='+encodeURIComponent(item.query))}&color=%23ff5500&auto_play=false&buying=false&liking=false&download=false&sharing=false&show_artwork=true&show_comments=false&show_playcount=false&show_user=true&hide_related=true&visual=false`}
+                                          width="100%" height="120" frameBorder="0" allow="autoplay" style={{ display:'block' }}/>
+                                        <div style={{ display:'flex', justifyContent:'flex-end', padding:'4px 8px', background:'rgba(0,0,0,0.3)' }}>
+                                          <button onClick={()=>window.open(`https://soundcloud.com/search?q=${encodeURIComponent(item.query)}`,'_blank','noopener,noreferrer')}
+                                            style={{ fontSize:10, color:'#ff5500', background:'none', border:'none', cursor:'pointer', fontWeight:700 }}>Buka di SoundCloud ↗</button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                  // ── sp_embed: Spotify iframe search
+                                  if (item.type === 'sp_embed') return (
+                                    <div key={idx} style={{ marginBottom:4 }}>
+                                      <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:4, paddingLeft:2 }}>
+                                        <PlatformLogo id="spotify" size={11}/>
+                                        <span style={{ fontSize:10, fontWeight:700, color:'#1DB954' }}>Spotify</span>
+                                        <span style={{ fontSize:9, color:'rgba(29,185,84,0.5)', marginLeft:2 }}>· Embed</span>
+                                      </div>
+                                      <div style={{ borderRadius:10, overflow:'hidden', border:'1px solid rgba(29,185,84,0.3)' }}>
+                                        <iframe key={`sp-ws1-${item.query}`}
+                                          src={`https://open.spotify.com/embed/search/${encodeURIComponent(item.query)}?utm_source=generator&theme=0`}
+                                          width="100%" height="152" frameBorder="0"
+                                          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                                          loading="lazy" style={{ display:'block' }}/>
+                                        <div style={{ display:'flex', justifyContent:'flex-end', padding:'4px 8px', background:'rgba(0,0,0,0.3)' }}>
+                                          <button onClick={()=>window.open(`https://open.spotify.com/search/${encodeURIComponent(item.query)}`,'_blank','noopener,noreferrer')}
+                                            style={{ fontSize:10, color:'#1DB954', background:'none', border:'none', cursor:'pointer', fontWeight:700 }}>Buka di Spotify ↗</button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                  // ── sc_redirect: SoundCloud direct URL embed
+                                  if (item.type === 'sc_redirect') return (
+                                    <div key={idx} style={{ marginBottom:4 }}>
+                                      {item.directUrl && (
+                                        <div style={{ borderRadius:10, overflow:'hidden', border:'1px solid rgba(255,85,0,0.3)' }}>
+                                          <iframe key={`sc-ws1-direct-${item.directUrl}`}
+                                            src={`https://w.soundcloud.com/player/?url=${encodeURIComponent(item.directUrl)}&color=%23ff5500&auto_play=false&buying=false&liking=false&download=false&sharing=false&show_artwork=true&show_comments=false&show_playcount=false&show_user=true&hide_related=true&visual=true`}
+                                            width="100%" height="166" frameBorder="0" allow="autoplay" style={{ display:'block' }}/>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                  // ── sc_section: Audius / SoundCloud track list
+                                  if (item.type === 'sc_section') {
+                                    const isAudiusSec = item._items?.[0]?.source === 'audius';
+                                    const accentColor = isAudiusSec ? '#cc0000' : '#ff5500';
+                                    return (
+                                      <div key={idx} style={{ marginBottom:4 }}>
+                                        <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:4, paddingLeft:2 }}>
+                                          {isAudiusSec
+                                            ? <span style={{ fontSize:10, fontWeight:700, color:'#cc0000' }}>🎵 Audius</span>
+                                            : <><PlatformLogo id="soundcloud" size={11}/><span style={{ fontSize:10, fontWeight:700, color:'#ff5500' }}>SoundCloud</span></>}
+                                        </div>
+                                        <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                                          {(item._items||[]).map((t2,ti) => {
+                                            const isAudiusT = t2.source === 'audius';
+                                            const isCurrentT = isAudiusT && track?.id === `ws_audius_${t2.id}` && !embedTrack;
+                                            const scUrl = t2.permalinkUrl||t2.streamUrl||'';
+                                            return (
+                                              <div key={t2.id||ti}
+                                                onClick={() => {
+                                                  if (isAudiusT && t2.audioUrl) { if(isCurrentT) setPlaying(p=>!p); else playWsTrack(t2, item._items.filter(x=>x.audioUrl), item._items.filter(x=>x.audioUrl).indexOf(t2)); }
+                                                  else if (scUrl.includes('soundcloud.com/')) setScWidget(p=>({...p, soundcloud: p.soundcloud===scUrl?null:scUrl}));
+                                                  else window.open(`https://soundcloud.com/search?q=${encodeURIComponent(t2.title||'')}`, '_blank', 'noopener,noreferrer');
+                                                }}
+                                                style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:8, background: isCurrentT?`${accentColor}20`:'rgba(255,255,255,0.04)', border: isCurrentT?`1px solid ${accentColor}55`:'1px solid rgba(255,255,255,0.08)', cursor:'pointer' }}
+                                                onMouseEnter={e=>{ if(!isCurrentT) e.currentTarget.style.background=`${accentColor}10`; }}
+                                                onMouseLeave={e=>{ if(!isCurrentT) e.currentTarget.style.background='rgba(255,255,255,0.04)'; }}>
+                                                <div style={{ width:32, height:32, borderRadius:7, background:`${accentColor}30`, flexShrink:0, overflow:'hidden', position:'relative' }}>
+                                                  {t2.thumbnail && !isLite && <img src={t2.thumbnail} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{ e.target.style.display='none'; }}/>}
+                                                  <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                                                    {isCurrentT && playing ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:10 }}>{[7,4,6].map((h,i)=>(<div key={i} style={{ width:2, height:h, background:accentColor, borderRadius:1, animation:`bounce 1.4s ease-in-out ${i*0.25}s infinite` }}/>))}</div> : <Play size={11} style={{ color:accentColor, marginLeft:1 }}/>}
+                                                  </div>
+                                                </div>
+                                                <div style={{ flex:1, minWidth:0 }}>
+                                                  <div style={{ fontSize:11, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color: isCurrentT?accentColor:'rgba(255,255,255,0.9)' }}>{t2.title}</div>
+                                                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{t2.artist}</div>
+                                                </div>
+                                                <button onClick={e=>{ e.stopPropagation(); window.open(scUrl||`https://soundcloud.com/search?q=${encodeURIComponent(t2.title||'')}`, '_blank', 'noopener,noreferrer'); }}
+                                                  style={{ background:'none', border:`1px solid ${accentColor}55`, borderRadius:5, color:accentColor, fontSize:9, fontWeight:700, padding:'2px 6px', cursor:'pointer', flexShrink:0 }}>↗</button>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                  // ── sp_section: Deezer / Spotify track list
+                                  if (item.type === 'sp_section') {
+                                    const isDeezerSec = item._items?.[0]?.source === 'deezer';
+                                    const spColor = isDeezerSec ? '#a238ff' : '#1DB954';
+                                    return (
+                                      <div key={idx} style={{ marginBottom:4 }}>
+                                        <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:4, paddingLeft:2 }}>
+                                          {isDeezerSec
+                                            ? <span style={{ fontSize:10, fontWeight:700, color:'#a238ff' }}>🎵 Deezer</span>
+                                            : <><PlatformLogo id="spotify" size={11}/><span style={{ fontSize:10, fontWeight:700, color:'#1DB954' }}>Spotify</span></>}
+                                        </div>
+                                        <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                                          {(item._items||[]).map((t3,ti) => {
+                                            const isDeezerT = t3.source === 'deezer';
+                                            const isPreviewActive = isDeezerT ? track?.id === `ws_deezer_${t3.id}` && !embedTrack : spTrack?.id === t3.id;
+                                            return (
+                                              <div key={t3.id||ti}
+                                                onClick={() => {
+                                                  if (isDeezerT) { if(t3.previewUrl) playWsTrack({...t3,audioUrl:t3.previewUrl,source:'deezer'}, item._items.filter(x=>x.previewUrl).map(x=>({...x,audioUrl:x.previewUrl,source:'deezer'})), item._items.filter(x=>x.previewUrl).findIndex(x=>x.id===t3.id)); else window.open(t3.spotifyUrl,'_blank','noopener,noreferrer'); }
+                                                  else setSpWsEmbedId(prev => prev===t3.id ? null : t3.id);
+                                                }}
+                                                style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:8, background: isPreviewActive?`${spColor}18`:'rgba(255,255,255,0.04)', border: isPreviewActive?`1px solid ${spColor}55`:'1px solid rgba(255,255,255,0.08)', cursor:'pointer' }}
+                                                onMouseEnter={e=>{ if(!isPreviewActive) e.currentTarget.style.background=`${spColor}10`; }}
+                                                onMouseLeave={e=>{ if(!isPreviewActive) e.currentTarget.style.background='rgba(255,255,255,0.04)'; }}>
+                                                <div style={{ width:32, height:32, borderRadius:7, background:`${spColor}30`, flexShrink:0, overflow:'hidden', position:'relative' }}>
+                                                  {(t3.cover||t3.thumbnail) && !isLite && <img src={t3.cover||t3.thumbnail} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{ e.target.style.display='none'; }}/>}
+                                                  <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                                                    {isPreviewActive && playing ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:10 }}>{[7,4,6].map((h,i)=>(<div key={i} style={{ width:2, height:h, background:spColor, borderRadius:1, animation:`bounce 1.4s ease-in-out ${i*0.25}s infinite` }}/>))}</div> : <Play size={11} style={{ color:spColor, marginLeft:1 }}/>}
+                                                  </div>
+                                                </div>
+                                                <div style={{ flex:1, minWidth:0 }}>
+                                                  <div style={{ fontSize:11, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color: isPreviewActive?spColor:'rgba(255,255,255,0.9)' }}>{t3.title}</div>
+                                                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', marginTop:1 }}>{t3.artist}</div>
+                                                </div>
+                                                {t3.previewUrl && <span style={{ fontSize:9, color:spColor, background:`${spColor}28`, padding:'2px 5px', borderRadius:4, fontWeight:700, flexShrink:0 }}>▶ 30s</span>}
+                                                {t3.spotifyUrl && <button onClick={e=>{ e.stopPropagation(); window.open(t3.spotifyUrl,'_blank','noopener,noreferrer'); }}
+                                                  style={{ background:'none', border:`1px solid ${spColor}55`, borderRadius:5, color:spColor, fontSize:9, fontWeight:700, padding:'2px 6px', cursor:'pointer', flexShrink:0 }}>↗</button>}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                  // ── Regular audio / embed items (Jamendo, ccMixter, Vimeo, archive.org, dll)
                                   const sc = srcColors2[item.source] || 'rgba(255,255,255,0.4)';
                                   const isAudio = !!item.audioUrl && ['jamendo','ccmixter','audius'].includes(item.source);
                                   const isCurrentTrack = track?.id === item.id || track?.audioUrl === item.audioUrl;
-                                  const isExternal = !isAudio && !!item.embedUrl;
                                   return (
                                     <div key={item.id||idx}
                                       style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:10, background: isCurrentTrack?'rgba(99,102,241,0.12)':'rgba(255,255,255,0.04)', border: isCurrentTrack?'1px solid rgba(99,102,241,0.35)':'1px solid rgba(255,255,255,0.08)' }}
@@ -11691,7 +11836,7 @@ Format exactly:
                             <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                               <div style={{ width:30, height:30, borderRadius:10, background:'linear-gradient(135deg,rgba(99,102,241,0.3),rgba(168,85,247,0.2))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14 }}>✨</div>
                               <div>
-                                <div style={{ fontSize:13, fontWeight:800, color:'white', letterSpacing:'-0.01em' }}>Other</div>
+                                <div style={{ fontSize:13, fontWeight:800, color:'white', letterSpacing:'-0.01em' }}>Buat Playlist</div>
                                 <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:1 }}>Buat playlist dengan AI</div>
                               </div>
                             </div>
