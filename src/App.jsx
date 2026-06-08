@@ -12588,7 +12588,7 @@ Format exactly:
                 )}
                 <div ref={chatEndRef}/>
               </div>
-            )}
+            ) : null}
 
 
 
