@@ -170,6 +170,10 @@ export default defineConfig(({ mode }) => {
           if (id.includes('src/constants')) {
             return 'app-constants';
           }
+          // Radio station data — only needed when Stream tab opens
+          if (id.includes('src/radioStations')) {
+            return 'radio-data';
+          }
           // Lazy components → Rollup otomatis buat chunk terpisah karena dynamic import
           // (SettingsPanel, PlaylistViews, UploadModal sudah jadi chunk sendiri)
         },
