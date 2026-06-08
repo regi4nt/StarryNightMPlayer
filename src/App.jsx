@@ -137,9 +137,23 @@ function getSongSourceLabel(s) {
 export default function App() {
   // ── Mode: Lite (ringan + hemat data) vs Pro (penuh)
   // Lite otomatis mengaktifkan semua penghematan: cover, buffer, prefetch, AI, animasi
-  const [isLite, setIsLite] = useState(() =>
-    localStorage.getItem('sn_mode') === 'lite' || localStorage.getItem('sn_datasaver') === '1'
-  );
+  const [isLite, setIsLite] = useState(() => {
+    // Kalau user sudah pernah pilih mode secara eksplisit, hormati pilihannya
+    const saved = localStorage.getItem('sn_mode');
+    if (saved === 'pro') return false;
+    if (saved === 'lite' || localStorage.getItem('sn_datasaver') === '1') return true;
+
+    // Auto-detect device low-end: paksa Lite kalau RAM <= 2GB
+    // deviceMemory: tersedia di Chrome/Android (dalam GB, dibulatkan ke 0.25/0.5/1/2/4/8)
+    const ram = navigator.deviceMemory; // undefined di Firefox/Safari
+    if (ram !== undefined && ram <= 2) return true;
+
+    // Fallback via hardware concurrency — proxy kasar, hanya berlaku saat deviceMemory undefined
+    const cores = navigator.hardwareConcurrency;
+    if (ram === undefined && cores !== undefined && cores <= 2) return true;
+
+    return false;
+  });
   const toggleMode = () => setIsLite(v => {
     const n = !v;
     localStorage.setItem('sn_mode', n ? 'lite' : 'pro');
@@ -148,6 +162,17 @@ export default function App() {
   });
   const dataSaver = isLite; // alias untuk backward compat semua referensi lama
   const toggleDataSaver = toggleMode; // backward compat
+
+  // ── Notifikasi saat auto-detect Lite aktif (hanya sekali, saat belum ada sn_mode tersimpan)
+  const [autoLiteBanner, setAutoLiteBanner] = useState(false);
+  useEffect(() => {
+    if (isLite && !localStorage.getItem('sn_mode')) {
+      // Tampilkan banner singkat bahwa Lite diaktifkan otomatis karena RAM rendah
+      const t = setTimeout(() => setAutoLiteBanner(true), 1800); // delay agar app selesai render
+      const t2 = setTimeout(() => setAutoLiteBanner(false), 7000); // hilang setelah 7 detik
+      return () => { clearTimeout(t); clearTimeout(t2); };
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Language: 'id' (Indonesia) | 'en' (English)
   const [lang, setLang] = useState(() => localStorage.getItem('sn_lang') || 'id');
@@ -7659,7 +7684,23 @@ Format exactly:
   return (
     <div className={`${isLite ? 'lite-mode' : 'pro-mode'} layout-${layoutMode}${fullscreen ? ' is-fullscreen' : ''}`} style={{ position:'fixed', inset:0, overflow:'hidden', background: isLite ? '#07071a' : ({starry:'#07071a',bedroom:'#07051a',journey:'#05100a',ocean:'#040e18',fantasy:'#06041a',futurecity:'#020810',nightgarden:'#020d06',nighthighway:'#03060e',solarsystem:'#010108'}[bgTheme]||'#07071a'), color:'#f1f5f9', fontFamily:"'Segoe UI',system-ui,sans-serif", display:'flex', flexDirection:'column', userSelect:'none', WebkitTapHighlightColor:'transparent' }}>
 
-      {/* ══ PWA INSTALL BANNER — floating bottom, appears when installable ══ */}
+      {/* ══ AUTO LITE BANNER — muncul sekali saat device low-end terdeteksi ══ */}
+      {autoLiteBanner && (
+        <div style={{
+          position:'fixed', top:12, left:'50%', transform:'translateX(-50%)',
+          zIndex:9999, maxWidth:'calc(100% - 32px)', width:340,
+          background:'rgba(16,185,129,0.15)', border:'1px solid rgba(16,185,129,0.4)',
+          borderRadius:14, padding:'10px 14px',
+          display:'flex', alignItems:'center', gap:10, color:'#6ee7b7', fontSize:12,
+        }}>
+          <span style={{ fontSize:16, flexShrink:0 }}>⚡</span>
+          <span style={{ flex:1 }}>Mode Lite aktif otomatis — perangkat RAM rendah terdeteksi</span>
+          <button onClick={() => { toggleMode(); setAutoLiteBanner(false); }} style={{ background:'rgba(16,185,129,0.25)', border:'1px solid rgba(16,185,129,0.4)', color:'#6ee7b7', borderRadius:8, padding:'3px 8px', fontSize:11, cursor:'pointer', flexShrink:0 }}>Pro</button>
+          <button onClick={() => { localStorage.setItem('sn_mode','lite'); setAutoLiteBanner(false); }} style={{ background:'none', border:'none', color:'#6ee7b7', fontSize:16, cursor:'pointer', padding:0, flexShrink:0, opacity:0.7 }}>✕</button>
+        </div>
+      )}
+
+            {/* ══ PWA INSTALL BANNER — floating bottom, appears when installable ══ */}
       {!pwaInstalled && !pwaBannerDismissed && pwaBannerVisible && pwaPrompt && (
         <div style={{
           position:'fixed', bottom: layoutMode.startsWith('mobile') ? 80 : 24,
@@ -13390,7 +13431,8 @@ Format exactly:
         @keyframes twinkle{0%,100%{opacity:0.9}50%{opacity:0.35}}
         @keyframes twinkleB{0%,100%{opacity:0.55}50%{opacity:1}}
         @keyframes twinkleC{0%,100%{opacity:0.7}40%{opacity:0.2}80%{opacity:0.9}}
-        .stars,.starsB,.starsC{position:absolute;inset:0;will-change:opacity}
+        .stars,.starsB,.starsC{position:absolute;inset:0;contain:strict}
+        .lite-mode .stars,.lite-mode .starsB,.lite-mode .starsC{display:none}
         .stars{background-image:radial-gradient(1px 1px at 8% 12%,rgba(255,255,255,0.7),transparent),radial-gradient(1.5px 1.5px at 31% 45%,rgba(255,255,255,0.5),transparent),radial-gradient(1px 1px at 62% 23%,rgba(255,255,255,0.6),transparent),radial-gradient(2px 2px at 78% 67%,rgba(255,255,255,0.35),transparent),radial-gradient(1px 1px at 14% 71%,rgba(255,255,255,0.5),transparent),radial-gradient(1px 1px at 88% 18%,rgba(255,255,255,0.45),transparent),radial-gradient(1.5px 1.5px at 47% 89%,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 55% 55%,rgba(255,255,255,0.3),transparent);animation:twinkle 4s ease-in-out infinite}
         .starsB{background-image:radial-gradient(1px 1px at 23% 6%,rgba(255,255,255,0.5),transparent),radial-gradient(1.5px 1.5px at 70% 38%,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 5% 52%,rgba(255,255,255,0.55),transparent),radial-gradient(2px 2px at 91% 81%,rgba(255,255,255,0.3),transparent),radial-gradient(1px 1px at 38% 77%,rgba(255,255,255,0.45),transparent),radial-gradient(1px 1px at 66% 9%,rgba(255,255,255,0.35),transparent),radial-gradient(1.5px 1.5px at 18% 93%,rgba(255,255,255,0.3),transparent);animation:twinkleB 5.5s ease-in-out 1.8s infinite}
         .starsC{background-image:radial-gradient(1px 1px at 42% 31%,rgba(255,255,255,0.4),transparent),radial-gradient(1px 1px at 83% 54%,rgba(255,255,255,0.5),transparent),radial-gradient(1.5px 1.5px at 11% 28%,rgba(255,255,255,0.35),transparent),radial-gradient(1px 1px at 75% 92%,rgba(255,255,255,0.3),transparent),radial-gradient(2px 2px at 29% 63%,rgba(255,255,255,0.25),transparent),radial-gradient(1px 1px at 58% 4%,rgba(255,255,255,0.5),transparent);animation:twinkleC 7s ease-in-out 3.2s infinite}

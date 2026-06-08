@@ -140,11 +140,13 @@ export default defineConfig(({ mode }) => {
   build: {
     outDir: 'dist',
     sourcemap: false,
-    target: ['es2020', 'chrome87', 'firefox78', 'safari14'],
-    minify: 'terser',
-    terserOptions: {
-      compress: { passes: 2, drop_console: false },
-      mangle: true,
+    // es2017 = async/await native, supported by Chrome 63+ / Android WebView 63+
+    // Android 9 (2018) datang dengan Chrome 69 — es2017 aman dan parse lebih cepat dari es2020
+    target: ['es2017', 'chrome69', 'firefox68', 'safari13'],
+    minify: 'esbuild', // esbuild 10x lebih cepat dari terser, output size hampir sama
+    esbuildOptions: {
+      // drop console di production untuk kurangi bundle size ~2-5%
+      drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : [],
     },
     chunkSizeWarningLimit: 800,
     rollupOptions: {
