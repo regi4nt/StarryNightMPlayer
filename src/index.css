@@ -214,6 +214,8 @@ input[type='range']::-webkit-slider-thumb {
   inset: 0;
   pointer-events: none;
   will-change: opacity;
+  contain: strict;
+  backface-visibility: hidden;
 }
 /* Starry — layer A: white stars, lebih sedikit gradients */
 .stars {
@@ -227,7 +229,7 @@ input[type='range']::-webkit-slider-thumb {
     radial-gradient(1px 1px at 15% 70%, rgba(255,255,255,0.50), transparent),
     radial-gradient(1px 1px at 62% 65%, rgba(255,255,255,0.55), transparent);
   background-size: 420px 420px;
-  animation: twinkle-a 6s ease-in-out infinite alternate;
+  animation: twinkle-a 10s ease-in-out infinite alternate;
 }
 /* Starry — layer B: blue-tinted stars */
 .starsB {
@@ -239,7 +241,7 @@ input[type='range']::-webkit-slider-thumb {
     radial-gradient(1px 1px at 88% 30%, rgba(200,220,255,0.60), transparent),
     radial-gradient(1px 1px at 20% 88%, rgba(180,200,255,0.50), transparent);
   background-size: 520px 520px;
-  animation: twinkle-b 9s ease-in-out infinite alternate;
+  animation: twinkle-b 15s ease-in-out infinite alternate;
 }
 /* Starry — layer C: warm gold accent stars, hanya saat prefers-reduced-motion:no-preference */
 .starsC {
@@ -249,7 +251,7 @@ input[type='range']::-webkit-slider-thumb {
     radial-gradient(1px 1px at 80% 60%, rgba(255,240,200,0.55), transparent),
     radial-gradient(1px 1px at 45% 90%, rgba(255,230,180,0.45), transparent);
   background-size: 640px 640px;
-  animation: twinkle-c 12s ease-in-out infinite alternate;
+  animation: twinkle-c 20s ease-in-out infinite alternate;
 }
 /* Opacity-only twinkle — tidak pakai transform scale (hemat GPU) */
 @keyframes twinkle-a {
@@ -771,6 +773,8 @@ input[type='range']::-webkit-slider-thumb {
   pointer-events: none;
   will-change: opacity;
   overflow: hidden;
+  contain: layout style;
+  backface-visibility: hidden;
 }
 
 .aurora-layer::before {
@@ -787,8 +791,7 @@ input[type='range']::-webkit-slider-thumb {
       rgba(120,80,255,0.15) 0%, transparent 60%),
     radial-gradient(ellipse 50% 30% at 50% 50%,
       rgba(60,200,255,0.10) 0%, transparent 55%);
-  animation: aurora-shift 10s ease-in-out infinite alternate;
-  will-change: transform, opacity;
+  animation: aurora-shift 16s ease-in-out infinite alternate;
 }
 
 .aurora-layer::after {
@@ -803,8 +806,7 @@ input[type='range']::-webkit-slider-thumb {
       rgba(200,100,255,0.12) 0%, transparent 55%),
     radial-gradient(ellipse 55% 25% at 25% 60%,
       rgba(80,255,200,0.10) 0%, transparent 50%);
-  animation: aurora-shift 14s ease-in-out 3s infinite alternate-reverse;
-  will-change: transform, opacity;
+  animation: aurora-shift 22s ease-in-out 3s infinite alternate-reverse;
 }
 
 @keyframes aurora-shift {

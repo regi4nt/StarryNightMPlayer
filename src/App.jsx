@@ -4279,6 +4279,11 @@ Return ONLY valid JSON, no explanation:
   // ── Auto-fetch lirik DINONAKTIFKAN — lirik hanya dimuat saat tombol ditekan
   const getLyricsRef = useRef(null);
   useEffect(() => { getLyricsRef.current = getLyrics; });
+
+  // ── Auto-fetch: ref agar useEffect selalu panggil versi terbaru getSongInfo
+  const getSongInfoRef = useRef(null);
+  useEffect(() => { getSongInfoRef.current = getSongInfo; });
+
   // Reset state lirik saat lagu berganti agar tombol muncul kembali
   useEffect(() => {
     setLyrics('');
@@ -4289,6 +4294,37 @@ Return ONLY valid JSON, no explanation:
     setLyricsRomanized('');
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [track.id, embedTrack?.videoId]);
+
+  // ── Auto-fetch lirik di background saat track berganti (Pro only)
+  // Data sudah siap saat user membuka tab Lirik.
+  useEffect(() => {
+    if (isLite) return;
+    if (!embedTrack && track.isRadio) return; // skip radio
+    const iTrack = embedTrack || track;
+    if (!iTrack?.title || iTrack.title === 'Unknown') return;
+    const timer = setTimeout(() => {
+      getLyricsRef.current?.();
+    }, 600); // sedikit lebih awal dari info lagu (1200ms)
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [track.id, embedTrack?.videoId, isLite]);
+
+  // ── Auto-fetch info lagu di background saat track berganti (Pro only)
+  // Sama seperti lirik — data sudah siap saat user membuka tab Insight.
+  useEffect(() => {
+    if (isLite) return;
+    // Skip radio — tidak ada info lagu yang relevan
+    const iTrack = embedTrack || track;
+    if (!embedTrack && track.isRadio) { setSongInfo(null); return; }
+    if (!iTrack?.title || iTrack.title === 'Unknown') { setSongInfo(null); return; }
+    setSongInfo(null);
+    // Delay kecil agar tidak bentrok dengan audio loading & fetch lirik
+    const timer = setTimeout(() => {
+      getSongInfoRef.current?.();
+    }, 1200);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [track.id, embedTrack?.videoId, isLite]);
 
   // ── FIX Bug #10: Auto-romanisation — trigger romanizeLyrics otomatis saat lirik non-Latin berhasil dimuat
   // Sebelumnya hanya manual via tombol, padahal ada komentar "Auto-romanisation" di kode.
@@ -6724,64 +6760,151 @@ Format exactly:
     }
     setSongInfoL(true);
     const isEn = lang === 'en';
-    const systemPrompt = isEn
-      ? `You are a music database. You only state facts you are confident about for well-known songs. For obscure or unknown songs, use "Unknown" for uncertain fields rather than guessing. Reply ONLY with a raw JSON object — no markdown fences, no explanation, no extra text.`
-      : `Kamu adalah database musik. Hanya tulis fakta yang kamu yakin benar untuk lagu-lagu terkenal. Untuk lagu yang tidak dikenal, gunakan "Tidak diketahui" untuk field yang tidak yakin daripada mengarang. Balas HANYA dengan JSON mentah — tanpa markdown, tanpa penjelasan, tanpa teks lain.`;
-    const prompt = isEn
-      ? `Song: "${activeTitle}" by ${activeArtist}.
+    const cl = (s) => (s||'').trim().replace(/\s+/g,' ');
 
-If you recognize this song, fill in the JSON accurately. If you do NOT recognize it, still fill what you can logically infer, and mark uncertain fields as "Unknown".
-
-Respond with ONLY this JSON (no markdown, no text before or after):
-{"genre":"","year":"","language":"","bpm":"","key":"","mood":"","about":"","facts":["","",""],"similarArtists":["","",""],"tags":["","","","",""]}
-
-Rules:
-- genre: 1-2 word music genre
-- year: exact year if known, else decade like "2010s", else "Unknown"  
-- language: language of the lyrics
-- bpm: numeric range like "120-130" or single number, else "Unknown"
-- key: musical key like "C Major", else "Unknown"
-- mood: 2-3 descriptive mood words, comma separated
-- about: 2-3 sentences describing the song's theme, sound and vibe — be specific to THIS song
-- facts: 3 true, interesting, specific facts about this song or its artist — NO generic statements
-- similarArtists: 3 artists with similar style to ${activeArtist}
-- tags: 5 hashtags like #indie #chill #2020s`
-      : `Lagu: "${activeTitle}" oleh ${activeArtist}.
-
-Jika kamu mengenali lagu ini, isi JSON dengan akurat. Jika TIDAK mengenali, isi semampunya secara logis, dan tandai field yang tidak yakin dengan "Tidak diketahui".
-
-Balas HANYA dengan JSON ini (tanpa markdown, tanpa teks lain):
-{"genre":"","year":"","language":"","bpm":"","key":"","mood":"","about":"","facts":["","",""],"similarArtists":["","",""],"tags":["","","","",""]}
-
-Aturan:
-- genre: genre musik 1-2 kata
-- year: tahun tepat jika tahu, atau dekade misal "2010-an", atau "Tidak diketahui"
-- language: bahasa lirik
-- bpm: kisaran angka misal "120-130" atau angka tunggal, atau "Tidak diketahui"
-- key: kunci musik misal "C Mayor", atau "Tidak diketahui"
-- mood: 2-3 kata mood deskriptif, dipisah koma
-- about: 2-3 kalimat yang mendeskripsikan tema, suara, dan vibe lagu ini — spesifik ke LAGU INI
-- facts: 3 fakta benar, menarik, dan spesifik tentang lagu ini atau artisnya — BUKAN pernyataan umum
-- similarArtists: 3 artis dengan gaya mirip ${activeArtist}
-- tags: 5 hashtag seperti #indie #chill #2020an`;
-    const raw = await askAIRace(prompt, systemPrompt, [], 900);
+    // ── 1. MusicBrainz (gratis, tanpa API key) ───────────────────────────
+    let mbData = null;
     try {
-      const cleaned = (raw || '').replace(/```json[\s\S]*?```|```[\s\S]*?```/g, s => s.replace(/```json|```/g,'')).replace(/^[^{]*({[\s\S]*})[^}]*$/, '$1').trim();
-      const parsed  = JSON.parse(cleaned);
-      // Sanitize: replace empty strings with fallback
-      if (!parsed.about) parsed.about = isEn ? 'No description available.' : 'Deskripsi tidak tersedia.';
-      if (!Array.isArray(parsed.facts)) parsed.facts = [];
-      if (!Array.isArray(parsed.similarArtists)) parsed.similarArtists = [];
-      if (!Array.isArray(parsed.tags)) parsed.tags = [];
-      parsed.facts = parsed.facts.filter(Boolean);
-      parsed.similarArtists = parsed.similarArtists.filter(Boolean);
-      parsed.tags = parsed.tags.filter(Boolean);
-      songInfoCacheRef.current[cacheKey] = parsed;
-      setSongInfo(parsed);
-    } catch {
-      setSongInfo({ about: raw || (isEn ? 'Could not load info.' : 'Gagal memuat info.'), facts: [], similarArtists: [], tags: [] });
-    }
-    setActiveModelLabel(activeModel());
+      const mbQ = encodeURIComponent(`recording:"${activeTitle}" AND artist:"${activeArtist}"`);
+      const mbRes = await fetch(
+        `https://musicbrainz.org/ws/2/recording?query=${mbQ}&limit=1&fmt=json`,
+        { headers: { 'User-Agent': 'StarryNightMPlayer/1.0 (music-player-app)' } }
+      );
+      if (mbRes.ok) {
+        const mbJson = await mbRes.json();
+        const rec = mbJson?.recordings?.[0];
+        if (rec) {
+          const release = rec.releases?.[0];
+          const year = release?.date ? release.date.slice(0,4) : null;
+          const genres = rec.genres?.map(g=>g.name) || rec.tags?.filter(tg=>tg.count>0).map(tg=>tg.name) || [];
+          const rgGenres = release?.['release-group']?.genres?.map(g=>g.name) || [];
+          const allGenres = [...new Set([...genres,...rgGenres])];
+          const langCode = rec['text-representation']?.language;
+          const langMap = { eng:'English', ind:'Indonesian', jpn:'Japanese', kor:'Korean', spa:'Spanish', fra:'French', deu:'German', por:'Portuguese', ita:'Italian', zho:'Chinese', tha:'Thai', ara:'Arabic', rus:'Russian', nld:'Dutch', swe:'Swedish' };
+          mbData = {
+            year,
+            genre: allGenres.slice(0,2).map(g=>g.charAt(0).toUpperCase()+g.slice(1)).join(', ') || null,
+            language: langCode ? (langMap[langCode] || langCode) : null,
+          };
+        }
+      }
+    } catch { /* silently fallback */ }
+
+    // ── 2. iTunes Search API (gratis, tanpa API key) ─────────────────────
+    let itunesData = null;
+    try {
+      const itunesQ = encodeURIComponent(`${activeTitle} ${activeArtist}`);
+      const itunesRes = await fetch(`https://itunes.apple.com/search?term=${itunesQ}&media=music&entity=song&limit=1`);
+      if (itunesRes.ok) {
+        const itunesJson = await itunesRes.json();
+        const item = itunesJson?.results?.[0];
+        if (item) {
+          itunesData = {
+            genre: item.primaryGenreName || null,
+            year: item.releaseDate ? item.releaseDate.slice(0,4) : null,
+          };
+        }
+      }
+    } catch { /* silently fallback */ }
+
+    // ── 3. Last.fm (API key publik) ──────────────────────────────────────
+    let lastfmData = null;
+    try {
+      const LFMKEY = '2fd3dba4b40b6aa926ad12d5e5b9fe7f';
+      const lfmRes = await fetch(
+        `https://ws.audioscrobbler.com/2.0/?method=track.getInfo&api_key=${LFMKEY}&artist=${encodeURIComponent(activeArtist)}&track=${encodeURIComponent(activeTitle)}&format=json&autocorrect=1`
+      );
+      if (lfmRes.ok) {
+        const lfmJson = await lfmRes.json();
+        const t2 = lfmJson?.track;
+        if (t2 && !lfmJson.error) {
+          const topTags = t2.toptags?.tag?.slice(0,5).map(tg=>cl(tg.name)).filter(Boolean) || [];
+          const wiki = t2.wiki?.summary
+            ? t2.wiki.summary.replace(/<a[^>]*>.*?<\/a>/gi,'').replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim().split('.').slice(0,3).join('.')+'.'
+            : null;
+          let similarArtists = [];
+          try {
+            const simRes = await fetch(`https://ws.audioscrobbler.com/2.0/?method=artist.getSimilar&api_key=${LFMKEY}&artist=${encodeURIComponent(activeArtist)}&limit=4&format=json&autocorrect=1`);
+            if (simRes.ok) {
+              const simJson = await simRes.json();
+              similarArtists = simJson?.similarartists?.artist?.slice(0,3).map(a=>cl(a.name)).filter(Boolean) || [];
+            }
+          } catch { }
+          lastfmData = {
+            tags: topTags,
+            about: wiki || null,
+            similarArtists,
+            listeners: t2.listeners ? parseInt(t2.listeners).toLocaleString() : null,
+            playcount: t2.playcount ? parseInt(t2.playcount).toLocaleString() : null,
+          };
+        }
+      }
+    } catch { /* silently fallback */ }
+
+    // ── 4. Merge semua sumber ────────────────────────────────────────────
+    const sources = [mbData?'MusicBrainz':null, itunesData?'iTunes':null, lastfmData?'Last.fm':null].filter(Boolean);
+    const merged = {
+      genre:    mbData?.genre    || itunesData?.genre    || null,
+      year:     mbData?.year     || itunesData?.year     || null,
+      language: mbData?.language || null,
+      tags:     lastfmData?.tags || [],
+      about:    lastfmData?.about || null,
+      similarArtists: lastfmData?.similarArtists || [],
+      listeners: lastfmData?.listeners || null,
+      playcount: lastfmData?.playcount || null,
+      bpm: null, key: null, mood: null, facts: [],
+      _sources: sources,
+    };
+
+    // ── 5. AI untuk field yang masih kosong + bpm/key/mood/facts ────────
+    try {
+      const missingFields = [];
+      if (!merged.genre)    missingFields.push('genre');
+      if (!merged.year)     missingFields.push('year');
+      if (!merged.language) missingFields.push('language');
+      missingFields.push('bpm','key','mood','facts');
+      if (!merged.about)    missingFields.push('about');
+      if (merged.similarArtists.length===0) missingFields.push('similarArtists');
+      if (merged.tags.length===0) missingFields.push('tags');
+
+      const knownCtx = [
+        merged.genre    && `genre:"${merged.genre}"`,
+        merged.year     && `year:"${merged.year}"`,
+        merged.language && `language:"${merged.language}"`,
+      ].filter(Boolean).join(', ');
+
+      const sysP = isEn
+        ? `You are a music database. Only state facts you are confident about. Use "Unknown" for uncertain fields. Reply ONLY with a raw JSON object.`
+        : `Kamu adalah database musik. Hanya tulis fakta yang kamu yakin benar. Gunakan "Tidak diketahui" untuk field yang tidak yakin. Balas HANYA dengan JSON mentah.`;
+      const prom = isEn
+        ? `Song: "${activeTitle}" by ${activeArtist}.${knownCtx?` Known: ${knownCtx}. Do NOT repeat these.`:''} Fill only: ${missingFields.join(', ')}.\n\nReply ONLY with this JSON:\n{"genre":"","year":"","language":"","bpm":"","key":"","mood":"","about":"","facts":["","",""],"similarArtists":["","",""],"tags":["","","","",""]}\n\nbpm: numeric range like "120-130"; key: like "C Major"; mood: 2-3 words; about: 2-3 sentences; facts: 3 specific true facts; tags: 5 hashtags`
+        : `Lagu: "${activeTitle}" oleh ${activeArtist}.${knownCtx?` Sudah diketahui: ${knownCtx}. Jangan ulangi.`:''} Isi hanya: ${missingFields.join(', ')}.\n\nBalas HANYA dengan JSON ini:\n{"genre":"","year":"","language":"","bpm":"","key":"","mood":"","about":"","facts":["","",""],"similarArtists":["","",""],"tags":["","","","",""]}\n\nbpm: kisaran angka; key: misal "C Mayor"; mood: 2-3 kata; about: 2-3 kalimat; facts: 3 fakta spesifik; tags: 5 hashtag`;
+
+      const raw = await askAIRace(prom, sysP, [], 900);
+      const cleaned = (raw||'').replace(/\`\`\`json[\s\S]*?\`\`\`|\`\`\`[\s\S]*?\`\`\`/g, s=>s.replace(/\`\`\`json|\`\`\`/g,'')).replace(/^[^{]*({[\s\S]*})[^}]*$/, '$1').trim();
+      const ai = JSON.parse(cleaned);
+      if (!merged.genre    && ai.genre)    merged.genre    = cl(ai.genre);
+      if (!merged.year     && ai.year)     merged.year     = cl(ai.year);
+      if (!merged.language && ai.language) merged.language = cl(ai.language);
+      if (ai.bpm)  merged.bpm  = cl(ai.bpm);
+      if (ai.key)  merged.key  = cl(ai.key);
+      if (ai.mood) merged.mood = cl(ai.mood);
+      if (!merged.about && ai.about) merged.about = cl(ai.about);
+      if (merged.facts.length===0 && Array.isArray(ai.facts)) merged.facts = ai.facts.filter(Boolean).map(cl);
+      if (merged.similarArtists.length===0 && Array.isArray(ai.similarArtists)) merged.similarArtists = ai.similarArtists.filter(Boolean).map(cl);
+      if (merged.tags.length===0 && Array.isArray(ai.tags)) merged.tags = ai.tags.filter(Boolean).map(cl);
+      merged._sources.push('AI');
+    } catch { /* AI gagal — tampilkan data dari API saja */ }
+
+    // ── 6. Sanitize final ────────────────────────────────────────────────
+    if (!merged.about) merged.about = isEn ? 'No description available.' : 'Deskripsi tidak tersedia.';
+    if (!Array.isArray(merged.facts)) merged.facts = [];
+    if (!Array.isArray(merged.similarArtists)) merged.similarArtists = [];
+    if (!Array.isArray(merged.tags)) merged.tags = [];
+
+    songInfoCacheRef.current[cacheKey] = merged;
+    setSongInfo(merged);
+    setActiveModelLabel(merged._sources.join(' + '));
     setSongInfoL(false);
   };
 
@@ -11448,8 +11571,8 @@ Aturan:
               <div style={{ display:'flex', justifyContent:'center', gap:0, marginBottom:0, borderBottom:'1px solid rgba(255,255,255,0.06)', overflowX:'auto' }} className="scrollbar-hide">
                 {[
                   { id:'grid',    label:'🏠' },
-                  { id:'insight', label:`✨ ${t?.insightTab||'Info Lagu'}` },
                   { id:'chat',    label:'💬 Chat' },
+                  { id:'insight', label:`✨ ${t?.insightTab||'Info Lagu'}` },
                   { id:'foryou',  label:'🎯 For You' },
                   { id:'lyrics',  label:`🎵 ${t?.lyricsTab||'Lyrics'}` },
                   { id:'stats',   label:`📊 ${t?.statsTab||'Stats'}` },
@@ -11556,18 +11679,6 @@ Aturan:
                   ))}
                 </div>
 
-                {/* Quick stats row */}
-                <div style={{ display:'flex', gap:8, marginTop:14 }}>
-                  {[
-                    { label: lang==='en'?'Now Playing':'Sekarang', val: (() => { const t2 = track.title||'—'; return t2.length > 18 ? t2.slice(0,18)+'…' : t2; })() },
-                    { label: lang==='en'?'AI':'AI', val: hasKey() ? '🟢 On' : '🔴 Off' },
-                  ].map((s,i) => (
-                    <div key={i} style={{ flex:1, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:'9px 12px' }}>
-                      <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:3 }}>{s.label}</div>
-                      <div style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.75)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.val}</div>
-                    </div>
-                  ))}
-                </div>
               </div>
             )}
 
@@ -11575,8 +11686,7 @@ Aturan:
             {aiSubView==='insight' && (() => {
               const iTrack = embedTrack || track;
               const accentColor = iTrack.color || track.color || '#6366f1';
-              // Auto-load on first open
-              if (!songInfo && !songInfoLoading && !isLite) { getSongInfo(); }
+              // Info lagu di-fetch otomatis saat track berganti via useEffect
               const chipDefs = [
                 { label: lang==='en'?'Genre':'Genre',    val: songInfo?.genre,    icon:'🎸', bg:'rgba(99,102,241,0.12)',  color:'#a5b4fc' },
                 { label: lang==='en'?'Year':'Tahun',     val: songInfo?.year,     icon:'📅', bg:'rgba(34,197,94,0.12)',   color:'#86efac' },
@@ -11622,12 +11732,33 @@ Aturan:
                   <div style={{ margin:'0 16px 14px', padding:'16px', borderRadius:18, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', textAlign:'center' }}>
                     <div style={{ fontSize:28, marginBottom:8 }}>⚡</div>
                     <div style={{ fontSize:13, fontWeight:700, color:'white', marginBottom:4 }}>Info Lagu — Pro Only</div>
-                    <div style={{ fontSize:11.5, color:'rgba(255,255,255,0.4)', lineHeight:1.7 }}>{lang==='en'?'Switch to Pro Mode to unlock AI-powered song info.':'Aktifkan Pro Mode untuk fitur Info Lagu berbasis AI.'}</div>
+                    <div style={{ fontSize:11.5, color:'rgba(255,255,255,0.4)', lineHeight:1.7 }}>{lang==='en'?'Switch to Pro Mode to unlock song info from MusicBrainz, iTunes, Last.fm & AI.':'Aktifkan Pro Mode untuk info lagu dari MusicBrainz, iTunes, Last.fm & AI.'}</div>
                     <button onClick={toggleMode} style={{ marginTop:12, padding:'8px 20px', borderRadius:999, border:'none', background:`linear-gradient(135deg,#6366f1,#a855f7)`, color:'white', fontSize:12, fontWeight:700, cursor:'pointer' }}>✨ Pro Mode</button>
                   </div>
                 )}
 
                 {songInfo && !isLite && (<>
+
+                  {/* ── Source badges ── */}
+                  {songInfo._sources?.length > 0 && (
+                    <div style={{ margin:'0 16px 10px', display:'flex', flexWrap:'wrap', gap:5, alignItems:'center' }}>
+                      <span style={{ fontSize:9, fontWeight:700, color:'rgba(255,255,255,0.25)', textTransform:'uppercase', letterSpacing:'0.08em', marginRight:3 }}>{lang==='en'?'Sources:':'Sumber:'}</span>
+                      {songInfo._sources.map((src,i)=>{
+                        const srcColor = src==='MusicBrainz'?'#ba68c8':src==='iTunes'?'#ef5350':src==='Last.fm'?'#e91e63':src==='AI'?accentColor:'#78909c';
+                        const srcIcon  = src==='MusicBrainz'?'🎵':src==='iTunes'?'🎵':src==='Last.fm'?'📻':src==='AI'?'🤖':'🌐';
+                        return (
+                          <span key={i} style={{ padding:'2px 7px', borderRadius:999, background:`${srcColor}18`, border:`1px solid ${srcColor}35`, fontSize:9, fontWeight:700, color:srcColor, letterSpacing:'0.04em' }}>
+                            {srcIcon} {src}
+                          </span>
+                        );
+                      })}
+                      {(songInfo.listeners||songInfo.playcount) && (
+                        <span style={{ marginLeft:'auto', fontSize:9, color:'rgba(255,255,255,0.28)', fontWeight:600 }}>
+                          {songInfo.listeners && `👥 ${songInfo.listeners}`}{songInfo.playcount && ` · ▶ ${songInfo.playcount}`}
+                        </span>
+                      )}
+                    </div>
+                  )}
 
                   {/* ── Metadata chips ── */}
                   <div style={{ margin:'0 16px 14px' }}>

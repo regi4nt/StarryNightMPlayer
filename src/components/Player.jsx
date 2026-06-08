@@ -309,7 +309,7 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
                   <circle cx={c} cy={c} r={r} stroke={color} strokeWidth="4" fill="none"
                     strokeDasharray={circ2} strokeDashoffset={circ2 - circ2*pct2}
                     strokeLinecap="round" transform={`rotate(-90 ${c} ${c})`}
-                    style={{ transition:'stroke-dashoffset 0.3s ease', filter:`drop-shadow(0 0 4px ${color})` }}/>
+                    style={{ transition:'stroke-dashoffset 0.3s ease' }}/>
                   <text x={c} y={c+1} textAnchor="middle" dominantBaseline="middle"
                     fill="white" fontSize={artR*0.18} fontWeight="800" fontFamily="monospace">
                     {downloadProg > 0 ? `${downloadProg}%` : '…'}
@@ -358,17 +358,17 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
           <circle className="progress-arc" cx={cx} cy={cy} r={ringR} stroke={color} strokeWidth="4.5" fill="none"
             strokeDasharray={circ} strokeDashoffset={circ-circ*pct} strokeLinecap="round"
             transform={`rotate(-90 ${cx} ${cy})`}
-            style={{ transition: isDragging?'none':'stroke-dashoffset 0.35s linear', filter:isLite?'none':`drop-shadow(0 0 6px ${color})` }}/>
+            style={{ transition: isDragging?'none':'stroke-dashoffset 0.35s linear' }}/>
         )}
         {/* 0:00 tick — hide for radio */}
         {!isRadio && <line x1={cx} y1={cy-ringR-7} x2={cx} y2={cy-ringR+7} stroke="rgba(255,255,255,0.18)" strokeWidth="2.5" strokeLinecap="round"/>}
         {/* Dot glow — hide for radio */}
         {!isRadio && <circle cx={dotX} cy={dotY} r={14} fill={color} opacity="0.15"/>}
         {/* Draggable dot — hide for radio */}
-        {!isRadio && <circle cx={dotX} cy={dotY} r={7} fill="white"
-          style={{ filter:isLite?'none':'drop-shadow(0 0 8px rgba(255,255,255,1))', cursor:'grab' }}/>}
+        {!isRadio && <circle cx={dotX} cy={dotY} r={7} fill="white" stroke={color} strokeWidth="2"
+          style={{ cursor:'grab' }}/>}
         {/* Current time — hide for radio */}
-        {!isRadio && pct>0.01&&<text x={lblX} y={lblY} textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="11" fontWeight="800" fontFamily="monospace" style={{ filter:'drop-shadow(0 1px 5px rgba(0,0,0,1))', pointerEvents:'none' }}>{fmt(progress)}</text>}
+        {!isRadio && pct>0.01&&<text x={lblX} y={lblY} textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="11" fontWeight="800" fontFamily="monospace" style={{ pointerEvents:'none' }}>{fmt(progress)}</text>}
         {/* Duration / LIVE label */}
         {isRadio
           ? <text x={cx} y={cy+ringR+20} textAnchor="middle" dominantBaseline="middle" fill={color} fontSize="10" fontWeight="800" fontFamily="monospace" style={{ pointerEvents:'none', letterSpacing:'0.12em' }}>● LIVE</text>
@@ -395,9 +395,10 @@ function orbitalEqual(prev, next) {
   for (const k of keys) {
     if (prev[k] !== next[k]) return false;
   }
-  // pct: arc SVG — bandingkan dengan presisi 4 desimal (≈ 0.3 px pada ring Ø 300)
-  const prevPct = Math.round((prev.pct ?? 0) * 1e4);
-  const nextPct = Math.round((next.pct ?? 0) * 1e4);
+  // pct: arc SVG — bandingkan dengan presisi 2 desimal (≈ 1% perubahan)
+  // Presisi 4 desimal (1e4) terlalu sensitif dan menyebabkan re-render tiap detik.
+  const prevPct = Math.round((prev.pct ?? 0) * 1e2);
+  const nextPct = Math.round((next.pct ?? 0) * 1e2);
   if (prevPct !== nextPct) return false;
   // `progress` (detik mentah) sengaja DIABAIKAN — hanya dipakai untuk label fmt()
   // di dalam komponen, tidak mempengaruhi geometri arc.

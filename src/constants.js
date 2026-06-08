@@ -649,7 +649,7 @@ export const askAI = async (user, system='', tries=0, history=[]) => {
 
 // ── askAIRace: kirim ke SEMUA provider paralel, ambil yang pertama berhasil balas
 // history: array of {from:'user'|'ai', text:string} — untuk menjaga konteks percakapan
-export const askAIRace = async (user, system='', history=[]) => {
+export const askAIRace = async (user, system='', history=[], maxTokens=500) => {
   const PROVIDERS = getProviders();
   if (!PROVIDERS.length) return '⚠️ No API key found. Add one in Settings or Vercel Environment Variables.';
 
@@ -665,10 +665,10 @@ export const askAIRace = async (user, system='', history=[]) => {
   const msgs = buildMessages(user, history);
   const makeReq = (slot) => {
     const body = slot.isOpenAI
-      ? { model: slot.model, max_tokens: 500,
+      ? { model: slot.model, max_tokens: maxTokens,
           messages: [...(system ? [{ role:'system', content:system }] : []), ...msgs],
           ...slot.extra }
-      : { model: slot.model, max_tokens: 500,
+      : { model: slot.model, max_tokens: maxTokens,
           ...(system ? { system } : {}),
           messages: msgs };
 
