@@ -4203,6 +4203,28 @@ Return ONLY valid JSON, no explanation:
     }
   }, [track.id, customSongs]);
 
+  // ── Track history untuk embed (YouTube iframe) ──
+  useEffect(() => {
+    if (!embedTrack || embedTrack.type !== 'youtube') return;
+    const embedAsTrack = {
+      id: `yt_${embedTrack.videoId}`,
+      title: embedTrack.title,
+      artist: embedTrack.artist,
+      album: 'YouTube',
+      cover: embedTrack.thumbnail || '',
+      color: '#ff4444',
+      mood: '',
+      thumbnail: embedTrack.thumbnail,
+      duration: embedTrack.durationSecs || 0,
+      type: 'youtube',
+      videoId: embedTrack.videoId,
+    };
+    setHistory(prev => {
+      const f = prev.filter(s => s.id !== embedAsTrack.id);
+      return [embedAsTrack, ...f].slice(0, 15);
+    });
+  }, [embedTrack?.videoId]); // trigger setiap ganti video embed
+
   // ── Auto-fetch lirik DINONAKTIFKAN — lirik hanya dimuat saat tombol ditekan
   const getLyricsRef = useRef(null);
   useEffect(() => { getLyricsRef.current = getLyrics; });
@@ -11424,31 +11446,33 @@ Format exactly:
             )}
 
             {/* ── INSIGHT: Info Lagu ── */}
-            {aiSubView==='insight' && (
+            {aiSubView==='insight' && (() => {
+              const iTrack = embedTrack || track;
+              return (
               <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'0 0 24px' }}>
                 {/* Cover + Meta */}
-                <div style={{ margin:'0 16px 16px', borderRadius:20, overflow:'hidden', background:'rgba(255,255,255,0.03)', border:`1px solid ${track.color}20` }}>
+                <div style={{ margin:'0 16px 16px', borderRadius:20, overflow:'hidden', background:'rgba(255,255,255,0.03)', border:`1px solid ${iTrack.color||track.color}20` }}>
                   {/* Hero gradient banner */}
-                  <div style={{ height:100, background:`linear-gradient(135deg,${track.color}40,${track.color}18)`, display:'flex', alignItems:'flex-end', padding:'0 16px 14px', gap:14, position:'relative', overflow:'hidden' }}>
-                    <div style={{ position:'absolute', top:-20, right:-20, width:120, height:120, borderRadius:'50%', background:`${track.color}20`, filter:'blur(30px)' }}/>
-                    {track.cover
-                      ? <img src={track.cover} alt={track.title} style={{ width:60, height:60, borderRadius:14, objectFit:'cover', flexShrink:0, boxShadow:`0 4px 16px ${track.color}50`, border:`2px solid ${track.color}60` }}/>
-                      : <div style={{ width:60, height:60, borderRadius:14, background:`${track.color}30`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><span style={{ fontSize:28 }}>🎵</span></div>
+                  <div style={{ height:100, background:`linear-gradient(135deg,${iTrack.color||track.color}40,${iTrack.color||track.color}18)`, display:'flex', alignItems:'flex-end', padding:'0 16px 14px', gap:14, position:'relative', overflow:'hidden' }}>
+                    <div style={{ position:'absolute', top:-20, right:-20, width:120, height:120, borderRadius:'50%', background:`${iTrack.color||track.color}20`, filter:'blur(30px)' }}/>
+                    {iTrack.cover||iTrack.thumbnail
+                      ? <img src={iTrack.cover||iTrack.thumbnail} alt={iTrack.title} style={{ width:60, height:60, borderRadius:14, objectFit:'cover', flexShrink:0, boxShadow:`0 4px 16px ${iTrack.color||track.color}50`, border:`2px solid ${iTrack.color||track.color}60` }}/>
+                      : <div style={{ width:60, height:60, borderRadius:14, background:`${iTrack.color||track.color}30`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><span style={{ fontSize:28 }}>🎵</span></div>
                     }
                     <div style={{ minWidth:0 }}>
-                      <div style={{ fontSize:15, fontWeight:800, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginBottom:3, letterSpacing:'-0.01em' }}>{track.title||'Unknown'}</div>
-                      <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{track.artist||'Unknown Artist'}</div>
-                      {track.album && <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{track.album}</div>}
+                      <div style={{ fontSize:15, fontWeight:800, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginBottom:3, letterSpacing:'-0.01em' }}>{iTrack.title||'Unknown'}</div>
+                      <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{iTrack.artist||'Unknown Artist'}</div>
+                      {iTrack.album && <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{iTrack.album}</div>}
                     </div>
                   </div>
                   {/* Metadata pills */}
                   <div style={{ padding:'12px 14px', display:'flex', flexWrap:'wrap', gap:7 }}>
-                    {track.mood && track.mood.split(',').slice(0,3).map((m,i)=>(
-                      <span key={i} style={{ fontSize:10, fontWeight:700, padding:'4px 10px', borderRadius:999, background:`${track.color}18`, color:track.color, border:`1px solid ${track.color}30`, whiteSpace:'nowrap' }}>{m.trim()}</span>
+                    {iTrack.mood && iTrack.mood.split(',').slice(0,3).map((m,i)=>(
+                      <span key={i} style={{ fontSize:10, fontWeight:700, padding:'4px 10px', borderRadius:999, background:`${iTrack.color||track.color}18`, color:iTrack.color||track.color, border:`1px solid ${iTrack.color||track.color}30`, whiteSpace:'nowrap' }}>{m.trim()}</span>
                     ))}
-                    {track.genre && <span style={{ fontSize:10, fontWeight:700, padding:'4px 10px', borderRadius:999, background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.5)', border:'1px solid rgba(255,255,255,0.08)', whiteSpace:'nowrap' }}>{track.genre}</span>}
-                    {track.isRadio && <span style={{ fontSize:10, fontWeight:700, padding:'4px 10px', borderRadius:999, background:'rgba(239,68,68,0.1)', color:'#fca5a5', border:'1px solid rgba(239,68,68,0.2)', whiteSpace:'nowrap' }}>📻 Radio</span>}
-                    {track.isDrive && <span style={{ fontSize:10, fontWeight:700, padding:'4px 10px', borderRadius:999, background:'rgba(99,102,241,0.1)', color:'#a5b4fc', border:'1px solid rgba(99,102,241,0.2)', whiteSpace:'nowrap' }}>☁️ Drive</span>}
+                    {iTrack.genre && <span style={{ fontSize:10, fontWeight:700, padding:'4px 10px', borderRadius:999, background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.5)', border:'1px solid rgba(255,255,255,0.08)', whiteSpace:'nowrap' }}>{iTrack.genre}</span>}
+                    {iTrack.isRadio && <span style={{ fontSize:10, fontWeight:700, padding:'4px 10px', borderRadius:999, background:'rgba(239,68,68,0.1)', color:'#fca5a5', border:'1px solid rgba(239,68,68,0.2)', whiteSpace:'nowrap' }}>📻 Radio</span>}
+                    {iTrack.isDrive && <span style={{ fontSize:10, fontWeight:700, padding:'4px 10px', borderRadius:999, background:'rgba(99,102,241,0.1)', color:'#a5b4fc', border:'1px solid rgba(99,102,241,0.2)', whiteSpace:'nowrap' }}>☁️ Drive</span>}
                   </div>
                 </div>
 
@@ -11498,7 +11522,8 @@ Format exactly:
                   ))}
                 </div>
               </div>
-            )}
+              );
+            })()}
 
             {/* ── STATS: Riwayat & Statistik Mendengarkan ── */}
             {aiSubView==='stats' && (
