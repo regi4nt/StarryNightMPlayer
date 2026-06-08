@@ -20,7 +20,7 @@
           "value": "(?<title>.*)"
         }
       ],
-      "destination": "https://ccmixter.org/api/query?title=:title&limit=5&format=json"
+      "destination": "https://ccmixter.org/api/query?title=:title&limit=10&format=json"
     },
     {
       "source": "/api/deezer",
@@ -31,7 +31,7 @@
           "value": "(?<q>.*)"
         }
       ],
-      "destination": "https://api.deezer.com/search?q=:q&limit=5&output=json"
+      "destination": "https://api.deezer.com/search?q=:q&limit=10&output=json"
     },
     {
       "source": "/api/chartlyrics/:path*",

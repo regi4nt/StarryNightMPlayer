@@ -630,17 +630,36 @@ export default function App() {
 
       // ── Keyword search: semua sumber paralel dengan abort & dedup ────────────
 
-      // Archive.org — sort by downloads, batasi 4 hasil, timeout 5 detik
+      // Helper: skor relevansi item terhadap query (0–100, makin tinggi makin relevan)
+      const relevanceScore = (title = '', artist = '', queryStr = '') => {
+        const q2 = queryStr.toLowerCase().trim();
+        const t = title.toLowerCase();
+        const a = (artist || '').toLowerCase();
+        if (!q2) return 50;
+        const words = q2.split(/\s+/).filter(Boolean);
+        let score = 0;
+        // Exact full match di title
+        if (t.includes(q2)) score += 60;
+        else if (a.includes(q2)) score += 40;
+        // Per-word hits
+        const titleHits = words.filter(w => t.includes(w)).length;
+        const artistHits = words.filter(w => a.includes(w)).length;
+        score += (titleHits / words.length) * 30;
+        score += (artistHits / words.length) * 10;
+        return Math.min(100, score);
+      };
+
+      // Archive.org — sort by downloads, batasi 8 hasil, timeout 7 detik
       // Lalu fetch metadata tiap identifier untuk mendapatkan URL audio langsung
       const archivePromise = (async () => {
         try {
           const r = await ft(
-            `https://archive.org/advancedsearch.php?q=${encodeURIComponent(q)}+AND+mediatype:(audio)&fl[]=identifier,title,creator&sort[]=downloads+desc&rows=4&output=json`,
-            5000
+            `https://archive.org/advancedsearch.php?q=${encodeURIComponent(q)}+AND+mediatype:(audio)&fl[]=identifier,title,creator&sort[]=downloads+desc&rows=8&output=json`,
+            7000
           );
           if (!r.ok) return [];
           const d = await r.json();
-          const docs = (d.response?.docs || []).slice(0, 4);
+          const docs = (d.response?.docs || []).slice(0, 8);
 
           // Fetch metadata semua identifier secara paralel
           const AUDIO_FMTS = ['MP3','VBR MP3','128Kbps MP3','64Kbps MP3','Ogg Vorbis','FLAC'];
@@ -657,20 +676,23 @@ export default function App() {
                 .filter(f => AUDIO_FMTS.includes(f.format) || (f.name||'').match(/\.(mp3|ogg|flac|m4a|opus)$/i))
                 .sort((a,b) => (b.format?.includes('MP3') ? 1 : 0) - (a.format?.includes('MP3') ? 1 : 0));
               if (audioFiles.length > 0) {
-                // Kembalikan track pertama (terbaik) dari item ini
-                const f = audioFiles[0];
-                return {
+                // Kembalikan hingga 3 track per identifier agar hasil lebih lengkap
+                const tracksToReturn = audioFiles.slice(0, 3);
+                const baseTitle = meta.metadata?.title || title;
+                const baseArtist = meta.metadata?.creator || meta.metadata?.artist || creator;
+                return tracksToReturn.map((f, fi) => ({
                   type: 'archive',
                   audioUrl: `https://archive.org/download/${identifier}/${encodeURIComponent(f.name)}`,
-                  title: meta.metadata?.title || title,
-                  artist: meta.metadata?.creator || meta.metadata?.artist || creator,
+                  title: fi === 0 ? baseTitle : (f.title || f.name?.replace(/\.[^.]+$/, '') || `${baseTitle} (${fi + 1})`),
+                  artist: baseArtist,
                   thumbnail: thumb,
                   source: 'archive',
                   identifier,
                   duration: f.length ? Math.round(parseFloat(f.length)) : undefined,
-                  id: `archive_${identifier}_0`,
-                  _fileCount: audioFiles.length, // berapa banyak track tersedia
-                };
+                  id: `archive_${identifier}_${fi}`,
+                  _fileCount: audioFiles.length,
+                  _relevance: relevanceScore(fi === 0 ? baseTitle : (f.title || f.name || ''), baseArtist, q),
+                }));
               }
             } catch { /* metadata gagal — fallback ke embed */ }
             // Fallback: embed
@@ -679,55 +701,64 @@ export default function App() {
               title, artist: creator, thumbnail: thumb, source: 'archive', identifier,
             };
           }));
-          return results;
+          // Flatten: tiap doc bisa menghasilkan array (multi-track) atau single object
+          return results.flat().filter(Boolean);
         } catch { return []; }
       })();
 
-      // Jamendo — timeout 5 detik
+      // Jamendo — timeout 6 detik, limit 8
       const jamendoPromise = (async () => {
         try {
-          const r = await ft(`/api/jamendo?search=${encodeURIComponent(q)}&limit=5`, 5000);
+          const r = await ft(`/api/jamendo?search=${encodeURIComponent(q)}&limit=8`, 6000);
           if (!r.ok) return [];
           const d = await r.json();
           return (d.results || []).map(t => ({
             type:'jamendo', audioUrl:t.audio, title:t.name, artist:t.artist_name,
             thumbnail:t.image, source:'jamendo', duration:t.duration, id:t.id,
+            _relevance: relevanceScore(t.name, t.artist_name, q),
           }));
         } catch { return []; }
       })();
 
-      // ccMixter — timeout 5 detik
+      // ccMixter — timeout 6 detik, limit 8
       const ccmixtPromise = (async () => {
         try {
-          const r = await ft(`/api/ccmixter?title=${encodeURIComponent(q)}&limit=5`, 5000);
+          // ccMixter proxy via vercel.json — limit parameter tidak diteruskan, hardcoded 5 di destination
+          // Kita ambil hasil maksimal yang tersedia lalu slice
+          const r = await ft(`/api/ccmixter?title=${encodeURIComponent(q)}&limit=8`, 6000);
           if (!r.ok) return [];
           const d = await r.json();
-          return (d || []).slice(0, 4).map(t => ({
+          return (d || []).slice(0, 8).map(t => ({
             type:'ccmixter', audioUrl:t.files?.[0]?.download_url||null,
             title:t.upload_name, artist:t.user_real_name||t.user_name,
             thumbnail:t.upload_extra?.cover_url||null,
             source:'ccmixter', id:t.upload_id, externalUrl:t.file_page_url,
+            _relevance: relevanceScore(t.upload_name, t.user_real_name||t.user_name, q),
           }));
         } catch { return []; }
       })();
 
-      // Audius — cache host agar tidak fetch ulang setiap pencarian
+      // Audius — cache host; reset cache jika host bermasalah agar retry otomatis
       const scPublicPromise = !scHasKey ? (async () => {
         try {
           if (!audiusHostRef.current) {
             try {
-              const hRes = await ft('https://api.audius.co', 2500);
+              const hRes = await ft('https://api.audius.co', 3000);
               if (hRes.ok) { const hData = await hRes.json(); audiusHostRef.current = (hData.data?.[0] || 'https://discoveryprovider.audius.co').replace(/\/$/, ''); }
             } catch {}
             if (!audiusHostRef.current) audiusHostRef.current = 'https://discoveryprovider.audius.co';
           }
           const audiusHost = audiusHostRef.current;
-          const r = await ft(`${audiusHost}/v1/tracks/search?query=${encodeURIComponent(q)}&limit=5&app_name=StarryNightPlayer`, 5000);
-          if (!r.ok) throw new Error('audius failed');
+          const r = await ft(`${audiusHost}/v1/tracks/search?query=${encodeURIComponent(q)}&limit=8&app_name=StarryNightPlayer`, 6000);
+          if (!r.ok) {
+            // Host bermasalah — reset cache agar request berikutnya coba ulang
+            audiusHostRef.current = null;
+            throw new Error('audius failed');
+          }
           const d = await r.json();
-          const tracks = (d.data || []).filter(t => t.id); // semua track valid
+          const tracks = (d.data || []).filter(t => t.id);
           if (tracks.length === 0) throw new Error('no audius results');
-          return tracks.slice(0, 5).map(t => ({
+          return tracks.slice(0, 8).map(t => ({
             type:'sc_track', id:`audius_${t.id}`, title:t.title,
             artist:t.user?.name||t.user?.handle||'Audius', duration:t.duration||0,
             thumbnail:t.artwork?.['150x150']||t.artwork?.['480x480']||null,
@@ -735,26 +766,28 @@ export default function App() {
             streamUrl:`${audiusHost}/v1/tracks/${t.id}/stream?app_name=StarryNightPlayer`,
             audioUrl:`${audiusHost}/v1/tracks/${t.id}/stream?app_name=StarryNightPlayer`,
             source:'audius',
+            _relevance: relevanceScore(t.title, t.user?.name||t.user?.handle||'', q),
           }));
         } catch {}
         return []; // Audius tidak ada hasil, biarkan merged logic pakai sc_embed
       })() : Promise.resolve([]);
 
-      // Deezer — timeout 5 detik
+      // Deezer — timeout 6 detik, fetch via proxy /api/deezer (hindari CORS direct fetch)
       const spPublicPromise = !spHasKey ? (async () => {
         try {
-          const r = await ft(`https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=5&output=json`, 5000);
+          const r = await ft(`/api/deezer?q=${encodeURIComponent(q)}`, 6000);
           if (!r.ok) throw new Error('deezer failed');
           const d = await r.json();
           const tracks = (d.data || []).filter(t => t.preview);
           if (tracks.length === 0) throw new Error('no deezer results');
-          return tracks.slice(0, 5).map(t => ({
+          return tracks.slice(0, 8).map(t => ({
             type:'sp_track', id:`deezer_${t.id}`, title:t.title,
             artist:t.artist?.name||'Deezer', duration:(t.duration||0)*1000,
             cover:t.album?.cover_medium||t.album?.cover||null,
             previewUrl:t.preview||null,
             spotifyUrl:t.link||`https://www.deezer.com/track/${t.id}`,
             source:'deezer',
+            _relevance: relevanceScore(t.title, t.artist?.name||'', q),
           }));
         } catch {}
         return []; // Deezer tidak ada hasil, biarkan merged logic pakai sp_embed
@@ -764,13 +797,15 @@ export default function App() {
       const scPromise = scHasKey ? (async () => {
         try {
           // Prioritaskan OAuth search (lebih banyak tracks, termasuk yang unlisted)
-          const oauthItems = hasScOAuth() ? await searchSoundCloudOAuth(q, 5) : null;
-          const items = oauthItems || await searchSoundCloud(q, 5);
-          return (items||[]).map(t=>({...t,source:'soundcloud',type:'soundcloud'}));
+          const oauthItems = hasScOAuth() ? await searchSoundCloudOAuth(q, 8) : null;
+          const items = oauthItems || await searchSoundCloud(q, 8);
+          return (items||[]).map(t=>({...t,source:'soundcloud',type:'soundcloud',
+            _relevance: relevanceScore(t.title, t.artist||t.user?.username||'', q)}));
         } catch { return []; }
       })() : Promise.resolve([]);
       const spPromise = spHasKey ? (async () => {
-        try { const items = await searchSpotify(q, 5); return (items||[]).map(t=>({...t,source:'spotify',type:'spotify_track'})); } catch { return []; }
+        try { const items = await searchSpotify(q, 8); return (items||[]).map(t=>({...t,source:'spotify',type:'spotify_track',
+          _relevance: relevanceScore(t.name||t.title, t.artists?.join(',')||t.artist||'', q)})); } catch { return []; }
       })() : Promise.resolve([]);
 
       // Jalankan semua paralel — tidak ada yang saling menunggu
@@ -781,39 +816,56 @@ export default function App() {
 
       if (sig.aborted) { setWsLoading(false); return; } // pencarian dibatalkan karena ada query baru
 
-      // ── Susun hasil: sumber lain dulu, SC & SP paling bawah ──
-      const merged = [];
+      // ── Susun hasil: gabungkan semua sumber, sort berdasarkan relevansi ──
+      // Kumpulkan semua audio items (bukan section/embed) dalam satu array
+      const allAudioItems = [...jamRes, ...archRes, ...ccRes];
 
-      // Interleave sumber lain terlebih dahulu
-      const maxLen = Math.max(archRes.length, jamRes.length, ccRes.length);
-      for (let i = 0; i < maxLen; i++) {
-        if (jamRes[i])  merged.push(jamRes[i]);
-        if (archRes[i]) merged.push(archRes[i]);
-        if (ccRes[i])   merged.push(ccRes[i]);
-      }
-
-      // SC & SP ditaruh paling bawah
-      if (scHasKey && scWsRes.length > 0) merged.push({ type:'sc_section', source:'soundcloud_section', _items: scWsRes });
-      else if (!scHasKey && scPubRes.length > 0) merged.push({ type:'sc_section', source:'soundcloud_section', _items: scPubRes });
-      else merged.push({ type:'sc_embed', source:'soundcloud_embed', query: q });
-
-      if (spHasKey && spWsRes.length > 0) merged.push({ type:'sp_section', source:'spotify_section', _items: spWsRes });
-      else if (!spHasKey && spPubRes.length > 0) merged.push({ type:'sp_section', source:'spotify_section', _items: spPubRes });
-      else merged.push({ type:'sp_embed', source:'spotify_embed', query: q });
-
-      // Dedup merged (kecuali section/embed items yang sudah berbeda struktur)
-      const dedupedMerged = merged.map(item => {
-        if (item._items) return { ...item, _items: dedup(item._items) };
-        return item;
+      // Dedup audio items berdasarkan title+artist sebelum sort
+      const seenTitles = new Set();
+      const dedupedAudio = allAudioItems.filter(item => {
+        if (!item.title) return true;
+        const key = `${item.title}|${item.artist||''}`.toLowerCase().trim();
+        if (seenTitles.has(key)) return false;
+        seenTitles.add(key);
+        return true;
       });
+
+      // Sort berdasarkan relevansi (skor lebih tinggi = lebih relevan)
+      dedupedAudio.sort((a, b) => {
+        const sa = a._relevance ?? relevanceScore(a.title, a.artist, q);
+        const sb = b._relevance ?? relevanceScore(b.title, b.artist, q);
+        return sb - sa;
+      });
+
+      const merged = [...dedupedAudio];
+
+      // SC & SP ditaruh paling bawah (sebagai section dengan items ter-sort by relevance)
+      const sortByRelevance = (items) => [...items].sort((a, b) =>
+        ((b._relevance ?? 0) - (a._relevance ?? 0)));
+
+      // SoundCloud: tampilkan section jika ada hasil, SELALU tambahkan embed sebagai fallback
+      const scItems = scHasKey ? scWsRes : scPubRes;
+      if (scItems.length > 0) {
+        merged.push({ type:'sc_section', source:'soundcloud_section', _items: dedup(sortByRelevance(scItems)) });
+      }
+      merged.push({ type:'sc_embed', source:'soundcloud_embed', query: q });
+
+      // Spotify: tampilkan section jika ada hasil, SELALU tambahkan embed sebagai fallback
+      const spItems = spHasKey ? spWsRes : spPubRes;
+      if (spItems.length > 0) {
+        merged.push({ type:'sp_section', source:'spotify_section', _items: dedup(sortByRelevance(spItems)) });
+      }
+      merged.push({ type:'sp_embed', source:'spotify_embed', query: q });
+
+      const dedupedMerged = merged; // main list sudah di-dedup di atas
 
       const hasRealResults = archRes.length+jamRes.length+ccRes.length+scWsRes.length+spWsRes.length
         +scPubRes.length
         +spPubRes.length > 0;
 
       setWsResults(dedupedMerged);
-      if (!hasRealResults && dedupedMerged.every(m=>m.type==='sc_embed'||m.type==='sp_embed')) {
-        setWsError('No results from other sources. SoundCloud & Spotify shown as embeds.');
+      if (!hasRealResults) {
+        setWsError('Tidak ada hasil audio langsung. SoundCloud & Spotify tersedia sebagai embed di bawah.');
       }
     } catch(e) {
       if (sig.aborted) { setWsLoading(false); return; } // jangan set error jika memang sengaja di-abort
@@ -9625,7 +9677,7 @@ Format exactly:
                           {!wsLoading && wsResults.length > 0 && (
                             <div style={{ borderTop:'1px solid rgba(255,255,255,0.07)' }}>
                               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 10px 4px' }}>
-                                <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)', fontWeight:600 }}>{wsResults.length} sumber</span>
+                                <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)', fontWeight:600 }}>{wsResults.filter(i=>!["sc_embed","sp_embed","sc_section","sp_section","sc_redirect"].includes(i.type)).length} hasil</span>
                                 <button onClick={() => { setWsResults([]); setWsQuery(''); setUnifiedQuery(''); setWsEmbedUrl(null); setWsError(null); }}
                                   style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:999, color:'rgba(255,255,255,0.45)', fontSize:10, fontWeight:700, padding:'2px 9px', cursor:'pointer', lineHeight:1.4 }}>
                                   ✕ Tutup
@@ -9633,13 +9685,12 @@ Format exactly:
                               </div>
                               <div style={{ padding:'0 8px 8px', display:'flex', flexDirection:'column', gap:4 }}>
                                 {[...wsResults].sort((a,b) => {
-                                  // Section/embed types selalu di bawah audio items
+                                  // Section/embed types selalu di bawah audio items; audio items sudah urut relevansi dari state
                                   const BOTTOM_TYPES = new Set(['sc_section','sp_section','sc_embed','sp_embed','sc_redirect']);
                                   const aBottom = BOTTOM_TYPES.has(a.type); const bBottom = BOTTOM_TYPES.has(b.type);
                                   if (aBottom !== bBottom) return aBottom ? 1 : -1;
-                                  const order = ['jamendo','audius','ccmixter','fma','deezer','soundcloud','spotify'];
-                                  const ai = order.indexOf(a.source); const bi = order.indexOf(b.source);
-                                  return (ai===-1?999:ai) - (bi===-1?999:bi);
+                                  // Pertahankan urutan relevansi dari state (tidak re-sort by source)
+                                  return 0;
                                 }).map((item, idx) => {
                                   // ── sc_embed: SoundCloud iframe search
                                   if (item.type === 'sc_embed') return (
@@ -10112,7 +10163,7 @@ Format exactly:
                                 <div style={{ borderRadius:12, border:'1px solid rgba(99,102,241,0.2)', background:'rgba(99,102,241,0.04)', overflow:'hidden', marginTop:4 }}>
                                   {/* ── Tombol tutup hasil ── */}
                                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 10px 4px' }}>
-                                    <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)', fontWeight:600 }}>{wsResults.length} sumber</span>
+                                    <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)', fontWeight:600 }}>{wsResults.filter(i=>!["sc_embed","sp_embed","sc_section","sp_section","sc_redirect"].includes(i.type)).length} hasil</span>
                                     <button onClick={() => { setWsResults([]); setWsQuery(''); setUnifiedQuery(''); }}
                                       style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:999, color:'rgba(255,255,255,0.45)', fontSize:10, fontWeight:700, padding:'2px 9px', cursor:'pointer', display:'flex', alignItems:'center', gap:4, lineHeight:1.4 }}>
                                       ✕ Tutup
@@ -10120,7 +10171,7 @@ Format exactly:
                                   </div>
                                   <div style={{ padding:'0 8px 8px', display:'flex', flexDirection:'column', gap:4 }}>
                                   {[...wsResults].sort((a, b) => {
-                                    // Embed-only cards (no native audio) selalu di bawah
+                                    // Embed-only cards (no native audio) selalu di bawah; audio items pertahankan urutan relevansi
                                     const EMBED_TYPES = new Set(['facebook','instagram','tiktok','twitter','threads','bilibili','vidio','vimeo','dailymotion','archive','audiomack','mixcloud','odysee','rumble','peertube','newgrounds','fma','sc_embed','sp_embed','sc_redirect']);
                                     const aEmbed = EMBED_TYPES.has(a.type) || EMBED_TYPES.has(a.source);
                                     const bEmbed = EMBED_TYPES.has(b.type) || EMBED_TYPES.has(b.source);
