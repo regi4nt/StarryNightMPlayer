@@ -2625,13 +2625,12 @@ Return ONLY valid JSON, no explanation:
             if (_cobaltR.isTunnel) { try { const _r = await fetch(url, {mode:"cors"}); if (_r.ok) { const _b = await _r.blob(); if (isBlobValid(_b,10000)) { downloadBlobToDevice(_b, `${name}.mp3`); return; } } } catch {} }
             if (await proxyDownload(url, `${name}.mp3`)) return;
             await downloadToDevice(url, `${name}.mp3`); return;
-        } catch {}
-      }
-      // 5. Tab baru
-      openUrlFallback(s.src);
-            return;
           }
-    }
+        } catch {}
+        // 5. Tab baru
+        openUrlFallback(s.src);
+        return;
+      }
 
     // ═══════════════════════════════════════════════════════
     // Archive.org
