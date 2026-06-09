@@ -3442,9 +3442,10 @@ Return ONLY valid JSON, no explanation:
   // ── Auto-sync playlists ke Google Drive (debounce 3 detik setelah perubahan)
   const syncPlaylistsToCloud = useCallback(async (token, pls, silent = false) => {
     if (!token) return;
+    const data = pls ?? playlistsRef.current;
     if (!silent) setPlSyncStatus('syncing');
     try {
-      await driveSavePlaylists(token, pls);
+      await driveSavePlaylists(token, data);
       setPlSyncStatus('synced');
       setPlSyncedAt(Date.now());
       setPlSyncError('');
@@ -3962,14 +3963,63 @@ Return ONLY valid JSON, no explanation:
     const rawSaved = (() => { try { return JSON.parse(localStorage.getItem('sn_google_token')||'null'); } catch { return null; } })();
     const savedToken = rawSaved && rawSaved.expiry > Date.now() ? rawSaved.token : null;
 
+    const restoreCloudData = async (tok) => {
+      // Muat file audio Drive
+      await loadDriveSongs(tok, true);
+      // Muat playlists dari Drive dan merge dengan lokal
+      try {
+        const cloudPls = await driveLoadPlaylists(tok);
+        if (cloudPls && Array.isArray(cloudPls)) {
+          setPlaylists(local => {
+            const merged = [...local];
+            for (const cp of cloudPls) {
+              const idx = merged.findIndex(p => p.id === cp.id);
+              if (idx >= 0) {
+                if (merged[idx].id === 'pl_fav') {
+                  const combined = [...new Set([...merged[idx].songIds, ...(cp.songIds || [])])];
+                  merged[idx] = { ...merged[idx], songIds: combined };
+                } else if (!merged[idx].locked) {
+                  const combined = [...new Set([...merged[idx].songIds, ...(cp.songIds || [])])];
+                  merged[idx] = { ...cp, songIds: combined };
+                }
+              } else {
+                merged.push(cp);
+              }
+            }
+            return merged;
+          });
+        }
+      } catch {}
+      // Muat favSongs + ytSongs dari Drive dan merge dengan lokal
+      try {
+        const cloudSongs = await driveLoadSongs(tok);
+        if (cloudSongs) {
+          if (Array.isArray(cloudSongs.favSongs) && cloudSongs.favSongs.length > 0) {
+            setFavSongs(local => {
+              const localIds = new Set(local.map(s => s.id));
+              const toAdd    = cloudSongs.favSongs.filter(s => !localIds.has(s.id));
+              return toAdd.length > 0 ? [...local, ...toAdd] : local;
+            });
+          }
+          if (Array.isArray(cloudSongs.ytSongs) && cloudSongs.ytSongs.length > 0) {
+            setYtSongs(local => {
+              const localIds = new Set(local.map(s => s.id));
+              const toAdd    = cloudSongs.ytSongs.filter(s => !localIds.has(s.id));
+              return toAdd.length > 0 ? [...toAdd, ...local] : local;
+            });
+          }
+        }
+      } catch {}
+    };
+
     if (savedToken) {
-      // Token masih valid — langsung muat lagu (force=true karena in-memory cache kosong setelah reload)
-      loadDriveSongs(savedToken, true);
+      // Token masih valid — muat file audio, playlist, dan lagu dari Drive
+      restoreCloudData(savedToken);
     } else if (googleUser) {
       // Token expired (atau tidak ada) tapi user pernah login → coba silent refresh otomatis
       // Menangani kasus: token expired saat tab ditutup, lalu dibuka lagi
       silentRefreshToken()
-        .then(tok => loadDriveSongs(tok, true))
+        .then(tok => restoreCloudData(tok))
         .catch(() => {
           // Silent refresh gagal (misal: session Google habis) → tampilkan pesan login
           setDriveError('Google session expired. Tap Login to continue.');
