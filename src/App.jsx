@@ -2665,6 +2665,7 @@ Return ONLY valid JSON, no explanation:
             if (_cobaltR.isTunnel) { try { const _r = await fetch(url, {mode:"cors"}); if (_r.ok) { const _b = await _r.blob(); if (isBlobValid(_b,10000)) { downloadBlobToDevice(_b, `${name}.mp3`); return; } } } catch {} }
             if (await proxyDownload(url, `${name}.mp3`)) return;
             await downloadToDevice(url, `${name}.mp3`); return;
+          }
         } catch {}
       }
       // 4. Tab baru
@@ -2692,12 +2693,11 @@ Return ONLY valid JSON, no explanation:
             if (_cobaltR.isTunnel) { try { const _r = await fetch(url, {mode:"cors"}); if (_r.ok) { const _b = await _r.blob(); if (isBlobValid(_b,10000)) { downloadBlobToDevice(_b, `${name}.mp3`); return; } } } catch {} }
             if (await proxyDownload(url, `${name}.mp3`)) return;
             await downloadToDevice(url, `${name}.mp3`); return;
+          }
         } catch {}
       }
       // 4. Tab baru
       openUrlFallback(s.src);
-            return;
-          }
     }
 
     // ═══════════════════════════════════════════════════════
@@ -2795,6 +2795,7 @@ Return ONLY valid JSON, no explanation:
             if (_cobaltR.isTunnel) { try { const _r = await fetch(url, {mode:"cors"}); if (_r.ok) { const _b = await _r.blob(); if (isBlobValid(_b,10000)) { downloadBlobToDevice(_b, `${name}.mp3`); return; } } } catch {} }
             if (await proxyDownload(url, `${name}.mp3`)) return;
             await downloadToDevice(url, `${name}.mp3`); return;
+          }
         } catch {}
       }
       // 5. Tab baru
@@ -2951,8 +2952,6 @@ Return ONLY valid JSON, no explanation:
         setTimeout(sendPlay, 500);
         setTimeout(sendPlay, 1500);
         setTimeout(sendPlay, 3000);
-            return;
-          }
       }
 
       // ── Audio biasa (stream, Jamendo, SoundCloud proxy, dll)
