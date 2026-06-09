@@ -612,6 +612,120 @@ function CacheManager({ lang, t, startCompressCache, compressStatus, compressPro
   );
 }
 
+// ── Backend Converter URL Component ──────────────────────────────────────────
+function BackendUrlSection() {
+  const [url,     setUrl]     = React.useState(() => { try { return localStorage.getItem('sn_backend_url') || ''; } catch { return ''; } });
+  const [key,     setKey]     = React.useState(() => { try { return localStorage.getItem('sn_backend_key') || ''; } catch { return ''; } });
+  const [status,  setStatus]  = React.useState('idle'); // idle | testing | ok | error
+  const [errMsg,  setErrMsg]  = React.useState('');
+
+  const testBackend = async () => {
+    const trimmed = url.trim().replace(/\/+$/, '');
+    if (!trimmed) return;
+    setStatus('testing'); setErrMsg('');
+    try {
+      const headers = key ? { 'X-Backend-Key': key } : {};
+      const res = await fetch(`${trimmed}/health`, { headers, signal: AbortSignal.timeout(10000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (!data.ytdlp)  throw new Error('yt-dlp tidak terinstall di server');
+      if (!data.ffmpeg) throw new Error('ffmpeg tidak terinstall di server');
+      setStatus('ok');
+      setTimeout(() => setStatus('idle'), 4000);
+    } catch(e) {
+      setStatus('error');
+      setErrMsg(e.message || 'Koneksi gagal');
+    }
+  };
+
+  const save = (field, val) => {
+    try {
+      if (field === 'url') { localStorage.setItem('sn_backend_url', val.trim().replace(/\/+$/, '')); }
+      if (field === 'key') { localStorage.setItem('sn_backend_key', val); }
+    } catch {}
+  };
+
+  const statusColor  = status === 'ok' ? '#6ee7b7' : status === 'error' ? '#fca5a5' : 'rgba(255,255,255,0.4)';
+  const statusBorder = status === 'ok' ? 'rgba(16,185,129,0.3)' : status === 'error' ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.08)';
+
+  return (
+    <div style={{ marginTop:16, borderTop:'1px solid rgba(255,255,255,0.06)', paddingTop:14 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
+        <span style={{ fontSize:13 }}>🖥️</span>
+        <span style={{ fontWeight:700, fontSize:12, color:'rgba(255,255,255,0.85)' }}>Backend Converter (yt-dlp + FFmpeg)</span>
+        {url && <span style={{ fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:999, background:'rgba(99,102,241,0.2)', color:'#818cf8' }}>✓ Aktif</span>}
+      </div>
+
+      <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)', lineHeight:1.7, marginBottom:10 }}>
+        🔧 Vercel tidak bisa menjalankan yt-dlp/FFmpeg. Deploy backend gratis ke{' '}
+        <a href="https://render.com" target="_blank" rel="noopener noreferrer" style={{ color:'#818cf8' }}>Render.com</a>{' '}
+        atau{' '}
+        <a href="https://railway.app" target="_blank" rel="noopener noreferrer" style={{ color:'#818cf8' }}>Railway.app</a>
+        {' '}— lihat file <code style={{ color:'rgba(255,255,255,0.5)' }}>backend/README.md</code> di project.
+      </div>
+
+      {/* URL Field */}
+      <div style={{ marginBottom:8 }}>
+        <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginBottom:4 }}>URL Backend (mis: https://starrynight.onrender.com)</div>
+        <div style={{ display:'flex', gap:6 }}>
+          <input
+            type="url"
+            value={url}
+            onChange={e => setUrl(e.target.value)}
+            onBlur={e => save('url', e.target.value)}
+            placeholder="https://nama-backend-kamu.onrender.com"
+            style={{
+              flex:1, padding:'7px 10px', borderRadius:8, fontSize:11,
+              border:`1px solid ${statusBorder}`,
+              background:'rgba(255,255,255,0.05)', color:'rgba(255,255,255,0.85)',
+              outline:'none',
+            }}
+          />
+          <button
+            onClick={testBackend}
+            disabled={!url || status === 'testing'}
+            style={{
+              padding:'7px 12px', borderRadius:8, fontSize:11, fontWeight:700, cursor: !url || status === 'testing' ? 'default' : 'pointer',
+              border:'1px solid rgba(99,102,241,0.3)', background:'rgba(99,102,241,0.12)',
+              color: !url ? 'rgba(255,255,255,0.2)' : '#818cf8', whiteSpace:'nowrap',
+            }}
+          >
+            {status === 'testing' ? '…' : 'Test'}
+          </button>
+        </div>
+        {status === 'ok'    && <div style={{ marginTop:4, fontSize:10, color:'#6ee7b7' }}>✅ Terhubung! yt-dlp & ffmpeg siap.</div>}
+        {status === 'error' && <div style={{ marginTop:4, fontSize:10, color:'#fca5a5' }}>⚠️ {errMsg}</div>}
+      </div>
+
+      {/* Optional Key Field */}
+      <div>
+        <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginBottom:4 }}>Backend Key (opsional, jika diset di env)</div>
+        <input
+          type="password"
+          value={key}
+          onChange={e => setKey(e.target.value)}
+          onBlur={e => save('key', e.target.value)}
+          placeholder="Kosongkan jika tidak pakai key"
+          style={{
+            width:'100%', boxSizing:'border-box', padding:'7px 10px', borderRadius:8, fontSize:11,
+            border:'1px solid rgba(255,255,255,0.08)',
+            background:'rgba(255,255,255,0.05)', color:'rgba(255,255,255,0.85)', outline:'none',
+          }}
+        />
+      </div>
+
+      {url && (
+        <button
+          onClick={() => { setUrl(''); setKey(''); localStorage.removeItem('sn_backend_url'); localStorage.removeItem('sn_backend_key'); setStatus('idle'); }}
+          style={{ marginTop:8, padding:'4px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.08)', color:'#fca5a5', fontSize:10, cursor:'pointer' }}
+        >
+          Hapus Backend URL
+        </button>
+      )}
+    </div>
+  );
+}
+
 function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cancelSleepTimer, eqEnabled, eqGains, eqPreset, onToggleEq, onEqGainChange, onApplyEqPreset, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t, userSpId, setUserSpId, userSpSecret, setUserSpSecret, userSpDc, setUserSpDc, userSpKey, setUserSpKey, userScId, setUserScId, userScOAuth, setUserScOAuth, userAiKey, setUserAiKey, userYtKey, setUserYtKey, userCfKey, setUserCfKey, userSnKey, setUserSnKey, setTab, setFullscreen, googleUser, handleGoogleLogin, syncPlaylistsToCloud, syncSongsToCloud, accessToken, plSyncStatus, plSyncError, plSyncedAt, songSyncStatus, songSyncError, songSyncedAt, startCompressCache, compressStatus, compressProgress, bgTheme, setBgTheme }) {
   const coverRef = useRef(null);
   const [apiKeyTab, setApiKeyTab] = React.useState('spotify');
@@ -1559,6 +1673,9 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
                   Hapus Key YouTube
                 </button>
               )}
+
+              {/* ── Backend Converter URL */}
+              <BackendUrlSection />
             </div>
           )}
 
