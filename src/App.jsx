@@ -2100,30 +2100,20 @@ Return ONLY valid JSON, no explanation:
     cobaltErrorSet.current.delete(key);
     cobaltTick();
     try {
-      const _COBALT_INSTANCES = [
-        'https://api.cobalt.tools/',
-        'https://cobalt.api.timelessnesses.me/',
-        'https://coapi.vlad.yt/',
-        'https://cobalt.drgns.space/',
-      ];
-      const _cobaltBody = { url: sourceUrl, downloadMode: 'audio', audioFormat: 'mp3' };
-      let audioUrl = null;
-      let lastCobaltErr = null;
-      for (const _inst of _COBALT_INSTANCES) {
-        try {
-          const res = await fetch(_inst, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify(_cobaltBody),
-          });
-          if (!res.ok) { lastCobaltErr = new Error(`cobalt HTTP ${res.status}`); continue; }
-          const data = await res.json();
-          if (data.status === 'error' || data.status === 'rate-limit') { lastCobaltErr = new Error(data.error?.code || 'cobalt error'); continue; }
-          audioUrl = data.url || data.tunnel || (Array.isArray(data.picker) ? data.picker[0]?.url : null);
-          if (audioUrl) break;
-        } catch (e) { lastCobaltErr = e; continue; }
+      // Gunakan /api/cobalt (server proxy) — mengatasi Turnstile + SSL issues
+      const _cobaltRes = await fetch('/api/cobalt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: sourceUrl, downloadMode: 'audio', audioFormat: 'mp3', alwaysProxy: true }),
+      });
+      if (!_cobaltRes.ok) {
+        const _err = await _cobaltRes.json().catch(() => ({}));
+        throw new Error(`/api/cobalt ${_cobaltRes.status}: ${_err?.error?.code || _err?.detail || _cobaltRes.statusText}`);
       }
-      if (!audioUrl) throw lastCobaltErr || new Error('cobalt: all instances failed');
+      const _cobaltData = await _cobaltRes.json();
+      if (_cobaltData.status === 'error') throw new Error(_cobaltData.error?.code || 'cobalt error');
+      const audioUrl = _cobaltData.url || _cobaltData.tunnel || (Array.isArray(_cobaltData.picker) ? _cobaltData.picker[0]?.url : null);
+      if (!audioUrl) throw new Error('cobalt: no url in response');
 
       // FIX Bug #6: hapus key dari Set (benar-benar tidak ada memori sisa)
       cobaltLoadingSet.current.delete(key);
@@ -2481,32 +2471,27 @@ Return ONLY valid JSON, no explanation:
     return ['mp3','ogg','opus','flac','wav','aac','m4a','webm'].includes(ext) ? ext : fallback;
   };
 
-  // ── Helper: cobalt fallback — ambil audio URL untuk URL apapun ───────────
+  // ── Helper: cobalt — ambil audio URL via server proxy /api/cobalt ──────────
+  // /api/cobalt mengatasi masalah:
+  //   1. Cobalt sekarang butuh Turnstile/bot challenge — server tidak kena challenge ini
+  //   2. Instance SSL mati disaring di server, bukan browser
+  //   3. alwaysProxy:true memastikan cobalt kembalikan tunnel URL (selalu CORS-safe)
   const cobaltAudioUrl = async (pageUrl) => {
-    const COBALT_INSTANCES_APP = [
-      'https://api.cobalt.tools/',
-      'https://cobalt.api.timelessnesses.me/',
-      'https://coapi.vlad.yt/',
-      'https://cobalt.drgns.space/',
-    ];
-    const body = { url: pageUrl, downloadMode: 'audio', audioFormat: 'mp3' };
-    let lastErr = null;
-    for (const instance of COBALT_INSTANCES_APP) {
-      try {
-        const res = await fetch(instance, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify(body),
-        });
-        if (!res.ok) { lastErr = new Error(`cobalt ${res.status}`); continue; }
-        const data = await res.json();
-        if (data.status === 'error' || data.status === 'rate-limit') { lastErr = new Error(data.error?.code || 'cobalt error'); continue; }
-        const url = data.url || data.tunnel || (Array.isArray(data.picker) ? data.picker[0]?.url : null);
-        if (url) return url;
-        lastErr = new Error('cobalt: no url');
-      } catch (e) { lastErr = e; continue; }
+    const res = await fetch('/api/cobalt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: pageUrl, downloadMode: 'audio', audioFormat: 'mp3', alwaysProxy: true }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(`/api/cobalt ${res.status}: ${err?.error?.code || err?.detail || res.statusText}`);
     }
-    throw lastErr || new Error('cobalt: all instances failed');
+    const data = await res.json();
+    if (data.status === 'error') throw new Error(data.error?.code || 'cobalt error');
+    const isTunnel = data.status === 'tunnel' || data.status === 'stream';
+    const url = data.url || data.tunnel || (Array.isArray(data.picker) ? data.picker[0]?.url : null);
+    if (!url) throw new Error('cobalt: no url in response');
+    return { url, isTunnel };
   };
 
   // ── unduh lagu ke perangkat — pakai cache offline, fallback berlapis ─────
@@ -2541,7 +2526,9 @@ Return ONLY valid JSON, no explanation:
 
     // ═══════════════════════════════════════════════════════
     // YouTube
-    // Fallback: cache → /api/yt-audio (server proxy) → Cobalt → buka YT
+    // Strategi: Cobalt dari browser LANGSUNG (bukan lewat proxy server)
+    // Alasan: Piped/Invidious diblok Google untuk IP datacenter (Vercel/AWS/GCP).
+    // Cobalt berjalan di infrastruktur sendiri + set CORS headers → browser bisa fetch langsung.
     // ═══════════════════════════════════════════════════════
     if (s.type === 'youtube' && s.videoId) {
       // 1. Cache lokal
@@ -2549,32 +2536,39 @@ Return ONLY valid JSON, no explanation:
         const cached = await ytCacheGet(s.videoId);
         if (isBlobValid(cached, 10000)) { downloadBlobToDevice(cached, `${name}.mp3`); return; }
       } catch {}
-      // 2. /api/yt-audio: server-side proxy (Piped/Invidious → YT CDN, server-to-server)
-      //    Ini metode utama — tidak IP-locked, stream langsung dari server
+
+      // 2. Cobalt dari browser langsung (PRIMARY — paling reliabel)
+      //    cobaltAudioUrl() memanggil Cobalt API dari browser → dapat tunnel/redirect URL
+      //    Tunnel URL punya CORS header → fetch blob langsung di browser tanpa proxy
+      try {
+        const cobaltResult = await cobaltAudioUrl(`https://www.youtube.com/watch?v=${s.videoId}`);
+        if (cobaltResult?.url) {
+          const { url: cobaltUrl, isTunnel } = cobaltResult;
+          // Tunnel: CORS-safe, fetch langsung di browser
+          if (isTunnel) {
+            try {
+              const res = await fetch(cobaltUrl, { mode: 'cors' });
+              if (res.ok) {
+                const blob = await res.blob();
+                if (isBlobValid(blob, 10000)) { downloadBlobToDevice(blob, `${name}.mp3`); return; }
+              }
+            } catch {}
+          }
+          // Redirect atau tunnel fetch gagal: coba via /api/audio-proxy dulu, lalu downloadToDevice
+          const ok = await proxyDownload(cobaltUrl, `${name}.mp3`);
+          if (ok) return;
+          try { await downloadToDevice(cobaltUrl, `${name}.mp3`); return; } catch {}
+        }
+      } catch {}
+
+      // 3. /api/yt-audio (server-side Piped proxy — mungkin gagal jika IP datacenter diblok)
       try {
         const ytAudioUrl = `/api/yt-audio?videoId=${s.videoId}`;
         const ok = await proxyDownload(ytAudioUrl, `${name}.mp3`);
         if (ok) return;
       } catch {}
-      // 3. downloadYtAudio: juga pakai /api/yt-audio tapi simpan ke cache dulu
-      try {
-        await downloadYtAudio(s.videoId, null, null);
-        const blob = await ytCacheGet(s.videoId);
-        if (isBlobValid(blob, 10000)) { downloadBlobToDevice(blob, `${name}.mp3`); return; }
-      } catch {}
-      // 4. Cobalt: ambil URL lalu download via proxy server
-      try {
-        const cobaltUrl = await cobaltAudioUrl(`https://www.youtube.com/watch?v=${s.videoId}`);
-        if (cobaltUrl) {
-          // Coba proxy download dulu (benar-benar download, bukan redirect)
-          const ok = await proxyDownload(cobaltUrl, `${name}.mp3`);
-          if (ok) return;
-          // Fallback: downloadToDevice (sudah ada proxy fallback di dalamnya)
-          await downloadToDevice(cobaltUrl, `${name}.mp3`);
-          return;
-        }
-      } catch {}
-      // 5. Last resort: buka YouTube di browser (redirect)
+
+      // 4. Last resort: buka YouTube di browser
       openUrlFallback(`https://www.youtube.com/watch?v=${s.videoId}`);
       return;
     }
@@ -2591,10 +2585,14 @@ Return ONLY valid JSON, no explanation:
       // 3. Cobalt (extract via page URL jika tersedia)
       if (s.externalUrl) {
         try {
-          const url = await cobaltAudioUrl(s.externalUrl);
-          if (await proxyDownload(url, `${name}.mp3`)) return;
-          await downloadToDevice(url, `${name}.mp3`);
-          return;
+          const _cobaltR = await cobaltAudioUrl(s.externalUrl);
+          const url = _cobaltR?.url;
+          if (url) {
+            if (_cobaltR.isTunnel) { try { const _r = await fetch(url, {mode:"cors"}); if (_r.ok) { const _b = await _r.blob(); if (isBlobValid(_b,10000)) { downloadBlobToDevice(_b, `${name}.mp3`); return; } } } catch {} }
+            if (await proxyDownload(url, `${name}.mp3`)) return;
+            await downloadToDevice(url, `${name}.mp3`);
+            return;
+          }
         } catch {}
       }
       // 4. Buka di tab baru
@@ -2621,14 +2619,18 @@ Return ONLY valid JSON, no explanation:
       // 4. Cobalt
       if (s.externalUrl) {
         try {
-          const url = await cobaltAudioUrl(s.externalUrl);
-          if (await proxyDownload(url, `${name}.mp3`)) return;
-          await downloadToDevice(url, `${name}.mp3`); return;
+          const _cobaltR = await cobaltAudioUrl(s.externalUrl);
+          const url = _cobaltR?.url;
+          if (url) {
+            if (_cobaltR.isTunnel) { try { const _r = await fetch(url, {mode:"cors"}); if (_r.ok) { const _b = await _r.blob(); if (isBlobValid(_b,10000)) { downloadBlobToDevice(_b, `${name}.mp3`); return; } } } catch {} }
+            if (await proxyDownload(url, `${name}.mp3`)) return;
+            await downloadToDevice(url, `${name}.mp3`); return;
         } catch {}
       }
       // 5. Tab baru
       openUrlFallback(s.src);
-      return;
+            return;
+          }
     }
 
     // ═══════════════════════════════════════════════════════
@@ -2658,14 +2660,18 @@ Return ONLY valid JSON, no explanation:
       // 3. Cobalt via externalUrl
       if (s.externalUrl) {
         try {
-          const url = await cobaltAudioUrl(s.externalUrl);
-          if (await proxyDownload(url, `${name}.mp3`)) return;
-          await downloadToDevice(url, `${name}.mp3`); return;
+          const _cobaltR = await cobaltAudioUrl(s.externalUrl);
+          const url = _cobaltR?.url;
+          if (url) {
+            if (_cobaltR.isTunnel) { try { const _r = await fetch(url, {mode:"cors"}); if (_r.ok) { const _b = await _r.blob(); if (isBlobValid(_b,10000)) { downloadBlobToDevice(_b, `${name}.mp3`); return; } } } catch {} }
+            if (await proxyDownload(url, `${name}.mp3`)) return;
+            await downloadToDevice(url, `${name}.mp3`); return;
         } catch {}
       }
       // 4. Tab baru
       openUrlFallback(s.externalUrl || s.src);
-      return;
+            return;
+          }
     }
 
     // ═══════════════════════════════════════════════════════
@@ -2681,14 +2687,18 @@ Return ONLY valid JSON, no explanation:
       // 3. Cobalt
       if (s.externalUrl) {
         try {
-          const url = await cobaltAudioUrl(s.externalUrl);
-          if (await proxyDownload(url, `${name}.mp3`)) return;
-          await downloadToDevice(url, `${name}.mp3`); return;
+          const _cobaltR = await cobaltAudioUrl(s.externalUrl);
+          const url = _cobaltR?.url;
+          if (url) {
+            if (_cobaltR.isTunnel) { try { const _r = await fetch(url, {mode:"cors"}); if (_r.ok) { const _b = await _r.blob(); if (isBlobValid(_b,10000)) { downloadBlobToDevice(_b, `${name}.mp3`); return; } } } catch {} }
+            if (await proxyDownload(url, `${name}.mp3`)) return;
+            await downloadToDevice(url, `${name}.mp3`); return;
         } catch {}
       }
       // 4. Tab baru
       openUrlFallback(s.src);
-      return;
+            return;
+          }
     }
 
     // ═══════════════════════════════════════════════════════
@@ -2706,10 +2716,14 @@ Return ONLY valid JSON, no explanation:
       const reExtractUrl = s.originalUrl || s.externalUrl;
       if (reExtractUrl) {
         try {
-          const url = await cobaltAudioUrl(reExtractUrl);
-          if (await proxyDownload(url, `${name}.mp3`)) return;
-          await downloadToDevice(url, `${name}.mp3`);
-          return;
+          const _cobaltR = await cobaltAudioUrl(reExtractUrl);
+          const url = _cobaltR?.url;
+          if (url) {
+            if (_cobaltR.isTunnel) { try { const _r = await fetch(url, {mode:"cors"}); if (_r.ok) { const _b = await _r.blob(); if (isBlobValid(_b,10000)) { downloadBlobToDevice(_b, `${name}.mp3`); return; } } } catch {} }
+            if (await proxyDownload(url, `${name}.mp3`)) return;
+            await downloadToDevice(url, `${name}.mp3`);
+            return;
+          }
         } catch {}
       }
       // 3. Tab baru
@@ -2776,9 +2790,12 @@ Return ONLY valid JSON, no explanation:
       // 4. Cobalt (untuk SoundCloud dll yang punya permalink)
       if (s.permalink || s.externalUrl) {
         try {
-          const url = await cobaltAudioUrl(s.permalink || s.externalUrl);
-          if (await proxyDownload(url, `${name}.mp3`)) return;
-          await downloadToDevice(url, `${name}.mp3`); return;
+          const _cobaltR = await cobaltAudioUrl(s.permalink || s.externalUrl);
+          const url = _cobaltR?.url;
+          if (url) {
+            if (_cobaltR.isTunnel) { try { const _r = await fetch(url, {mode:"cors"}); if (_r.ok) { const _b = await _r.blob(); if (isBlobValid(_b,10000)) { downloadBlobToDevice(_b, `${name}.mp3`); return; } } } catch {} }
+            if (await proxyDownload(url, `${name}.mp3`)) return;
+            await downloadToDevice(url, `${name}.mp3`); return;
         } catch {}
       }
       // 5. Tab baru
@@ -2935,7 +2952,8 @@ Return ONLY valid JSON, no explanation:
         setTimeout(sendPlay, 500);
         setTimeout(sendPlay, 1500);
         setTimeout(sendPlay, 3000);
-        return;
+            return;
+          }
       }
 
       // ── Audio biasa (stream, Jamendo, SoundCloud proxy, dll)

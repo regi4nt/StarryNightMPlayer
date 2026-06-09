@@ -1329,52 +1329,31 @@ async function _ytAudioUrlViaInvidious(videoId, signal) {
   return null;
 }
 
-// ── Method 3: Cobalt.tools (public API — tidak butuh key) ────────────────────
-// Instance cobalt publik — dicoba berurutan jika instance sebelumnya gagal/butuh auth
-// Updated Juni 2026 — dari list.cobalt.tools (hanya instance tanpa auth)
-const COBALT_INSTANCES = [
-  'https://api.cobalt.tools/',
-  'https://cobalt.api.timelessnesses.me/',
-  'https://coapi.vlad.yt/',
-  'https://cobalt.drgns.space/',
-];
-
-async function _callCobaltInstance(instanceUrl, body, signal) {
-  const res = await fetch(instanceUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-    body: JSON.stringify(body),
-    signal,
-  });
-  if (!res.ok) return null;
-  const data = await res.json();
-  // cobalt v10+ response: { status, url } or { status, tunnel } or { status, picker }
-  // status: 'redirect' | 'tunnel' | 'stream' | 'picker' | 'error' | 'rate-limit'
-  if (data.status === 'error' || data.status === 'rate-limit') return null;
-  // 'redirect' = URL langsung ke CDN (perlu proxy karena CORS)
-  // 'tunnel'   = URL ke cobalt tunnel (CORS-safe, bisa langsung di-fetch)
-  // 'stream'   = alias tunnel di beberapa versi
-  const url = data.url || data.tunnel || (Array.isArray(data.picker) ? data.picker[0]?.url : null);
-  if (!url) return null;
-  return { url, mime: 'audio/mpeg' };
-}
-
+// ── Method 3: Cobalt via /api/cobalt server proxy ────────────────────────────
+// Cobalt v10+ sekarang menggunakan Turnstile bot protection di public instances.
+// Solusi: proxy lewat server kita (/api/cobalt) → server-to-server tidak kena challenge.
+// alwaysProxy:true memastikan cobalt selalu kembalikan tunnel URL (CORS-safe).
 async function _ytAudioUrlViaCobalt(videoId, signal) {
-  const body = {
-    url: `https://www.youtube.com/watch?v=${videoId}`,
-    downloadMode: 'audio',
-    audioFormat: 'mp3',  // mp3: cobalt transcodes + proxies (CORS-safe, universally supported)
-  };
-  for (const instance of COBALT_INSTANCES) {
-    try {
-      const result = await _callCobaltInstance(instance, body, signal);
-      if (result?.url) return result;
-    } catch { continue; }
-  }
-  return null;
+  try {
+    const origin = (typeof window !== 'undefined' && window.location?.origin) || '';
+    const res = await fetch(`${origin}/api/cobalt`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({
+        url: `https://www.youtube.com/watch?v=${videoId}`,
+        downloadMode: 'audio',
+        audioFormat: 'mp3',
+        alwaysProxy: true,
+      }),
+      signal,
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.status === 'error' || data.status === 'rate-limit') return null;
+    const url = data.url || data.tunnel || (Array.isArray(data.picker) ? data.picker[0]?.url : null);
+    if (!url) return null;
+    return { url, mime: 'audio/mpeg' };
+  } catch { return null; }
 }
 
 // Download audio YouTube → simpan ke cache
