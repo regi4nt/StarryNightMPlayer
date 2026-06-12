@@ -153,7 +153,16 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
   const [imgError, setImgError] = useState(false);
   const prevCoverRef = useRef(cover);
   if (prevCoverRef.current !== cover) { prevCoverRef.current = cover; if (imgError) setImgError(false); }
-  // FIX SEEK KAKU: dot mengikuti visualDragPct saat drag agar terlihat real-time smooth
+
+  const svgRef      = useRef(null);
+  const coverRef    = useRef(null);
+  const dragging    = useRef(false);
+  // FIX SEEK KAKU: deklarasikan state DULU sebelum dipakai di displayPct/displayProgress
+  const [isDragging, setIsDragging] = useState(false);
+  const [visualDragPct, setVisualDragPct] = useState(null); // null = pakai pct dari props
+
+  // FIX SEEK KAKU: dot & arc mengikuti visualDragPct saat drag (real-time smooth)
+  // tanpa trigger audio seek setiap frame. onSeek dipanggil sekali saat release.
   const displayPct = (isDragging && visualDragPct !== null) ? visualDragPct : pct;
   const deg=displayPct*360-90, rad=deg*Math.PI/180;
   const dotX=cx+Math.cos(rad)*ringR, dotY=cy+Math.sin(rad)*ringR;
@@ -164,15 +173,6 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
   const displayProgress = (isDragging && visualDragPct !== null && duration > 0)
     ? visualDragPct * duration
     : progress;
-
-  const svgRef      = useRef(null);
-  const coverRef    = useRef(null);
-  const dragging    = useRef(false);
-  const [isDragging, setIsDragging] = useState(false);
-  // FIX SEEK KAKU: pisahkan visual pct saat drag dari pct playback.
-  // Saat drag: update visualDragPct setiap frame (smooth, tidak trigger audio seek).
-  // Saat release: baru panggil onSeek sekali → hanya 1 audio currentTime assignment.
-  const [visualDragPct, setVisualDragPct] = useState(null); // null = pakai pct dari props
 
   // Apakah cover seharusnya berputar
   const shouldSpin = !isLite && coverSpin && (!isRadio || !!cover) && !imgError;
