@@ -148,6 +148,7 @@ export default async function handler(req, res) {
     const headers = {
       'User-Agent': 'Mozilla/5.0 (compatible; StarryNightMPlayer/1.0)',
       'Accept': '*/*',
+      'Icy-MetaData': '1',   // Icecast: aktifkan metadata — wajib agar server kirim stream lebih awal
     };
 
     // FIX: Add domain-specific Referer/Origin headers to bypass anti-hotlink protection.
@@ -195,7 +196,7 @@ export default async function handler(req, res) {
 
     const upstream = await fetch(fetchUrl, {
       headers,
-      signal: AbortSignal.timeout(25_000), // cukup lama untuk koneksi lambat
+      signal: AbortSignal.timeout(8_000),  // 8s: jika server radio tidak respond, cepat gagal
     });
 
     if (!upstream.ok && upstream.status !== 206) {

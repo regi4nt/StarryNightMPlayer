@@ -4278,14 +4278,13 @@ Return ONLY valid JSON, no explanation:
     let waitingTimer = null; // debounce untuk 'waiting' agar tidak flicker di koneksi normal
     const onStall = () => {
       if (track.isRadio) {
-        // Debounce: tunggu 2 detik sebelum reconnect (dipercepat dari 4s)
-        // Alasan: Vercel proxy memotong stream tiap ~60 detik, reconnect harus cepat
+        // Debounce: tunggu 800ms sebelum reconnect
         if (a.readyState < 2 && !a.paused) {
           if (!stallTimer) {
             stallTimer = setTimeout(() => {
               stallTimer = null;
               if (!a.paused && a.readyState < 2) scheduleRadioReconnect(track);
-            }, 2000);
+            }, 800);
           }
         }
         return;
@@ -5841,18 +5840,19 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       }
       const hls = new Hls({
         lowLatencyMode: false,        // radio bukan low-latency HLS, mode ini justru ganggu buffer
-        liveSyncDurationCount: 5,     // turun dari 7 → 5: kurangi latency awal tanpa korbankan stabilitas
-        maxBufferLength: 60,          // turun dari 90 → 60: HLS tidak perlu buffer sebesar itu, hemat RAM
-        maxMaxBufferLength: 120,
-        backBufferLength: 10,         // simpan 10s buffer mundur untuk recovery cepat
-        fragLoadingTimeOut: 15000,    // turun dari 20s → 15s: gagal lebih cepat, retry lebih cepat
-        manifestLoadingTimeOut: 10000,
-        levelLoadingTimeOut: 10000,
-        fragLoadingMaxRetry: 8,       // naik dari 6 → 8: lebih persisten sebelum menyerah
-        manifestLoadingMaxRetry: 5,
-        levelLoadingMaxRetry: 5,
-        fragLoadingRetryDelay: 500,   // turun dari 1000 → 500ms: retry lebih cepat setelah gagal
-        progressive: true,            // mulai putar segera saat ada data, tidak perlu tunggu buffer penuh
+        liveSyncDurationCount: 2,     // 2 segment (~4-6s) cukup untuk mulai play, bukan 5
+        maxBufferLength: 30,          // 30s cukup untuk radio live, hemat RAM & kurangi waktu fill awal
+        maxMaxBufferLength: 60,
+        backBufferLength: 5,          // 5s buffer mundur cukup untuk recovery
+        fragLoadingTimeOut: 8000,     // gagal lebih cepat (8s) agar reconnect tidak nunggu lama
+        manifestLoadingTimeOut: 6000,
+        levelLoadingTimeOut: 6000,
+        fragLoadingMaxRetry: 6,
+        manifestLoadingMaxRetry: 4,
+        levelLoadingMaxRetry: 4,
+        fragLoadingRetryDelay: 300,   // retry lebih cepat
+        startFragPrefetch: true,      // prefetch fragment segera setelah manifest parsed
+        progressive: true,            // mulai putar segera saat ada data
       });
       hlsRef.current = hls;
       hls.loadSource(src);
@@ -6002,15 +6002,12 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       } else {
         a.src = '';
         setTimeout(() => {
-          // Double-check lagi setelah 500ms inner delay
-          // FIX Bug Reconnect: strip bust di kedua sisi agar perbandingan tidak salah
-          // batalkan reconnect karena trackRef.current.src bisa punya bust baru
           if (stripBust(trackRef.current?.src) !== stripBust(trackObj.src)) return;
-          stopSilenceDetection(); // bersihkan context lama sebelum reconnect
-          a.src = src + (src.includes('?') ? '&' : '?') + '_t=' + Date.now(); // cache-bust agar server kirim stream baru
+          stopSilenceDetection();
+          a.src = src + (src.includes('?') ? '&' : '?') + '_t=' + Date.now();
           a.load();
           a.play().catch(() => {});
-        }, 500);
+        }, 100); // 100ms saja — cukup beri waktu browser release resource
       }
     }, delay);
   }, [attachHls, stopSilenceDetection]); // eslint-disable-line react-hooks/exhaustive-deps
