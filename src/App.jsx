@@ -289,6 +289,7 @@ export default function App() {
   const [platformIframe, setPlatformIframe] = useState({}); // keyed by platform.id → URL string
   const [radioStation, setRadioStation] = useState(null); // currently playing radio station
   const [radioPlaying, setRadioPlaying] = useState(false);
+  const [radioStreamError, setRadioStreamError] = useState(null); // user-visible stream error message
   const [radioCountry, setRadioCountry] = useState(null); // selected country id
   const [radioGenre, setRadioGenre] = useState(null);     // selected genre id
   const radioAudioRef = useRef(null);
@@ -5558,7 +5559,11 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
   };
 
   const getGardenStreamUrl = (channelId) => {
-    return `https://radio.garden/api/ara/content/listen/${channelId}/channel.mp3`;
+    // FIX: Use Vercel rewrite (/api/radio-garden/*) instead of direct radio.garden URL.
+    // radio.garden blocks server-side proxy requests (403), but Vercel's transparent
+    // rewrite passes through correctly without triggering anti-hotlink detection.
+    // The rewrite in vercel.json maps /api/radio-garden/:path* → https://radio.garden/api/ara/:path*
+    return `/api/radio-garden/content/listen/${channelId}/channel.mp3`;
   };
 
   // Fetch semua stasiun dari semua kota di negara tertentu — untuk browse panel
@@ -5673,7 +5678,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     { id:'ice_soma_cliqhop', name:'SomaFM Cliqhop IDM',   desc:'Blips, blops & lo-fi electronic wonders',       url:'https://ice1.somafm.com/cliqhop-128-mp3',                   genre:'Lo-Fi',   country:'US', color:'#22d3ee' },
     { id:'ice_hiphop_radio', name:'Hip-Hop Radio (Laut)',  desc:'Hip-hop & rap hits 24/7',                       url:'https://stream.laut.fm/hiphop',                             genre:'Hip-Hop', country:'DE', color:'#f59e0b' },
     { id:'ice_illstreet',    name:'SomaFM Ill Street Blues',desc:'Hip-hop, soul & gritty r&b',                  url:'https://ice1.somafm.com/illstreet-128-mp3',                 genre:'Hip-Hop', country:'US', color:'#f97316' },
-    { id:'ice_rnb',          name:'R&B Radio (Laut)',      desc:'R&b, soul & smooth jams 24/7',                  url:'https://stream.laut.fm/rnb',                                genre:'Hip-Hop', country:'DE', color:'#ec4899' },
+    { id:'ice_rnb',          name:'R&B Radio (Laut)',      desc:'R&b, soul & smooth jams 24/7',                  url:'https://listen.181fm.com/181-rnb_128k.mp3',                                genre:'Hip-Hop', country:'DE', color:'#ec4899' },
   ];
 
   // ── Radio Paradise (curated, high-fidelity, no ads, listener-funded)
@@ -5688,7 +5693,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
   // ── FM Stream / laut.fm extended (Germany-based, 800+ curated internet stations)
   const FMSTREAM_CURATED = [
     { id:'fm_country', name:'Country Radio (laut.fm)', desc:'Country & Americana 24/7', url:'https://stream.laut.fm/country', genre:'Country', country:'DE', color:'#a16207', sourceLabel:'FM Stream' },
-    { id:'fm_rnb', name:'R&B Radio (laut.fm)', desc:'R&B & Soul 24/7', url:'https://stream.laut.fm/rnb', genre:'R&B', country:'DE', color:'#f59e0b', sourceLabel:'FM Stream' },
+    { id:'fm_rnb', name:'R&B Radio (laut.fm)', desc:'R&B & Soul 24/7', url:'https://listen.181fm.com/181-rnb_128k.mp3', genre:'R&B', country:'DE', color:'#f59e0b', sourceLabel:'FM Stream' },
     { id:'fm_electro', name:'Electronic Radio (laut.fm)', desc:'Electronic & Dance 24/7', url:'https://stream.laut.fm/electronic', genre:'Electronic', country:'DE', color:'#6366f1', sourceLabel:'FM Stream' },
     { id:'fm_80s', name:'80s Radio (laut.fm)', desc:'Best of 80s Pop & Rock', url:'https://stream.laut.fm/80s', genre:'80s', country:'DE', color:'#e11d48', sourceLabel:'FM Stream' },
     { id:'fm_90s', name:'90s Radio (laut.fm)', desc:'Best of 90s hits', url:'https://stream.laut.fm/90s', genre:'90s', country:'DE', color:'#7c3aed', sourceLabel:'FM Stream' },
@@ -5712,7 +5717,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     { id:'fm_lofi',       name:'Lo-Fi Radio (laut.fm)',    desc:'Lo-fi beats & chillhop 24/7',           url:'https://stream.laut.fm/lofi',        genre:'Lo-Fi',   country:'DE', color:'#22d3ee', sourceLabel:'FM Stream' },
     { id:'fm_chillhop',   name:'Chillhop FM (laut.fm)',    desc:'Chillhop & downtempo grooves',          url:'https://stream.laut.fm/chillhop',     genre:'Lo-Fi',   country:'DE', color:'#06b6d4', sourceLabel:'FM Stream' },
     { id:'fm_hiphop',     name:'Hip-Hop Radio (laut.fm)',  desc:'Hip-hop, rap & trap 24/7',              url:'https://stream.laut.fm/hiphop',       genre:'Hip-Hop', country:'DE', color:'#f59e0b', sourceLabel:'FM Stream' },
-    { id:'fm_rnb',        name:'R&B Radio (laut.fm)',      desc:'R&b & soul hits around the clock',      url:'https://stream.laut.fm/rnb',          genre:'Hip-Hop', country:'DE', color:'#ec4899', sourceLabel:'FM Stream' },
+    { id:'fm_rnb',        name:'R&B Radio (laut.fm)',      desc:'R&b & soul hits around the clock',      url:'https://listen.181fm.com/181-rnb_128k.mp3',          genre:'Hip-Hop', country:'DE', color:'#ec4899', sourceLabel:'FM Stream' },
     { id:'fm_rap',        name:'Rap Radio (laut.fm)',      desc:'Rap & urban beats 24/7',                url:'https://stream.laut.fm/rap',          genre:'Hip-Hop', country:'DE', color:'#f97316', sourceLabel:'FM Stream' },
   ];
 
@@ -5751,7 +5756,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     { id:'sc_lofi_beats', name:'Lo-Fi Beats 24/7',        desc:'Smooth lo-fi beats all day long',         url:'https://ice1.somafm.com/cliqhop-128-mp3',              genre:'Lo-Fi',   country:'US', color:'#a78bfa', sourceLabel:'Shoutcast' },
     { id:'sc_hiphop2',    name:'Hip-Hop Nation',          desc:'Hip-hop & rap hits worldwide',            url:'https://stream.laut.fm/hiphop',                        genre:'Hip-Hop', country:'US', color:'#f59e0b', sourceLabel:'Shoutcast' },
     { id:'sc_trap',       name:'Trap Nation Radio',       desc:'Trap, drill & urban beats 24/7',          url:'https://stream.laut.fm/rap',                           genre:'Hip-Hop', country:'US', color:'#ef4444', sourceLabel:'Shoutcast' },
-    { id:'sc_rnb2',       name:'R&B Soul Station',        desc:'Classic & contemporary r&b soul',         url:'https://stream.laut.fm/rnb',                           genre:'Hip-Hop', country:'US', color:'#ec4899', sourceLabel:'Shoutcast' },
+    { id:'sc_rnb2',       name:'R&B Soul Station',        desc:'Classic & contemporary r&b soul',         url:'https://listen.181fm.com/181-rnb_128k.mp3',                           genre:'Hip-Hop', country:'US', color:'#ec4899', sourceLabel:'Shoutcast' },
     { id:'sc_illstreet2', name:'SomaFM Ill Street Blues', desc:'Grittier hip-hop, soul & r&b',            url:'https://ice1.somafm.com/illstreet-128-mp3',            genre:'Hip-Hop', country:'US', color:'#f97316', sourceLabel:'Shoutcast' },
   ];
 
@@ -5960,6 +5965,11 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       // yang sudah tidak bisa diputar (tombol LIVE RADIO / info stasiun tetap muncul)
       setRadioStation(null);
       setRadioPlaying(false);
+      // FIX: show user-visible error so they know the station is unavailable
+      // (previously failed silently — user had no idea why radio stopped)
+      const stationName = trackRef.current?.title || 'Radio station';
+      setRadioStreamError(`"${stationName}" is currently unavailable. The stream may be offline or geo-blocked.`);
+      setTimeout(() => setRadioStreamError(null), 7000);
       return;
     }
     // Exponential back-off: 500ms, 1s, 2s, 4s, 10s, 20s
@@ -6029,6 +6039,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       setPlaying(p => !p);
     } else {
       play(radioTrackObj);
+      setRadioStreamError(null); // clear any previous stream error
       setRadioStation({ id: station.stationuuid || station.id, name: station.name, city: [station.country, station.city].filter(Boolean).join(', ') || 'Online', color: stationColor, url: streamUrl });
       setRadioPlaying(true);
     }
@@ -8929,6 +8940,15 @@ Format exactly:
               {cachedDriveIds.size} {t?.songsCount||'songs'} tersimpan
             </span>
           )}
+        </div>
+      )}
+
+      {/* ── Radio stream error toast */}
+      {radioStreamError && (
+        <div style={{ position:'fixed', bottom:80, left:'50%', transform:'translateX(-50%)', zIndex:9999, maxWidth:380, width:'90%', padding:'10px 16px', background:'rgba(30,10,10,0.96)', border:'1px solid rgba(239,68,68,0.45)', borderRadius:10, display:'flex', alignItems:'center', gap:10, boxShadow:'0 4px 24px rgba(0,0,0,0.5)', backdropFilter:'blur(8px)' }}>
+          <span style={{ fontSize:18, flexShrink:0 }}>📻</span>
+          <span style={{ fontSize:12, color:'#fca5a5', flex:1, lineHeight:1.4 }}>{radioStreamError}</span>
+          <button onClick={() => setRadioStreamError(null)} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(252,165,165,0.6)', padding:'2px 4px', fontSize:16, flexShrink:0 }}>✕</button>
         </div>
       )}
 

@@ -223,6 +223,9 @@ export const INVIDIOUS_INSTANCES = [
 // URL https:// dikembalikan apa adanya.
 export function radioUrl(url, customDns = '') {
   if (!url) return url;
+  // FIX: relative /api/* URLs (e.g. /api/radio-garden/...) are already server-side proxied
+  // via Vercel rewrites — do NOT wrap them in radio-proxy (would double-proxy and break them).
+  if (url.startsWith('/api/')) return url;
   // FIX: jika url sudah berupa /api/radio-proxy?url=..., ekstrak URL asli dulu
   // agar customDns terbaru bisa diapply dan tidak terjadi double-wrapping
   // (misalnya saat station di-like lalu diputar ulang dari playlist)

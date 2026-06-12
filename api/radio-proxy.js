@@ -150,6 +150,22 @@ export default async function handler(req, res) {
       'Accept': '*/*',
     };
 
+    // FIX: Add domain-specific Referer/Origin headers to bypass anti-hotlink protection.
+    // Some stations (radio.garden, zeno.fm, etc.) reject requests without a valid Referer.
+    try {
+      const targetHost = new URL(url).hostname;
+      if (targetHost.includes('radio.garden')) {
+        headers['Referer']  = 'https://radio.garden/';
+        headers['Origin']   = 'https://radio.garden';
+      } else if (targetHost.includes('zeno.fm') || targetHost.includes('zenocdn.com')) {
+        headers['Referer']  = 'https://zeno.fm/';
+        headers['Origin']   = 'https://zeno.fm';
+      } else if (targetHost.includes('laut.fm') || targetHost.includes('stream.laut.fm')) {
+        headers['Referer']  = 'https://laut.fm/';
+        headers['Origin']   = 'https://laut.fm';
+      }
+    } catch { /* ignore — URL already validated above */ }
+
     // Forward Range header jika ada (untuk seek)
     if (req.headers['range']) {
       headers['Range'] = req.headers['range'];
