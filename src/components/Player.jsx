@@ -153,16 +153,26 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
   const [imgError, setImgError] = useState(false);
   const prevCoverRef = useRef(cover);
   if (prevCoverRef.current !== cover) { prevCoverRef.current = cover; if (imgError) setImgError(false); }
-  const deg=pct*360-90, rad=deg*Math.PI/180;
+  // FIX SEEK KAKU: dot mengikuti visualDragPct saat drag agar terlihat real-time smooth
+  const displayPct = (isDragging && visualDragPct !== null) ? visualDragPct : pct;
+  const deg=displayPct*360-90, rad=deg*Math.PI/180;
   const dotX=cx+Math.cos(rad)*ringR, dotY=cy+Math.sin(rad)*ringR;
   const lblR=ringR+22, lblX=cx+Math.cos(rad)*lblR, lblY=cy+Math.sin(rad)*lblR;
   // Duration label: inside SVG bounds (bottom of ring, pulled inward)
   const durY=cy+ringR+16;
+  // Waktu yang ditampilkan saat drag: posisi target (bukan current progress)
+  const displayProgress = (isDragging && visualDragPct !== null && duration > 0)
+    ? visualDragPct * duration
+    : progress;
 
-  const svgRef   = useRef(null);
-  const coverRef = useRef(null);
-  const dragging = useRef(false);
+  const svgRef      = useRef(null);
+  const coverRef    = useRef(null);
+  const dragging    = useRef(false);
   const [isDragging, setIsDragging] = useState(false);
+  // FIX SEEK KAKU: pisahkan visual pct saat drag dari pct playback.
+  // Saat drag: update visualDragPct setiap frame (smooth, tidak trigger audio seek).
+  // Saat release: baru panggil onSeek sekali → hanya 1 audio currentTime assignment.
+  const [visualDragPct, setVisualDragPct] = useState(null); // null = pakai pct dari props
 
   // Apakah cover seharusnya berputar
   const shouldSpin = !isLite && coverSpin && (!isRadio || !!cover) && !imgError;
@@ -235,26 +245,65 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
   };
 
   // Mouse events
-  const onMouseDown = e => { if (!onSeek||isRadio||!nearRing(e.clientX,e.clientY)) return; dragging.current=true; setIsDragging(true); onSeek(getPct(e.clientX,e.clientY)); };
-  const onMouseMove = e => { if (!dragging.current||!onSeek) return; onSeek(getPct(e.clientX,e.clientY)); };
-  const onMouseUp   = () => { dragging.current=false; setIsDragging(false); };
+  // FIX SEEK KAKU: saat drag, hanya update visualDragPct (animasi smooth SVG arc).
+  // onSeek (audio.currentTime) hanya dipanggil sekali saat mouseup/touchend.
+  // Ini menghilangkan "kaku" akibat ratusan audio seek + React re-render per detik saat drag.
+  const onMouseDown = e => {
+    if (!onSeek||isRadio||!nearRing(e.clientX,e.clientY)) return;
+    dragging.current=true;
+    setIsDragging(true);
+    setVisualDragPct(getPct(e.clientX,e.clientY));
+  };
+  const onMouseMove = e => {
+    if (!dragging.current||!onSeek) return;
+    setVisualDragPct(getPct(e.clientX,e.clientY));
+  };
+  const onMouseUp = () => {
+    if (dragging.current && onSeek && visualDragPct !== null) {
+      onSeek(visualDragPct);
+    }
+    dragging.current=false;
+    setIsDragging(false);
+    setVisualDragPct(null);
+  };
 
   // Touch events — need non-passive to call preventDefault (stops page scroll during drag)
   useEffect(() => {
     const svg = svgRef.current; if (!svg) return;
+    // Simpan pct terakhir saat touch drag agar bisa dipakai di tEnd
+    let lastTouchPct = null;
     const tStart = e => {
       const t=e.touches[0]; if (!onSeek||isRadio||!nearRing(t.clientX,t.clientY)) return;
-      dragging.current=true; setIsDragging(true); onSeek(getPct(t.clientX,t.clientY)); e.preventDefault();
+      dragging.current=true; setIsDragging(true);
+      lastTouchPct = getPct(t.clientX,t.clientY);
+      setVisualDragPct(lastTouchPct);
+      e.preventDefault();
     };
     const tMove = e => {
       if (!dragging.current||!onSeek) return;
-      const t=e.touches[0]; onSeek(getPct(t.clientX,t.clientY)); e.preventDefault();
+      const t=e.touches[0];
+      lastTouchPct = getPct(t.clientX,t.clientY);
+      setVisualDragPct(lastTouchPct);
+      e.preventDefault();
     };
-    const tEnd = () => { dragging.current=false; setIsDragging(false); };
+    const tEnd = () => {
+      // Seek sekali saat jari diangkat
+      if (dragging.current && onSeek && lastTouchPct !== null) {
+        onSeek(lastTouchPct);
+      }
+      dragging.current=false; setIsDragging(false); setVisualDragPct(null);
+      lastTouchPct = null;
+    };
     svg.addEventListener('touchstart', tStart, { passive:false });
     svg.addEventListener('touchmove',  tMove,  { passive:false });
     svg.addEventListener('touchend',   tEnd);
-    return () => { svg.removeEventListener('touchstart',tStart); svg.removeEventListener('touchmove',tMove); svg.removeEventListener('touchend',tEnd); };
+    svg.addEventListener('touchcancel',tEnd);
+    return () => {
+      svg.removeEventListener('touchstart', tStart);
+      svg.removeEventListener('touchmove',  tMove);
+      svg.removeEventListener('touchend',   tEnd);
+      svg.removeEventListener('touchcancel',tEnd);
+    };
   }, [onSeek, duration, size]); // eslint-disable-line
 
   return (
@@ -356,9 +405,17 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
           <RadioRing cx={cx} cy={cy} ringR={ringR} circ={circ} color={color} isLite={isLite} isPlaying={isPlaying}/>
         ) : (
           <circle className="progress-arc" cx={cx} cy={cy} r={ringR} stroke={color} strokeWidth="4.5" fill="none"
-            strokeDasharray={circ} strokeDashoffset={circ-circ*pct} strokeLinecap="round"
+            strokeDasharray={circ}
+            strokeDashoffset={circ - circ * (isDragging && visualDragPct !== null ? visualDragPct : pct)}
+            strokeLinecap="round"
             transform={`rotate(-90 ${cx} ${cy})`}
-            style={{ transition: isDragging?'none':'stroke-dashoffset 0.35s linear' }}/>
+            style={{
+              // Saat drag: no transition (ikuti jari real-time).
+              // Saat tidak drag: transisi halus 0.35s mengikuti playback berjalan.
+              // FIX SEEK KAKU: tanpa isDragging check, transisi CSS "fight" melawan nilai drag
+              // sehingga arc terlihat lag/kaku saat diseret.
+              transition: isDragging ? 'none' : 'stroke-dashoffset 0.35s linear',
+            }}/>
         )}
         {/* 0:00 tick — hide for radio */}
         {!isRadio && <line x1={cx} y1={cy-ringR-7} x2={cx} y2={cy-ringR+7} stroke="rgba(255,255,255,0.18)" strokeWidth="2.5" strokeLinecap="round"/>}
@@ -368,7 +425,7 @@ function OrbitalRing({ size, pct, color, progress, duration, isPlaying, cover, t
         {!isRadio && <circle cx={dotX} cy={dotY} r={7} fill="white" stroke={color} strokeWidth="2"
           style={{ cursor:'grab' }}/>}
         {/* Current time — hide for radio */}
-        {!isRadio && pct>0.01&&<text x={lblX} y={lblY} textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="11" fontWeight="800" fontFamily="monospace" style={{ pointerEvents:'none' }}>{fmt(progress)}</text>}
+        {!isRadio && displayPct>0.01&&<text x={lblX} y={lblY} textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="11" fontWeight="800" fontFamily="monospace" style={{ pointerEvents:'none' }}>{fmt(displayProgress)}</text>}
         {/* Duration / LIVE label */}
         {isRadio
           ? <text x={cx} y={cy+ringR+20} textAnchor="middle" dominantBaseline="middle" fill={color} fontSize="10" fontWeight="800" fontFamily="monospace" style={{ pointerEvents:'none', letterSpacing:'0.12em' }}>● LIVE</text>

@@ -1735,6 +1735,31 @@ export async function driveStreamBlob(driveId, token) {
         const reader = res.body.getReader();
         const chunks = [];
         const waitUpdate = () => new Promise(r => sb.addEventListener('updateend', r, { once: true }));
+
+        // FIX BUG 1+2: evict bagian buffer yang sudah dilewati untuk mencegah QuotaExceededError.
+        // Browser membatasi total SourceBuffer ~12-150MB. Tanpa eviction, appendBuffer()
+        // melempar QuotaExceededError saat file besar → pump crash → audio stuck.
+        // Solusi: hapus data 0 s/d (currentTime - 30s) setiap kali buffer tumbuh besar.
+        const getAudioEl = () => {
+          // Cari audio element yang sedang pakai URL MediaSource ini
+          const allAudio = document.querySelectorAll('audio');
+          for (const el of allAudio) { if (el.src === url) return el; }
+          return null;
+        };
+        const evictOldBuffer = async () => {
+          if (sb.updating || ms.readyState !== 'open') return;
+          const audio = getAudioEl();
+          if (!audio || sb.buffered.length === 0) return;
+          const currentTime = audio.currentTime;
+          const evictTo = currentTime - 30; // jaga 30 detik ke belakang
+          if (evictTo > 0 && sb.buffered.start(0) < evictTo) {
+            try {
+              sb.remove(0, evictTo);
+              await waitUpdate();
+            } catch(_) { /* ignore */ }
+          }
+        };
+
         const pump = async () => {
           const { done, value } = await reader.read();
           if (done) {
@@ -1747,7 +1772,25 @@ export async function driveStreamBlob(driveId, token) {
           }
           chunks.push(value);
           if (sb.updating) await waitUpdate();
-          if (ms.readyState === 'open' && !sb.updating) { sb.appendBuffer(value); await waitUpdate(); }
+          if (ms.readyState !== 'open') return;
+
+          // FIX BUG 1: coba appendBuffer, tangkap QuotaExceededError dengan eviction
+          try {
+            sb.appendBuffer(value);
+            await waitUpdate();
+          } catch(qe) {
+            if (qe.name === 'QuotaExceededError') {
+              // Evict dulu, lalu coba append ulang
+              await evictOldBuffer();
+              if (ms.readyState === 'open' && !sb.updating) {
+                try { sb.appendBuffer(value); await waitUpdate(); } catch(_) { return; }
+              }
+            } else { throw qe; }
+          }
+
+          // Evict preventif setiap beberapa chunk agar tidak sampai QuotaExceeded
+          if (chunks.length % 20 === 0) await evictOldBuffer();
+
           if (ms.readyState === 'open') await pump();
         };
         await pump();
@@ -1825,19 +1868,24 @@ export async function driveStreamLite(driveId, token, audioElRef) {
             const ahead = bufferedEnd - audio.currentTime;
             if (ahead > AHEAD_SEC && !paused) {
               paused = true;
-              // Tunggu sampai buffer habis sebelum lanjut fetch
               const resume = () => {
-                if (abortCtrl.signal.aborted) return; // sudah di-abort (skip/ganti lagu)
+                if (abortCtrl.signal.aborted) return;
                 const a2 = getAudio();
-                // Jika audio sudah null atau posisi sudah melewati akhir buffer (atau mendekati) → lanjut fetch
-                if (!a2 || a2.currentTime >= bufferedEnd - PAUSE_SEC || a2.currentTime >= bufferedEnd - 5) {
+                // FIX DRIVE STUCK: resume kondisi lebih longgar.
+                // Sebelumnya: currentTime >= bufferedEnd - PAUSE_SEC (PAUSE_SEC=20).
+                // Masalah: jika buffer kecil atau audio belum lama diputar, kondisi ini
+                // tidak pernah terpenuhi → fetch tidak resume → audio stuck menunggu buffer.
+                // Fix: gunakan AHEAD_SEC/2 (15s) sebagai threshold resume, bukan PAUSE_SEC (20s).
+                // Juga tambah fallback: jika buffer tinggal < 8s ke depan, SELALU resume.
+                const ahead2 = a2 ? (bufferedEnd - a2.currentTime) : 0;
+                if (!a2 || ahead2 < AHEAD_SEC / 2 || ahead2 < 8) {
                   paused = false;
                   pump();
                 } else {
-                  setTimeout(resume, 1500);
+                  setTimeout(resume, 1000); // cek lebih sering (1s bukan 1.5s)
                 }
               };
-              setTimeout(resume, 1500);
+              setTimeout(resume, 1000);
               return;
             }
           }
@@ -1849,7 +1897,28 @@ export async function driveStreamLite(driveId, token, audioElRef) {
             return;
           }
           if (sb.updating) await waitUpdate();
-          if (ms.readyState === 'open') { sb.appendBuffer(value); await waitUpdate(); }
+          if (ms.readyState !== 'open') return;
+
+          // FIX BUG 1 (Lite): tangkap QuotaExceededError dengan eviction
+          try {
+            sb.appendBuffer(value);
+            await waitUpdate();
+          } catch(qe) {
+            if (qe.name === 'QuotaExceededError') {
+              // Evict buffer lama dulu
+              const audio2 = getAudio();
+              if (audio2 && sb.buffered.length > 0 && ms.readyState === 'open' && !sb.updating) {
+                const evictTo = audio2.currentTime - 15;
+                if (evictTo > 0 && sb.buffered.start(0) < evictTo) {
+                  try { sb.remove(0, evictTo); await waitUpdate(); } catch(_) {}
+                }
+              }
+              if (ms.readyState === 'open' && !sb.updating) {
+                try { sb.appendBuffer(value); await waitUpdate(); } catch(_) { return; }
+              }
+            } else { throw qe; }
+          }
+
           await pump();
         };
         await pump();

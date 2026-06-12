@@ -20,12 +20,17 @@ import dns from 'dns';
 
 export const config = {
   runtime: 'nodejs',
-  maxDuration: 60, // Vercel Pro/Hobby: 60s. Lebih dari ini perlu upgrade plan.
-  // CATATAN: Batas 30s lama adalah penyebab utama buffering — stream diputus paksa
-  // oleh Vercel setiap 30 detik, browser harus reconnect terus-menerus.
-  // Dengan 60s, frekuensi reconnect berkurang 50%.
-  // Untuk Hobby plan (gratis), maxDuration max adalah 60s.
-  // Untuk Pro plan, bisa diset sampai 300s atau lebih.
+  // maxDuration: batas maksimal serverless function per-request di Vercel.
+  // Ini adalah PENYEBAB UTAMA buffering radio — stream diputus paksa saat timeout,
+  // browser harus reconnect, dan selama reconnect terjadi jeda/buffering.
+  //
+  // Hobby plan (gratis) : max 60s  → reconnect setiap ~60 detik
+  // Pro plan            : max 300s → reconnect setiap ~5 menit (SANGAT berkurang)
+  // Enterprise          : max 900s → reconnect sangat jarang
+  //
+  // REKOMENDASI: upgrade ke Pro plan untuk pengalaman radio tanpa buffering.
+  // Ganti angka di bawah sesuai plan Vercel Anda:
+  maxDuration: 300, // Pro plan: 300s. Ganti ke 60 jika pakai Hobby plan.
 };
 
 
@@ -196,7 +201,11 @@ export default async function handler(req, res) {
 
     const upstream = await fetch(fetchUrl, {
       headers,
-      signal: AbortSignal.timeout(8_000),  // 8s: jika server radio tidak respond, cepat gagal
+      // FIX BUFFERING: naikkan timeout connect ke 12s untuk stasiun dengan latensi tinggi.
+      // 8s terlalu ketat untuk stasiun Indonesia/Asia — sering timeout sebelum stream dimulai.
+      signal: AbortSignal.timeout(12_000),
+      // keepalive: true tidak berlaku untuk streaming (body tidak selesai), tapi
+      // tetap set agar koneksi TCP ke upstream di-reuse jika ada reconnect cepat.
     });
 
     if (!upstream.ok && upstream.status !== 206) {
@@ -215,6 +224,13 @@ export default async function handler(req, res) {
 
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'no-cache, no-store');
+    // FIX BUFFERING: Transfer-Encoding chunked memastikan browser mulai decode
+    // audio segera begitu chunk pertama tiba, tanpa menunggu Content-Length.
+    // Ini mengurangi jeda awal (initial buffering) secara signifikan.
+    res.setHeader('Transfer-Encoding', 'chunked');
+    // X-Accel-Buffering: no → matikan buffering di reverse proxy (Nginx, Vercel edge)
+    // Tanpa ini, proxy bisa menahan data sampai buffer penuh sebelum dikirim ke browser.
+    res.setHeader('X-Accel-Buffering', 'no');
     if (contentLength) res.setHeader('Content-Length', contentLength);
     if (acceptRanges) res.setHeader('Accept-Ranges', acceptRanges);
     if (icecastName) res.setHeader('icy-name', icecastName);

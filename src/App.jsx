@@ -2951,6 +2951,13 @@ Return ONLY valid JSON, no explanation:
       // ── Audio biasa (stream, Jamendo, SoundCloud proxy, dll)
       const a = audioRef.current;
       if (!a) return;
+
+      // FIX SUARA HILANG: saat tab kembali visible, AudioContext sering masih 'suspended'.
+      // Harus di-resume SEBELUM cek audio.paused agar Web Audio route aktif kembali.
+      if (silenceCtxRef.current && silenceCtxRef.current.state === 'suspended') {
+        silenceCtxRef.current.resume().catch(() => {});
+      }
+
       if (a.paused && !a.ended) {
         a.play().catch(() => {});
       } else if (!a.paused && a.readyState < 3) {
@@ -3193,8 +3200,17 @@ Return ONLY valid JSON, no explanation:
   // ── Refs
   const audioRef            = useRef(null);
   const hlsRef              = useRef(null);   // HLS.js instance untuk stream .m3u8
-  const radioReconnectRef   = useRef(null);   // setTimeout handle untuk auto-reconnect
-  const radioReconnectCount = useRef(0);       // berapa kali sudah reconnect
+  const radioReconnectRef        = useRef(null);   // setTimeout handle untuk auto-reconnect
+  const radioReconnectCount      = useRef(0);       // berapa kali sudah reconnect
+  // FIX BUFFERING: proactive reconnect — jadwalkan reconnect sebelum Vercel timeout tiba
+  // Saat stream mendekati batas maxDuration (55s untuk Hobby, 290s untuk Pro),
+  // kita reconnect diam-diam sehingga jeda audio hampir tidak terasa.
+  const proactiveReconnectRef    = useRef(null);   // timer proactive reconnect
+  const streamStartTimeRef       = useRef(null);   // waktu stream mulai (Date.now())
+  // Sesuaikan VERCEL_MAX_DURATION dengan plan Vercel Anda:
+  // 58000  = Hobby plan (60s - 2s safety margin)
+  // 295000 = Pro plan  (300s - 5s safety margin)
+  const VERCEL_MAX_DURATION_MS   = 295000; // Pro plan
   const silenceAnalyserRef  = useRef(null);   // AnalyserNode untuk deteksi stream silent
   const silenceTimerRef     = useRef(null);   // setTimeout handle untuk cek silence
   const silenceCtxRef       = useRef(null);   // AudioContext khusus silence check
@@ -4173,9 +4189,11 @@ Return ONLY valid JSON, no explanation:
     a.setAttribute('playsinline', '');
     a.setAttribute('webkit-playsinline', '');
     a.setAttribute('x-webkit-airplay', 'allow');
-    if (!track.isRadio) {
-      a.crossOrigin = 'anonymous';
-    }
+    // FIX SUARA HILANG: set crossOrigin untuk semua track termasuk radio.
+    // Web Audio API (createMediaElementSource) membutuhkan crossOrigin='anonymous'
+    // agar tidak melempar SecurityError diam-diam yang menyebabkan suara hilang.
+    // Radio menggunakan /api/radio-proxy yang sudah mengirim CORS headers — aman.
+    a.crossOrigin = 'anonymous';
     audioRef.current = a;
 
     // ── Attach event listeners langsung setelah Audio dibuat (bukan di useEffect terpisah)
@@ -4244,13 +4262,12 @@ Return ONLY valid JSON, no explanation:
       if (track.isDrive && track.driveId && err && (err.code === 2 || err.code === 4)) {
         const tok = tokenRef.current;
         if (tok) {
+          // FIX DRIVE STUCK: baca currentTime SEBELUM apapun — setelah src di-clear nilainya 0
           const savedPos = a.currentTime;
           console.warn('[Drive] Audio error, retrying from', savedPos, 'err:', err.code);
-          // Bersihkan cache hanya untuk driveId ini (bukan berdasarkan token)
           for (const [k, v] of _blobCache) {
             if (k === track.driveId || k === `${track.driveId}:lite`) { URL.revokeObjectURL(v); _blobCache.delete(k); }
           }
-          // Coba dengan token saat ini dulu, refresh hanya jika benar-benar 401/403
           const tryWithToken = (useTok) => {
             const fn = isLite ? driveStreamLite : driveStreamBlob;
             return fn(track.driveId, useTok, audioRef);
@@ -4266,8 +4283,24 @@ Return ONLY valid JSON, no explanation:
               if (!url || !audioRef.current) return;
               const newA = audioRef.current;
               newA.src = url;
-              newA.currentTime = savedPos;
-              newA.play().catch(() => setPlaying(false));
+              // FIX: seek setelah canplay — MediaSource blob belum bisa seek saat src baru di-set
+              // karena SourceBuffer mungkin belum punya data di posisi savedPos.
+              // Jika savedPos kecil (< 3s), tidak perlu seek — langsung play dari awal.
+              if (savedPos > 3) {
+                newA.addEventListener('canplay', () => {
+                  // Cek apakah posisi ada di dalam buffered range
+                  let seekable = false;
+                  for (let i = 0; i < newA.buffered.length; i++) {
+                    if (newA.buffered.start(i) <= savedPos && savedPos <= newA.buffered.end(i)) {
+                      seekable = true; break;
+                    }
+                  }
+                  if (seekable) newA.currentTime = savedPos;
+                  newA.play().catch(() => setPlaying(false));
+                }, { once: true });
+              } else {
+                newA.play().catch(() => setPlaying(false));
+              }
             }).catch(() => { setPlaying(false); setLoadingTrack(false); });
           return;
         }
@@ -4278,36 +4311,57 @@ Return ONLY valid JSON, no explanation:
     let waitingTimer = null; // debounce untuk 'waiting' agar tidak flicker di koneksi normal
     const onStall = () => {
       if (track.isRadio) {
-        // Debounce: tunggu 800ms sebelum reconnect
+        // FIX BUFFERING: Naikkan debounce stall dari 800ms ke 3000ms.
+        // 800ms terlalu agresif — stall singkat akibat koneksi lambat atau
+        // jitter jaringan sering memicu reconnect yang tidak perlu.
+        // Dengan 3s, browser punya cukup waktu untuk recover sendiri sebelum kita reconnect.
         if (a.readyState < 2 && !a.paused) {
           if (!stallTimer) {
             stallTimer = setTimeout(() => {
               stallTimer = null;
               if (!a.paused && a.readyState < 2) scheduleRadioReconnect(track);
-            }, 800);
+            }, 3000);
           }
         }
         return;
       }
-      // FIX: Jangan reset audio saat tab/app di-background.
-      // Browser sengaja menghentikan buffering saat background → stall adalah normal.
-      // Memanggil a.load() di sini akan mereset posisi & membatalkan background playback.
       if (document.visibilityState === 'hidden') return;
       if (a.readyState < 3 && !a.paused) {
-        a.load();
+        // FIX DRIVE STUCK: untuk Drive (MediaSource blob URL), JANGAN panggil a.load().
+        // a.load() me-reset currentTime ke 0, lalu seek ke posisi lama seringkali gagal
+        // karena data di posisi itu belum ada di SourceBuffer (harus di-buffer ulang dari awal).
+        // Cukup panggil a.play() — browser biasanya bisa recover sendiri dari stall ringan.
+        if (track.isDrive || (a.src && a.src.startsWith('blob:'))) {
+          a.play().catch(() => {});
+          return;
+        }
+        // Non-Drive (URL biasa): load() + seek ke posisi sebelumnya tetap aman
         const pos = a.currentTime;
+        a.load();
         a.addEventListener('canplay', () => { a.currentTime = pos; a.play().catch(()=>{}); }, { once: true });
       }
     };
     const onWaiting  = () => {
-      if (!track.isRadio) return;
-      // Debounce 800ms: 'waiting' event sering muncul singkat saat normal buffering
-      // Tanpa debounce, indikator BUFFERING… berkedip-kedip terus padahal stream sehat
       if (waitingTimer) clearTimeout(waitingTimer);
-      waitingTimer = setTimeout(() => {
-        waitingTimer = null;
-        if (!a.paused) setStreamBuffering(true);
-      }, 800);
+      // Radio: tampilkan indikator BUFFERING… setelah 1.5s
+      if (track.isRadio) {
+        waitingTimer = setTimeout(() => {
+          waitingTimer = null;
+          if (!a.paused) setStreamBuffering(true);
+        }, 1500);
+        return;
+      }
+      // FIX DRIVE STUCK: Drive Lite mode mungkin pause fetch terlalu lama.
+      // Jika audio 'waiting' >3s dan ini Drive MediaSource, coba play() untuk
+      // memicu resume fetch di driveStreamLite (pump loop cek buffer saat playback resume).
+      if (track.isDrive && a.src && a.src.startsWith('blob:')) {
+        waitingTimer = setTimeout(() => {
+          waitingTimer = null;
+          if (!a.paused && a.readyState < 3) {
+            a.play().catch(() => {});
+          }
+        }, 3000);
+      }
     };
     const onPlaying2 = () => {
       if (track.isRadio) {
@@ -4316,9 +4370,23 @@ Return ONLY valid JSON, no explanation:
         if (radioReconnectRef.current) { clearTimeout(radioReconnectRef.current); radioReconnectRef.current = null; }
         if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; }
         if (waitingTimer) { clearTimeout(waitingTimer); waitingTimer = null; }
-        // FIX Bug #2: mulai deteksi silent stream setiap kali 'playing' event fire (termasuk setelah reconnect).
-        // Jika stream berjalan tapi tidak ada audio, akan trigger reconnect otomatis setelah 6 detik.
         startSilenceDetectionRef.current?.(a, track);
+
+        // FIX BUFFERING: proactive reconnect — jadwalkan sebelum Vercel timeout tiba.
+        // Ini adalah fix paling ampuh untuk mengurangi jeda akibat Vercel memutus stream.
+        // Alih-alih menunggu stream putus lalu reconnect, kita reconnect SEBELUM putus.
+        if (proactiveReconnectRef.current) clearTimeout(proactiveReconnectRef.current);
+        streamStartTimeRef.current = Date.now();
+        proactiveReconnectRef.current = setTimeout(() => {
+          proactiveReconnectRef.current = null;
+          // Pastikan track masih sama dan sedang playing
+          if (!playingRef.current) return;
+          if (trackRef.current?.src !== track.src && trackRef.current?.id !== track.id) return;
+          console.info('[Radio] Proactive reconnect — refreshing stream before Vercel timeout');
+          // Reconnect diam-diam: reset count agar tidak dihitung sebagai error
+          radioReconnectCount.current = 0;
+          scheduleRadioReconnect(track);
+        }, VERCEL_MAX_DURATION_MS);
       }
     };
     a.addEventListener('timeupdate',     onTime);
@@ -4370,7 +4438,8 @@ Return ONLY valid JSON, no explanation:
       clearInterval(durPoll);
       if (stallTimer) clearTimeout(stallTimer);
       if (waitingTimer) clearTimeout(waitingTimer);
-      stopSilenceDetectionRef.current?.(); // FIX: bersihkan AudioContext silence saat track berganti
+      stopSilenceDetectionRef.current?.();
+      if (proactiveReconnectRef.current) { clearTimeout(proactiveReconnectRef.current); proactiveReconnectRef.current = null; }
       a.pause(); a.src = '';
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
     };
@@ -5899,19 +5968,37 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
 
   const startSilenceDetection = useCallback((audioEl, trackObj) => {
     stopSilenceDetection();
-    // Jangan cek jika bukan radio atau audio tidak ada
     if (!trackObj?.isRadio || !audioEl) return;
-    // Buat AudioContext baru khusus untuk deteksi silence
+
     const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return; // browser lama tidak support
+    if (!AC) return;
+
     let ctx;
     try {
       ctx = new AC();
       silenceCtxRef.current = ctx;
     } catch { return; }
 
+    // FIX BUG A: AudioContext sering jadi 'suspended' oleh browser (policy autoplay,
+    // tab di-background, layar dikunci, dsb). Saat suspended, audio route via Web Audio API
+    // putus total — suara hilang meski audio element masih "playing".
+    // Solusi: resume() dulu SEBELUM connect, dan pantau state secara berkala.
+    const resumeCtx = () => {
+      if (ctx && ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+    };
+    resumeCtx();
+
     let analyser;
     try {
+      // FIX BUG B: crossOrigin HARUS 'anonymous' agar createMediaElementSource tidak
+      // melempar SecurityError karena CORS taint. Tanpa ini, di browser tertentu (Chrome/Firefox)
+      // source node terbuat tapi tidak ada audio yang lewat → suara hilang diam-diam.
+      // Kita set di sini (bukan di konstruksi Audio) karena radio proxy sudah CORS-safe.
+      if (!audioEl.crossOrigin) {
+        audioEl.crossOrigin = 'anonymous';
+      }
       const source = ctx.createMediaElementSource(audioEl);
       analyser = ctx.createAnalyser();
       analyser.fftSize = 256;
@@ -5919,35 +6006,61 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       analyser.connect(ctx.destination);
       silenceAnalyserRef.current = analyser;
     } catch {
-      // createMediaElementSource bisa gagal — andalkan mekanisme stall/error
+      // createMediaElementSource gagal (misal: element sudah terhubung ke ctx lain)
+      // Lepas AudioContext — audio tetap keluar dari element langsung
       try { ctx.close(); } catch {}
       silenceCtxRef.current = null;
       return;
     }
 
-    // Tunggu 6 detik setelah stream mulai (beri waktu buffering awal)
-    // lalu cek apakah ada sinyal audio masuk
-    silenceTimerRef.current = setTimeout(() => {
+    // FIX BUG C: Sebelumnya silence hanya dicek SEKALI di detik ke-6, lalu berhenti.
+    // Kalau suara hilang setelah detik ke-6 (misal menit ke-2), tidak ada yang mendeteksi.
+    // Solusi: polling berkala setiap 8 detik selama radio aktif.
+    // Interval pertama lebih panjang (8s) untuk memberi waktu buffering awal.
+    const _sb = u => u ? u.replace(/[&?]_[tr]=\d+/g, '') : u;
+    let consecutiveSilence = 0; // counter silence berturut-turut (mengurangi false positive)
+
+    const checkSilence = () => {
       silenceTimerRef.current = null;
       if (!analyser || !playingRef.current) return;
-      // Pastikan track belum berganti
-      // FIX Bug #5: strip cache-bust sebelum bandingkan agar reconnect tidak batalkan detection
-      const _sb = u => u ? u.replace(/[&?]_[tr]=\d+/g, '') : u;
       if (_sb(trackRef.current?.src) !== _sb(trackObj.src)) return;
+
+      // FIX BUG A (part 2): cek dan resume AudioContext sebelum baca data
+      // Browser bisa suspend kapan saja (user klik tab lain, layar mati, dsb)
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+        // Jangan hitung sebagai silence — mungkin baru saja resume
+        consecutiveSilence = 0;
+        silenceTimerRef.current = setTimeout(checkSilence, 8000);
+        return;
+      }
+
       const buf = new Uint8Array(analyser.frequencyBinCount);
       analyser.getByteFrequencyData(buf);
       const avg = buf.reduce((a, b) => a + b, 0) / buf.length;
+
       if (avg < 0.5) {
-        // Rata-rata energi frekuensi < 0.5 dari 255 → stream diam / tidak ada audio
-        console.warn('[Radio] Silent stream detected (avg energy:', avg.toFixed(3), ') — scheduling reconnect');
-        // Cleanup context sebelum reconnect agar tidak ada dangling resource
-        stopSilenceDetection();
-        scheduleRadioReconnect(trackObj);
+        consecutiveSilence++;
+        console.warn(`[Radio] Silent stream check #${consecutiveSilence} (avg=${avg.toFixed(3)}) — ctx.state=${ctx.state}`);
+        // FIX: butuh 2 cek berurutan sebelum reconnect untuk menghindari false positive
+        // (misalnya saat ada iklan/jeda di stasiun tertentu)
+        if (consecutiveSilence >= 2) {
+          console.warn('[Radio] Confirmed silent — reconnecting');
+          stopSilenceDetection();
+          scheduleRadioReconnect(trackObj);
+          return;
+        }
+        // Cek lagi lebih cepat (4s) untuk konfirmasi
+        silenceTimerRef.current = setTimeout(checkSilence, 4000);
       } else {
-        // Ada suara → lepas detection (hemat resource), stream sehat
-        stopSilenceDetection();
+        // Ada suara — reset counter, jadwalkan cek berikutnya
+        consecutiveSilence = 0;
+        silenceTimerRef.current = setTimeout(checkSilence, 8000);
       }
-    }, 6000);
+    };
+
+    // Mulai cek pertama setelah 8 detik (beri waktu buffering awal)
+    silenceTimerRef.current = setTimeout(checkSilence, 8000);
   }, [stopSilenceDetection]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep refs in sync so the audio useEffect (earlier in file) can call these via ref
@@ -5958,25 +6071,27 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
   const scheduleRadioReconnect = useCallback((trackObj) => {
     if (radioReconnectRef.current) clearTimeout(radioReconnectRef.current);
     const attempt = radioReconnectCount.current;
-    if (attempt >= 6) {
-      // Sudah 6x gagal — beri tahu user dan berhenti
+    // FIX BUFFERING: Naikkan max attempt dari 6 ke 8.
+    // Vercel memutus koneksi setiap maxDuration detik (60s Hobby / 300s Pro) — ini BUKAN error,
+    // hanya timeout normal. Browser perlu reconnect otomatis tanpa beri tahu user error.
+    // Dengan 8 attempt, radio bisa reconnect lebih banyak kali sebelum menyerah.
+    if (attempt >= 8) {
       radioReconnectCount.current = 0;
       setPlaying(false);
       setStreamBuffering(false);
-      // FIX Bug #3: bersihkan state radio agar UI tidak stuck menampilkan stasiun
-      // yang sudah tidak bisa diputar (tombol LIVE RADIO / info stasiun tetap muncul)
       setRadioStation(null);
       setRadioPlaying(false);
-      // FIX: show user-visible error so they know the station is unavailable
-      // (previously failed silently — user had no idea why radio stopped)
       const stationName = trackRef.current?.title || 'Radio station';
       setRadioStreamError(`"${stationName}" is currently unavailable. The stream may be offline or geo-blocked.`);
       setTimeout(() => setRadioStreamError(null), 7000);
       return;
     }
-    // Exponential back-off: 500ms, 1s, 2s, 4s, 10s, 20s
-    // Attempt pertama sangat cepat (500ms) untuk handle Vercel proxy timeout
-    const delay = attempt === 0 ? 500 : Math.min(500 * Math.pow(2, attempt), 20000);
+    // FIX BUFFERING: Kurangi delay attempt pertama ke 200ms (dari 500ms).
+    // Saat Vercel memutus stream karena timeout, browser langsung error — kita perlu reconnect
+    // secepat mungkin agar jeda audio tidak terasa. 200ms hampir tidak terdengar.
+    // Back-off: 200ms, 800ms, 1.5s, 3s, 6s, 12s, 20s, 20s
+    const delays = [200, 800, 1500, 3000, 6000, 12000, 20000, 20000];
+    const delay = delays[attempt] ?? 20000;
     console.warn(`[Radio] Reconnect attempt ${attempt + 1} in ${delay}ms`);
     setStreamBuffering(true);
     radioReconnectRef.current = setTimeout(() => {
@@ -6004,10 +6119,13 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
         setTimeout(() => {
           if (stripBust(trackRef.current?.src) !== stripBust(trackObj.src)) return;
           stopSilenceDetection();
+          // FIX BUFFERING: set preload='auto' sebelum src agar browser langsung
+          // mulai buffering begitu src di-set, tanpa menunggu play().
+          a.preload = 'auto';
           a.src = src + (src.includes('?') ? '&' : '?') + '_t=' + Date.now();
           a.load();
           a.play().catch(() => {});
-        }, 100); // 100ms saja — cukup beri waktu browser release resource
+        }, 50); // FIX: kurangi dari 100ms ke 50ms — makin cepat reconnect makin kecil jeda
       }
     }, delay);
   }, [attachHls, stopSilenceDetection]); // eslint-disable-line react-hooks/exhaustive-deps
