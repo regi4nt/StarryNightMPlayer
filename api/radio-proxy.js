@@ -61,6 +61,7 @@ const ALLOWED_DOMAINS = [
   'streams.ilovemusic.de',        // ilovemusic / Chillhop
   'stream.radiorodja.com',        // Radio Rodja (Indonesia)
   'live.amperwave.net',           // Amperwave CDN
+  'stream.zeno.fm',               // Zeno.FM hosted stations
   // tambah domain lain jika diperlukan
 ];
 
