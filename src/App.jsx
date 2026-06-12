@@ -12114,7 +12114,7 @@ Format exactly:
                         </div>
                       )}
                       <Suspense fallback={null}>
-                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={s2=>{ activePlRef.current=songs; play(s2); } setPlaying={setPlaying}} isDrive isCached={cachedDriveIds.has(s.driveId)} embedTrack={embedTrack} onRemove={mySongsEditMode ? async id=>{
+                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={s2=>{ activePlRef.current=songs; play(s2); }} setPlaying={setPlaying} isDrive isCached={cachedDriveIds.has(s.driveId)} embedTrack={embedTrack} onRemove={mySongsEditMode ? async id=>{
                           const song = customSongs.find(x=>x.id===id);
                           if (song?.driveId && tokenRef.current) {
                             try {
@@ -12215,7 +12215,7 @@ Format exactly:
                     </div>
                     <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'10px 16px 16px', display:'flex', flexDirection:'column', gap:5 }}>
                       <Suspense fallback={null}>
-                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={s2=>{ activePlRef.current=songs; play(s2); } setPlaying={setPlaying}} isDrive={s.isDrive} isCached={s.driveId ? cachedDriveIds.has(s.driveId) : s.type==='youtube' ? cachedYtIds.has(s.videoId) : cachedFavIds.has(s.id)} isDownloading={s.type==='youtube' ? ytDownloadingIds.has(s.videoId) : favDownloadingIds.has(s.id)} dlProgress={s.type==='youtube' ? (ytDownloadProg[s.videoId]||0) : (favDownloadProg[s.id]||0)} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite} t={t} embedTrack={embedTrack}
+                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={s2=>{ activePlRef.current=songs; play(s2); }} setPlaying={setPlaying} isDrive={s.isDrive} isCached={s.driveId ? cachedDriveIds.has(s.driveId) : s.type==='youtube' ? cachedYtIds.has(s.videoId) : cachedFavIds.has(s.id)} isDownloading={s.type==='youtube' ? ytDownloadingIds.has(s.videoId) : favDownloadingIds.has(s.id)} dlProgress={s.type==='youtube' ? (ytDownloadProg[s.videoId]||0) : (favDownloadProg[s.id]||0)} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite} t={t} embedTrack={embedTrack}
                       onRemove={allSongsEditMode ? id=>{ setLiked(l=>{const n={...l};delete n[id];return n;}); setFavSongs(p=>p.filter(s=>s.id!==id)); setCustomSongs(p=>p.filter(s=>s.id!==id)); setYtSongs(p=>p.filter(s=>s.id!==id)); setPlaylists(p=>p.map(pl=>({...pl,songIds:pl.songIds.filter(sid=>sid!==id)}))); } : null}
                       editMode={allSongsEditMode}
                       onDownload={downloadWithCache}
@@ -12274,7 +12274,7 @@ Format exactly:
                       <SongRow key={s.id} s={s} i={i}
                         track={track} playing={playing}
                         liked={liked} setLiked={setLiked} toggleFav={toggleFav}
-                        play={s2=>{ setActivePl(pl.id); activePlRef.current=songs; play(s2); } setPlaying={setPlaying}}
+                        play={s2=>{ setActivePl(pl.id); activePlRef.current=songs; play(s2); }} setPlaying={setPlaying}
                         isDrive={s.isDrive}
                         isCached={s.driveId ? cachedDriveIds.has(s.driveId) : s.type==='youtube' ? cachedYtIds.has(s.videoId) : cachedFavIds.has(s.id)}
                         isDownloading={s.type==='youtube' ? ytDownloadingIds.has(s.videoId) : favDownloadingIds.has(s.id)}
