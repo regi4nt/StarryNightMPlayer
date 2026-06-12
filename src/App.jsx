@@ -6641,7 +6641,7 @@ Format exactly:
       // t.src bisa berisi URL mentah http:// (disimpan saat station di-like dari queue sidebar
       // dengan src:station.url tanpa radioUrl), atau sudah berupa /api/radio-proxy?url=...
       // radioUrl() idempoten untuk https:// dan /api/..., aman dipanggil berulang kali.
-      const proxiedSrc = radioUrl(t.src, customDnsRef.current);
+      const proxiedSrc = radioUrl(t.src, customDnsRef.current) || '';
       // FIX RADIO REPLAY: tambah cache-bust timestamp agar useEffect [track.src] selalu
       // re-run dan membuat Audio element baru (reconnect stream) setiap kali play dipanggil.
       // Tanpa ini, useEffect skip karena src sama → stream lama tidak diganti → tidak ada suara.
