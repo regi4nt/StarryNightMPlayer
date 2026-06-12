@@ -960,11 +960,6 @@ export default function App() {
             setSpTrack(fullTrack);
           };
 
-          const AC = window.AudioContext || window.webkitAudioContext;
-          if (AC) {
-            if (!audioCtxRef.current) { try { audioCtxRef.current = new AC(); } catch (_) {} }
-            if (audioCtxRef.current?.state === 'suspended') audioCtxRef.current.resume().catch(() => {});
-          }
           startFull();
           return;
         }
@@ -1008,17 +1003,6 @@ export default function App() {
       setSpTrack(track);
     };
 
-    // Guard: buat/resume AudioContext (singleton) saat ada user gesture agar tidak di-block browser.
-    // Beberapa browser (Safari, Chrome) suspend AudioContext jika dibuat sebelum interaksi user.
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (AC) {
-      if (!audioCtxRef.current) {
-        try { audioCtxRef.current = new AC(); } catch (_) {}
-      }
-      if (audioCtxRef.current?.state === 'suspended') {
-        audioCtxRef.current.resume().catch(() => {});
-      }
-    }
     startNew();
   };
 
@@ -1587,11 +1571,6 @@ Return ONLY valid JSON, no explanation:
   const [duration, setDuration] = useState(0);
   const [volume, setVolume]     = useState(() => { try { const v = parseFloat(localStorage.getItem('sn_volume')); return isFinite(v) ? Math.min(Math.max(v, 0), 1) : 0.75; } catch { return 0.75; } });
   const [muted, setMuted]       = useState(() => { try { return localStorage.getItem('sn_muted') === '1'; } catch { return false; } });
-  // ── Equalizer: 10 band, gains dalam dB (disimpan ke localStorage)
-  const EQ_BANDS = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
-  const [eqEnabled, setEqEnabled] = useState(() => { try { return localStorage.getItem('sn_eq_enabled') === '1'; } catch { return false; } });
-  const [eqGains, setEqGains]     = useState(() => { try { return JSON.parse(localStorage.getItem('sn_eq_gains') || 'null') || Array(10).fill(0); } catch { return Array(10).fill(0); } });
-  const [eqPreset, setEqPreset]   = useState('flat');
   const [liked, setLiked]       = useState(() => {
     try { return JSON.parse(localStorage.getItem('sn_liked') || '{}'); } catch { return {}; }
   });
@@ -3198,16 +3177,12 @@ Return ONLY valid JSON, no explanation:
 
   // ── Refs
   const audioRef            = useRef(null);
-  const audioCtxRef         = useRef(null);   // singleton AudioContext — dibuat sekali, di-resume saat user gesture
-  const eqNodesRef          = useRef([]);      // array BiquadFilterNode untuk equalizer (10 band)
-  const eqSourceRef         = useRef(null);    // MediaElementSourceNode yang terhubung ke EQ chain
-  const eqEnabledRef        = useRef(false);   // apakah EQ aktif
   const hlsRef              = useRef(null);   // HLS.js instance untuk stream .m3u8
   const radioReconnectRef   = useRef(null);   // setTimeout handle untuk auto-reconnect
   const radioReconnectCount = useRef(0);       // berapa kali sudah reconnect
   const silenceAnalyserRef  = useRef(null);   // AnalyserNode untuk deteksi stream silent
   const silenceTimerRef     = useRef(null);   // setTimeout handle untuk cek silence
-  const silenceCtxRef       = useRef(null);   // AudioContext khusus silence check (terpisah dari EQ)
+  const silenceCtxRef       = useRef(null);   // AudioContext khusus silence check
   // Refs so the audio useEffect (defined earlier in the file) can call these functions
   // without closing over the const declarations — avoids esbuild TDZ (temporal dead zone) bug.
   const startSilenceDetectionRef = useRef(null);
@@ -3230,80 +3205,7 @@ Return ONLY valid JSON, no explanation:
   useEffect(() => { tokenRef.current    = accessToken; }, [accessToken]);
   useEffect(() => { isLiteRef.current   = isLite;    }, [isLite]);
 
-  // ── Equalizer: bangun/rebuild chain BiquadFilter setiap kali audio element berganti
-  // Hanya aktif jika eqEnabled=true DAN audioCtx tersedia
-  const connectEQ = useCallback(() => {
-    const ctx = audioCtxRef.current;
-    const audio = audioRef.current;
-    if (!ctx || !audio || ctx.state === 'closed') return;
-    // Hindari double-connect: cek apakah source sudah ada dan masih untuk audio ini
-    if (eqSourceRef.current && eqSourceRef.current._audio === audio) {
-      // Source sudah terhubung, hanya update gain jika EQ aktif
-      eqNodesRef.current.forEach((node, i) => {
-        node.gain.value = eqEnabledRef.current ? (eqGains[i] ?? 0) : 0;
-      });
-      return;
-    }
-    // Buat MediaElementSourceNode baru
-    try {
-      const source = ctx.createMediaElementSource(audio);
-      source._audio = audio;
-      eqSourceRef.current = source;
-      // Buat 10 BiquadFilter nodes
-      const EQ_BANDS_FREQ = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
-      const filters = EQ_BANDS_FREQ.map((freq, i) => {
-        const f = ctx.createBiquadFilter();
-        f.type = i === 0 ? 'lowshelf' : i === 9 ? 'highshelf' : 'peaking';
-        f.frequency.value = freq;
-        f.Q.value = 1.0;
-        f.gain.value = eqEnabledRef.current ? (eqGains[i] ?? 0) : 0;
-        return f;
-      });
-      eqNodesRef.current = filters;
-      // Chain: source → f0 → f1 → … → f9 → destination
-      source.connect(filters[0]);
-      for (let i = 0; i < filters.length - 1; i++) filters[i].connect(filters[i + 1]);
-      filters[filters.length - 1].connect(ctx.destination);
-    } catch (err) {
-      console.warn('[EQ] connect failed:', err);
-    }
-  }, [eqGains]); // eslint-disable-line
 
-  // Sinkronkan eqEnabled ke ref agar connectEQ bisa baca nilai terkini
-  useEffect(() => { eqEnabledRef.current = eqEnabled; }, [eqEnabled]);
-
-  // Update gain nodes setiap kali eqGains atau eqEnabled berubah
-  useEffect(() => {
-    eqNodesRef.current.forEach((node, i) => {
-      node.gain.value = eqEnabled ? (eqGains[i] ?? 0) : 0;
-    });
-    try { localStorage.setItem('sn_eq_gains', JSON.stringify(eqGains)); } catch {}
-    try { localStorage.setItem('sn_eq_enabled', eqEnabled ? '1' : '0'); } catch {}
-  }, [eqGains, eqEnabled]);
-
-  // ── AudioContext guard: unlock singleton pada interaksi user pertama
-  // Browser modern (Safari/Chrome) memblokir AudioContext yang dibuat sebelum ada gesture.
-  // Kita daftarkan satu listener 'once' — setelah itu AudioContext aman di-resume kapan saja.
-  useEffect(() => {
-    const unlock = () => {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return;
-      if (!audioCtxRef.current) {
-        try { audioCtxRef.current = new AC(); } catch (_) { return; }
-      }
-      if (audioCtxRef.current.state === 'suspended') {
-        audioCtxRef.current.resume().catch(() => {});
-      }
-    };
-    ['click', 'touchstart', 'keydown'].forEach(ev =>
-      document.addEventListener(ev, unlock, { once: true, passive: true })
-    );
-    return () => {
-      ['click', 'touchstart', 'keydown'].forEach(ev =>
-        document.removeEventListener(ev, unlock)
-      );
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Measure actual bottom nav height so portrait ring calc is always accurate
   useEffect(() => {
@@ -4259,14 +4161,6 @@ Return ONLY valid JSON, no explanation:
       a.crossOrigin = 'anonymous';
     }
     audioRef.current = a;
-
-    // ── Koneksikan equalizer ke audio element baru (jika AudioContext sudah tersedia)
-    // connectEQ dipanggil dari sini (dan saat EQ pertama kali diaktifkan dari Settings)
-    if (audioCtxRef.current) {
-      // Reset source ref karena audio element baru
-      eqSourceRef.current = null;
-      connectEQ();
-    }
 
     // ── Attach event listeners langsung setelah Audio dibuat (bukan di useEffect terpisah)
     // ── sehingga tidak ada jeda di mana React effects bisa membaca audioRef yang sudah stale
@@ -5310,53 +5204,6 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const cancelSleepTimer = useCallback(() => { if (sleepIntervalRef.current) clearInterval(sleepIntervalRef.current); setSleepTimer(null); }, []);
 
-  // ── EQ handlers (dipanggil dari SettingsPanel)
-  const EQ_PRESETS = {
-    flat:     [0,0,0,0,0,0,0,0,0,0],
-    bass:     [6,5,4,2,0,0,0,0,0,0],
-    treble:   [0,0,0,0,0,0,2,4,5,6],
-    vocal:    [-2,-2,0,2,4,4,2,0,-1,-2],
-    pop:      [-1,0,2,3,2,0,-1,-1,-1,-1],
-    rock:     [4,3,2,0,-1,-1,0,2,3,4],
-    jazz:     [3,2,1,0,-1,-1,0,1,2,2],
-    classical:[4,3,2,0,-1,-1,0,2,3,4],
-    dance:    [5,4,2,0,-2,-2,0,3,4,4],
-    acoustic: [3,2,1,0,0,-1,0,1,2,2],
-  };
-  const handleToggleEq = useCallback((enabled) => {
-    setEqEnabled(enabled);
-    // Pastikan AudioContext aktif dan EQ terkoneksi
-    if (enabled) {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (AC && !audioCtxRef.current) {
-        try { audioCtxRef.current = new AC(); } catch {}
-      }
-      if (audioCtxRef.current?.state === 'suspended') {
-        audioCtxRef.current.resume().catch(() => {});
-      }
-      // Koneksikan EQ ke audio element saat ini
-      eqSourceRef.current = null;
-      connectEQ();
-    }
-  }, [connectEQ]);
-
-  const handleEqGainChange = useCallback((index, value) => {
-    setEqGains(prev => {
-      const next = [...prev];
-      next[index] = value;
-      return next;
-    });
-  }, []);
-
-  const handleApplyEqPreset = useCallback((presetName) => {
-    setEqPreset(presetName);
-    const gains = EQ_PRESETS[presetName] || EQ_PRESETS.flat;
-    setEqGains(gains);
-    if (!eqEnabled && presetName !== 'flat') {
-      handleToggleEq(true);
-    }
-  }, [eqEnabled, handleToggleEq]); // eslint-disable-line
-
   // ── Test radio stations: hanya tampilkan yang bisa diputar
   const testStationsInGenre = useCallback(async (genre) => {
     const key = genre.id;
@@ -5373,7 +5220,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     const testOne = (station) => new Promise(resolve => {
       const ctrl = new AbortController();
       const tid = setTimeout(() => { ctrl.abort(); resolve({ id: station.id, ok: false }); }, 7000);
-      fetch(radioUrl(station.url, customDnsRef.current), { method: 'GET', mode: 'no-cors', signal: ctrl.signal })
+      fetch(radioUrl(station.url_resolved || station.url, customDnsRef.current), { method: 'GET', mode: 'no-cors', signal: ctrl.signal })
         .then(() => { clearTimeout(tid); resolve({ id: station.id, ok: true }); })
         .catch(e => {
           clearTimeout(tid);
@@ -6028,7 +5875,6 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     // Jangan cek jika bukan radio atau audio tidak ada
     if (!trackObj?.isRadio || !audioEl) return;
     // Buat AudioContext baru khusus untuk deteksi silence
-    // (terpisah dari audioCtxRef yang dipakai EQ, untuk mencegah konflik crossOrigin)
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return; // browser lama tidak support
     let ctx;
@@ -6046,9 +5892,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       analyser.connect(ctx.destination);
       silenceAnalyserRef.current = analyser;
     } catch {
-      // createMediaElementSource bisa gagal jika elemen sudah di-connect ke AudioContext lain
-      // (misalnya EQ aktif dan pakai crossOrigin). Dalam kasus ini, skip silence detection
-      // dan andalkan mekanisme stall/error yang sudah ada.
+      // createMediaElementSource bisa gagal — andalkan mekanisme stall/error
       try { ctx.close(); } catch {}
       silenceCtxRef.current = null;
       return;
@@ -6060,7 +5904,9 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       silenceTimerRef.current = null;
       if (!analyser || !playingRef.current) return;
       // Pastikan track belum berganti
-      if (trackRef.current?.src !== trackObj.src) return;
+      // FIX Bug #5: strip cache-bust sebelum bandingkan agar reconnect tidak batalkan detection
+      const _sb = u => u ? u.replace(/[&?]_[tr]=\d+/g, '') : u;
+      if (_sb(trackRef.current?.src) !== _sb(trackObj.src)) return;
       const buf = new Uint8Array(analyser.frequencyBinCount);
       analyser.getByteFrequencyData(buf);
       const avg = buf.reduce((a, b) => a + b, 0) / buf.length;
@@ -6125,7 +5971,9 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
         a.src = '';
         setTimeout(() => {
           // Double-check lagi setelah 500ms inner delay
-          if (trackRef.current?.src !== trackObj.src) return;
+          // FIX Bug Reconnect: strip bust di kedua sisi agar perbandingan tidak salah
+          // batalkan reconnect karena trackRef.current.src bisa punya bust baru
+          if (stripBust(trackRef.current?.src) !== stripBust(trackObj.src)) return;
           stopSilenceDetection(); // bersihkan context lama sebelum reconnect
           a.src = src + (src.includes('?') ? '&' : '?') + '_t=' + Date.now(); // cache-bust agar server kirim stream baru
           a.load();
@@ -6227,7 +6075,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
         setMultiLoading(false);
         if (cityResults.length === 0) setRbError(`Tidak ada stasiun ditemukan untuk "${rawQ}"`);
         const msKey = `city__${q}`;
-        testStationsInGenre({ id: msKey, stations: cityResults.map(s => ({ id: s.id || s.stationuuid, url: s.url })) });
+        testStationsInGenre({ id: msKey, stations: cityResults.map(s => ({ id: s.id || s.stationuuid, url: s.url_resolved || s.url })) });
         return;
       } catch(e) {
         setRbError('Gagal mencari stasiun kota. Coba lagi.');
@@ -6368,7 +6216,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
         setMultiResults(srcResults);
         setMultiLoading(false);
         const msKey = `source__${src}__${sq}`;
-        testStationsInGenre({ id:msKey, stations:srcResults.map(s=>({ id:s.id||s.stationuuid, url:s.url })) });
+        testStationsInGenre({ id:msKey, stations:srcResults.map(s=>({ id:s.id||s.stationuuid, url:s.url_resolved||s.url })) });
         return;
       } catch(e) {
         setRbError('Gagal mengambil dari sumber tersebut.');
@@ -6562,7 +6410,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     setMultiLoading(false);
     // Trigger health check untuk semua hasil multi-search
     const msKey = `multisearch__${textQuery}__${effectiveGenreTag||''}`;
-    testStationsInGenre({ id: msKey, stations: results.map(s => ({ id: s.id || s.stationuuid, url: s.url })) });
+    testStationsInGenre({ id: msKey, stations: results.map(s => ({ id: s.id || s.stationuuid, url: s.url_resolved || s.url })) });
 
     // ── AI Fallback: jika hasil terlalu sedikit dan ada query teks, minta AI sarankan stasiun
     // lalu cari nama-nama itu di RadioBrowser (source nyata, bukan imajinasi AI)
@@ -6658,7 +6506,7 @@ Format exactly:
           // Health check hanya untuk stasiun yang punya URL
           const playable = aiStations.filter(s => s.url || s.url_resolved);
           if (playable.length > 0) {
-            testStationsInGenre({ id: msKey + '__ai', stations: playable.map(s => ({ id: s.id || s.stationuuid, url: s.url })) });
+            testStationsInGenre({ id: msKey + '__ai', stations: playable.map(s => ({ id: s.id || s.stationuuid, url: s.url_resolved || s.url })) });
           }
         }
       } catch { /* AI gagal = tidak apa-apa, hasil reguler sudah ada */ }
@@ -7099,7 +6947,11 @@ Format exactly:
           const genre = country.genres.find(g => g.id === radioStation.genreId);
           return genre ? genre.stations : [];
         })();
-    const idx = stations.findIndex(s => s.id === radioStation.id);
+    // FIX Bug #9: radioStation.id bisa punya prefix 'rb_' (dari playRbStation)
+    // sedangkan stations[i].id adalah stationuuid tanpa prefix → findIndex selalu -1
+    // Normalkan: strip prefix 'rb_' / 'radio_' sebelum bandingkan
+    const normId = (id = '') => id.replace(/^(rb_|radio_)/, '');
+    const idx = stations.findIndex(s => normId(s.id) === normId(radioStation.id) || s.stationuuid === normId(radioStation.id));
     const nextStation = stations[(idx + 1) % stations.length];
     if (!nextStation) return;
     const radioTrackObj = {
@@ -7108,7 +6960,7 @@ Format exactly:
       artist: nextStation.city + ' · Live Radio',
       album: 'Live Radio',
       cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
-      src: nextStation.url,
+      src: radioUrl(nextStation.url_resolved || nextStation.url, customDnsRef.current),
       color: radioStation.color || '#f59e0b',
       bg: `rgba(245,158,11,0.15)`,
       mood: 'live, radio',
@@ -7132,7 +6984,9 @@ Format exactly:
           const genre = country.genres.find(g => g.id === radioStation.genreId);
           return genre ? genre.stations : [];
         })();
-    const idx = stations.findIndex(s => s.id === radioStation.id);
+    // FIX Bug #9: sama seperti goNextRadio — normalisasi prefix sebelum cari
+    const normIdP = (id = '') => id.replace(/^(rb_|radio_)/, '');
+    const idx = stations.findIndex(s => normIdP(s.id) === normIdP(radioStation.id) || s.stationuuid === normIdP(radioStation.id));
     const prevStation = stations[(idx - 1 + stations.length) % stations.length];
     if (!prevStation) return;
     const radioTrackObj = {
@@ -7141,7 +6995,7 @@ Format exactly:
       artist: prevStation.city + ' · Live Radio',
       album: 'Live Radio',
       cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
-      src: prevStation.url,
+      src: radioUrl(prevStation.url_resolved || prevStation.url, customDnsRef.current),
       color: radioStation.color || '#f59e0b',
       bg: `rgba(245,158,11,0.15)`,
       mood: 'live, radio',
@@ -8276,14 +8130,31 @@ Format exactly:
         // Special built-in playlists
         if (activePl === 'all_songs')       return allSongs;
         if (activePl === 'my_songs')        return [...customSongs, ...favSongs.filter(s => !customSongs.find(c => c.id === s.id))];
-        if (activePl === 'recently_played') return history.slice(0, 50).map(id => allSongs.find(s => s.id === id)).filter(Boolean);
+        if (activePl === 'recently_played') {
+          // FIX PLAYLIST RADIO: radio tidak ada di allSongs — gabungkan favSongs dulu
+          const _rpAllSongs = [...allSongs];
+          const _rpAllIds = new Set(allSongs.map(s => s.id));
+          favSongs.forEach(s => { if (!_rpAllIds.has(s.id)) _rpAllSongs.push(s); });
+          return history.slice(0, 50).map(entry => {
+            if (entry && typeof entry === 'object' && entry.id) {
+              return _rpAllSongs.find(s => s.id === entry.id) || entry;
+            }
+            return _rpAllSongs.find(s => s.id === entry);
+          }).filter(Boolean);
+        }
         if (activePl === 'pl_fav') {
           // Favorit: pakai favSongs sebagai sumber kebenaran, fallback ke pl.songIds
+          // FIX PLAYLIST RADIO: gunakan allSongsWithFav agar radio dari favSongs tidak hilang
+          // (radio object ada di favSongs tapi mungkin tidak ada di allSongs karena disimpan
+          // dengan id berbeda dari builtinSongs/customSongs/ytSongs)
+          const allSongsWithFav = [...allSongs];
+          const allSongsIds = new Set(allSongs.map(s => s.id));
+          favSongs.forEach(s => { if (!allSongsIds.has(s.id)) allSongsWithFav.push(s); });
           const favIds = new Set(favSongs.map(s => s.id));
           const pl = playlists.find(p => p.id === 'pl_fav');
           const plIds = pl ? pl.songIds : [];
           const allIds = [...new Set([...favIds, ...plIds])];
-          return allSongs.filter(s => allIds.includes(s.id));
+          return allSongsWithFav.filter(s => allIds.includes(s.id));
         }
         // Custom playlists
         const pl = playlists.find(p => p.id === activePl);
@@ -9149,7 +9020,7 @@ Format exactly:
 
         {/* ── SETTINGS PANEL — menutup semua tab di desktop & landscape, hanya player di portrait */}
         {showSettings && (isDesktop || layoutMode === 'mobile-landscape' || tab === 'player') && (
-          <Suspense fallback={<Spinner/>}><SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} eqEnabled={eqEnabled} eqGains={eqGains} eqPreset={eqPreset} onToggleEq={handleToggleEq} onEqGainChange={handleEqGainChange} onApplyEqPreset={handleApplyEqPreset} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userSpDc={userSpDc} setUserSpDc={setUserSpDc} userSpKey={userSpKey} setUserSpKey={setUserSpKey} userScId={userScId} setUserScId={setUserScId} userScOAuth={userScOAuth} setUserScOAuth={setUserScOAuth} userAiKey={userAiKey} setUserAiKey={setUserAiKey} userYtKey={userYtKey} setUserYtKey={setUserYtKey} userCfKey={userCfKey} setUserCfKey={setUserCfKey} userSnKey={userSnKey} setUserSnKey={setUserSnKey} setTab={setTab} setFullscreen={setFullscreen} googleUser={googleUser||null} handleGoogleLogin={handleGoogleLogin} syncPlaylistsToCloud={syncPlaylistsToCloud} syncSongsToCloud={syncSongsToCloud} accessToken={accessToken||null} plSyncStatus={plSyncStatus} plSyncError={plSyncError||null} plSyncedAt={plSyncedAt||null} songSyncStatus={songSyncStatus} songSyncError={songSyncError||null} songSyncedAt={songSyncedAt||null} startCompressCache={startCompressCache} compressStatus={compressStatus} compressProgress={compressProgress} bgTheme={bgTheme} setBgTheme={(v)=>{ setBgTheme(v); localStorage.setItem('sn_bg_theme', v); }}/></Suspense>
+          <Suspense fallback={<Spinner/>}><SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userSpDc={userSpDc} setUserSpDc={setUserSpDc} userSpKey={userSpKey} setUserSpKey={setUserSpKey} userScId={userScId} setUserScId={setUserScId} userScOAuth={userScOAuth} setUserScOAuth={setUserScOAuth} userAiKey={userAiKey} setUserAiKey={setUserAiKey} userYtKey={userYtKey} setUserYtKey={setUserYtKey} userCfKey={userCfKey} setUserCfKey={setUserCfKey} userSnKey={userSnKey} setUserSnKey={setUserSnKey} setTab={setTab} setFullscreen={setFullscreen} googleUser={googleUser||null} handleGoogleLogin={handleGoogleLogin} syncPlaylistsToCloud={syncPlaylistsToCloud} syncSongsToCloud={syncSongsToCloud} accessToken={accessToken||null} plSyncStatus={plSyncStatus} plSyncError={plSyncError||null} plSyncedAt={plSyncedAt||null} songSyncStatus={songSyncStatus} songSyncError={songSyncError||null} songSyncedAt={songSyncedAt||null} startCompressCache={startCompressCache} compressStatus={compressStatus} compressProgress={compressProgress} bgTheme={bgTheme} setBgTheme={(v)=>{ setBgTheme(v); localStorage.setItem('sn_bg_theme', v); }}/></Suspense>
         )}
 
         {/* ─── PLAYER TAB */}
@@ -9208,7 +9079,7 @@ Format exactly:
                               artist: station.city + ' · Live Radio',
                               album: 'Live Radio',
                               cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
-                              src: radioUrl(station.url, customDns),
+                              src: radioUrl(station.url_resolved || station.url, customDns),
                               color: stationColor,
                               bg: `rgba(245,158,11,0.15)`,
                               mood: 'live, radio',
@@ -11084,7 +10955,7 @@ Format exactly:
                               artist: station.city + ' · Live Radio',
                               album: 'Live Radio',
                               cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
-                              src: radioUrl(station.url, customDns),
+                              src: radioUrl(station.url_resolved || station.url, customDns),
                               color: stationColor,
                               bg: `rgba(245,158,11,0.15)`,
                               mood: 'live, radio',
@@ -11512,7 +11383,7 @@ Format exactly:
                                                       artist: station.city + ' · Live Radio',
                                                       album: 'Live Radio',
                                                       cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
-                                                      src: radioUrl(station.url, customDns),
+                                                      src: radioUrl(station.url_resolved || station.url, customDns),
                                                       color: stationColor,
                                                       bg: `rgba(245,158,11,0.15)`,
                                                       mood: 'live, radio',
@@ -11578,7 +11449,7 @@ Format exactly:
                                               artist: station.city + ' · Live Radio',
                                               album: 'Live Radio',
                                               cover: station.favicon || 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
-                                              src: radioUrl(station.url, customDns),
+                                              src: radioUrl(station.url_resolved || station.url, customDns),
                                               color: stationColor,
                                               bg: `rgba(245,158,11,0.15)`,
                                               mood: 'live, radio',
@@ -11697,7 +11568,7 @@ Format exactly:
                                                     artist: station.city + ' · Radio Garden',
                                                     album: 'Live Radio',
                                                     cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
-                                                    src: radioUrl(station.url, customDns),
+                                                    src: radioUrl(station.url_resolved || station.url, customDns),
                                                     color: stationColor,
                                                     bg: 'rgba(34,211,238,0.12)',
                                                     mood: 'live, radio',

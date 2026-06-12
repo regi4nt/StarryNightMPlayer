@@ -53,8 +53,14 @@ const ALLOWED_DOMAINS = [
   'cast1.torontocast.com',
   'cast2.torontocast.com',
   'stream-relay-geo.ntslive.co.uk',
+  'stream-relay-geo.ntslive.net',  // FIX: NTS Live pakai .net bukan .co.uk
   'akacast.akamaistream.net',
   'cdnstream1.com',
+  // FIX Bug #7: domain dari radioStations.js yang hilang dari allowlist
+  'bassdrive.com',               // Bassdrive Drum & Bass
+  'streams.ilovemusic.de',        // ilovemusic / Chillhop
+  'stream.radiorodja.com',        // Radio Rodja (Indonesia)
+  'live.amperwave.net',           // Amperwave CDN
   // tambah domain lain jika diperlukan
 ];
 
