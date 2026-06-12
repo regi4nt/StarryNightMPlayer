@@ -4453,7 +4453,7 @@ Return ONLY valid JSON, no explanation:
   // FIX Bug 3: pakai track.id sebagai dependency tambahan untuk radio
   // Kalau dua station berbeda kebetulan punya URL sama, track.src tidak berubah
   // tapi track.id berbeda → useEffect tetap re-run dan audio direset dengan benar
-  }, [track.src, track.isRadio ? track.id : null, startSilenceDetection, stopSilenceDetection]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [track.src, track.id, startSilenceDetection, stopSilenceDetection]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Sync playingRef
   useEffect(() => { playingRef.current = playing; }, [playing]);
