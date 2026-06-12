@@ -28,42 +28,6 @@ export const config = {
   // Untuk Pro plan, bisa diset sampai 300s atau lebih.
 };
 
-// Whitelist domain yang diizinakan di-proxy
-// (cegah penyalahgunaan sebagai open proxy)
-// FIX RADIO SUARA: diperluas untuk mendukung stasiun dari RadioBrowser, SomaFM, NTS, dll.
-const ALLOWED_DOMAINS = [
-  'stream.live.vc.bbcmedia.co.uk',
-  'rfe21.akacast.akamaistream.net',
-  'ibb.akacast.akamaistream.net',
-  'stream.radioparadise.com',
-  'ice1.somafm.com', 'ice2.somafm.com', 'ice3.somafm.com',
-  'ice4.somafm.com', 'ice5.somafm.com', 'ice6.somafm.com',
-  'stream.laut.fm',
-  'icecast.radiofrance.fr',
-  'icecast2.radiofrance.fr',
-  'stream.wfmu.org',
-  'kexp-mp3-128.streamguys1.com',
-  'playerservices.streamtheworld.com',
-  'streaming.radio.co',
-  'strm.radio.co',
-  'streamingp.shoutcast.com',
-  'listen.shoutcast.com',
-  'edge.mixlr.com',
-  'streams.radiomast.io',
-  'cast1.torontocast.com',
-  'cast2.torontocast.com',
-  'stream-relay-geo.ntslive.co.uk',
-  'stream-relay-geo.ntslive.net',  // FIX: NTS Live pakai .net bukan .co.uk
-  'akacast.akamaistream.net',
-  'cdnstream1.com',
-  // FIX Bug #7: domain dari radioStations.js yang hilang dari allowlist
-  'bassdrive.com',               // Bassdrive Drum & Bass
-  'streams.ilovemusic.de',        // ilovemusic / Chillhop
-  'stream.radiorodja.com',        // Radio Rodja (Indonesia)
-  'live.amperwave.net',           // Amperwave CDN
-  'stream.zeno.fm',               // Zeno.FM hosted stations
-  // tambah domain lain jika diperlukan
-];
 
 /**
  * FIX Bug #1 (SSRF via DNS rebinding): validasi bahwa IP hasil resolusi custom DNS
@@ -102,7 +66,12 @@ function isPrivateIp(ip) {
 function isAllowed(urlStr) {
   try {
     const u = new URL(urlStr);
-    return ALLOWED_DOMAINS.some(d => u.hostname === d || u.hostname.endsWith('.' + d));
+    // FIX: domain allowlist removed — radio stations come from many arbitrary
+    // hosts (Zeno.FM, Laut.fm, Icecast/Shoutcast mounts, listen.moe, custom IPs, etc.)
+    // and maintaining an allowlist is unworkable. SSRF protection now relies on
+    // isPrivateIp() below: any hostname that resolves to a private/loopback/
+    // link-local/metadata IP is blocked instead.
+    return u.protocol === 'http:' || u.protocol === 'https:';
   } catch {
     return false;
   }
@@ -150,10 +119,29 @@ export default async function handler(req, res) {
   }
 
   if (!isAllowed(url)) {
-    return res.status(403).json({
-      error: 'Domain not in allowlist',
-      hint: 'Tambahkan domain ke ALLOWED_DOMAINS di api/radio-proxy.js',
-    });
+    return res.status(400).json({ error: 'Invalid URL' });
+  }
+
+  // FIX: replace domain allowlist with SSRF protection via DNS resolution.
+  // Resolve the target hostname and block if it points at a private/loopback/
+  // link-local/metadata IP (e.g. someone proxying http://169.254.169.254/...).
+  try {
+    const targetHost = new URL(url).hostname;
+    if (/^[\d.]+$/.test(targetHost)) {
+      // hostname is already a literal IPv4 address
+      if (isPrivateIp(targetHost)) {
+        return res.status(403).json({ error: 'Target host is in a private/reserved range' });
+      }
+    } else {
+      const resolved = await new Promise((resolve) => {
+        dns.lookup(targetHost, { family: 4 }, (err, address) => resolve(err ? null : address));
+      });
+      if (resolved && isPrivateIp(resolved)) {
+        return res.status(403).json({ error: 'Target host resolves to a private/reserved range' });
+      }
+    }
+  } catch {
+    return res.status(400).json({ error: 'Invalid URL' });
   }
 
   try {
