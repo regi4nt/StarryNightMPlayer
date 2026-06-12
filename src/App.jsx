@@ -85,7 +85,7 @@ const PlaylistFormView    = lazy(() => import('./components/PlaylistViews.jsx').
 const PlaylistModal       = lazy(() => import('./components/PlaylistViews.jsx').then(m => ({ default: m.PlaylistModal })).catch(reloadOnStalChunk));
 // Error Boundaries MUST be eagerly imported — React.lazy() can't wrap them because
 // the boundary must be synchronously available when a child throws during render.
-import { PlaylistErrorBoundary } from './components/PlaylistViews.jsx';
+import { PlaylistErrorBoundary } from './components/PlaylistErrorBoundary.jsx';
 // AppLogo & OrbitalRing are critical player UI — eager import
 import { AppLogo, OrbitalRing } from './components/Player.jsx';
 // SongRow hanya muncul di tab Library/Playlist (bukan initial render) — lazy aman
@@ -3202,6 +3202,9 @@ Return ONLY valid JSON, no explanation:
   const hlsRef              = useRef(null);   // HLS.js instance untuk stream .m3u8
   const radioReconnectRef        = useRef(null);   // setTimeout handle untuk auto-reconnect
   const radioReconnectCount      = useRef(0);       // berapa kali sudah reconnect
+  // FIX: flag to suppress spurious code-4 errors fired when we intentionally clear
+  // a.src = '' during reconnect — those errors must not trigger another reconnect loop.
+  const radioSrcClearingRef      = useRef(false);
   // FIX BUFFERING: proactive reconnect — jadwalkan reconnect sebelum Vercel timeout tiba
   // Saat stream mendekati batas maxDuration (55s untuk Hobby, 290s untuk Pro),
   // kita reconnect diam-diam sehingga jeda audio hampir tidak terasa.
@@ -4253,6 +4256,9 @@ Return ONLY valid JSON, no explanation:
       // src='' saat ganti lagu atau stop disengaja → error code 4 (MEDIA_ERR_SRC_NOT_SUPPORTED) tanpa src
       // Jangan proses sebagai error nyata
       if (!a.src || a.src === window.location.href) return;
+      // FIX: jika kita sedang sengaja clear src untuk reconnect, abaikan error ini.
+      // Browser menembak error code 4 saat a.src diset ke '' — bukan error nyata.
+      if (radioSrcClearingRef.current) return;
       if (track.isRadio) {
         console.warn('[Radio] Stream error, scheduling reconnect. code:', err?.code);
         stopSilenceDetectionRef.current?.(); // FIX: bersihkan silence detector sebelum reconnect
@@ -6115,7 +6121,11 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
         stopSilenceDetection(); // bersihkan context lama sebelum HLS reconnect
         attachHls(a, src, () => { a.play().catch(() => {}); });
       } else {
+        // FIX: set flag before clearing src so the onError handler ignores the
+        // spurious code-4 event that Chrome fires synchronously on a.src = ''.
+        radioSrcClearingRef.current = true;
         a.src = '';
+        radioSrcClearingRef.current = false;
         setTimeout(() => {
           if (stripBust(trackRef.current?.src) !== stripBust(trackObj.src)) return;
           stopSilenceDetection();
@@ -6796,6 +6806,11 @@ Format exactly:
       const bustSrc = proxiedSrc + (proxiedSrc.includes('?') ? '&' : '?') + '_t=' + Date.now();
       const radioTrackObj = { id: t.id, title: t.title, artist: t.artist, album: 'Live Radio', cover: t.cover, src: bustSrc, color: t.color||'#f59e0b', bg: t.bg||'rgba(245,158,11,0.15)', mood: 'live, radio', isRadio: true };
       stopAllMedia('radio');
+      // FIX RACE: set freshlyLoadedTrackIdRef synchronously here — before React batches
+      // the state updates — so the [playing] resume effect sees it and bails out.
+      // Setting it only inside useEffect [track.src] is too late: React may run the
+      // [playing] effect first in the same flush, overwriting src and aborting play().
+      freshlyLoadedTrackIdRef.current = radioTrackObj.id;
       // FIX: simpan proxiedSrc (tanpa timestamp) di radioStation.url agar reconnect juga pakai URL yang benar
       setRadioStation({ id: t.id.replace('radio_',''), name: t.title, url: proxiedSrc, color: t.color||'#f59e0b' });
       setRadioPlaying(true); setTrack(radioTrackObj); setPlaying(true); setTab('player'); return;
@@ -9342,7 +9357,7 @@ Format exactly:
                     ) : upcoming.map((s,i)=>{
                       const isCur = i===0;
                       return (
-                        <div key={s.id} onClick={()=>{ setTrack(s); setProgress(0); setDuration(0); setPlaying(true); setShowQueue(false); }}
+                        <div key={s.id} onClick={()=>{ setTrack({ ...s, isRadio:false }); setProgress(0); setDuration(0); setPlaying(true); setShowQueue(false); }}
                           style={{ display:'flex', alignItems:'center', gap:11, padding:'9px 18px', background:isCur?`${track.color}12`:'transparent', cursor:'pointer' }}>
                           <div style={{ width:20, textAlign:'center', fontSize:10, color:'rgba(255,255,255,0.25)', fontWeight:600, flexShrink:0 }}>{isCur ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12, justifyContent:'center' }}>{[9,5,7].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:track.color, borderRadius:1, animation:`bounce 1.4s ease-in-out ${j*0.25}s infinite` }}/>))}</div> : curIdx+i+1}</div>
                           {isLite
