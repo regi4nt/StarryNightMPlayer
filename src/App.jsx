@@ -4396,7 +4396,18 @@ Return ONLY valid JSON, no explanation:
         if (!a.paused) setStreamBuffering(true);
       }, 800);
     };
-    const onPlaying2 = () => { if (track.isRadio) { setStreamBuffering(false); radioReconnectCount.current = 0; if (radioReconnectRef.current) { clearTimeout(radioReconnectRef.current); radioReconnectRef.current = null; } if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; } if (waitingTimer) { clearTimeout(waitingTimer); waitingTimer = null; } // FIX Bug #2: mulai deteksi silent stream setiap kali 'playing' event fire (termasuk setelah reconnect). // Jika stream berjalan tapi tidak ada audio, akan trigger reconnect otomatis setelah 6 detik. startSilenceDetection(a, track); } };
+    const onPlaying2 = () => {
+      if (track.isRadio) {
+        setStreamBuffering(false);
+        radioReconnectCount.current = 0;
+        if (radioReconnectRef.current) { clearTimeout(radioReconnectRef.current); radioReconnectRef.current = null; }
+        if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; }
+        if (waitingTimer) { clearTimeout(waitingTimer); waitingTimer = null; }
+        // FIX Bug #2: mulai deteksi silent stream setiap kali 'playing' event fire (termasuk setelah reconnect).
+        // Jika stream berjalan tapi tidak ada audio, akan trigger reconnect otomatis setelah 6 detik.
+        startSilenceDetection(a, track);
+      }
+    };
     a.addEventListener('timeupdate',     onTime);
     a.addEventListener('loadedmetadata', onMeta);
     a.addEventListener('durationchange', onDurChange);
