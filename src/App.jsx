@@ -1574,6 +1574,11 @@ Return ONLY valid JSON, no explanation:
   const trackRef = useRef(SONGS[0]); // selalu sinkron dengan track terbaru untuk closure
   const [playing, setPlaying]   = useState(false);
   const playingRef = useRef(false); // sync ref agar useEffect [track.src] bisa baca playing terbaru
+  // FIX RADIO DOUBLE-LOAD RACE: tandai track.id yang baru saja di-load oleh useEffect [track]
+  // agar useEffect [playing, embedTrack] (radio-resume) tidak menimpa src lagi pada render
+  // yang sama — race ini menyebabkan a.play() pertama di-abort ("interrupted by pause()")
+  // dan stream radio gagal connect (code: 4) saat diklik dari playlist.
+  const freshlyLoadedTrackIdRef = useRef(null);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume]     = useState(() => { try { const v = parseFloat(localStorage.getItem('sn_volume')); return isFinite(v) ? Math.min(Math.max(v, 0), 1) : 0.75; } catch { return 0.75; } });
@@ -4143,6 +4148,7 @@ Return ONLY valid JSON, no explanation:
       return;
     }
     const wasPlaying = track.isRadio || playingRef.current || (prev && !prev.paused);
+    freshlyLoadedTrackIdRef.current = track.isRadio ? track.id : null;
     if (prev) { prev.pause(); prev.src = ''; }
     // Hancurkan HLS instance lama
     if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
@@ -4508,6 +4514,13 @@ Return ONLY valid JSON, no explanation:
       // HTTP stream sudah terputus — harus reload src agar server kirim stream baru.
       // Gunakan attachHlsRef (ref) bukan attachHls langsung untuk hindari circular dependency.
       if (trackRef.current?.isRadio) {
+        // FIX: jika useEffect [track] baru saja memuat & memutar track radio ini
+        // (mis. saat klik radio dari playlist), jangan reload src lagi di sini —
+        // itu akan abort a.play() yang sedang berjalan dan menyebabkan stream gagal.
+        if (freshlyLoadedTrackIdRef.current === trackRef.current.id) {
+          freshlyLoadedTrackIdRef.current = null;
+          return;
+        }
         // Strip cache-bust params lama agar tidak numpuk (?_t=123&_r=456&_r=789)
         const rawSrc = (trackRef.current.src || '').replace(/[&?]_[tr]=\d+/g, '');
         if (!rawSrc) { setPlaying(false); return; }
