@@ -3213,7 +3213,7 @@ Return ONLY valid JSON, no explanation:
   // Sesuaikan VERCEL_MAX_DURATION dengan plan Vercel Anda:
   // 58000  = Hobby plan (60s - 2s safety margin)
   // 295000 = Pro plan  (300s - 5s safety margin)
-  const VERCEL_MAX_DURATION_MS   = 295000; // Pro plan
+  const VERCEL_MAX_DURATION_MS   = 50000; // Hobby plan limit is 60s — reconnect proactively at 50s to avoid mid-stream cutoff
   const silenceAnalyserRef  = useRef(null);   // AnalyserNode untuk deteksi stream silent
   const silenceTimerRef     = useRef(null);   // setTimeout handle untuk cek silence
   const silenceCtxRef       = useRef(null);   // AudioContext khusus silence check

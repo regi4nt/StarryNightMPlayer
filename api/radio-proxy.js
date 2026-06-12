@@ -30,7 +30,10 @@ export const config = {
   //
   // REKOMENDASI: upgrade ke Pro plan untuk pengalaman radio tanpa buffering.
   // Ganti angka di bawah sesuai plan Vercel Anda:
-  maxDuration: 300, // Pro plan: 300s. Ganti ke 60 jika pakai Hobby plan.
+  // Hobby plan max is 60s — set to 60. If you're on Pro/Enterprise, raise this
+  // AND raise VERCEL_MAX_DURATION_MS in src/App.jsx to match (proactive reconnect
+  // should fire a few seconds BEFORE this limit).
+  maxDuration: 60,
 };
 
 
