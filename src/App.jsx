@@ -4142,7 +4142,7 @@ Return ONLY valid JSON, no explanation:
     if (prev && prev.src && (prev.src === track.src || prev.src.endsWith(encodeURI(track.src)) || prev.src.endsWith(track.src))) {
       return;
     }
-    const wasPlaying = playingRef.current || (prev && !prev.paused);
+    const wasPlaying = track.isRadio || playingRef.current || (prev && !prev.paused);
     if (prev) { prev.pause(); prev.src = ''; }
     // Hancurkan HLS instance lama
     if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
