@@ -4117,7 +4117,7 @@ Return ONLY valid JSON, no explanation:
     calc();
     window.addEventListener('resize', calc);
     // Reset lock state jika orientasi berubah natural (user putar fisik tanpa tombol)
-    const handleOrientationChange = () => { setOrientationLocked(false); };
+    const handleOrientationChange = () => {};
     screen?.orientation?.addEventListener?.('change', handleOrientationChange);
     return () => {
       window.removeEventListener('resize', calc);
@@ -4319,7 +4319,7 @@ Return ONLY valid JSON, no explanation:
     setProgress(0);
     setDuration(0);
 
-    const isHlsSrc = track.src.includes('.m3u8') || track.src.includes('/hls/') || track.src.includes('chunklist');
+    const isHlsSrc = (track.src || '').includes('.m3u8') || (track.src || '').includes('/hls/') || (track.src || '').includes('chunklist');
     if (track.isRadio && isHlsSrc) {
       setStreamBuffering(true);
       attachHls(a, track.src, () => {
