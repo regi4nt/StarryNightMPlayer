@@ -28,24 +28,33 @@ export const config = {
   // Untuk Pro plan, bisa diset sampai 300s atau lebih.
 };
 
-// Whitelist domain yang diizinkan di-proxy
+// Whitelist domain yang diizinakan di-proxy
 // (cegah penyalahgunaan sebagai open proxy)
+// FIX RADIO SUARA: diperluas untuk mendukung stasiun dari RadioBrowser, SomaFM, NTS, dll.
 const ALLOWED_DOMAINS = [
-  'stream.live.vc.bbcmedia.co.uk',   // FIX Bug #7: hapus duplikat (sebelumnya muncul 2×)
+  'stream.live.vc.bbcmedia.co.uk',
   'rfe21.akacast.akamaistream.net',
   'ibb.akacast.akamaistream.net',
   'stream.radioparadise.com',
-  'ice1.somafm.com',
-  'ice2.somafm.com',
-  'ice3.somafm.com',
-  'ice4.somafm.com',
-  'ice5.somafm.com',
-  'ice6.somafm.com',
+  'ice1.somafm.com', 'ice2.somafm.com', 'ice3.somafm.com',
+  'ice4.somafm.com', 'ice5.somafm.com', 'ice6.somafm.com',
   'stream.laut.fm',
   'icecast.radiofrance.fr',
+  'icecast2.radiofrance.fr',
   'stream.wfmu.org',
   'kexp-mp3-128.streamguys1.com',
   'playerservices.streamtheworld.com',
+  'streaming.radio.co',
+  'strm.radio.co',
+  'streamingp.shoutcast.com',
+  'listen.shoutcast.com',
+  'edge.mixlr.com',
+  'streams.radiomast.io',
+  'cast1.torontocast.com',
+  'cast2.torontocast.com',
+  'stream-relay-geo.ntslive.co.uk',
+  'akacast.akamaistream.net',
+  'cdnstream1.com',
   // tambah domain lain jika diperlukan
 ];
 
@@ -128,9 +137,9 @@ export default async function handler(req, res) {
   const { url, dns: customDns } = req.query;
   if (!url) return res.status(400).json({ error: 'Missing ?url= parameter' });
 
-  // Hanya proxy http:// — https:// tidak perlu
-  if (!url.startsWith('http://')) {
-    return res.status(400).json({ error: 'Only http:// URLs need proxying' });
+  // FIX RADIO SUARA: proxy http:// DAN https:// — https:// juga bisa kena CORS block
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    return res.status(400).json({ error: 'Only http:// or https:// URLs are supported' });
   }
 
   if (!isAllowed(url)) {
