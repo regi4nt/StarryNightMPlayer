@@ -612,7 +612,7 @@ function CacheManager({ lang, t, startCompressCache, compressStatus, compressPro
   );
 }
 
-function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cancelSleepTimer, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t, userSpId, setUserSpId, userSpSecret, setUserSpSecret, userSpDc, setUserSpDc, userSpKey, setUserSpKey, userScId, setUserScId, userScOAuth, setUserScOAuth, userAiKey, setUserAiKey, userYtKey, setUserYtKey, userCfKey, setUserCfKey, userSnKey, setUserSnKey, setTab, setFullscreen, googleUser, handleGoogleLogin, syncPlaylistsToCloud, syncSongsToCloud, accessToken, plSyncStatus, plSyncError, plSyncedAt, songSyncStatus, songSyncError, songSyncedAt, startCompressCache, compressStatus, compressProgress, bgTheme, setBgTheme }) {
+function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cancelSleepTimer, eqEnabled, eqGains, eqPreset, onToggleEq, onEqGainChange, onApplyEqPreset, globalCover, setGlobalCover, isLite, toggleMode, pwaPrompt, pwaInstalled, installPwa, customDns, setCustomDns, lang, toggleLang, t, userSpId, setUserSpId, userSpSecret, setUserSpSecret, userSpDc, setUserSpDc, userSpKey, setUserSpKey, userScId, setUserScId, userScOAuth, setUserScOAuth, userAiKey, setUserAiKey, userYtKey, setUserYtKey, userCfKey, setUserCfKey, userSnKey, setUserSnKey, setTab, setFullscreen, googleUser, handleGoogleLogin, syncPlaylistsToCloud, syncSongsToCloud, accessToken, plSyncStatus, plSyncError, plSyncedAt, songSyncStatus, songSyncError, songSyncedAt, startCompressCache, compressStatus, compressProgress, bgTheme, setBgTheme }) {
   const coverRef = useRef(null);
   const [apiKeyTab, setApiKeyTab] = React.useState('spotify');
   const [showThemePicker, setShowThemePicker] = React.useState(false);
@@ -854,6 +854,103 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
             </div>
           )}
         </div>
+
+        {/* ── EQUALIZER */}
+        {(() => {
+          const EQ_BAND_LABELS = ['32','64','125','250','500','1K','2K','4K','8K','16K'];
+          const EQ_PRESETS_LIST = [
+            { id:'flat',     label:'Flat' },
+            { id:'bass',     label:'Bass Boost' },
+            { id:'treble',   label:'Treble' },
+            { id:'vocal',    label:'Vocal' },
+            { id:'pop',      label:'Pop' },
+            { id:'rock',     label:'Rock' },
+            { id:'jazz',     label:'Jazz' },
+            { id:'classical',label:'Klasik' },
+            { id:'dance',    label:'Dance' },
+            { id:'acoustic', label:'Akustik' },
+          ];
+          const gains = eqGains || Array(10).fill(0);
+          return (
+            <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+              {/* Header */}
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
+                <svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="9" width="2" height="12" rx="1" fill={eqEnabled?color:'rgba(255,255,255,0.25)'}/>
+                  <rect x="7" y="5" width="2" height="16" rx="1" fill={eqEnabled?color:'rgba(255,255,255,0.25)'}/>
+                  <rect x="11" y="7" width="2" height="14" rx="1" fill={eqEnabled?color:'rgba(255,255,255,0.25)'}/>
+                  <rect x="15" y="3" width="2" height="18" rx="1" fill={eqEnabled?color:'rgba(255,255,255,0.25)'}/>
+                  <rect x="19" y="8" width="2" height="13" rx="1" fill={eqEnabled?color:'rgba(255,255,255,0.25)'}/>
+                </svg>
+                <span style={{ fontWeight:800, fontSize:14 }}>Equalizer</span>
+                {/* Toggle switch */}
+                <div
+                  onClick={() => onToggleEq && onToggleEq(!eqEnabled)}
+                  style={{ marginLeft:'auto', width:40, height:22, borderRadius:11, background: eqEnabled ? color : 'rgba(255,255,255,0.12)', cursor:'pointer', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
+                  <div style={{ position:'absolute', top:3, left: eqEnabled ? 20 : 3, width:16, height:16, borderRadius:8, background:'white', transition:'left 0.2s', boxShadow:'0 1px 4px rgba(0,0,0,0.4)' }}/>
+                </div>
+              </div>
+
+              {/* Preset chips */}
+              <div style={{ display:'flex', flexWrap:'wrap', gap:5, marginBottom:14 }}>
+                {EQ_PRESETS_LIST.map(p => (
+                  <button key={p.id}
+                    onClick={() => onApplyEqPreset && onApplyEqPreset(p.id)}
+                    style={{ padding:'4px 10px', borderRadius:999, fontSize:10, fontWeight:700, cursor:'pointer', border: (eqPreset===p.id && eqEnabled) ? `1px solid ${color}` : '1px solid rgba(255,255,255,0.1)', background: (eqPreset===p.id && eqEnabled) ? `${color}25` : 'rgba(255,255,255,0.04)', color: (eqPreset===p.id && eqEnabled) ? color : 'rgba(255,255,255,0.5)', transition:'all 0.15s' }}>
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Sliders — 10 band vertical */}
+              <div style={{ display:'flex', gap:0, alignItems:'flex-end', justifyContent:'space-between', padding:'0 2px' }}>
+                {EQ_BAND_LABELS.map((label, i) => {
+                  const gain = gains[i] ?? 0;
+                  const pct = ((gain + 12) / 24) * 100; // map -12..+12 dB to 0..100%
+                  return (
+                    <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, flex:1 }}>
+                      {/* dB value */}
+                      <div style={{ fontSize:8, fontWeight:700, color: gain===0 ? 'rgba(255,255,255,0.3)' : gain>0 ? color : '#f87171', fontVariantNumeric:'tabular-nums', minWidth:24, textAlign:'center' }}>
+                        {gain > 0 ? `+${gain}` : gain}
+                      </div>
+                      {/* Vertical range input */}
+                      <div style={{ height:100, display:'flex', alignItems:'center', justifyContent:'center', position:'relative' }}>
+                        <input
+                          type="range"
+                          min={-12} max={12} step={1}
+                          value={gain}
+                          onChange={e => { onEqGainChange && onEqGainChange(i, Number(e.target.value)); setEqPreset && (eqPreset !== 'custom') && (() => {})(); }}
+                          disabled={!eqEnabled}
+                          style={{
+                            WebkitAppearance:'slider-vertical',
+                            appearance:'slider-vertical',
+                            writingMode:'vertical-lr',
+                            direction:'rtl',
+                            width:22, height:96,
+                            cursor: eqEnabled ? 'pointer' : 'default',
+                            opacity: eqEnabled ? 1 : 0.35,
+                            accentColor: color,
+                          }}
+                        />
+                      </div>
+                      {/* Frequency label */}
+                      <div style={{ fontSize:8, color:'rgba(255,255,255,0.3)', fontWeight:600 }}>{label}</div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Reset button */}
+              {eqEnabled && gains.some(g => g !== 0) && (
+                <button
+                  onClick={() => onApplyEqPreset && onApplyEqPreset('flat')}
+                  style={{ marginTop:10, padding:'4px 12px', borderRadius:8, border:'1px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.04)', color:'rgba(255,255,255,0.45)', fontSize:10, cursor:'pointer' }}>
+                  Reset ke Flat
+                </button>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ── FOTO COVER GLOBAL */}
         <div style={{ padding:'16px 18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
@@ -1462,7 +1559,6 @@ function SettingsPanelInner({ onClose, color, sleepTimer, startSleepTimer, cance
                   Hapus Key YouTube
                 </button>
               )}
-
             </div>
           )}
 

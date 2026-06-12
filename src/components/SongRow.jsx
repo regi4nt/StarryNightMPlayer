@@ -29,7 +29,7 @@ function SongThumb({ src, bg, isRadio, isYtSong, title, color }) {
   );
 }
 
-function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, setPlaying, isDrive, isCached, onRemove, playlists, addToPlaylist, isLite, t, onDownload, editMode, embedTrack, isDownloading, dlProgress }) {
+function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, isDrive, isCached, onRemove, playlists, addToPlaylist, isLite, t, onDownload, editMode, embedTrack, isDownloading, dlProgress }) {
   const isYtSong = s.type === 'youtube';
   const isActive = isYtSong
     ? (embedTrack?.type === 'youtube' && embedTrack?.videoId === s.videoId)
@@ -60,17 +60,7 @@ function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, setPl
   };
   const dlColor = dlState === 'done' ? '#4ade80' : dlState === 'error' ? '#f87171' : dlState === 'loading' ? (s.color || '#a78bfa') : 'rgba(255,255,255,0.2)';
   return (
-    <div data-songrow style={{ display:'flex', alignItems:'center', gap:12, padding:'9px 12px', borderRadius:14, cursor:'pointer', background:isActive?s.bg:'rgba(255,255,255,0.04)', border:`1px solid ${isActive?s.color+'50':'transparent'}` }} onClick={()=>{
-        // Radio: selalu panggil play(s) agar stream reconnect (radio tidak bisa di-resume dengan .play())
-        // Non-radio aktif: toggle play/pause. Non-radio tidak aktif: mulai putar.
-        if (s.isRadio) {
-          play(s);
-        } else if (isActive) {
-          if (typeof setPlaying === 'function') setPlaying(p => !p);
-        } else {
-          play(s);
-        }
-      }}>
+    <div data-songrow style={{ display:'flex', alignItems:'center', gap:12, padding:'9px 12px', borderRadius:14, cursor:'pointer', background:isActive?s.bg:'rgba(255,255,255,0.04)', border:`1px solid ${isActive?s.color+'50':'transparent'}` }} onClick={()=>play(s)}>
       <div style={{ width:28, height:28, borderRadius:8, flexShrink:0, background:isActive?s.color:'rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:800, color:isActive?'white':'rgba(255,255,255,0.4)' }}>
         {isActive&&playing ? (isLite ? <Music size={12} color="white"/> : <div style={{ display:'flex', gap:1.5, alignItems:'flex-end' }}>{[12,6,10].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:'white', borderRadius:1, animation:`bounce 1.4s ease-in-out ${j*0.25}s infinite` }}/>))}</div>) : isDrive?<Cloud size={12}/>:i+1}
       </div>

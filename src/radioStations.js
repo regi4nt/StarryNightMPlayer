@@ -36,7 +36,7 @@ export const ICECAST_CURATED = [
   { id:'ice_soma_cliqhop', name:'SomaFM Cliqhop IDM', desc:'Blips, blops & lo-fi electronic wonders', url:'https://ice1.somafm.com/cliqhop-128-mp3', genre:'Lo-Fi', country:'US', color:'#22d3ee' },
   { id:'ice_hiphop_radio', name:'Hip-Hop Radio (Laut)', desc:'Hip-hop & rap hits 24/7', url:'https://stream.laut.fm/hiphop', genre:'Hip-Hop', country:'DE', color:'#f59e0b' },
   { id:'ice_illstreet', name:'SomaFM Ill Street Blues', desc:'Hip-hop, soul & gritty r&b', url:'https://ice1.somafm.com/illstreet-128-mp3', genre:'Hip-Hop', country:'US', color:'#f97316' },
-  { id:'ice_rnb', name:'R&B Radio (Laut)', desc:'R&b, soul & smooth jams 24/7', url:'https://listen.181fm.com/181-rnb_128k.mp3', genre:'Hip-Hop', country:'DE', color:'#ec4899' },
+  { id:'ice_rnb', name:'R&B Radio (Laut)', desc:'R&b, soul & smooth jams 24/7', url:'https://stream.laut.fm/rnb', genre:'Hip-Hop', country:'DE', color:'#ec4899' },
 ];
 
 export const RADIO_PARADISE_CHANNELS = [
@@ -49,7 +49,7 @@ export const RADIO_PARADISE_CHANNELS = [
 
 export const FMSTREAM_CURATED = [
   { id:'fm_country', name:'Country Radio (laut.fm)', desc:'Country & Americana 24/7', url:'https://stream.laut.fm/country', genre:'Country', country:'DE', color:'#a16207', sourceLabel:'FM Stream' },
-  { id:'fm_rnb', name:'R&B Radio (laut.fm)', desc:'R&B & Soul 24/7', url:'https://listen.181fm.com/181-rnb_128k.mp3', genre:'R&B', country:'DE', color:'#f59e0b', sourceLabel:'FM Stream' },
+  { id:'fm_rnb', name:'R&B Radio (laut.fm)', desc:'R&B & Soul 24/7', url:'https://stream.laut.fm/rnb', genre:'R&B', country:'DE', color:'#f59e0b', sourceLabel:'FM Stream' },
   { id:'fm_electro', name:'Electronic Radio (laut.fm)', desc:'Electronic & Dance 24/7', url:'https://stream.laut.fm/electronic', genre:'Electronic', country:'DE', color:'#6366f1', sourceLabel:'FM Stream' },
   { id:'fm_80s', name:'80s Radio (laut.fm)', desc:'Best of 80s Pop & Rock', url:'https://stream.laut.fm/80s', genre:'80s', country:'DE', color:'#e11d48', sourceLabel:'FM Stream' },
   { id:'fm_90s', name:'90s Radio (laut.fm)', desc:'Best of 90s hits', url:'https://stream.laut.fm/90s', genre:'90s', country:'DE', color:'#7c3aed', sourceLabel:'FM Stream' },
@@ -108,6 +108,6 @@ export const SHOUTCAST_CURATED = [
   { id:'sc_lofi_beats', name:'Lo-Fi Beats 24/7', desc:'Smooth lo-fi beats all day long', url:'https://ice1.somafm.com/cliqhop-128-mp3', genre:'Lo-Fi', country:'US', color:'#a78bfa', sourceLabel:'Shoutcast' },
   { id:'sc_hiphop2', name:'Hip-Hop Nation', desc:'Hip-hop & rap hits worldwide', url:'https://stream.laut.fm/hiphop', genre:'Hip-Hop', country:'US', color:'#f59e0b', sourceLabel:'Shoutcast' },
   { id:'sc_trap', name:'Trap Nation Radio', desc:'Trap, drill & urban beats 24/7', url:'https://stream.laut.fm/rap', genre:'Hip-Hop', country:'US', color:'#ef4444', sourceLabel:'Shoutcast' },
-  { id:'sc_rnb2', name:'R&B Soul Station', desc:'Classic & contemporary r&b soul', url:'https://listen.181fm.com/181-rnb_128k.mp3', genre:'Hip-Hop', country:'US', color:'#ec4899', sourceLabel:'Shoutcast' },
+  { id:'sc_rnb2', name:'R&B Soul Station', desc:'Classic & contemporary r&b soul', url:'https://stream.laut.fm/rnb', genre:'Hip-Hop', country:'US', color:'#ec4899', sourceLabel:'Shoutcast' },
   { id:'sc_illstreet2', name:'SomaFM Ill Street Blues', desc:'Grittier hip-hop, soul & r&b', url:'https://ice1.somafm.com/illstreet-128-mp3', genre:'Hip-Hop', country:'US', color:'#f97316', sourceLabel:'Shoutcast' },
 ];

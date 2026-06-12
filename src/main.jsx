@@ -72,7 +72,3 @@ createRoot(document.getElementById('root')).render(
     <App />
   </RootErrorBoundary>
 );
-
-// FIX: app berhasil mount — hapus flag stale-chunk reload agar tidak
-// menghalangi recovery yang sah di sesi berikutnya (mis. setelah deploy baru lagi).
-try { sessionStorage.removeItem('__stale_chunk_reloaded'); } catch {}

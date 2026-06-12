@@ -66,15 +66,8 @@ const reloadOnStalChunk = (err) => {
     msg.includes('Importing a module script failed') ||
     msg.includes('error loading dynamically imported module');
   if (isStaleChunk) {
-    // FIX: cegah reload loop tak terbatas. Jika reload sudah pernah dilakukan
-    // pada sesi ini (misal karena SW update race saat deploy), jangan reload lagi —
-    // cukup lempar error agar ditangani error boundary, daripada refresh berulang.
-    if (!sessionStorage.getItem('__stale_chunk_reloaded')) {
-      sessionStorage.setItem('__stale_chunk_reloaded', '1');
-      window.location.reload();
-      return new Promise(() => {});
-    }
-    throw err;
+    window.location.reload();
+    return new Promise(() => {});
   }
   // Error lain (runtime error di dalam komponen) — lempar ulang agar
   // ditangani normal oleh error boundary, bukan reload paksa
@@ -85,7 +78,7 @@ const PlaylistFormView    = lazy(() => import('./components/PlaylistViews.jsx').
 const PlaylistModal       = lazy(() => import('./components/PlaylistViews.jsx').then(m => ({ default: m.PlaylistModal })).catch(reloadOnStalChunk));
 // Error Boundaries MUST be eagerly imported — React.lazy() can't wrap them because
 // the boundary must be synchronously available when a child throws during render.
-import { PlaylistErrorBoundary } from './components/PlaylistErrorBoundary.jsx';
+import { PlaylistErrorBoundary } from './components/PlaylistViews.jsx';
 // AppLogo & OrbitalRing are critical player UI — eager import
 import { AppLogo, OrbitalRing } from './components/Player.jsx';
 // SongRow hanya muncul di tab Library/Playlist (bukan initial render) — lazy aman
@@ -289,7 +282,6 @@ export default function App() {
   const [platformIframe, setPlatformIframe] = useState({}); // keyed by platform.id → URL string
   const [radioStation, setRadioStation] = useState(null); // currently playing radio station
   const [radioPlaying, setRadioPlaying] = useState(false);
-  const [radioStreamError, setRadioStreamError] = useState(null); // user-visible stream error message
   const [radioCountry, setRadioCountry] = useState(null); // selected country id
   const [radioGenre, setRadioGenre] = useState(null);     // selected genre id
   const radioAudioRef = useRef(null);
@@ -968,6 +960,11 @@ export default function App() {
             setSpTrack(fullTrack);
           };
 
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) {
+            if (!audioCtxRef.current) { try { audioCtxRef.current = new AC(); } catch (_) {} }
+            if (audioCtxRef.current?.state === 'suspended') audioCtxRef.current.resume().catch(() => {});
+          }
           startFull();
           return;
         }
@@ -1011,6 +1008,17 @@ export default function App() {
       setSpTrack(track);
     };
 
+    // Guard: buat/resume AudioContext (singleton) saat ada user gesture agar tidak di-block browser.
+    // Beberapa browser (Safari, Chrome) suspend AudioContext jika dibuat sebelum interaksi user.
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) {
+      if (!audioCtxRef.current) {
+        try { audioCtxRef.current = new AC(); } catch (_) {}
+      }
+      if (audioCtxRef.current?.state === 'suspended') {
+        audioCtxRef.current.resume().catch(() => {});
+      }
+    }
     startNew();
   };
 
@@ -1575,15 +1583,15 @@ Return ONLY valid JSON, no explanation:
   const trackRef = useRef(SONGS[0]); // selalu sinkron dengan track terbaru untuk closure
   const [playing, setPlaying]   = useState(false);
   const playingRef = useRef(false); // sync ref agar useEffect [track.src] bisa baca playing terbaru
-  // FIX RADIO DOUBLE-LOAD RACE: tandai track.id yang baru saja di-load oleh useEffect [track]
-  // agar useEffect [playing, embedTrack] (radio-resume) tidak menimpa src lagi pada render
-  // yang sama — race ini menyebabkan a.play() pertama di-abort ("interrupted by pause()")
-  // dan stream radio gagal connect (code: 4) saat diklik dari playlist.
-  const freshlyLoadedTrackIdRef = useRef(null);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume]     = useState(() => { try { const v = parseFloat(localStorage.getItem('sn_volume')); return isFinite(v) ? Math.min(Math.max(v, 0), 1) : 0.75; } catch { return 0.75; } });
   const [muted, setMuted]       = useState(() => { try { return localStorage.getItem('sn_muted') === '1'; } catch { return false; } });
+  // ── Equalizer: 10 band, gains dalam dB (disimpan ke localStorage)
+  const EQ_BANDS = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
+  const [eqEnabled, setEqEnabled] = useState(() => { try { return localStorage.getItem('sn_eq_enabled') === '1'; } catch { return false; } });
+  const [eqGains, setEqGains]     = useState(() => { try { return JSON.parse(localStorage.getItem('sn_eq_gains') || 'null') || Array(10).fill(0); } catch { return Array(10).fill(0); } });
+  const [eqPreset, setEqPreset]   = useState('flat');
   const [liked, setLiked]       = useState(() => {
     try { return JSON.parse(localStorage.getItem('sn_liked') || '{}'); } catch { return {}; }
   });
@@ -1995,18 +2003,16 @@ Return ONLY valid JSON, no explanation:
       radioReconnectCount.current = 0;
       setStreamBuffering(false);
     }
-    // Stop Drive jika incoming adalah embed (Drive tidak relevan saat embed aktif)
-    // Untuk mode radio & local: audio sudah di-stop di blok di atas; jangan panggil setPlaying(false)
-    // karena caller (playRbStation / play) akan langsung memanggil setPlaying(true) setelahnya.
-    if (incomingMode === 'embed') {
+    // Stop Drive jika incoming bukan local — tanpa syarat trackRef.isDrive (konsisten dengan fix radio)
+    if (incomingMode !== 'local') {
       if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
       setPlaying(false);
       // Reset track ke default agar tombol X Drive tidak ghost saat embedTrack aktif
       if (trackRef.current?.isDrive) setTrack(SONGS[0]);
     }
-    // Untuk mode local: hentikan playing agar track lama tidak terus berjalan
-    // (audio baru akan di-setup oleh useEffect [track.src, track.id])
-    if (incomingMode === 'local') {
+    // Stop audio jika incoming adalah radio/embed (bukan lokal)
+    // Khusus embed-to-embed (YT next/prev): jangan setPlaying(false) — biarkan playYouTube yang set
+    if (incomingMode !== 'local' && incomingMode !== 'embed' && !trackRef.current?.isRadio) {
       setPlaying(false);
     }
   };
@@ -2659,7 +2665,6 @@ Return ONLY valid JSON, no explanation:
             if (_cobaltR.isTunnel) { try { const _r = await fetch(url, {mode:"cors"}); if (_r.ok) { const _b = await _r.blob(); if (isBlobValid(_b,10000)) { downloadBlobToDevice(_b, `${name}.mp3`); return; } } } catch {} }
             if (await proxyDownload(url, `${name}.mp3`)) return;
             await downloadToDevice(url, `${name}.mp3`); return;
-          }
         } catch {}
       }
       // 4. Tab baru
@@ -2687,11 +2692,12 @@ Return ONLY valid JSON, no explanation:
             if (_cobaltR.isTunnel) { try { const _r = await fetch(url, {mode:"cors"}); if (_r.ok) { const _b = await _r.blob(); if (isBlobValid(_b,10000)) { downloadBlobToDevice(_b, `${name}.mp3`); return; } } } catch {} }
             if (await proxyDownload(url, `${name}.mp3`)) return;
             await downloadToDevice(url, `${name}.mp3`); return;
-          }
         } catch {}
       }
       // 4. Tab baru
       openUrlFallback(s.src);
+            return;
+          }
     }
 
     // ═══════════════════════════════════════════════════════
@@ -2789,7 +2795,6 @@ Return ONLY valid JSON, no explanation:
             if (_cobaltR.isTunnel) { try { const _r = await fetch(url, {mode:"cors"}); if (_r.ok) { const _b = await _r.blob(); if (isBlobValid(_b,10000)) { downloadBlobToDevice(_b, `${name}.mp3`); return; } } } catch {} }
             if (await proxyDownload(url, `${name}.mp3`)) return;
             await downloadToDevice(url, `${name}.mp3`); return;
-          }
         } catch {}
       }
       // 5. Tab baru
@@ -2946,18 +2951,13 @@ Return ONLY valid JSON, no explanation:
         setTimeout(sendPlay, 500);
         setTimeout(sendPlay, 1500);
         setTimeout(sendPlay, 3000);
+            return;
+          }
       }
 
       // ── Audio biasa (stream, Jamendo, SoundCloud proxy, dll)
       const a = audioRef.current;
       if (!a) return;
-
-      // FIX SUARA HILANG: saat tab kembali visible, AudioContext sering masih 'suspended'.
-      // Harus di-resume SEBELUM cek audio.paused agar Web Audio route aktif kembali.
-      if (silenceCtxRef.current && silenceCtxRef.current.state === 'suspended') {
-        silenceCtxRef.current.resume().catch(() => {});
-      }
-
       if (a.paused && !a.ended) {
         a.play().catch(() => {});
       } else if (!a.paused && a.readyState < 3) {
@@ -3199,28 +3199,13 @@ Return ONLY valid JSON, no explanation:
 
   // ── Refs
   const audioRef            = useRef(null);
+  const audioCtxRef         = useRef(null);   // singleton AudioContext — dibuat sekali, di-resume saat user gesture
+  const eqNodesRef          = useRef([]);      // array BiquadFilterNode untuk equalizer (10 band)
+  const eqSourceRef         = useRef(null);    // MediaElementSourceNode yang terhubung ke EQ chain
+  const eqEnabledRef        = useRef(false);   // apakah EQ aktif
   const hlsRef              = useRef(null);   // HLS.js instance untuk stream .m3u8
-  const radioReconnectRef        = useRef(null);   // setTimeout handle untuk auto-reconnect
-  const radioReconnectCount      = useRef(0);       // berapa kali sudah reconnect
-  // FIX: flag to suppress spurious code-4 errors fired when we intentionally clear
-  // a.src = '' during reconnect — those errors must not trigger another reconnect loop.
-  const radioSrcClearingRef      = useRef(false);
-  // FIX BUFFERING: proactive reconnect — jadwalkan reconnect sebelum Vercel timeout tiba
-  // Saat stream mendekati batas maxDuration (55s untuk Hobby, 290s untuk Pro),
-  // kita reconnect diam-diam sehingga jeda audio hampir tidak terasa.
-  const proactiveReconnectRef    = useRef(null);   // timer proactive reconnect
-  const streamStartTimeRef       = useRef(null);   // waktu stream mulai (Date.now())
-  // Sesuaikan VERCEL_MAX_DURATION dengan plan Vercel Anda:
-  // 58000  = Hobby plan (60s - 2s safety margin)
-  // 295000 = Pro plan  (300s - 5s safety margin)
-  const VERCEL_MAX_DURATION_MS   = 50000; // Hobby plan limit is 60s — reconnect proactively at 50s to avoid mid-stream cutoff
-  const silenceAnalyserRef  = useRef(null);   // AnalyserNode untuk deteksi stream silent
-  const silenceTimerRef     = useRef(null);   // setTimeout handle untuk cek silence
-  const silenceCtxRef       = useRef(null);   // AudioContext khusus silence check
-  // Refs so the audio useEffect (defined earlier in the file) can call these functions
-  // without closing over the const declarations — avoids esbuild TDZ (temporal dead zone) bug.
-  const startSilenceDetectionRef = useRef(null);
-  const stopSilenceDetectionRef  = useRef(null);
+  const radioReconnectRef   = useRef(null);   // setTimeout handle untuk auto-reconnect
+  const radioReconnectCount = useRef(0);       // berapa kali sudah reconnect
   const chatEndRef    = useRef(null);
   const ytMusicSectionRef = useRef(null);
   const tokenRef      = useRef(null);
@@ -3239,7 +3224,80 @@ Return ONLY valid JSON, no explanation:
   useEffect(() => { tokenRef.current    = accessToken; }, [accessToken]);
   useEffect(() => { isLiteRef.current   = isLite;    }, [isLite]);
 
+  // ── Equalizer: bangun/rebuild chain BiquadFilter setiap kali audio element berganti
+  // Hanya aktif jika eqEnabled=true DAN audioCtx tersedia
+  const connectEQ = useCallback(() => {
+    const ctx = audioCtxRef.current;
+    const audio = audioRef.current;
+    if (!ctx || !audio || ctx.state === 'closed') return;
+    // Hindari double-connect: cek apakah source sudah ada dan masih untuk audio ini
+    if (eqSourceRef.current && eqSourceRef.current._audio === audio) {
+      // Source sudah terhubung, hanya update gain jika EQ aktif
+      eqNodesRef.current.forEach((node, i) => {
+        node.gain.value = eqEnabledRef.current ? (eqGains[i] ?? 0) : 0;
+      });
+      return;
+    }
+    // Buat MediaElementSourceNode baru
+    try {
+      const source = ctx.createMediaElementSource(audio);
+      source._audio = audio;
+      eqSourceRef.current = source;
+      // Buat 10 BiquadFilter nodes
+      const EQ_BANDS_FREQ = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
+      const filters = EQ_BANDS_FREQ.map((freq, i) => {
+        const f = ctx.createBiquadFilter();
+        f.type = i === 0 ? 'lowshelf' : i === 9 ? 'highshelf' : 'peaking';
+        f.frequency.value = freq;
+        f.Q.value = 1.0;
+        f.gain.value = eqEnabledRef.current ? (eqGains[i] ?? 0) : 0;
+        return f;
+      });
+      eqNodesRef.current = filters;
+      // Chain: source → f0 → f1 → … → f9 → destination
+      source.connect(filters[0]);
+      for (let i = 0; i < filters.length - 1; i++) filters[i].connect(filters[i + 1]);
+      filters[filters.length - 1].connect(ctx.destination);
+    } catch (err) {
+      console.warn('[EQ] connect failed:', err);
+    }
+  }, [eqGains]); // eslint-disable-line
 
+  // Sinkronkan eqEnabled ke ref agar connectEQ bisa baca nilai terkini
+  useEffect(() => { eqEnabledRef.current = eqEnabled; }, [eqEnabled]);
+
+  // Update gain nodes setiap kali eqGains atau eqEnabled berubah
+  useEffect(() => {
+    eqNodesRef.current.forEach((node, i) => {
+      node.gain.value = eqEnabled ? (eqGains[i] ?? 0) : 0;
+    });
+    try { localStorage.setItem('sn_eq_gains', JSON.stringify(eqGains)); } catch {}
+    try { localStorage.setItem('sn_eq_enabled', eqEnabled ? '1' : '0'); } catch {}
+  }, [eqGains, eqEnabled]);
+
+  // ── AudioContext guard: unlock singleton pada interaksi user pertama
+  // Browser modern (Safari/Chrome) memblokir AudioContext yang dibuat sebelum ada gesture.
+  // Kita daftarkan satu listener 'once' — setelah itu AudioContext aman di-resume kapan saja.
+  useEffect(() => {
+    const unlock = () => {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      if (!audioCtxRef.current) {
+        try { audioCtxRef.current = new AC(); } catch (_) { return; }
+      }
+      if (audioCtxRef.current.state === 'suspended') {
+        audioCtxRef.current.resume().catch(() => {});
+      }
+    };
+    ['click', 'touchstart', 'keydown'].forEach(ev =>
+      document.addEventListener(ev, unlock, { once: true, passive: true })
+    );
+    return () => {
+      ['click', 'touchstart', 'keydown'].forEach(ev =>
+        document.removeEventListener(ev, unlock)
+      );
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Measure actual bottom nav height so portrait ring calc is always accurate
   useEffect(() => {
@@ -4151,7 +4209,7 @@ Return ONLY valid JSON, no explanation:
     calc();
     window.addEventListener('resize', calc);
     // Reset lock state jika orientasi berubah natural (user putar fisik tanpa tombol)
-    const handleOrientationChange = () => {};
+    const handleOrientationChange = () => { setOrientationLocked(false); };
     screen?.orientation?.addEventListener?.('change', handleOrientationChange);
     return () => {
       window.removeEventListener('resize', calc);
@@ -4169,8 +4227,7 @@ Return ONLY valid JSON, no explanation:
     if (prev && prev.src && (prev.src === track.src || prev.src.endsWith(encodeURI(track.src)) || prev.src.endsWith(track.src))) {
       return;
     }
-    const wasPlaying = track.isRadio || playingRef.current || (prev && !prev.paused);
-    freshlyLoadedTrackIdRef.current = track.isRadio ? track.id : null;
+    const wasPlaying = playingRef.current || (prev && !prev.paused);
     if (prev) { prev.pause(); prev.src = ''; }
     // Hancurkan HLS instance lama
     if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
@@ -4192,12 +4249,18 @@ Return ONLY valid JSON, no explanation:
     a.setAttribute('playsinline', '');
     a.setAttribute('webkit-playsinline', '');
     a.setAttribute('x-webkit-airplay', 'allow');
-    // FIX SUARA HILANG: set crossOrigin untuk semua track termasuk radio.
-    // Web Audio API (createMediaElementSource) membutuhkan crossOrigin='anonymous'
-    // agar tidak melempar SecurityError diam-diam yang menyebabkan suara hilang.
-    // Radio menggunakan /api/radio-proxy yang sudah mengirim CORS headers — aman.
-    a.crossOrigin = 'anonymous';
+    if (!track.isRadio) {
+      a.crossOrigin = 'anonymous';
+    }
     audioRef.current = a;
+
+    // ── Koneksikan equalizer ke audio element baru (jika AudioContext sudah tersedia)
+    // connectEQ dipanggil dari sini (dan saat EQ pertama kali diaktifkan dari Settings)
+    if (audioCtxRef.current) {
+      // Reset source ref karena audio element baru
+      eqSourceRef.current = null;
+      connectEQ();
+    }
 
     // ── Attach event listeners langsung setelah Audio dibuat (bukan di useEffect terpisah)
     // ── sehingga tidak ada jeda di mana React effects bisa membaca audioRef yang sudah stale
@@ -4256,24 +4319,21 @@ Return ONLY valid JSON, no explanation:
       // src='' saat ganti lagu atau stop disengaja → error code 4 (MEDIA_ERR_SRC_NOT_SUPPORTED) tanpa src
       // Jangan proses sebagai error nyata
       if (!a.src || a.src === window.location.href) return;
-      // FIX: jika kita sedang sengaja clear src untuk reconnect, abaikan error ini.
-      // Browser menembak error code 4 saat a.src diset ke '' — bukan error nyata.
-      if (radioSrcClearingRef.current) return;
       if (track.isRadio) {
         console.warn('[Radio] Stream error, scheduling reconnect. code:', err?.code);
-        stopSilenceDetectionRef.current?.(); // FIX: bersihkan silence detector sebelum reconnect
         scheduleRadioReconnect(track);
         return;
       }
       if (track.isDrive && track.driveId && err && (err.code === 2 || err.code === 4)) {
         const tok = tokenRef.current;
         if (tok) {
-          // FIX DRIVE STUCK: baca currentTime SEBELUM apapun — setelah src di-clear nilainya 0
           const savedPos = a.currentTime;
           console.warn('[Drive] Audio error, retrying from', savedPos, 'err:', err.code);
+          // Bersihkan cache hanya untuk driveId ini (bukan berdasarkan token)
           for (const [k, v] of _blobCache) {
             if (k === track.driveId || k === `${track.driveId}:lite`) { URL.revokeObjectURL(v); _blobCache.delete(k); }
           }
+          // Coba dengan token saat ini dulu, refresh hanya jika benar-benar 401/403
           const tryWithToken = (useTok) => {
             const fn = isLite ? driveStreamLite : driveStreamBlob;
             return fn(track.driveId, useTok, audioRef);
@@ -4289,24 +4349,8 @@ Return ONLY valid JSON, no explanation:
               if (!url || !audioRef.current) return;
               const newA = audioRef.current;
               newA.src = url;
-              // FIX: seek setelah canplay — MediaSource blob belum bisa seek saat src baru di-set
-              // karena SourceBuffer mungkin belum punya data di posisi savedPos.
-              // Jika savedPos kecil (< 3s), tidak perlu seek — langsung play dari awal.
-              if (savedPos > 3) {
-                newA.addEventListener('canplay', () => {
-                  // Cek apakah posisi ada di dalam buffered range
-                  let seekable = false;
-                  for (let i = 0; i < newA.buffered.length; i++) {
-                    if (newA.buffered.start(i) <= savedPos && savedPos <= newA.buffered.end(i)) {
-                      seekable = true; break;
-                    }
-                  }
-                  if (seekable) newA.currentTime = savedPos;
-                  newA.play().catch(() => setPlaying(false));
-                }, { once: true });
-              } else {
-                newA.play().catch(() => setPlaying(false));
-              }
+              newA.currentTime = savedPos;
+              newA.play().catch(() => setPlaying(false));
             }).catch(() => { setPlaying(false); setLoadingTrack(false); });
           return;
         }
@@ -4317,84 +4361,39 @@ Return ONLY valid JSON, no explanation:
     let waitingTimer = null; // debounce untuk 'waiting' agar tidak flicker di koneksi normal
     const onStall = () => {
       if (track.isRadio) {
-        // FIX BUFFERING: Naikkan debounce stall dari 800ms ke 3000ms.
-        // 800ms terlalu agresif — stall singkat akibat koneksi lambat atau
-        // jitter jaringan sering memicu reconnect yang tidak perlu.
-        // Dengan 3s, browser punya cukup waktu untuk recover sendiri sebelum kita reconnect.
+        // Debounce: tunggu 2 detik sebelum reconnect (dipercepat dari 4s)
+        // Alasan: Vercel proxy memotong stream tiap ~60 detik, reconnect harus cepat
         if (a.readyState < 2 && !a.paused) {
           if (!stallTimer) {
             stallTimer = setTimeout(() => {
               stallTimer = null;
               if (!a.paused && a.readyState < 2) scheduleRadioReconnect(track);
-            }, 3000);
+            }, 2000);
           }
         }
         return;
       }
+      // FIX: Jangan reset audio saat tab/app di-background.
+      // Browser sengaja menghentikan buffering saat background → stall adalah normal.
+      // Memanggil a.load() di sini akan mereset posisi & membatalkan background playback.
       if (document.visibilityState === 'hidden') return;
       if (a.readyState < 3 && !a.paused) {
-        // FIX DRIVE STUCK: untuk Drive (MediaSource blob URL), JANGAN panggil a.load().
-        // a.load() me-reset currentTime ke 0, lalu seek ke posisi lama seringkali gagal
-        // karena data di posisi itu belum ada di SourceBuffer (harus di-buffer ulang dari awal).
-        // Cukup panggil a.play() — browser biasanya bisa recover sendiri dari stall ringan.
-        if (track.isDrive || (a.src && a.src.startsWith('blob:'))) {
-          a.play().catch(() => {});
-          return;
-        }
-        // Non-Drive (URL biasa): load() + seek ke posisi sebelumnya tetap aman
-        const pos = a.currentTime;
         a.load();
+        const pos = a.currentTime;
         a.addEventListener('canplay', () => { a.currentTime = pos; a.play().catch(()=>{}); }, { once: true });
       }
     };
     const onWaiting  = () => {
+      if (!track.isRadio) return;
+      // Debounce 800ms: 'waiting' event sering muncul singkat saat normal buffering
+      // Tanpa debounce, indikator BUFFERING… berkedip-kedip terus padahal stream sehat
       if (waitingTimer) clearTimeout(waitingTimer);
-      // Radio: tampilkan indikator BUFFERING… setelah 1.5s
-      if (track.isRadio) {
-        waitingTimer = setTimeout(() => {
-          waitingTimer = null;
-          if (!a.paused) setStreamBuffering(true);
-        }, 1500);
-        return;
-      }
-      // FIX DRIVE STUCK: Drive Lite mode mungkin pause fetch terlalu lama.
-      // Jika audio 'waiting' >3s dan ini Drive MediaSource, coba play() untuk
-      // memicu resume fetch di driveStreamLite (pump loop cek buffer saat playback resume).
-      if (track.isDrive && a.src && a.src.startsWith('blob:')) {
-        waitingTimer = setTimeout(() => {
-          waitingTimer = null;
-          if (!a.paused && a.readyState < 3) {
-            a.play().catch(() => {});
-          }
-        }, 3000);
-      }
+      waitingTimer = setTimeout(() => {
+        waitingTimer = null;
+        if (!a.paused) setStreamBuffering(true);
+      }, 800);
     };
-    const onPlaying2 = () => {
-      if (track.isRadio) {
-        setStreamBuffering(false);
-        radioReconnectCount.current = 0;
-        if (radioReconnectRef.current) { clearTimeout(radioReconnectRef.current); radioReconnectRef.current = null; }
-        if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; }
-        if (waitingTimer) { clearTimeout(waitingTimer); waitingTimer = null; }
-        startSilenceDetectionRef.current?.(a, track);
-
-        // FIX BUFFERING: proactive reconnect — jadwalkan sebelum Vercel timeout tiba.
-        // Ini adalah fix paling ampuh untuk mengurangi jeda akibat Vercel memutus stream.
-        // Alih-alih menunggu stream putus lalu reconnect, kita reconnect SEBELUM putus.
-        if (proactiveReconnectRef.current) clearTimeout(proactiveReconnectRef.current);
-        streamStartTimeRef.current = Date.now();
-        proactiveReconnectRef.current = setTimeout(() => {
-          proactiveReconnectRef.current = null;
-          // Pastikan track masih sama dan sedang playing
-          if (!playingRef.current) return;
-          if (trackRef.current?.src !== track.src && trackRef.current?.id !== track.id) return;
-          console.info('[Radio] Proactive reconnect — refreshing stream before Vercel timeout');
-          // Reconnect diam-diam: reset count agar tidak dihitung sebagai error
-          radioReconnectCount.current = 0;
-          scheduleRadioReconnect(track);
-        }, VERCEL_MAX_DURATION_MS);
-      }
-    };
+    const onPlaying2 = () => { if (track.isRadio) { setStreamBuffering(false); radioReconnectCount.current = 0; if (radioReconnectRef.current) { clearTimeout(radioReconnectRef.current); radioReconnectRef.current = null; } if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; } if (waitingTimer) { clearTimeout(waitingTimer); waitingTimer = null; } } };
     a.addEventListener('timeupdate',     onTime);
     a.addEventListener('loadedmetadata', onMeta);
     a.addEventListener('durationchange', onDurChange);
@@ -4408,7 +4407,7 @@ Return ONLY valid JSON, no explanation:
     setProgress(0);
     setDuration(0);
 
-    const isHlsSrc = (track.src || '').includes('.m3u8') || (track.src || '').includes('/hls/') || (track.src || '').includes('chunklist');
+    const isHlsSrc = track.src.includes('.m3u8') || track.src.includes('/hls/') || track.src.includes('chunklist');
     if (track.isRadio && isHlsSrc) {
       setStreamBuffering(true);
       attachHls(a, track.src, () => {
@@ -4444,15 +4443,13 @@ Return ONLY valid JSON, no explanation:
       clearInterval(durPoll);
       if (stallTimer) clearTimeout(stallTimer);
       if (waitingTimer) clearTimeout(waitingTimer);
-      stopSilenceDetectionRef.current?.();
-      if (proactiveReconnectRef.current) { clearTimeout(proactiveReconnectRef.current); proactiveReconnectRef.current = null; }
       a.pause(); a.src = '';
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
     };
   // FIX Bug 3: pakai track.id sebagai dependency tambahan untuk radio
   // Kalau dua station berbeda kebetulan punya URL sama, track.src tidak berubah
   // tapi track.id berbeda → useEffect tetap re-run dan audio direset dengan benar
-  }, [track.src, track.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [track.src, track.isRadio ? track.id : null]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Sync playingRef
   useEffect(() => { playingRef.current = playing; }, [playing]);
@@ -4587,32 +4584,9 @@ Return ONLY valid JSON, no explanation:
     }
     const a = audioRef.current; if (!a) return;
     if (playing) {
-      // FIX RADIO RESUME: radio streaming tidak bisa di-resume dengan .play() biasa setelah pause.
-      // HTTP stream sudah terputus — harus reload src agar server kirim stream baru.
-      // Gunakan attachHlsRef (ref) bukan attachHls langsung untuk hindari circular dependency.
-      if (trackRef.current?.isRadio) {
-        // FIX: jika useEffect [track] baru saja memuat & memutar track radio ini
-        // (mis. saat klik radio dari playlist), jangan reload src lagi di sini —
-        // itu akan abort a.play() yang sedang berjalan dan menyebabkan stream gagal.
-        if (freshlyLoadedTrackIdRef.current === trackRef.current.id) {
-          freshlyLoadedTrackIdRef.current = null;
-          return;
-        }
-        // Strip cache-bust params lama agar tidak numpuk (?_t=123&_r=456&_r=789)
-        const rawSrc = (trackRef.current.src || '').replace(/[&?]_[tr]=\d+/g, '');
-        if (!rawSrc) { setPlaying(false); return; }
-        if (rawSrc.includes('.m3u8')) {
-          attachHlsRef.current?.(a, rawSrc, () => { a.play().catch(() => setPlaying(false)); });
-        } else {
-          a.src = rawSrc + (rawSrc.includes('?') ? '&' : '?') + '_r=' + Date.now();
-          a.load();
-          a.play().catch(e => { console.warn('radio resume error:', e); setPlaying(false); });
-        }
-      } else {
-        a.play().catch(e => { console.warn('play error:', e); setPlaying(false); });
-      }
+      a.play().catch(e => { console.warn('play error:', e); setPlaying(false); });
     } else { a.pause(); }
-  }, [playing, embedTrack]); // attachHls sengaja tidak di-dep array (diacu via ref)
+  }, [playing, embedTrack]);
 
   // ── Proactive token expiry: auto silent-refresh 5 min before expiry
   useEffect(() => {
@@ -5301,6 +5275,53 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const cancelSleepTimer = useCallback(() => { if (sleepIntervalRef.current) clearInterval(sleepIntervalRef.current); setSleepTimer(null); }, []);
 
+  // ── EQ handlers (dipanggil dari SettingsPanel)
+  const EQ_PRESETS = {
+    flat:     [0,0,0,0,0,0,0,0,0,0],
+    bass:     [6,5,4,2,0,0,0,0,0,0],
+    treble:   [0,0,0,0,0,0,2,4,5,6],
+    vocal:    [-2,-2,0,2,4,4,2,0,-1,-2],
+    pop:      [-1,0,2,3,2,0,-1,-1,-1,-1],
+    rock:     [4,3,2,0,-1,-1,0,2,3,4],
+    jazz:     [3,2,1,0,-1,-1,0,1,2,2],
+    classical:[4,3,2,0,-1,-1,0,2,3,4],
+    dance:    [5,4,2,0,-2,-2,0,3,4,4],
+    acoustic: [3,2,1,0,0,-1,0,1,2,2],
+  };
+  const handleToggleEq = useCallback((enabled) => {
+    setEqEnabled(enabled);
+    // Pastikan AudioContext aktif dan EQ terkoneksi
+    if (enabled) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC && !audioCtxRef.current) {
+        try { audioCtxRef.current = new AC(); } catch {}
+      }
+      if (audioCtxRef.current?.state === 'suspended') {
+        audioCtxRef.current.resume().catch(() => {});
+      }
+      // Koneksikan EQ ke audio element saat ini
+      eqSourceRef.current = null;
+      connectEQ();
+    }
+  }, [connectEQ]);
+
+  const handleEqGainChange = useCallback((index, value) => {
+    setEqGains(prev => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  }, []);
+
+  const handleApplyEqPreset = useCallback((presetName) => {
+    setEqPreset(presetName);
+    const gains = EQ_PRESETS[presetName] || EQ_PRESETS.flat;
+    setEqGains(gains);
+    if (!eqEnabled && presetName !== 'flat') {
+      handleToggleEq(true);
+    }
+  }, [eqEnabled, handleToggleEq]); // eslint-disable-line
+
   // ── Test radio stations: hanya tampilkan yang bisa diputar
   const testStationsInGenre = useCallback(async (genre) => {
     const key = genre.id;
@@ -5317,7 +5338,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     const testOne = (station) => new Promise(resolve => {
       const ctrl = new AbortController();
       const tid = setTimeout(() => { ctrl.abort(); resolve({ id: station.id, ok: false }); }, 7000);
-      fetch(radioUrl(station.url_resolved || station.url, customDnsRef.current), { method: 'GET', mode: 'no-cors', signal: ctrl.signal })
+      fetch(radioUrl(station.url, customDnsRef.current), { method: 'GET', mode: 'no-cors', signal: ctrl.signal })
         .then(() => { clearTimeout(tid); resolve({ id: station.id, ok: true }); })
         .catch(e => {
           clearTimeout(tid);
@@ -5635,11 +5656,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
   };
 
   const getGardenStreamUrl = (channelId) => {
-    // FIX: Use Vercel rewrite (/api/radio-garden/*) instead of direct radio.garden URL.
-    // radio.garden blocks server-side proxy requests (403), but Vercel's transparent
-    // rewrite passes through correctly without triggering anti-hotlink detection.
-    // The rewrite in vercel.json maps /api/radio-garden/:path* → https://radio.garden/api/ara/:path*
-    return `/api/radio-garden/content/listen/${channelId}/channel.mp3`;
+    return `https://radio.garden/api/ara/content/listen/${channelId}/channel.mp3`;
   };
 
   // Fetch semua stasiun dari semua kota di negara tertentu — untuk browse panel
@@ -5754,7 +5771,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     { id:'ice_soma_cliqhop', name:'SomaFM Cliqhop IDM',   desc:'Blips, blops & lo-fi electronic wonders',       url:'https://ice1.somafm.com/cliqhop-128-mp3',                   genre:'Lo-Fi',   country:'US', color:'#22d3ee' },
     { id:'ice_hiphop_radio', name:'Hip-Hop Radio (Laut)',  desc:'Hip-hop & rap hits 24/7',                       url:'https://stream.laut.fm/hiphop',                             genre:'Hip-Hop', country:'DE', color:'#f59e0b' },
     { id:'ice_illstreet',    name:'SomaFM Ill Street Blues',desc:'Hip-hop, soul & gritty r&b',                  url:'https://ice1.somafm.com/illstreet-128-mp3',                 genre:'Hip-Hop', country:'US', color:'#f97316' },
-    { id:'ice_rnb',          name:'R&B Radio (Laut)',      desc:'R&b, soul & smooth jams 24/7',                  url:'https://listen.181fm.com/181-rnb_128k.mp3',                                genre:'Hip-Hop', country:'DE', color:'#ec4899' },
+    { id:'ice_rnb',          name:'R&B Radio (Laut)',      desc:'R&b, soul & smooth jams 24/7',                  url:'https://stream.laut.fm/rnb',                                genre:'Hip-Hop', country:'DE', color:'#ec4899' },
   ];
 
   // ── Radio Paradise (curated, high-fidelity, no ads, listener-funded)
@@ -5769,7 +5786,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
   // ── FM Stream / laut.fm extended (Germany-based, 800+ curated internet stations)
   const FMSTREAM_CURATED = [
     { id:'fm_country', name:'Country Radio (laut.fm)', desc:'Country & Americana 24/7', url:'https://stream.laut.fm/country', genre:'Country', country:'DE', color:'#a16207', sourceLabel:'FM Stream' },
-    { id:'fm_rnb', name:'R&B Radio (laut.fm)', desc:'R&B & Soul 24/7', url:'https://listen.181fm.com/181-rnb_128k.mp3', genre:'R&B', country:'DE', color:'#f59e0b', sourceLabel:'FM Stream' },
+    { id:'fm_rnb', name:'R&B Radio (laut.fm)', desc:'R&B & Soul 24/7', url:'https://stream.laut.fm/rnb', genre:'R&B', country:'DE', color:'#f59e0b', sourceLabel:'FM Stream' },
     { id:'fm_electro', name:'Electronic Radio (laut.fm)', desc:'Electronic & Dance 24/7', url:'https://stream.laut.fm/electronic', genre:'Electronic', country:'DE', color:'#6366f1', sourceLabel:'FM Stream' },
     { id:'fm_80s', name:'80s Radio (laut.fm)', desc:'Best of 80s Pop & Rock', url:'https://stream.laut.fm/80s', genre:'80s', country:'DE', color:'#e11d48', sourceLabel:'FM Stream' },
     { id:'fm_90s', name:'90s Radio (laut.fm)', desc:'Best of 90s hits', url:'https://stream.laut.fm/90s', genre:'90s', country:'DE', color:'#7c3aed', sourceLabel:'FM Stream' },
@@ -5793,7 +5810,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     { id:'fm_lofi',       name:'Lo-Fi Radio (laut.fm)',    desc:'Lo-fi beats & chillhop 24/7',           url:'https://stream.laut.fm/lofi',        genre:'Lo-Fi',   country:'DE', color:'#22d3ee', sourceLabel:'FM Stream' },
     { id:'fm_chillhop',   name:'Chillhop FM (laut.fm)',    desc:'Chillhop & downtempo grooves',          url:'https://stream.laut.fm/chillhop',     genre:'Lo-Fi',   country:'DE', color:'#06b6d4', sourceLabel:'FM Stream' },
     { id:'fm_hiphop',     name:'Hip-Hop Radio (laut.fm)',  desc:'Hip-hop, rap & trap 24/7',              url:'https://stream.laut.fm/hiphop',       genre:'Hip-Hop', country:'DE', color:'#f59e0b', sourceLabel:'FM Stream' },
-    { id:'fm_rnb',        name:'R&B Radio (laut.fm)',      desc:'R&b & soul hits around the clock',      url:'https://listen.181fm.com/181-rnb_128k.mp3',          genre:'Hip-Hop', country:'DE', color:'#ec4899', sourceLabel:'FM Stream' },
+    { id:'fm_rnb',        name:'R&B Radio (laut.fm)',      desc:'R&b & soul hits around the clock',      url:'https://stream.laut.fm/rnb',          genre:'Hip-Hop', country:'DE', color:'#ec4899', sourceLabel:'FM Stream' },
     { id:'fm_rap',        name:'Rap Radio (laut.fm)',      desc:'Rap & urban beats 24/7',                url:'https://stream.laut.fm/rap',          genre:'Hip-Hop', country:'DE', color:'#f97316', sourceLabel:'FM Stream' },
   ];
 
@@ -5832,7 +5849,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     { id:'sc_lofi_beats', name:'Lo-Fi Beats 24/7',        desc:'Smooth lo-fi beats all day long',         url:'https://ice1.somafm.com/cliqhop-128-mp3',              genre:'Lo-Fi',   country:'US', color:'#a78bfa', sourceLabel:'Shoutcast' },
     { id:'sc_hiphop2',    name:'Hip-Hop Nation',          desc:'Hip-hop & rap hits worldwide',            url:'https://stream.laut.fm/hiphop',                        genre:'Hip-Hop', country:'US', color:'#f59e0b', sourceLabel:'Shoutcast' },
     { id:'sc_trap',       name:'Trap Nation Radio',       desc:'Trap, drill & urban beats 24/7',          url:'https://stream.laut.fm/rap',                           genre:'Hip-Hop', country:'US', color:'#ef4444', sourceLabel:'Shoutcast' },
-    { id:'sc_rnb2',       name:'R&B Soul Station',        desc:'Classic & contemporary r&b soul',         url:'https://listen.181fm.com/181-rnb_128k.mp3',                           genre:'Hip-Hop', country:'US', color:'#ec4899', sourceLabel:'Shoutcast' },
+    { id:'sc_rnb2',       name:'R&B Soul Station',        desc:'Classic & contemporary r&b soul',         url:'https://stream.laut.fm/rnb',                           genre:'Hip-Hop', country:'US', color:'#ec4899', sourceLabel:'Shoutcast' },
     { id:'sc_illstreet2', name:'SomaFM Ill Street Blues', desc:'Grittier hip-hop, soul & r&b',            url:'https://ice1.somafm.com/illstreet-128-mp3',            genre:'Hip-Hop', country:'US', color:'#f97316', sourceLabel:'Shoutcast' },
   ];
 
@@ -5900,9 +5917,6 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
   }, []);
 
   // ── Pasang HLS.js ke elemen audio untuk URL .m3u8
-  // Ref untuk attachHls — dipakai oleh playing useEffect yang dideklarasi lebih awal
-  // agar tidak ada circular dependency / "Cannot access before initialization" error
-  const attachHlsRef = useRef(null);
   const attachHls = useCallback((audioEl, src, onReady) => {
     // Hancurkan instance lama
     if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
@@ -5915,19 +5929,18 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       }
       const hls = new Hls({
         lowLatencyMode: false,        // radio bukan low-latency HLS, mode ini justru ganggu buffer
-        liveSyncDurationCount: 2,     // 2 segment (~4-6s) cukup untuk mulai play, bukan 5
-        maxBufferLength: 30,          // 30s cukup untuk radio live, hemat RAM & kurangi waktu fill awal
-        maxMaxBufferLength: 60,
-        backBufferLength: 5,          // 5s buffer mundur cukup untuk recovery
-        fragLoadingTimeOut: 8000,     // gagal lebih cepat (8s) agar reconnect tidak nunggu lama
-        manifestLoadingTimeOut: 6000,
-        levelLoadingTimeOut: 6000,
-        fragLoadingMaxRetry: 6,
-        manifestLoadingMaxRetry: 4,
-        levelLoadingMaxRetry: 4,
-        fragLoadingRetryDelay: 300,   // retry lebih cepat
-        startFragPrefetch: true,      // prefetch fragment segera setelah manifest parsed
-        progressive: true,            // mulai putar segera saat ada data
+        liveSyncDurationCount: 5,     // turun dari 7 → 5: kurangi latency awal tanpa korbankan stabilitas
+        maxBufferLength: 60,          // turun dari 90 → 60: HLS tidak perlu buffer sebesar itu, hemat RAM
+        maxMaxBufferLength: 120,
+        backBufferLength: 10,         // simpan 10s buffer mundur untuk recovery cepat
+        fragLoadingTimeOut: 15000,    // turun dari 20s → 15s: gagal lebih cepat, retry lebih cepat
+        manifestLoadingTimeOut: 10000,
+        levelLoadingTimeOut: 10000,
+        fragLoadingMaxRetry: 8,       // naik dari 6 → 8: lebih persisten sebelum menyerah
+        manifestLoadingMaxRetry: 5,
+        levelLoadingMaxRetry: 5,
+        fragLoadingRetryDelay: 500,   // turun dari 1000 → 500ms: retry lebih cepat setelah gagal
+        progressive: true,            // mulai putar segera saat ada data, tidak perlu tunggu buffer penuh
       });
       hlsRef.current = hls;
       hls.loadSource(src);
@@ -5952,152 +5965,19 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
   }, [loadHlsLib]);
 
   // ── Auto-reconnect untuk stream radio yang putus
-  // ── Silence detection untuk radio stream
-  // Mendeteksi kondisi "audio berjalan tapi tidak ada suara":
-  // - Koneksi stream berhasil (tidak ada error)
-  // - Browser menganggap audio sedang diputar (playing=true)
-  // - Tapi AnalyserNode tidak mendeteksi sinyal audio apapun
-  // Ini terjadi karena beberapa sebab:
-  //   1. Server kirim stream kosong / data nol
-  //   2. Domain tidak ada di ALLOWED_DOMAINS radio-proxy → 403, tapi audio element
-  //      tidak selalu fire 'error' untuk koneksi yang ditutup server setelah header
-  //   3. ISP/network memblokir konten tapi mengirim HTTP 200 dengan body kosong
-  const stopSilenceDetection = useCallback(() => {
-    if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
-    silenceAnalyserRef.current = null;
-    // Tutup AudioContext khusus silence agar tidak ada resource leak
-    if (silenceCtxRef.current && silenceCtxRef.current.state !== 'closed') {
-      silenceCtxRef.current.close().catch(() => {});
-      silenceCtxRef.current = null;
-    }
-  }, []);
-
-  const startSilenceDetection = useCallback((audioEl, trackObj) => {
-    stopSilenceDetection();
-    if (!trackObj?.isRadio || !audioEl) return;
-
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return;
-
-    let ctx;
-    try {
-      ctx = new AC();
-      silenceCtxRef.current = ctx;
-    } catch { return; }
-
-    // FIX BUG A: AudioContext sering jadi 'suspended' oleh browser (policy autoplay,
-    // tab di-background, layar dikunci, dsb). Saat suspended, audio route via Web Audio API
-    // putus total — suara hilang meski audio element masih "playing".
-    // Solusi: resume() dulu SEBELUM connect, dan pantau state secara berkala.
-    const resumeCtx = () => {
-      if (ctx && ctx.state === 'suspended') {
-        ctx.resume().catch(() => {});
-      }
-    };
-    resumeCtx();
-
-    let analyser;
-    try {
-      // FIX BUG B: crossOrigin HARUS 'anonymous' agar createMediaElementSource tidak
-      // melempar SecurityError karena CORS taint. Tanpa ini, di browser tertentu (Chrome/Firefox)
-      // source node terbuat tapi tidak ada audio yang lewat → suara hilang diam-diam.
-      // Kita set di sini (bukan di konstruksi Audio) karena radio proxy sudah CORS-safe.
-      if (!audioEl.crossOrigin) {
-        audioEl.crossOrigin = 'anonymous';
-      }
-      const source = ctx.createMediaElementSource(audioEl);
-      analyser = ctx.createAnalyser();
-      analyser.fftSize = 256;
-      source.connect(analyser);
-      analyser.connect(ctx.destination);
-      silenceAnalyserRef.current = analyser;
-    } catch {
-      // createMediaElementSource gagal (misal: element sudah terhubung ke ctx lain)
-      // Lepas AudioContext — audio tetap keluar dari element langsung
-      try { ctx.close(); } catch {}
-      silenceCtxRef.current = null;
-      return;
-    }
-
-    // FIX BUG C: Sebelumnya silence hanya dicek SEKALI di detik ke-6, lalu berhenti.
-    // Kalau suara hilang setelah detik ke-6 (misal menit ke-2), tidak ada yang mendeteksi.
-    // Solusi: polling berkala setiap 8 detik selama radio aktif.
-    // Interval pertama lebih panjang (8s) untuk memberi waktu buffering awal.
-    const _sb = u => u ? u.replace(/[&?]_[tr]=\d+/g, '') : u;
-    let consecutiveSilence = 0; // counter silence berturut-turut (mengurangi false positive)
-
-    const checkSilence = () => {
-      silenceTimerRef.current = null;
-      if (!analyser || !playingRef.current) return;
-      if (_sb(trackRef.current?.src) !== _sb(trackObj.src)) return;
-
-      // FIX BUG A (part 2): cek dan resume AudioContext sebelum baca data
-      // Browser bisa suspend kapan saja (user klik tab lain, layar mati, dsb)
-      if (ctx.state === 'suspended') {
-        ctx.resume().catch(() => {});
-        // Jangan hitung sebagai silence — mungkin baru saja resume
-        consecutiveSilence = 0;
-        silenceTimerRef.current = setTimeout(checkSilence, 8000);
-        return;
-      }
-
-      const buf = new Uint8Array(analyser.frequencyBinCount);
-      analyser.getByteFrequencyData(buf);
-      const avg = buf.reduce((a, b) => a + b, 0) / buf.length;
-
-      if (avg < 0.5) {
-        consecutiveSilence++;
-        console.warn(`[Radio] Silent stream check #${consecutiveSilence} (avg=${avg.toFixed(3)}) — ctx.state=${ctx.state}`);
-        // FIX: butuh 2 cek berurutan sebelum reconnect untuk menghindari false positive
-        // (misalnya saat ada iklan/jeda di stasiun tertentu)
-        if (consecutiveSilence >= 2) {
-          console.warn('[Radio] Confirmed silent — reconnecting');
-          stopSilenceDetection();
-          scheduleRadioReconnect(trackObj);
-          return;
-        }
-        // Cek lagi lebih cepat (4s) untuk konfirmasi
-        silenceTimerRef.current = setTimeout(checkSilence, 4000);
-      } else {
-        // Ada suara — reset counter, jadwalkan cek berikutnya
-        consecutiveSilence = 0;
-        silenceTimerRef.current = setTimeout(checkSilence, 8000);
-      }
-    };
-
-    // Mulai cek pertama setelah 8 detik (beri waktu buffering awal)
-    silenceTimerRef.current = setTimeout(checkSilence, 8000);
-  }, [stopSilenceDetection]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Keep refs in sync so the audio useEffect (earlier in file) can call these via ref
-  // without creating a closure over const variables — prevents esbuild TDZ errors.
-  useEffect(() => { stopSilenceDetectionRef.current  = stopSilenceDetection;  }, [stopSilenceDetection]);
-  useEffect(() => { startSilenceDetectionRef.current = startSilenceDetection; }, [startSilenceDetection]);
-
   const scheduleRadioReconnect = useCallback((trackObj) => {
     if (radioReconnectRef.current) clearTimeout(radioReconnectRef.current);
     const attempt = radioReconnectCount.current;
-    // FIX BUFFERING: Naikkan max attempt dari 6 ke 8.
-    // Vercel memutus koneksi setiap maxDuration detik (60s Hobby / 300s Pro) — ini BUKAN error,
-    // hanya timeout normal. Browser perlu reconnect otomatis tanpa beri tahu user error.
-    // Dengan 8 attempt, radio bisa reconnect lebih banyak kali sebelum menyerah.
-    if (attempt >= 8) {
+    if (attempt >= 6) {
+      // Sudah 6x gagal — beri tahu user dan berhenti
       radioReconnectCount.current = 0;
       setPlaying(false);
       setStreamBuffering(false);
-      setRadioStation(null);
-      setRadioPlaying(false);
-      const stationName = trackRef.current?.title || 'Radio station';
-      setRadioStreamError(`"${stationName}" is currently unavailable. The stream may be offline or geo-blocked.`);
-      setTimeout(() => setRadioStreamError(null), 7000);
       return;
     }
-    // FIX BUFFERING: Kurangi delay attempt pertama ke 200ms (dari 500ms).
-    // Saat Vercel memutus stream karena timeout, browser langsung error — kita perlu reconnect
-    // secepat mungkin agar jeda audio tidak terasa. 200ms hampir tidak terdengar.
-    // Back-off: 200ms, 800ms, 1.5s, 3s, 6s, 12s, 20s, 20s
-    const delays = [200, 800, 1500, 3000, 6000, 12000, 20000, 20000];
-    const delay = delays[attempt] ?? 20000;
+    // Exponential back-off: 500ms, 1s, 2s, 4s, 10s, 20s
+    // Attempt pertama sangat cepat (500ms) untuk handle Vercel proxy timeout
+    const delay = attempt === 0 ? 500 : Math.min(500 * Math.pow(2, attempt), 20000);
     console.warn(`[Radio] Reconnect attempt ${attempt + 1} in ${delay}ms`);
     setStreamBuffering(true);
     radioReconnectRef.current = setTimeout(() => {
@@ -6108,40 +5988,25 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       if (!playingRef.current) return;
       // FIX Bug 2+4: cek apakah trackObj masih station yang aktif saat ini
       // Jika user sudah ganti station/track, batalkan reconnect ini
-      // FIX BUFFERING: strip cache-bust params (_t=, _r=) sebelum bandingkan
-      // agar reconnect tidak salah dibatalkan karena timestamp berbeda
-      const stripBust = u => u ? u.replace(/[&?]_[tr]=\d+/, '') : u;
-      if (stripBust(trackRef.current?.src) !== stripBust(trackObj.src)) {
+      if (trackRef.current?.src !== trackObj.src) {
         console.warn('[Radio] Reconnect cancelled — track changed while waiting');
         return;
       }
-      // Gunakan proxied URL bersih (tanpa bust) untuk reconnect agar tidak numpuk params
-      const src = stripBust(trackObj.src);
+      const src = trackObj.src;
       if (src.includes('.m3u8')) {
-        stopSilenceDetection(); // bersihkan context lama sebelum HLS reconnect
         attachHls(a, src, () => { a.play().catch(() => {}); });
       } else {
-        // FIX: set flag before clearing src so the onError handler ignores the
-        // spurious code-4 event that Chrome fires synchronously on a.src = ''.
-        radioSrcClearingRef.current = true;
         a.src = '';
-        radioSrcClearingRef.current = false;
         setTimeout(() => {
-          if (stripBust(trackRef.current?.src) !== stripBust(trackObj.src)) return;
-          stopSilenceDetection();
-          // FIX BUFFERING: set preload='auto' sebelum src agar browser langsung
-          // mulai buffering begitu src di-set, tanpa menunggu play().
-          a.preload = 'auto';
-          a.src = src + (src.includes('?') ? '&' : '?') + '_t=' + Date.now();
+          // Double-check lagi setelah 500ms inner delay
+          if (trackRef.current?.src !== trackObj.src) return;
+          a.src = src + (src.includes('?') ? '&' : '?') + '_t=' + Date.now(); // cache-bust agar server kirim stream baru
           a.load();
           a.play().catch(() => {});
-        }, 50); // FIX: kurangi dari 100ms ke 50ms — makin cepat reconnect makin kecil jeda
+        }, 500);
       }
     }, delay);
-  }, [attachHls, stopSilenceDetection]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Sync attachHlsRef setiap kali attachHls berubah
-  useEffect(() => { attachHlsRef.current = attachHls; }, [attachHls]);
+  }, [attachHls]);
 
   // ── Universal play function for any external radio station
   const playRbStation = (station) => {
@@ -6166,7 +6031,6 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       setPlaying(p => !p);
     } else {
       play(radioTrackObj);
-      setRadioStreamError(null); // clear any previous stream error
       setRadioStation({ id: station.stationuuid || station.id, name: station.name, city: [station.country, station.city].filter(Boolean).join(', ') || 'Online', color: stationColor, url: streamUrl });
       setRadioPlaying(true);
     }
@@ -6233,7 +6097,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
         setMultiLoading(false);
         if (cityResults.length === 0) setRbError(`Tidak ada stasiun ditemukan untuk "${rawQ}"`);
         const msKey = `city__${q}`;
-        testStationsInGenre({ id: msKey, stations: cityResults.map(s => ({ id: s.id || s.stationuuid, url: s.url_resolved || s.url })) });
+        testStationsInGenre({ id: msKey, stations: cityResults.map(s => ({ id: s.id || s.stationuuid, url: s.url })) });
         return;
       } catch(e) {
         setRbError('Gagal mencari stasiun kota. Coba lagi.');
@@ -6374,7 +6238,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
         setMultiResults(srcResults);
         setMultiLoading(false);
         const msKey = `source__${src}__${sq}`;
-        testStationsInGenre({ id:msKey, stations:srcResults.map(s=>({ id:s.id||s.stationuuid, url:s.url_resolved||s.url })) });
+        testStationsInGenre({ id:msKey, stations:srcResults.map(s=>({ id:s.id||s.stationuuid, url:s.url })) });
         return;
       } catch(e) {
         setRbError('Gagal mengambil dari sumber tersebut.');
@@ -6568,7 +6432,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     setMultiLoading(false);
     // Trigger health check untuk semua hasil multi-search
     const msKey = `multisearch__${textQuery}__${effectiveGenreTag||''}`;
-    testStationsInGenre({ id: msKey, stations: results.map(s => ({ id: s.id || s.stationuuid, url: s.url_resolved || s.url })) });
+    testStationsInGenre({ id: msKey, stations: results.map(s => ({ id: s.id || s.stationuuid, url: s.url })) });
 
     // ── AI Fallback: jika hasil terlalu sedikit dan ada query teks, minta AI sarankan stasiun
     // lalu cari nama-nama itu di RadioBrowser (source nyata, bukan imajinasi AI)
@@ -6664,7 +6528,7 @@ Format exactly:
           // Health check hanya untuk stasiun yang punya URL
           const playable = aiStations.filter(s => s.url || s.url_resolved);
           if (playable.length > 0) {
-            testStationsInGenre({ id: msKey + '__ai', stations: playable.map(s => ({ id: s.id || s.stationuuid, url: s.url_resolved || s.url })) });
+            testStationsInGenre({ id: msKey + '__ai', stations: playable.map(s => ({ id: s.id || s.stationuuid, url: s.url })) });
           }
         }
       } catch { /* AI gagal = tidak apa-apa, hasil reguler sudah ada */ }
@@ -6795,24 +6659,9 @@ Format exactly:
       return;
     }
     if (t.isRadio) {
-      // FIX: selalu jalankan radioUrl() pada t.src sebelum diputar.
-      // t.src bisa berisi URL mentah http:// (disimpan saat station di-like dari queue sidebar
-      // dengan src:station.url tanpa radioUrl), atau sudah berupa /api/radio-proxy?url=...
-      // radioUrl() idempoten untuk https:// dan /api/..., aman dipanggil berulang kali.
-      const proxiedSrc = radioUrl(t.src, customDnsRef.current) || '';
-      // FIX RADIO REPLAY: tambah cache-bust timestamp agar useEffect [track.src] selalu
-      // re-run dan membuat Audio element baru (reconnect stream) setiap kali play dipanggil.
-      // Tanpa ini, useEffect skip karena src sama → stream lama tidak diganti → tidak ada suara.
-      const bustSrc = proxiedSrc + (proxiedSrc.includes('?') ? '&' : '?') + '_t=' + Date.now();
-      const radioTrackObj = { id: t.id, title: t.title, artist: t.artist, album: 'Live Radio', cover: t.cover, src: bustSrc, color: t.color||'#f59e0b', bg: t.bg||'rgba(245,158,11,0.15)', mood: 'live, radio', isRadio: true };
+      const radioTrackObj = { id: t.id, title: t.title, artist: t.artist, album: 'Live Radio', cover: t.cover, src: t.src, color: t.color||'#f59e0b', bg: t.bg||'rgba(245,158,11,0.15)', mood: 'live, radio', isRadio: true };
       stopAllMedia('radio');
-      // FIX RACE: set freshlyLoadedTrackIdRef synchronously here — before React batches
-      // the state updates — so the [playing] resume effect sees it and bails out.
-      // Setting it only inside useEffect [track.src] is too late: React may run the
-      // [playing] effect first in the same flush, overwriting src and aborting play().
-      freshlyLoadedTrackIdRef.current = radioTrackObj.id;
-      // FIX: simpan proxiedSrc (tanpa timestamp) di radioStation.url agar reconnect juga pakai URL yang benar
-      setRadioStation({ id: t.id.replace('radio_',''), name: t.title, url: proxiedSrc, color: t.color||'#f59e0b' });
+      setRadioStation({ id: t.id.replace('radio_',''), name: t.title, url: t.src, color: t.color||'#f59e0b' });
       setRadioPlaying(true); setTrack(radioTrackObj); setPlaying(true); setTab('player'); return;
     }
     let td = { ...t };
@@ -7110,11 +6959,7 @@ Format exactly:
           const genre = country.genres.find(g => g.id === radioStation.genreId);
           return genre ? genre.stations : [];
         })();
-    // FIX Bug #9: radioStation.id bisa punya prefix 'rb_' (dari playRbStation)
-    // sedangkan stations[i].id adalah stationuuid tanpa prefix → findIndex selalu -1
-    // Normalkan: strip prefix 'rb_' / 'radio_' sebelum bandingkan
-    const normId = (id = '') => id.replace(/^(rb_|radio_)/, '');
-    const idx = stations.findIndex(s => normId(s.id) === normId(radioStation.id) || s.stationuuid === normId(radioStation.id));
+    const idx = stations.findIndex(s => s.id === radioStation.id);
     const nextStation = stations[(idx + 1) % stations.length];
     if (!nextStation) return;
     const radioTrackObj = {
@@ -7123,7 +6968,7 @@ Format exactly:
       artist: nextStation.city + ' · Live Radio',
       album: 'Live Radio',
       cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
-      src: radioUrl(nextStation.url_resolved || nextStation.url, customDnsRef.current),
+      src: nextStation.url,
       color: radioStation.color || '#f59e0b',
       bg: `rgba(245,158,11,0.15)`,
       mood: 'live, radio',
@@ -7147,9 +6992,7 @@ Format exactly:
           const genre = country.genres.find(g => g.id === radioStation.genreId);
           return genre ? genre.stations : [];
         })();
-    // FIX Bug #9: sama seperti goNextRadio — normalisasi prefix sebelum cari
-    const normIdP = (id = '') => id.replace(/^(rb_|radio_)/, '');
-    const idx = stations.findIndex(s => normIdP(s.id) === normIdP(radioStation.id) || s.stationuuid === normIdP(radioStation.id));
+    const idx = stations.findIndex(s => s.id === radioStation.id);
     const prevStation = stations[(idx - 1 + stations.length) % stations.length];
     if (!prevStation) return;
     const radioTrackObj = {
@@ -7158,7 +7001,7 @@ Format exactly:
       artist: prevStation.city + ' · Live Radio',
       album: 'Live Radio',
       cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
-      src: radioUrl(prevStation.url_resolved || prevStation.url, customDnsRef.current),
+      src: prevStation.url,
       color: radioStation.color || '#f59e0b',
       bg: `rgba(245,158,11,0.15)`,
       mood: 'live, radio',
@@ -8293,41 +8136,18 @@ Format exactly:
         // Special built-in playlists
         if (activePl === 'all_songs')       return allSongs;
         if (activePl === 'my_songs')        return [...customSongs, ...favSongs.filter(s => !customSongs.find(c => c.id === s.id))];
-        if (activePl === 'recently_played') {
-          // FIX PLAYLIST RADIO: radio tidak ada di allSongs — gabungkan favSongs dulu
-          const _rpAllSongs = [...allSongs];
-          const _rpAllIds = new Set(allSongs.map(s => s.id));
-          favSongs.forEach(s => { if (!_rpAllIds.has(s.id)) _rpAllSongs.push(s); });
-          return history.slice(0, 50).map(entry => {
-            if (entry && typeof entry === 'object' && entry.id) {
-              return _rpAllSongs.find(s => s.id === entry.id) || entry;
-            }
-            return _rpAllSongs.find(s => s.id === entry);
-          }).filter(Boolean);
-        }
+        if (activePl === 'recently_played') return history.slice(0, 50).map(id => allSongs.find(s => s.id === id)).filter(Boolean);
         if (activePl === 'pl_fav') {
           // Favorit: pakai favSongs sebagai sumber kebenaran, fallback ke pl.songIds
-          // FIX PLAYLIST RADIO: gunakan allSongsWithFav agar radio dari favSongs tidak hilang
-          // (radio object ada di favSongs tapi mungkin tidak ada di allSongs karena disimpan
-          // dengan id berbeda dari builtinSongs/customSongs/ytSongs)
-          const allSongsWithFav = [...allSongs];
-          const allSongsIds = new Set(allSongs.map(s => s.id));
-          favSongs.forEach(s => { if (!allSongsIds.has(s.id)) allSongsWithFav.push(s); });
           const favIds = new Set(favSongs.map(s => s.id));
           const pl = playlists.find(p => p.id === 'pl_fav');
           const plIds = pl ? pl.songIds : [];
           const allIds = [...new Set([...favIds, ...plIds])];
-          return allSongsWithFav.filter(s => allIds.includes(s.id));
+          return allSongs.filter(s => allIds.includes(s.id));
         }
         // Custom playlists
         const pl = playlists.find(p => p.id === activePl);
-        if (!pl) return allSongs;
-        // FIX PLAYLIST RADIO: radio objects ada di favSongs tapi mungkin tidak di allSongs
-        // (jika radio belum di-like/di-fav). Gabungkan keduanya saat lookup berdasarkan songId.
-        const allSongsWithFav = [...allSongs];
-        const allSongsIds = new Set(allSongs.map(s => s.id));
-        favSongs.forEach(s => { if (!allSongsIds.has(s.id)) allSongsWithFav.push(s); });
-        return allSongsWithFav.filter(s => pl.songIds.includes(s.id));
+        return pl ? allSongs.filter(s => pl.songIds.includes(s.id)) : allSongs;
       })()
     : allSongs;
 
@@ -9075,15 +8895,6 @@ Format exactly:
         </div>
       )}
 
-      {/* ── Radio stream error toast */}
-      {radioStreamError && (
-        <div style={{ position:'fixed', bottom:80, left:'50%', transform:'translateX(-50%)', zIndex:9999, maxWidth:380, width:'90%', padding:'10px 16px', background:'rgba(30,10,10,0.96)', border:'1px solid rgba(239,68,68,0.45)', borderRadius:10, display:'flex', alignItems:'center', gap:10, boxShadow:'0 4px 24px rgba(0,0,0,0.5)', backdropFilter:'blur(8px)' }}>
-          <span style={{ fontSize:18, flexShrink:0 }}>📻</span>
-          <span style={{ fontSize:12, color:'#fca5a5', flex:1, lineHeight:1.4 }}>{radioStreamError}</span>
-          <button onClick={() => setRadioStreamError(null)} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(252,165,165,0.6)', padding:'2px 4px', fontSize:16, flexShrink:0 }}>✕</button>
-        </div>
-      )}
-
       {driveError&&<div style={{ position:'relative', zIndex:10, flexShrink:0, padding:'6px 16px', background:'rgba(239,68,68,0.15)', borderBottom:'1px solid rgba(239,68,68,0.25)', display:'flex', alignItems:'center', gap:8 }}>
         <span style={{ fontSize:11, color:'#fca5a5', flex:1 }}>{driveError}</span>
         {/* Tombol Refresh — muncul jika ada token aktif (lagu tidak ditemukan / error jaringan) */}
@@ -9192,7 +9003,7 @@ Format exactly:
 
         {/* ── SETTINGS PANEL — menutup semua tab di desktop & landscape, hanya player di portrait */}
         {showSettings && (isDesktop || layoutMode === 'mobile-landscape' || tab === 'player') && (
-          <Suspense fallback={<Spinner/>}><SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userSpDc={userSpDc} setUserSpDc={setUserSpDc} userSpKey={userSpKey} setUserSpKey={setUserSpKey} userScId={userScId} setUserScId={setUserScId} userScOAuth={userScOAuth} setUserScOAuth={setUserScOAuth} userAiKey={userAiKey} setUserAiKey={setUserAiKey} userYtKey={userYtKey} setUserYtKey={setUserYtKey} userCfKey={userCfKey} setUserCfKey={setUserCfKey} userSnKey={userSnKey} setUserSnKey={setUserSnKey} setTab={setTab} setFullscreen={setFullscreen} googleUser={googleUser||null} handleGoogleLogin={handleGoogleLogin} syncPlaylistsToCloud={syncPlaylistsToCloud} syncSongsToCloud={syncSongsToCloud} accessToken={accessToken||null} plSyncStatus={plSyncStatus} plSyncError={plSyncError||null} plSyncedAt={plSyncedAt||null} songSyncStatus={songSyncStatus} songSyncError={songSyncError||null} songSyncedAt={songSyncedAt||null} startCompressCache={startCompressCache} compressStatus={compressStatus} compressProgress={compressProgress} bgTheme={bgTheme} setBgTheme={(v)=>{ setBgTheme(v); localStorage.setItem('sn_bg_theme', v); }}/></Suspense>
+          <Suspense fallback={<Spinner/>}><SettingsPanel key="settings-panel" onClose={()=>setShowSettings(false)} color={track?.color||"#6366f1"} sleepTimer={sleepTimer||null} startSleepTimer={startSleepTimer} cancelSleepTimer={cancelSleepTimer} eqEnabled={eqEnabled} eqGains={eqGains} eqPreset={eqPreset} onToggleEq={handleToggleEq} onEqGainChange={handleEqGainChange} onApplyEqPreset={handleApplyEqPreset} globalCover={globalCover||""} setGlobalCover={setGlobalCover} isLite={!!isLite} toggleMode={toggleMode} pwaPrompt={pwaPrompt||null} pwaInstalled={!!pwaInstalled} installPwa={installPwa} customDns={customDns||""} setCustomDns={setCustomDns} lang={lang} toggleLang={toggleLang} t={t} userSpId={userSpId} setUserSpId={setUserSpId} userSpSecret={userSpSecret} setUserSpSecret={setUserSpSecret} userSpDc={userSpDc} setUserSpDc={setUserSpDc} userSpKey={userSpKey} setUserSpKey={setUserSpKey} userScId={userScId} setUserScId={setUserScId} userScOAuth={userScOAuth} setUserScOAuth={setUserScOAuth} userAiKey={userAiKey} setUserAiKey={setUserAiKey} userYtKey={userYtKey} setUserYtKey={setUserYtKey} userCfKey={userCfKey} setUserCfKey={setUserCfKey} userSnKey={userSnKey} setUserSnKey={setUserSnKey} setTab={setTab} setFullscreen={setFullscreen} googleUser={googleUser||null} handleGoogleLogin={handleGoogleLogin} syncPlaylistsToCloud={syncPlaylistsToCloud} syncSongsToCloud={syncSongsToCloud} accessToken={accessToken||null} plSyncStatus={plSyncStatus} plSyncError={plSyncError||null} plSyncedAt={plSyncedAt||null} songSyncStatus={songSyncStatus} songSyncError={songSyncError||null} songSyncedAt={songSyncedAt||null} startCompressCache={startCompressCache} compressStatus={compressStatus} compressProgress={compressProgress} bgTheme={bgTheme} setBgTheme={(v)=>{ setBgTheme(v); localStorage.setItem('sn_bg_theme', v); }}/></Suspense>
         )}
 
         {/* ─── PLAYER TAB */}
@@ -9251,7 +9062,7 @@ Format exactly:
                               artist: station.city + ' · Live Radio',
                               album: 'Live Radio',
                               cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
-                              src: radioUrl(station.url_resolved || station.url, customDns),
+                              src: radioUrl(station.url, customDns),
                               color: stationColor,
                               bg: `rgba(245,158,11,0.15)`,
                               mood: 'live, radio',
@@ -9357,7 +9168,7 @@ Format exactly:
                     ) : upcoming.map((s,i)=>{
                       const isCur = i===0;
                       return (
-                        <div key={s.id} onClick={()=>{ setTrack({ ...s, isRadio:false }); setProgress(0); setDuration(0); setPlaying(true); setShowQueue(false); }}
+                        <div key={s.id} onClick={()=>{ setTrack(s); setProgress(0); setDuration(0); setPlaying(true); setShowQueue(false); }}
                           style={{ display:'flex', alignItems:'center', gap:11, padding:'9px 18px', background:isCur?`${track.color}12`:'transparent', cursor:'pointer' }}>
                           <div style={{ width:20, textAlign:'center', fontSize:10, color:'rgba(255,255,255,0.25)', fontWeight:600, flexShrink:0 }}>{isCur ? <div style={{ display:'flex', gap:1.5, alignItems:'flex-end', height:12, justifyContent:'center' }}>{[9,5,7].map((h,j)=>(<div key={j} style={{ width:2.5, height:h, background:track.color, borderRadius:1, animation:`bounce 1.4s ease-in-out ${j*0.25}s infinite` }}/>))}</div> : curIdx+i+1}</div>
                           {isLite
@@ -11127,7 +10938,7 @@ Format exactly:
                               artist: station.city + ' · Live Radio',
                               album: 'Live Radio',
                               cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
-                              src: radioUrl(station.url_resolved || station.url, customDns),
+                              src: radioUrl(station.url, customDns),
                               color: stationColor,
                               bg: `rgba(245,158,11,0.15)`,
                               mood: 'live, radio',
@@ -11138,6 +10949,7 @@ Format exactly:
                               setRadioPlaying(p => !p);
                             } else {
                               // Stop any YouTube embed
+                              if (embedTrack?.type === 'youtube') { closeEmbed(); }
                               play(radioTrackObj);
                               setRadioStation({ ...station, color: stationColor, countryId: selCountry.id, genreId: selGenre.id });
                               setRadioPlaying(true);
@@ -11554,7 +11366,7 @@ Format exactly:
                                                       artist: station.city + ' · Live Radio',
                                                       album: 'Live Radio',
                                                       cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
-                                                      src: radioUrl(station.url_resolved || station.url, customDns),
+                                                      src: radioUrl(station.url, customDns),
                                                       color: stationColor,
                                                       bg: `rgba(245,158,11,0.15)`,
                                                       mood: 'live, radio',
@@ -11563,6 +11375,7 @@ Format exactly:
                                                     if (track.id === radioTrackObj.id) {
                                                       setPlaying(p=>!p); setRadioPlaying(p=>!p);
                                                     } else {
+                                                      if (embedTrack?.type === 'youtube') { closeEmbed(); }
                                                       // Perbarui antrean navigasi: kurasi + RB + Garden gabungan
                                                       rbBrowseRef.current = [...(selGenre.stations || []), ...rbBrowseStations, ...gardenBrowseStations];
                                                       play(radioTrackObj);
@@ -11619,7 +11432,7 @@ Format exactly:
                                               artist: station.city + ' · Live Radio',
                                               album: 'Live Radio',
                                               cover: station.favicon || 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
-                                              src: radioUrl(station.url_resolved || station.url, customDns),
+                                              src: radioUrl(station.url, customDns),
                                               color: stationColor,
                                               bg: `rgba(245,158,11,0.15)`,
                                               mood: 'live, radio',
@@ -11628,6 +11441,7 @@ Format exactly:
                                             if (track.id === radioTrackObj.id) {
                                               setPlaying(p=>!p); setRadioPlaying(p=>!p);
                                             } else {
+                                              if (embedTrack?.type === 'youtube') { closeEmbed(); }
                                               // Perbarui antrean navigasi: kurasi + RB + Garden gabungan
                                               rbBrowseRef.current = [...(selGenre?.stations || []), ...rbBrowseStations, ...gardenBrowseStations];
                                               play(radioTrackObj);
@@ -11737,7 +11551,7 @@ Format exactly:
                                                     artist: station.city + ' · Radio Garden',
                                                     album: 'Live Radio',
                                                     cover: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=400&h=400&fit=crop',
-                                                    src: radioUrl(station.url_resolved || station.url, customDns),
+                                                    src: radioUrl(station.url, customDns),
                                                     color: stationColor,
                                                     bg: 'rgba(34,211,238,0.12)',
                                                     mood: 'live, radio',
@@ -11746,6 +11560,7 @@ Format exactly:
                                                   if (track.id === station.id) {
                                                     setPlaying(p=>!p); setRadioPlaying(p=>!p);
                                                   } else {
+                                                    if (embedTrack?.type === 'youtube') { closeEmbed(); }
                                                     // Perbarui antrean navigasi: kurasi + RB + Garden gabungan
                                                     rbBrowseRef.current = [...(selGenre?.stations || []), ...rbBrowseStations, ...gardenBrowseStations];
                                                     play(radioTrackObj);
@@ -11883,8 +11698,7 @@ Format exactly:
                             </div>
                             <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
                               {matchedPl.map(pl => {
-                                const _ssAll = [...allSongs, ...favSongs.filter(s=>!allSongs.find(a=>a.id===s.id))];
-                                const songs = _ssAll.filter(s=>pl.songIds.includes(s.id));
+                                const songs = allSongs.filter(s=>pl.songIds.includes(s.id));
                                 const coverSongs = songs.slice(0,4);
                                 const covers = coverSongs.map(s=>s.cover||s.thumbnail||s.favicon).filter(Boolean);
                                 const isActivePl = activePl===pl.id;
@@ -12190,7 +12004,7 @@ Format exactly:
                         </div>
                       )}
                       <Suspense fallback={null}>
-                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={s2=>{ activePlRef.current=songs; play(s2); }} setPlaying={setPlaying} isDrive isCached={cachedDriveIds.has(s.driveId)} embedTrack={embedTrack} onRemove={mySongsEditMode ? async id=>{
+                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={s2=>{ activePlRef.current=songs; play(s2); }} isDrive isCached={cachedDriveIds.has(s.driveId)} embedTrack={embedTrack} onRemove={mySongsEditMode ? async id=>{
                           const song = customSongs.find(x=>x.id===id);
                           if (song?.driveId && tokenRef.current) {
                             try {
@@ -12291,7 +12105,7 @@ Format exactly:
                     </div>
                     <div className="scrollbar-hide" style={{ flex:1, overflowY:'auto', padding:'10px 16px 16px', display:'flex', flexDirection:'column', gap:5 }}>
                       <Suspense fallback={null}>
-                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={s2=>{ activePlRef.current=songs; play(s2); }} setPlaying={setPlaying} isDrive={s.isDrive} isCached={s.driveId ? cachedDriveIds.has(s.driveId) : s.type==='youtube' ? cachedYtIds.has(s.videoId) : cachedFavIds.has(s.id)} isDownloading={s.type==='youtube' ? ytDownloadingIds.has(s.videoId) : favDownloadingIds.has(s.id)} dlProgress={s.type==='youtube' ? (ytDownloadProg[s.videoId]||0) : (favDownloadProg[s.id]||0)} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite} t={t} embedTrack={embedTrack}
+                      {songs.map((s,i)=><SongRow key={s.id} s={s} i={i} track={track} playing={playing} liked={liked} setLiked={setLiked} toggleFav={toggleFav} play={s2=>{ activePlRef.current=songs; play(s2); }} isDrive={s.isDrive} isCached={s.driveId ? cachedDriveIds.has(s.driveId) : s.type==='youtube' ? cachedYtIds.has(s.videoId) : cachedFavIds.has(s.id)} isDownloading={s.type==='youtube' ? ytDownloadingIds.has(s.videoId) : favDownloadingIds.has(s.id)} dlProgress={s.type==='youtube' ? (ytDownloadProg[s.videoId]||0) : (favDownloadProg[s.id]||0)} playlists={playlists} addToPlaylist={addToPlaylist} isLite={isLite} t={t} embedTrack={embedTrack}
                       onRemove={allSongsEditMode ? id=>{ setLiked(l=>{const n={...l};delete n[id];return n;}); setFavSongs(p=>p.filter(s=>s.id!==id)); setCustomSongs(p=>p.filter(s=>s.id!==id)); setYtSongs(p=>p.filter(s=>s.id!==id)); setPlaylists(p=>p.map(pl=>({...pl,songIds:pl.songIds.filter(sid=>sid!==id)}))); } : null}
                       editMode={allSongsEditMode}
                       onDownload={downloadWithCache}
@@ -12304,11 +12118,7 @@ Format exactly:
 
               const pl = playlists.find(p=>p.id===activePl);
               if (!pl) return null;
-              // FIX PLAYLIST RADIO: gabungkan favSongs agar radio object ditemukan
-              const _plAllSongs = [...allSongs];
-              const _plAllIds = new Set(allSongs.map(s => s.id));
-              favSongs.forEach(s => { if (!_plAllIds.has(s.id)) _plAllSongs.push(s); });
-              const songs = _plAllSongs.filter(s=>pl.songIds.includes(s.id));
+              const songs = allSongs.filter(s=>pl.songIds.includes(s.id));
               return (
                 <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
                   {/* Header */}
@@ -12354,7 +12164,7 @@ Format exactly:
                       <SongRow key={s.id} s={s} i={i}
                         track={track} playing={playing}
                         liked={liked} setLiked={setLiked} toggleFav={toggleFav}
-                        play={s2=>{ setActivePl(pl.id); activePlRef.current=songs; play(s2); }} setPlaying={setPlaying}
+                        play={s2=>{ setActivePl(pl.id); activePlRef.current=songs; play(s2); }}
                         isDrive={s.isDrive}
                         isCached={s.driveId ? cachedDriveIds.has(s.driveId) : s.type==='youtube' ? cachedYtIds.has(s.videoId) : cachedFavIds.has(s.id)}
                         isDownloading={s.type==='youtube' ? ytDownloadingIds.has(s.videoId) : favDownloadingIds.has(s.id)}

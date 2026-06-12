@@ -1,6 +1,6 @@
 import React from 'react';
 
-export class PlaylistErrorBoundary extends React.Component {
+class PlaylistErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { hasError: false, error: null }; }
   static getDerivedStateFromError(error) { return { hasError: true, error }; }
   componentDidCatch(error, info) { console.error('Playlist render error:', error, info); }
@@ -23,3 +23,6 @@ export class PlaylistErrorBoundary extends React.Component {
     return this.props.children;
   }
 }
+
+export { PlaylistErrorBoundary };
+export default PlaylistErrorBoundary;
