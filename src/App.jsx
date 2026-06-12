@@ -3208,6 +3208,10 @@ Return ONLY valid JSON, no explanation:
   const silenceAnalyserRef  = useRef(null);   // AnalyserNode untuk deteksi stream silent
   const silenceTimerRef     = useRef(null);   // setTimeout handle untuk cek silence
   const silenceCtxRef       = useRef(null);   // AudioContext khusus silence check (terpisah dari EQ)
+  // Refs so the audio useEffect (defined earlier in the file) can call these functions
+  // without closing over the const declarations — avoids esbuild TDZ (temporal dead zone) bug.
+  const startSilenceDetectionRef = useRef(null);
+  const stopSilenceDetectionRef  = useRef(null);
   const chatEndRef    = useRef(null);
   const ytMusicSectionRef = useRef(null);
   const tokenRef      = useRef(null);
@@ -4323,7 +4327,7 @@ Return ONLY valid JSON, no explanation:
       if (!a.src || a.src === window.location.href) return;
       if (track.isRadio) {
         console.warn('[Radio] Stream error, scheduling reconnect. code:', err?.code);
-        stopSilenceDetection(); // FIX: bersihkan silence detector sebelum reconnect
+        stopSilenceDetectionRef.current?.(); // FIX: bersihkan silence detector sebelum reconnect
         scheduleRadioReconnect(track);
         return;
       }
@@ -4405,7 +4409,7 @@ Return ONLY valid JSON, no explanation:
         if (waitingTimer) { clearTimeout(waitingTimer); waitingTimer = null; }
         // FIX Bug #2: mulai deteksi silent stream setiap kali 'playing' event fire (termasuk setelah reconnect).
         // Jika stream berjalan tapi tidak ada audio, akan trigger reconnect otomatis setelah 6 detik.
-        startSilenceDetection(a, track);
+        startSilenceDetectionRef.current?.(a, track);
       }
     };
     a.addEventListener('timeupdate',     onTime);
@@ -4457,14 +4461,14 @@ Return ONLY valid JSON, no explanation:
       clearInterval(durPoll);
       if (stallTimer) clearTimeout(stallTimer);
       if (waitingTimer) clearTimeout(waitingTimer);
-      stopSilenceDetection(); // FIX: bersihkan AudioContext silence saat track berganti
+      stopSilenceDetectionRef.current?.(); // FIX: bersihkan AudioContext silence saat track berganti
       a.pause(); a.src = '';
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
     };
   // FIX Bug 3: pakai track.id sebagai dependency tambahan untuk radio
   // Kalau dua station berbeda kebetulan punya URL sama, track.src tidak berubah
   // tapi track.id berbeda → useEffect tetap re-run dan audio direset dengan benar
-  }, [track.src, track.id, startSilenceDetection, stopSilenceDetection]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [track.src, track.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Sync playingRef
   useEffect(() => { playingRef.current = playing; }, [playing]);
@@ -6053,6 +6057,11 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       }
     }, 6000);
   }, [stopSilenceDetection]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep refs in sync so the audio useEffect (earlier in file) can call these via ref
+  // without creating a closure over const variables — prevents esbuild TDZ errors.
+  useEffect(() => { stopSilenceDetectionRef.current  = stopSilenceDetection;  }, [stopSilenceDetection]);
+  useEffect(() => { startSilenceDetectionRef.current = startSilenceDetection; }, [startSilenceDetection]);
 
   const scheduleRadioReconnect = useCallback((trackObj) => {
     if (radioReconnectRef.current) clearTimeout(radioReconnectRef.current);
