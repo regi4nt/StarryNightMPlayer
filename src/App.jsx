@@ -66,8 +66,15 @@ const reloadOnStalChunk = (err) => {
     msg.includes('Importing a module script failed') ||
     msg.includes('error loading dynamically imported module');
   if (isStaleChunk) {
-    window.location.reload();
-    return new Promise(() => {});
+    // FIX: cegah reload loop tak terbatas. Jika reload sudah pernah dilakukan
+    // pada sesi ini (misal karena SW update race saat deploy), jangan reload lagi —
+    // cukup lempar error agar ditangani error boundary, daripada refresh berulang.
+    if (!sessionStorage.getItem('__stale_chunk_reloaded')) {
+      sessionStorage.setItem('__stale_chunk_reloaded', '1');
+      window.location.reload();
+      return new Promise(() => {});
+    }
+    throw err;
   }
   // Error lain (runtime error di dalam komponen) — lempar ulang agar
   // ditangani normal oleh error boundary, bukan reload paksa
