@@ -4607,12 +4607,13 @@ Return ONLY valid JSON, no explanation:
       // HTTP stream sudah terputus — harus reload src agar server kirim stream baru.
       // Gunakan attachHlsRef (ref) bukan attachHls langsung untuk hindari circular dependency.
       if (trackRef.current?.isRadio) {
-        const src = trackRef.current.src;
-        if (!src) { setPlaying(false); return; }
-        if (src.includes('.m3u8')) {
-          attachHlsRef.current?.(a, src, () => { a.play().catch(() => setPlaying(false)); });
+        // Strip cache-bust params lama agar tidak numpuk (?_t=123&_r=456&_r=789)
+        const rawSrc = (trackRef.current.src || '').replace(/[&?]_[tr]=\d+/g, '');
+        if (!rawSrc) { setPlaying(false); return; }
+        if (rawSrc.includes('.m3u8')) {
+          attachHlsRef.current?.(a, rawSrc, () => { a.play().catch(() => setPlaying(false)); });
         } else {
-          a.src = src + (src.includes('?') ? '&' : '?') + '_r=' + Date.now();
+          a.src = rawSrc + (rawSrc.includes('?') ? '&' : '?') + '_r=' + Date.now();
           a.load();
           a.play().catch(e => { console.warn('radio resume error:', e); setPlaying(false); });
         }
@@ -6108,11 +6109,15 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       if (!playingRef.current) return;
       // FIX Bug 2+4: cek apakah trackObj masih station yang aktif saat ini
       // Jika user sudah ganti station/track, batalkan reconnect ini
-      if (trackRef.current?.src !== trackObj.src) {
+      // FIX BUFFERING: strip cache-bust params (_t=, _r=) sebelum bandingkan
+      // agar reconnect tidak salah dibatalkan karena timestamp berbeda
+      const stripBust = u => u ? u.replace(/[&?]_[tr]=\d+/, '') : u;
+      if (stripBust(trackRef.current?.src) !== stripBust(trackObj.src)) {
         console.warn('[Radio] Reconnect cancelled — track changed while waiting');
         return;
       }
-      const src = trackObj.src;
+      // Gunakan proxied URL bersih (tanpa bust) untuk reconnect agar tidak numpuk params
+      const src = stripBust(trackObj.src);
       if (src.includes('.m3u8')) {
         stopSilenceDetection(); // bersihkan context lama sebelum HLS reconnect
         attachHls(a, src, () => { a.play().catch(() => {}); });
@@ -8282,7 +8287,13 @@ Format exactly:
         }
         // Custom playlists
         const pl = playlists.find(p => p.id === activePl);
-        return pl ? allSongs.filter(s => pl.songIds.includes(s.id)) : allSongs;
+        if (!pl) return allSongs;
+        // FIX PLAYLIST RADIO: radio objects ada di favSongs tapi mungkin tidak di allSongs
+        // (jika radio belum di-like/di-fav). Gabungkan keduanya saat lookup berdasarkan songId.
+        const allSongsWithFav = [...allSongs];
+        const allSongsIds = new Set(allSongs.map(s => s.id));
+        favSongs.forEach(s => { if (!allSongsIds.has(s.id)) allSongsWithFav.push(s); });
+        return allSongsWithFav.filter(s => pl.songIds.includes(s.id));
       })()
     : allSongs;
 
@@ -11833,7 +11844,8 @@ Format exactly:
                             </div>
                             <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
                               {matchedPl.map(pl => {
-                                const songs = allSongs.filter(s=>pl.songIds.includes(s.id));
+                                const _ssAll = [...allSongs, ...favSongs.filter(s=>!allSongs.find(a=>a.id===s.id))];
+                                const songs = _ssAll.filter(s=>pl.songIds.includes(s.id));
                                 const coverSongs = songs.slice(0,4);
                                 const covers = coverSongs.map(s=>s.cover||s.thumbnail||s.favicon).filter(Boolean);
                                 const isActivePl = activePl===pl.id;
@@ -12253,7 +12265,11 @@ Format exactly:
 
               const pl = playlists.find(p=>p.id===activePl);
               if (!pl) return null;
-              const songs = allSongs.filter(s=>pl.songIds.includes(s.id));
+              // FIX PLAYLIST RADIO: gabungkan favSongs agar radio object ditemukan
+              const _plAllSongs = [...allSongs];
+              const _plAllIds = new Set(allSongs.map(s => s.id));
+              favSongs.forEach(s => { if (!_plAllIds.has(s.id)) _plAllSongs.push(s); });
+              const songs = _plAllSongs.filter(s=>pl.songIds.includes(s.id));
               return (
                 <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
                   {/* Header */}
