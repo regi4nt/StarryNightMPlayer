@@ -4605,11 +4605,12 @@ Return ONLY valid JSON, no explanation:
     if (playing) {
       // FIX RADIO RESUME: radio streaming tidak bisa di-resume dengan .play() biasa setelah pause.
       // HTTP stream sudah terputus — harus reload src agar server kirim stream baru.
+      // Gunakan attachHlsRef (ref) bukan attachHls langsung untuk hindari circular dependency.
       if (trackRef.current?.isRadio) {
         const src = trackRef.current.src;
         if (!src) { setPlaying(false); return; }
         if (src.includes('.m3u8')) {
-          attachHls(a, src, () => { a.play().catch(() => setPlaying(false)); });
+          attachHlsRef.current?.(a, src, () => { a.play().catch(() => setPlaying(false)); });
         } else {
           a.src = src + (src.includes('?') ? '&' : '?') + '_r=' + Date.now();
           a.load();
@@ -4619,7 +4620,7 @@ Return ONLY valid JSON, no explanation:
         a.play().catch(e => { console.warn('play error:', e); setPlaying(false); });
       }
     } else { a.pause(); }
-  }, [playing, embedTrack, attachHls]);
+  }, [playing, embedTrack]); // attachHls sengaja tidak di-dep array (diacu via ref)
 
   // ── Proactive token expiry: auto silent-refresh 5 min before expiry
   useEffect(() => {
@@ -5950,6 +5951,9 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
   }, []);
 
   // ── Pasang HLS.js ke elemen audio untuk URL .m3u8
+  // Ref untuk attachHls — dipakai oleh playing useEffect yang dideklarasi lebih awal
+  // agar tidak ada circular dependency / "Cannot access before initialization" error
+  const attachHlsRef = useRef(null);
   const attachHls = useCallback((audioEl, src, onReady) => {
     // Hancurkan instance lama
     if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
@@ -6125,6 +6129,9 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       }
     }, delay);
   }, [attachHls, stopSilenceDetection]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync attachHlsRef setiap kali attachHls berubah
+  useEffect(() => { attachHlsRef.current = attachHls; }, [attachHls]);
 
   // ── Universal play function for any external radio station
   const playRbStation = (station) => {
