@@ -223,12 +223,28 @@ export const INVIDIOUS_INSTANCES = [
 // URL https:// dikembalikan apa adanya.
 export function radioUrl(url, customDns = '') {
   if (!url) return url;
-  if (url.startsWith('http://')) {
-    const params = new URLSearchParams({ url });
+  // FIX: relative /api/* URLs (e.g. /api/radio-garden/...) are already server-side proxied
+  // via Vercel rewrites — do NOT wrap them in radio-proxy (would double-proxy and break them).
+  if (url.startsWith('/api/')) return url;
+  // FIX: jika url sudah berupa /api/radio-proxy?url=..., ekstrak URL asli dulu
+  // agar customDns terbaru bisa diapply dan tidak terjadi double-wrapping
+  // (misalnya saat station di-like lalu diputar ulang dari playlist)
+  let rawUrl = url;
+  if (url.startsWith('/api/radio-proxy?')) {
+    try {
+      const params = new URLSearchParams(url.slice('/api/radio-proxy?'.length));
+      rawUrl = params.get('url') || url;
+    } catch { /* biarkan rawUrl = url */ }
+  }
+  // FIX RADIO SUARA: proxy http:// DAN https:// agar CORS tidak memblokir audio.
+  // Browser memblokir audio dari domain radio eksternal (tidak ada header CORS),
+  // termasuk URL https://. Proxy server-side mengatasi ini untuk kedua skema.
+  if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+    const params = new URLSearchParams({ url: rawUrl });
     if (customDns) params.set('dns', customDns);
     return `/api/radio-proxy?${params.toString()}`;
   }
-  return url;
+  return rawUrl;
 }
 
 export function buildInvidiousUrl(base, apiPath, params = {}) {
@@ -1356,20 +1372,17 @@ async function _ytAudioUrlViaCobalt(videoId, signal) {
   } catch { return null; }
 }
 
-// Download audio YouTube → simpan ke cache
-// Menggunakan /api/yt-audio (server-side proxy) sebagai metode utama.
-// Alasan: URL dari Piped/Invidious adalah IP-locked ke server mereka — tidak bisa
-// di-fetch dari browser atau server proxy biasa. Endpoint /api/yt-audio mengatasi
-// ini dengan mem-proxy stream server-to-server (server kita → Piped → YT CDN → client).
-// Fallback: Cobalt (jika /api/yt-audio gagal)
+// ── Download audio YouTube → simpan ke cache (tanpa backend, Vercel-only)
+// Method 1: /api/yt-audio — server-side proxy Piped/Invidious via Vercel
+// Method 2: /api/cobalt  — Cobalt proxy via Vercel (fallback)
 export async function downloadYtAudio(videoId, onProgress, signal) {
   // Cek cache dulu
   const existing = await ytCacheGet(videoId);
   if (existing && existing.size > 10000) { onProgress && onProgress(100); return; }
 
-  // ── Method 1: /api/yt-audio (server-side Piped/Invidious proxy) ──────────
-  // Ini adalah cara yang benar: server kita fetch audio stream dari YT CDN
-  // menggunakan kredensial Piped (Referer/Origin), lalu stream ke browser.
+  // ── Method 1: /api/yt-audio (Piped/Invidious proxy via Vercel Serverless) ─
+  // Server Vercel fetch audio stream dari YT CDN menggunakan kredensial Piped,
+  // lalu stream ke browser. Andal untuk video yang tidak diblokir per-IP.
   try {
     const proxyUrl = `/api/yt-audio?videoId=${videoId}`;
     const res = await fetch(proxyUrl, { signal, mode: 'cors' });
@@ -1385,7 +1398,7 @@ export async function downloadYtAudio(videoId, onProgress, signal) {
     if (signal?.aborted) throw e;
   }
 
-  // ── Method 2: Cobalt (fallback jika /api/yt-audio gagal) ─────────────────
+  // ── Method 2: Cobalt (fallback — infrastruktur sendiri, tidak tergantung Piped) ─
   try {
     const cobaltInfo = await _ytAudioUrlViaCobalt(videoId, signal);
     if (cobaltInfo?.url) {
@@ -1722,6 +1735,31 @@ export async function driveStreamBlob(driveId, token) {
         const reader = res.body.getReader();
         const chunks = [];
         const waitUpdate = () => new Promise(r => sb.addEventListener('updateend', r, { once: true }));
+
+        // FIX BUG 1+2: evict bagian buffer yang sudah dilewati untuk mencegah QuotaExceededError.
+        // Browser membatasi total SourceBuffer ~12-150MB. Tanpa eviction, appendBuffer()
+        // melempar QuotaExceededError saat file besar → pump crash → audio stuck.
+        // Solusi: hapus data 0 s/d (currentTime - 30s) setiap kali buffer tumbuh besar.
+        const getAudioEl = () => {
+          // Cari audio element yang sedang pakai URL MediaSource ini
+          const allAudio = document.querySelectorAll('audio');
+          for (const el of allAudio) { if (el.src === url) return el; }
+          return null;
+        };
+        const evictOldBuffer = async () => {
+          if (sb.updating || ms.readyState !== 'open') return;
+          const audio = getAudioEl();
+          if (!audio || sb.buffered.length === 0) return;
+          const currentTime = audio.currentTime;
+          const evictTo = currentTime - 30; // jaga 30 detik ke belakang
+          if (evictTo > 0 && sb.buffered.start(0) < evictTo) {
+            try {
+              sb.remove(0, evictTo);
+              await waitUpdate();
+            } catch(_) { /* ignore */ }
+          }
+        };
+
         const pump = async () => {
           const { done, value } = await reader.read();
           if (done) {
@@ -1734,7 +1772,25 @@ export async function driveStreamBlob(driveId, token) {
           }
           chunks.push(value);
           if (sb.updating) await waitUpdate();
-          if (ms.readyState === 'open' && !sb.updating) { sb.appendBuffer(value); await waitUpdate(); }
+          if (ms.readyState !== 'open') return;
+
+          // FIX BUG 1: coba appendBuffer, tangkap QuotaExceededError dengan eviction
+          try {
+            sb.appendBuffer(value);
+            await waitUpdate();
+          } catch(qe) {
+            if (qe.name === 'QuotaExceededError') {
+              // Evict dulu, lalu coba append ulang
+              await evictOldBuffer();
+              if (ms.readyState === 'open' && !sb.updating) {
+                try { sb.appendBuffer(value); await waitUpdate(); } catch(_) { return; }
+              }
+            } else { throw qe; }
+          }
+
+          // Evict preventif setiap beberapa chunk agar tidak sampai QuotaExceeded
+          if (chunks.length % 20 === 0) await evictOldBuffer();
+
           if (ms.readyState === 'open') await pump();
         };
         await pump();
@@ -1812,19 +1868,24 @@ export async function driveStreamLite(driveId, token, audioElRef) {
             const ahead = bufferedEnd - audio.currentTime;
             if (ahead > AHEAD_SEC && !paused) {
               paused = true;
-              // Tunggu sampai buffer habis sebelum lanjut fetch
               const resume = () => {
-                if (abortCtrl.signal.aborted) return; // sudah di-abort (skip/ganti lagu)
+                if (abortCtrl.signal.aborted) return;
                 const a2 = getAudio();
-                // Jika audio sudah null atau posisi sudah melewati akhir buffer (atau mendekati) → lanjut fetch
-                if (!a2 || a2.currentTime >= bufferedEnd - PAUSE_SEC || a2.currentTime >= bufferedEnd - 5) {
+                // FIX DRIVE STUCK: resume kondisi lebih longgar.
+                // Sebelumnya: currentTime >= bufferedEnd - PAUSE_SEC (PAUSE_SEC=20).
+                // Masalah: jika buffer kecil atau audio belum lama diputar, kondisi ini
+                // tidak pernah terpenuhi → fetch tidak resume → audio stuck menunggu buffer.
+                // Fix: gunakan AHEAD_SEC/2 (15s) sebagai threshold resume, bukan PAUSE_SEC (20s).
+                // Juga tambah fallback: jika buffer tinggal < 8s ke depan, SELALU resume.
+                const ahead2 = a2 ? (bufferedEnd - a2.currentTime) : 0;
+                if (!a2 || ahead2 < AHEAD_SEC / 2 || ahead2 < 8) {
                   paused = false;
                   pump();
                 } else {
-                  setTimeout(resume, 1500);
+                  setTimeout(resume, 1000); // cek lebih sering (1s bukan 1.5s)
                 }
               };
-              setTimeout(resume, 1500);
+              setTimeout(resume, 1000);
               return;
             }
           }
@@ -1836,7 +1897,28 @@ export async function driveStreamLite(driveId, token, audioElRef) {
             return;
           }
           if (sb.updating) await waitUpdate();
-          if (ms.readyState === 'open') { sb.appendBuffer(value); await waitUpdate(); }
+          if (ms.readyState !== 'open') return;
+
+          // FIX BUG 1 (Lite): tangkap QuotaExceededError dengan eviction
+          try {
+            sb.appendBuffer(value);
+            await waitUpdate();
+          } catch(qe) {
+            if (qe.name === 'QuotaExceededError') {
+              // Evict buffer lama dulu
+              const audio2 = getAudio();
+              if (audio2 && sb.buffered.length > 0 && ms.readyState === 'open' && !sb.updating) {
+                const evictTo = audio2.currentTime - 15;
+                if (evictTo > 0 && sb.buffered.start(0) < evictTo) {
+                  try { sb.remove(0, evictTo); await waitUpdate(); } catch(_) {}
+                }
+              }
+              if (ms.readyState === 'open' && !sb.updating) {
+                try { sb.appendBuffer(value); await waitUpdate(); } catch(_) { return; }
+              }
+            } else { throw qe; }
+          }
+
           await pump();
         };
         await pump();

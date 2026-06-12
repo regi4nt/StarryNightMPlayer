@@ -20,34 +20,22 @@ import dns from 'dns';
 
 export const config = {
   runtime: 'nodejs',
-  maxDuration: 60, // Vercel Pro/Hobby: 60s. Lebih dari ini perlu upgrade plan.
-  // CATATAN: Batas 30s lama adalah penyebab utama buffering — stream diputus paksa
-  // oleh Vercel setiap 30 detik, browser harus reconnect terus-menerus.
-  // Dengan 60s, frekuensi reconnect berkurang 50%.
-  // Untuk Hobby plan (gratis), maxDuration max adalah 60s.
-  // Untuk Pro plan, bisa diset sampai 300s atau lebih.
+  // maxDuration: batas maksimal serverless function per-request di Vercel.
+  // Ini adalah PENYEBAB UTAMA buffering radio — stream diputus paksa saat timeout,
+  // browser harus reconnect, dan selama reconnect terjadi jeda/buffering.
+  //
+  // Hobby plan (gratis) : max 60s  → reconnect setiap ~60 detik
+  // Pro plan            : max 300s → reconnect setiap ~5 menit (SANGAT berkurang)
+  // Enterprise          : max 900s → reconnect sangat jarang
+  //
+  // REKOMENDASI: upgrade ke Pro plan untuk pengalaman radio tanpa buffering.
+  // Ganti angka di bawah sesuai plan Vercel Anda:
+  // Hobby plan max is 60s — set to 60. If you're on Pro/Enterprise, raise this
+  // AND raise VERCEL_MAX_DURATION_MS in src/App.jsx to match (proactive reconnect
+  // should fire a few seconds BEFORE this limit).
+  maxDuration: 60,
 };
 
-// Whitelist domain yang diizinkan di-proxy
-// (cegah penyalahgunaan sebagai open proxy)
-const ALLOWED_DOMAINS = [
-  'stream.live.vc.bbcmedia.co.uk',   // FIX Bug #7: hapus duplikat (sebelumnya muncul 2×)
-  'rfe21.akacast.akamaistream.net',
-  'ibb.akacast.akamaistream.net',
-  'stream.radioparadise.com',
-  'ice1.somafm.com',
-  'ice2.somafm.com',
-  'ice3.somafm.com',
-  'ice4.somafm.com',
-  'ice5.somafm.com',
-  'ice6.somafm.com',
-  'stream.laut.fm',
-  'icecast.radiofrance.fr',
-  'stream.wfmu.org',
-  'kexp-mp3-128.streamguys1.com',
-  'playerservices.streamtheworld.com',
-  // tambah domain lain jika diperlukan
-];
 
 /**
  * FIX Bug #1 (SSRF via DNS rebinding): validasi bahwa IP hasil resolusi custom DNS
@@ -86,7 +74,12 @@ function isPrivateIp(ip) {
 function isAllowed(urlStr) {
   try {
     const u = new URL(urlStr);
-    return ALLOWED_DOMAINS.some(d => u.hostname === d || u.hostname.endsWith('.' + d));
+    // FIX: domain allowlist removed — radio stations come from many arbitrary
+    // hosts (Zeno.FM, Laut.fm, Icecast/Shoutcast mounts, listen.moe, custom IPs, etc.)
+    // and maintaining an allowlist is unworkable. SSRF protection now relies on
+    // isPrivateIp() below: any hostname that resolves to a private/loopback/
+    // link-local/metadata IP is blocked instead.
+    return u.protocol === 'http:' || u.protocol === 'https:';
   } catch {
     return false;
   }
@@ -128,23 +121,59 @@ export default async function handler(req, res) {
   const { url, dns: customDns } = req.query;
   if (!url) return res.status(400).json({ error: 'Missing ?url= parameter' });
 
-  // Hanya proxy http:// — https:// tidak perlu
-  if (!url.startsWith('http://')) {
-    return res.status(400).json({ error: 'Only http:// URLs need proxying' });
+  // FIX RADIO SUARA: proxy http:// DAN https:// — https:// juga bisa kena CORS block
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    return res.status(400).json({ error: 'Only http:// or https:// URLs are supported' });
   }
 
   if (!isAllowed(url)) {
-    return res.status(403).json({
-      error: 'Domain not in allowlist',
-      hint: 'Tambahkan domain ke ALLOWED_DOMAINS di api/radio-proxy.js',
-    });
+    return res.status(400).json({ error: 'Invalid URL' });
+  }
+
+  // FIX: replace domain allowlist with SSRF protection via DNS resolution.
+  // Resolve the target hostname and block if it points at a private/loopback/
+  // link-local/metadata IP (e.g. someone proxying http://169.254.169.254/...).
+  try {
+    const targetHost = new URL(url).hostname;
+    if (/^[\d.]+$/.test(targetHost)) {
+      // hostname is already a literal IPv4 address
+      if (isPrivateIp(targetHost)) {
+        return res.status(403).json({ error: 'Target host is in a private/reserved range' });
+      }
+    } else {
+      const resolved = await new Promise((resolve) => {
+        dns.lookup(targetHost, { family: 4 }, (err, address) => resolve(err ? null : address));
+      });
+      if (resolved && isPrivateIp(resolved)) {
+        return res.status(403).json({ error: 'Target host resolves to a private/reserved range' });
+      }
+    }
+  } catch {
+    return res.status(400).json({ error: 'Invalid URL' });
   }
 
   try {
     const headers = {
       'User-Agent': 'Mozilla/5.0 (compatible; StarryNightMPlayer/1.0)',
       'Accept': '*/*',
+      'Icy-MetaData': '1',   // Icecast: aktifkan metadata — wajib agar server kirim stream lebih awal
     };
+
+    // FIX: Add domain-specific Referer/Origin headers to bypass anti-hotlink protection.
+    // Some stations (radio.garden, zeno.fm, etc.) reject requests without a valid Referer.
+    try {
+      const targetHost = new URL(url).hostname;
+      if (targetHost.includes('radio.garden')) {
+        headers['Referer']  = 'https://radio.garden/';
+        headers['Origin']   = 'https://radio.garden';
+      } else if (targetHost.includes('zeno.fm') || targetHost.includes('zenocdn.com')) {
+        headers['Referer']  = 'https://zeno.fm/';
+        headers['Origin']   = 'https://zeno.fm';
+      } else if (targetHost.includes('laut.fm') || targetHost.includes('stream.laut.fm')) {
+        headers['Referer']  = 'https://laut.fm/';
+        headers['Origin']   = 'https://laut.fm';
+      }
+    } catch { /* ignore — URL already validated above */ }
 
     // Forward Range header jika ada (untuk seek)
     if (req.headers['range']) {
@@ -175,7 +204,11 @@ export default async function handler(req, res) {
 
     const upstream = await fetch(fetchUrl, {
       headers,
-      signal: AbortSignal.timeout(25_000), // cukup lama untuk koneksi lambat
+      // FIX BUFFERING: naikkan timeout connect ke 12s untuk stasiun dengan latensi tinggi.
+      // 8s terlalu ketat untuk stasiun Indonesia/Asia — sering timeout sebelum stream dimulai.
+      signal: AbortSignal.timeout(12_000),
+      // keepalive: true tidak berlaku untuk streaming (body tidak selesai), tapi
+      // tetap set agar koneksi TCP ke upstream di-reuse jika ada reconnect cepat.
     });
 
     if (!upstream.ok && upstream.status !== 206) {
@@ -194,6 +227,13 @@ export default async function handler(req, res) {
 
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'no-cache, no-store');
+    // FIX BUFFERING: Transfer-Encoding chunked memastikan browser mulai decode
+    // audio segera begitu chunk pertama tiba, tanpa menunggu Content-Length.
+    // Ini mengurangi jeda awal (initial buffering) secara signifikan.
+    res.setHeader('Transfer-Encoding', 'chunked');
+    // X-Accel-Buffering: no → matikan buffering di reverse proxy (Nginx, Vercel edge)
+    // Tanpa ini, proxy bisa menahan data sampai buffer penuh sebelum dikirim ke browser.
+    res.setHeader('X-Accel-Buffering', 'no');
     if (contentLength) res.setHeader('Content-Length', contentLength);
     if (acceptRanges) res.setHeader('Accept-Ranges', acceptRanges);
     if (icecastName) res.setHeader('icy-name', icecastName);

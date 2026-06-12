@@ -18,6 +18,8 @@ export const config = { runtime: 'nodejs' };
 
 // Instance cobalt yang dicoba berurutan — pilih yang tidak require auth
 // Server-to-server tidak kena Turnstile challenge
+// Diurut dari yang paling stabil; instance baru ditambah di akhir.
+// Server-to-server tidak kena Turnstile challenge.
 const COBALT_INSTANCES = [
   'https://api.cobalt.tools/',
   'https://cobalt.api.timelessnesses.me/',
@@ -25,6 +27,12 @@ const COBALT_INSTANCES = [
   'https://cobalt.darkness.services/',
   'https://cob.lolcat.casa/',
   'https://cobalt.sevenbus.com/',
+  'https://cobalt.ggtyler.dev/',
+  'https://co.wuk.sh/',
+  'https://cobalt.synzr.space/',
+  'https://cobalt.private.coffee/',
+  'https://cobalt.deno.dev/',
+  'https://cobalt.sineware.ca/',
 ];
 
 const TIMEOUT_MS = 12000;
