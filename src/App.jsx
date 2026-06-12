@@ -1995,16 +1995,18 @@ Return ONLY valid JSON, no explanation:
       radioReconnectCount.current = 0;
       setStreamBuffering(false);
     }
-    // Stop Drive jika incoming bukan local — tanpa syarat trackRef.isDrive (konsisten dengan fix radio)
-    if (incomingMode !== 'local') {
+    // Stop Drive jika incoming adalah embed (Drive tidak relevan saat embed aktif)
+    // Untuk mode radio & local: audio sudah di-stop di blok di atas; jangan panggil setPlaying(false)
+    // karena caller (playRbStation / play) akan langsung memanggil setPlaying(true) setelahnya.
+    if (incomingMode === 'embed') {
       if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
       setPlaying(false);
       // Reset track ke default agar tombol X Drive tidak ghost saat embedTrack aktif
       if (trackRef.current?.isDrive) setTrack(SONGS[0]);
     }
-    // Stop audio jika incoming adalah radio/embed (bukan lokal)
-    // Khusus embed-to-embed (YT next/prev): jangan setPlaying(false) — biarkan playYouTube yang set
-    if (incomingMode !== 'local' && incomingMode !== 'embed' && !trackRef.current?.isRadio) {
+    // Untuk mode local: hentikan playing agar track lama tidak terus berjalan
+    // (audio baru akan di-setup oleh useEffect [track.src, track.id])
+    if (incomingMode === 'local') {
       setPlaying(false);
     }
   };
@@ -11006,7 +11008,6 @@ Format exactly:
                               setRadioPlaying(p => !p);
                             } else {
                               // Stop any YouTube embed
-                              if (embedTrack?.type === 'youtube') { closeEmbed(); }
                               play(radioTrackObj);
                               setRadioStation({ ...station, color: stationColor, countryId: selCountry.id, genreId: selGenre.id });
                               setRadioPlaying(true);
@@ -11432,7 +11433,6 @@ Format exactly:
                                                     if (track.id === radioTrackObj.id) {
                                                       setPlaying(p=>!p); setRadioPlaying(p=>!p);
                                                     } else {
-                                                      if (embedTrack?.type === 'youtube') { closeEmbed(); }
                                                       // Perbarui antrean navigasi: kurasi + RB + Garden gabungan
                                                       rbBrowseRef.current = [...(selGenre.stations || []), ...rbBrowseStations, ...gardenBrowseStations];
                                                       play(radioTrackObj);
@@ -11498,7 +11498,6 @@ Format exactly:
                                             if (track.id === radioTrackObj.id) {
                                               setPlaying(p=>!p); setRadioPlaying(p=>!p);
                                             } else {
-                                              if (embedTrack?.type === 'youtube') { closeEmbed(); }
                                               // Perbarui antrean navigasi: kurasi + RB + Garden gabungan
                                               rbBrowseRef.current = [...(selGenre?.stations || []), ...rbBrowseStations, ...gardenBrowseStations];
                                               play(radioTrackObj);
@@ -11617,7 +11616,6 @@ Format exactly:
                                                   if (track.id === station.id) {
                                                     setPlaying(p=>!p); setRadioPlaying(p=>!p);
                                                   } else {
-                                                    if (embedTrack?.type === 'youtube') { closeEmbed(); }
                                                     // Perbarui antrean navigasi: kurasi + RB + Garden gabungan
                                                     rbBrowseRef.current = [...(selGenre?.stations || []), ...rbBrowseStations, ...gardenBrowseStations];
                                                     play(radioTrackObj);
