@@ -61,9 +61,11 @@ function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, setPl
   const dlColor = dlState === 'done' ? '#4ade80' : dlState === 'error' ? '#f87171' : dlState === 'loading' ? (s.color || '#a78bfa') : 'rgba(255,255,255,0.2)';
   return (
     <div data-songrow style={{ display:'flex', alignItems:'center', gap:12, padding:'9px 12px', borderRadius:14, cursor:'pointer', background:isActive?s.bg:'rgba(255,255,255,0.04)', border:`1px solid ${isActive?s.color+'50':'transparent'}` }} onClick={()=>{
-        // FIX PLAY/PAUSE PLAYLIST: jika track ini sudah aktif, toggle play/pause
-        // Sebelumnya onClick selalu memanggil play(s) yang me-restart track dari awal
-        if (isActive) {
+        // Radio: selalu panggil play(s) agar stream reconnect (radio tidak bisa di-resume dengan .play())
+        // Non-radio aktif: toggle play/pause. Non-radio tidak aktif: mulai putar.
+        if (s.isRadio) {
+          play(s);
+        } else if (isActive) {
           if (typeof setPlaying === 'function') setPlaying(p => !p);
         } else {
           play(s);

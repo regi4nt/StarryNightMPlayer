@@ -4603,9 +4603,23 @@ Return ONLY valid JSON, no explanation:
     }
     const a = audioRef.current; if (!a) return;
     if (playing) {
-      a.play().catch(e => { console.warn('play error:', e); setPlaying(false); });
+      // FIX RADIO RESUME: radio streaming tidak bisa di-resume dengan .play() biasa setelah pause.
+      // HTTP stream sudah terputus — harus reload src agar server kirim stream baru.
+      if (trackRef.current?.isRadio) {
+        const src = trackRef.current.src;
+        if (!src) { setPlaying(false); return; }
+        if (src.includes('.m3u8')) {
+          attachHls(a, src, () => { a.play().catch(() => setPlaying(false)); });
+        } else {
+          a.src = src + (src.includes('?') ? '&' : '?') + '_r=' + Date.now();
+          a.load();
+          a.play().catch(e => { console.warn('radio resume error:', e); setPlaying(false); });
+        }
+      } else {
+        a.play().catch(e => { console.warn('play error:', e); setPlaying(false); });
+      }
     } else { a.pause(); }
-  }, [playing, embedTrack]);
+  }, [playing, embedTrack, attachHls]);
 
   // ── Proactive token expiry: auto silent-refresh 5 min before expiry
   useEffect(() => {
@@ -6768,9 +6782,13 @@ Format exactly:
       // dengan src:station.url tanpa radioUrl), atau sudah berupa /api/radio-proxy?url=...
       // radioUrl() idempoten untuk https:// dan /api/..., aman dipanggil berulang kali.
       const proxiedSrc = radioUrl(t.src, customDnsRef.current);
-      const radioTrackObj = { id: t.id, title: t.title, artist: t.artist, album: 'Live Radio', cover: t.cover, src: proxiedSrc, color: t.color||'#f59e0b', bg: t.bg||'rgba(245,158,11,0.15)', mood: 'live, radio', isRadio: true };
+      // FIX RADIO REPLAY: tambah cache-bust timestamp agar useEffect [track.src] selalu
+      // re-run dan membuat Audio element baru (reconnect stream) setiap kali play dipanggil.
+      // Tanpa ini, useEffect skip karena src sama → stream lama tidak diganti → tidak ada suara.
+      const bustSrc = proxiedSrc + (proxiedSrc.includes('?') ? '&' : '?') + '_t=' + Date.now();
+      const radioTrackObj = { id: t.id, title: t.title, artist: t.artist, album: 'Live Radio', cover: t.cover, src: bustSrc, color: t.color||'#f59e0b', bg: t.bg||'rgba(245,158,11,0.15)', mood: 'live, radio', isRadio: true };
       stopAllMedia('radio');
-      // FIX: simpan proxiedSrc di radioStation.url agar reconnect juga pakai URL yang benar
+      // FIX: simpan proxiedSrc (tanpa timestamp) di radioStation.url agar reconnect juga pakai URL yang benar
       setRadioStation({ id: t.id.replace('radio_',''), name: t.title, url: proxiedSrc, color: t.color||'#f59e0b' });
       setRadioPlaying(true); setTrack(radioTrackObj); setPlaying(true); setTab('player'); return;
     }
