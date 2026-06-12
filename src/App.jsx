@@ -540,14 +540,14 @@ export default function App() {
       if (vimeoM) {
         const vid = vimeoM[1];
         let title = 'Vimeo Video', thumb = `https://vumbnail.com/${vid}.jpg`;
-        try { const oe = await ft(`https://vimeo.com/api/oembed.json?url=${encodeURIComponent(q)}&width=400`, 4000); if (oe.ok) { const d = await oe.json(); title = d.title||title; thumb = d.thumbnail_url||thumb; } } catch (_e) {}
+        try { const oe = await ft(`https://vimeo.com/api/oembed.json?url=${encodeURIComponent(q)}&width=400`, 4000); if (oe.ok) { const d = await oe.json(); title = d.title||title; thumb = d.thumbnail_url||thumb; } } catch {}
         setWsResults([{ type:'vimeo', embedUrl:`https://player.vimeo.com/video/${vid}?autoplay=0`, title, artist:'Vimeo', thumbnail:thumb, source:'vimeo' }]);
         setWsLoading(false); return;
       }
       if (dailymotionM) {
         const dmId = dailymotionM[1];
         let title = 'Dailymotion Video', thumb = `https://www.dailymotion.com/thumbnail/video/${dmId}`;
-        try { const oe = await ft(`https://www.dailymotion.com/services/oembed?url=${encodeURIComponent(q)}&format=json`, 4000); if (oe.ok) { const d = await oe.json(); title = d.title||title; thumb = d.thumbnail_url||thumb; } } catch (_e) {}
+        try { const oe = await ft(`https://www.dailymotion.com/services/oembed?url=${encodeURIComponent(q)}&format=json`, 4000); if (oe.ok) { const d = await oe.json(); title = d.title||title; thumb = d.thumbnail_url||thumb; } } catch {}
         setWsResults([{ type:'dailymotion', embedUrl:`https://www.dailymotion.com/embed/video/${dmId}?autoplay=0`, title, artist:'Dailymotion', thumbnail:thumb, source:'dailymotion' }]);
         setWsLoading(false); return;
       }
@@ -599,7 +599,7 @@ export default function App() {
       }
       if (audiomackM) {
         let embedUrl = null, title = audiomackM[3].replace(/-/g,' '), thumb = null;
-        try { const oe = await ft(`https://audiomack.com/oembed?url=${encodeURIComponent(q)}&format=json`, 4000); if (oe.ok) { const d = await oe.json(); title = d.title||title; thumb = d.thumbnail_url||null; const src = d.html?.match(/src="([^"]+)"/)?.[1]; if (src) embedUrl = src; } } catch (_e) {}
+        try { const oe = await ft(`https://audiomack.com/oembed?url=${encodeURIComponent(q)}&format=json`, 4000); if (oe.ok) { const d = await oe.json(); title = d.title||title; thumb = d.thumbnail_url||null; const src = d.html?.match(/src="([^"]+)"/)?.[1]; if (src) embedUrl = src; } } catch {}
         if (!embedUrl) embedUrl = `https://audiomack.com/embed/${audiomackM[1]}/${audiomackM[2]}/${audiomackM[3]}`;
         setWsResults([{ type:'audiomack', embedUrl, title, artist:audiomackM[2], thumbnail:thumb, source:'audiomack' }]);
         setWsLoading(false); return;
@@ -607,7 +607,7 @@ export default function App() {
       if (mixcloudM) {
         const key = mixcloudM[1];
         let title = key.replace(/\//g,' – '), thumb = null;
-        try { const oe = await ft(`https://www.mixcloud.com/oembed/?url=${encodeURIComponent(q)}&format=json`, 4000); if (oe.ok) { const d = await oe.json(); title = d.title||title; thumb = d.thumbnail_url||null; } } catch (_e) {}
+        try { const oe = await ft(`https://www.mixcloud.com/oembed/?url=${encodeURIComponent(q)}&format=json`, 4000); if (oe.ok) { const d = await oe.json(); title = d.title||title; thumb = d.thumbnail_url||null; } } catch {}
         setWsResults([{ type:'mixcloud', embedUrl:`https://www.mixcloud.com/widget/iframe/?feed=${encodeURIComponent('/'+key+'/')}&hide_cover=1&light=1`, title, artist:'Mixcloud', thumbnail:thumb, source:'mixcloud' }]);
         setWsLoading(false); return;
       }
@@ -753,7 +753,7 @@ export default function App() {
             try {
               const hRes = await ft('https://api.audius.co', 3000);
               if (hRes.ok) { const hData = await hRes.json(); audiusHostRef.current = (hData.data?.[0] || 'https://discoveryprovider.audius.co').replace(/\/$/, ''); }
-            } catch (_e) {}
+            } catch {}
             if (!audiusHostRef.current) audiusHostRef.current = 'https://discoveryprovider.audius.co';
           }
           const audiusHost = audiusHostRef.current;
@@ -776,7 +776,7 @@ export default function App() {
             source:'audius',
             _relevance: relevanceScore(t.title, t.user?.name||t.user?.handle||'', q),
           }));
-        } catch (_e) {}
+        } catch {}
         return []; // Audius tidak ada hasil, biarkan merged logic pakai sc_embed
       })() : Promise.resolve([]);
 
@@ -797,7 +797,7 @@ export default function App() {
             source:'deezer',
             _relevance: relevanceScore(t.title, t.artist?.name||'', q),
           }));
-        } catch (_e) {}
+        } catch {}
         return []; // Deezer tidak ada hasil, biarkan merged logic pakai sp_embed
       })() : Promise.resolve([]);
 
@@ -816,14 +816,14 @@ export default function App() {
               try {
                 const r = await getScTrackStreamUrl(t._transcodings);
                 audioUrl = r?.url || null;
-              } catch (_e) {}
+              } catch {}
             }
             // Fallback: resolve via track ID jika OAuth tersedia
             if (!audioUrl && hasScOAuth() && t.id) {
               try {
                 const r = await getScTrackStreamUrl(t.id);
                 audioUrl = r?.url || null;
-              } catch (_e) {}
+              } catch {}
             }
             return {
               ...t,
@@ -979,7 +979,7 @@ export default function App() {
           setTab('player');
           return;
         }
-      } catch (_e) {}
+      } catch {}
     }
 
     // Fallback ke preview 30 detik
@@ -1083,7 +1083,7 @@ export default function App() {
   };
 
   const ytSearchCacheSet = (query, items) => {
-    try { sessionStorage.setItem(ytCacheKey(query), JSON.stringify({ ts: Date.now(), items })); } catch (_e) {}
+    try { sessionStorage.setItem(ytCacheKey(query), JSON.stringify({ ts: Date.now(), items })); } catch {}
   };
 
   // Fetch dengan timeout helper
@@ -1487,7 +1487,7 @@ Return ONLY valid JSON, no explanation:
             : [query, ...filtered.filter(q => q.trim().toLowerCase() !== query.trim().toLowerCase())];
           return withOriginal.slice(0, 3);
         }
-      } catch (_e) {}
+      } catch {}
       // Jika AI gagal total, gunakan query asli agar search tetap berjalan
       return [query];
     };
@@ -1533,7 +1533,7 @@ Return ONLY valid JSON, no explanation:
             })
           );
           if (results && results.length > 0) return results;
-        } catch (_e) {}
+        } catch {}
       }
       return null;
     };
@@ -2026,7 +2026,7 @@ Return ONLY valid JSON, no explanation:
           ? await getScTrackStreamUrl(transcodings)
           : item.id ? await getScTrackStreamUrl(item.id) : null;
         resolvedAudioUrl = r?.url || null;
-      } catch (_e) {}
+      } catch {}
     }
 
     // ── Spotify: sp_dc tersedia → coba full track, fallback ke previewUrl
@@ -2034,7 +2034,7 @@ Return ONLY valid JSON, no explanation:
       try {
         const fullUrl = await getSpotifyFullTrackUrl(item.id);
         if (fullUrl) resolvedAudioUrl = fullUrl;
-      } catch (_e) {}
+      } catch {}
       if (!resolvedAudioUrl) resolvedAudioUrl = item.previewUrl || item.audioUrl || null;
     }
 
@@ -2501,7 +2501,7 @@ Return ONLY valid JSON, no explanation:
       try {
         const cached = await cacheGet(s.driveId);
         if (isBlobValid(cached, 10000)) { downloadBlobToDevice(cached, `${name}.mp3`); return; }
-      } catch (_e) {}
+      } catch {}
       // 2. Drive API (butuh token)
       if (tokenRef.current) {
         try {
@@ -2511,7 +2511,7 @@ Return ONLY valid JSON, no explanation:
             { Authorization: `Bearer ${tokenRef.current}` }
           );
           return;
-        } catch (_e) {}
+        } catch {}
       }
       // 3. Buka di tab baru
       openUrlFallback(`https://drive.google.com/file/d/${s.driveId}/view`);
@@ -2529,7 +2529,7 @@ Return ONLY valid JSON, no explanation:
       try {
         const cached = await ytCacheGet(s.videoId);
         if (isBlobValid(cached, 10000)) { downloadBlobToDevice(cached, `${name}.mp3`); return; }
-      } catch (_e) {}
+      } catch {}
 
       // 2. Cobalt dari browser langsung (PRIMARY — paling reliabel)
       //    cobaltAudioUrl() memanggil Cobalt API dari browser → dapat tunnel/redirect URL
@@ -2546,21 +2546,21 @@ Return ONLY valid JSON, no explanation:
                 const blob = await res.blob();
                 if (isBlobValid(blob, 10000)) { downloadBlobToDevice(blob, `${name}.mp3`); return; }
               }
-            } catch (_e) {}
+            } catch {}
           }
           // Redirect atau tunnel fetch gagal: coba via /api/audio-proxy dulu, lalu downloadToDevice
           const ok = await proxyDownload(cobaltUrl, `${name}.mp3`);
           if (ok) return;
-          try { await downloadToDevice(cobaltUrl, `${name}.mp3`); return; } catch (_e) {}
+          try { await downloadToDevice(cobaltUrl, `${name}.mp3`); return; } catch {}
         }
-      } catch (_e) {}
+      } catch {}
 
       // 3. /api/yt-audio (server-side Piped proxy — mungkin gagal jika IP datacenter diblok)
       try {
         const ytAudioUrl = `/api/yt-audio?videoId=${s.videoId}`;
         const ok = await proxyDownload(ytAudioUrl, `${name}.mp3`);
         if (ok) return;
-      } catch (_e) {}
+      } catch {}
 
       // 4. Last resort: buka YouTube di browser
       openUrlFallback(`https://www.youtube.com/watch?v=${s.videoId}`);
@@ -2573,7 +2573,7 @@ Return ONLY valid JSON, no explanation:
     // ═══════════════════════════════════════════════════════
     if (s._wsSource === 'audius' && s.src) {
       // 1. Fetch langsung (Audius punya CORS header)
-      try { await downloadToDevice(s.src, `${name}.mp3`); return; } catch (_e) {}
+      try { await downloadToDevice(s.src, `${name}.mp3`); return; } catch {}
       // 2. Proxy server
       if (await proxyDownload(s.src, `${name}.mp3`)) return;
       // 3. Cobalt (extract via page URL jika tersedia)
@@ -2582,12 +2582,12 @@ Return ONLY valid JSON, no explanation:
           const _cobaltR = await cobaltAudioUrl(s.externalUrl);
           const url = _cobaltR?.url;
           if (url) {
-            if (_cobaltR.isTunnel) { try { const _r = await fetch(url, {mode:"cors"}); if (_r.ok) { const _b = await _r.blob(); if (isBlobValid(_b,10000)) { downloadBlobToDevice(_b, `${name}.mp3`); return; } } } catch (_e) {} }
+            if (_cobaltR.isTunnel) { try { const _r = await fetch(url, {mode:"cors"}); if (_r.ok) { const _b = await _r.blob(); if (isBlobValid(_b,10000)) { downloadBlobToDevice(_b, `${name}.mp3`); return; } } } catch {} }
             if (await proxyDownload(url, `${name}.mp3`)) return;
             await downloadToDevice(url, `${name}.mp3`);
             return;
           }
-        } catch (_e) {}
+        } catch {}
       }
       // 4. Buka di tab baru
       openUrlFallback(s.src);
@@ -2601,13 +2601,13 @@ Return ONLY valid JSON, no explanation:
     if (s._wsSource === 'jamendo' && s.src) {
       const jamId = s.id?.replace(/^ws_jamendo_/, '');
       // 1. Direct stream URL (sudah ada proxy di downloadToDevice)
-      try { await downloadToDevice(s.src, `${name}.mp3`); return; } catch (_e) {}
+      try { await downloadToDevice(s.src, `${name}.mp3`); return; } catch {}
       // 2. Proxy download langsung
       if (await proxyDownload(s.src, `${name}.mp3`)) return;
       // 3. Jamendo direct download URL (tidak perlu key)
       if (jamId) {
         const jamDownloadUrl = `https://storage.jamendo.com/?trackid=${jamId}&format=mp31&from=app-devsite`;
-        try { await downloadToDevice(jamDownloadUrl, `${name}.mp3`); return; } catch (_e) {}
+        try { await downloadToDevice(jamDownloadUrl, `${name}.mp3`); return; } catch {}
         if (await proxyDownload(jamDownloadUrl, `${name}.mp3`)) return;
       }
       // 4. Cobalt
@@ -2616,11 +2616,11 @@ Return ONLY valid JSON, no explanation:
           const _cobaltR = await cobaltAudioUrl(s.externalUrl);
           const url = _cobaltR?.url;
           if (url) {
-            if (_cobaltR.isTunnel) { try { const _r = await fetch(url, {mode:"cors"}); if (_r.ok) { const _b = await _r.blob(); if (isBlobValid(_b,10000)) { downloadBlobToDevice(_b, `${name}.mp3`); return; } } } catch (_e) {} }
+            if (_cobaltR.isTunnel) { try { const _r = await fetch(url, {mode:"cors"}); if (_r.ok) { const _b = await _r.blob(); if (isBlobValid(_b,10000)) { downloadBlobToDevice(_b, `${name}.mp3`); return; } } } catch {} }
             if (await proxyDownload(url, `${name}.mp3`)) return;
             await downloadToDevice(url, `${name}.mp3`); return;
           }
-        } catch (_e) {}
+        } catch {}
         // 5. Tab baru
         openUrlFallback(s.src);
         return;
@@ -2632,7 +2632,7 @@ Return ONLY valid JSON, no explanation:
     // ═══════════════════════════════════════════════════════
     if (s._wsSource === 'archive' && s.src) {
       // 1. Direct download URL (archive.org/download/ punya CORS header)
-      try { await downloadToDevice(s.src, `${name}.mp3`); return; } catch (_e) {}
+      try { await downloadToDevice(s.src, `${name}.mp3`); return; } catch {}
       // 2. Proxy
       if (await proxyDownload(s.src, `${name}.mp3`)) return;
       // 3. Tab baru ke halaman detail
@@ -2647,7 +2647,7 @@ Return ONLY valid JSON, no explanation:
     // ═══════════════════════════════════════════════════════
     if (s._wsSource === 'fma' && s.src) {
       // 1. Direct audio URL
-      try { await downloadToDevice(s.src, `${name}.mp3`); return; } catch (_e) {}
+      try { await downloadToDevice(s.src, `${name}.mp3`); return; } catch {}
       // 2. Proxy
       if (await proxyDownload(s.src, `${name}.mp3`)) return;
       // 3. Cobalt via externalUrl
@@ -2656,11 +2656,11 @@ Return ONLY valid JSON, no explanation:
           const _cobaltR = await cobaltAudioUrl(s.externalUrl);
           const url = _cobaltR?.url;
           if (url) {
-            if (_cobaltR.isTunnel) { try { const _r = await fetch(url, {mode:"cors"}); if (_r.ok) { const _b = await _r.blob(); if (isBlobValid(_b,10000)) { downloadBlobToDevice(_b, `${name}.mp3`); return; } } } catch (_e) {} }
+            if (_cobaltR.isTunnel) { try { const _r = await fetch(url, {mode:"cors"}); if (_r.ok) { const _b = await _r.blob(); if (isBlobValid(_b,10000)) { downloadBlobToDevice(_b, `${name}.mp3`); return; } } } catch {} }
             if (await proxyDownload(url, `${name}.mp3`)) return;
             await downloadToDevice(url, `${name}.mp3`); return;
           }
-        } catch (_e) {}
+        } catch {}
       }
       // 4. Tab baru
       openUrlFallback(s.externalUrl || s.src);
@@ -2675,7 +2675,7 @@ Return ONLY valid JSON, no explanation:
     if (s._wsSource === 'ccmixter' && s.src) {
       const ext = safeExtFromUrl(s.src, 'mp3');
       // 1. Direct download URL (CCMixter src biasanya sudah download URL)
-      try { await downloadToDevice(s.src, `${name}.${ext}`); return; } catch (_e) {}
+      try { await downloadToDevice(s.src, `${name}.${ext}`); return; } catch {}
       // 2. Proxy
       if (await proxyDownload(s.src, `${name}.${ext}`)) return;
       // 3. Cobalt
@@ -2684,11 +2684,11 @@ Return ONLY valid JSON, no explanation:
           const _cobaltR = await cobaltAudioUrl(s.externalUrl);
           const url = _cobaltR?.url;
           if (url) {
-            if (_cobaltR.isTunnel) { try { const _r = await fetch(url, {mode:"cors"}); if (_r.ok) { const _b = await _r.blob(); if (isBlobValid(_b,10000)) { downloadBlobToDevice(_b, `${name}.mp3`); return; } } } catch (_e) {} }
+            if (_cobaltR.isTunnel) { try { const _r = await fetch(url, {mode:"cors"}); if (_r.ok) { const _b = await _r.blob(); if (isBlobValid(_b,10000)) { downloadBlobToDevice(_b, `${name}.mp3`); return; } } } catch {} }
             if (await proxyDownload(url, `${name}.mp3`)) return;
             await downloadToDevice(url, `${name}.mp3`); return;
           }
-        } catch (_e) {}
+        } catch {}
       }
       // 4. Tab baru
       openUrlFallback(s.src);
@@ -2703,7 +2703,7 @@ Return ONLY valid JSON, no explanation:
       // 1. Coba src via proxy dulu (cobalt URL biasanya CORS-restricted)
       if (s.src) {
         if (await proxyDownload(s.src, `${name}.mp3`)) return;
-        try { await downloadToDevice(s.src, `${name}.mp3`); return; } catch (_e) {}
+        try { await downloadToDevice(s.src, `${name}.mp3`); return; } catch {}
       }
       // 2. Re-extract via cobalt jika ada originalUrl atau externalUrl
       const reExtractUrl = s.originalUrl || s.externalUrl;
@@ -2712,12 +2712,12 @@ Return ONLY valid JSON, no explanation:
           const _cobaltR = await cobaltAudioUrl(reExtractUrl);
           const url = _cobaltR?.url;
           if (url) {
-            if (_cobaltR.isTunnel) { try { const _r = await fetch(url, {mode:"cors"}); if (_r.ok) { const _b = await _r.blob(); if (isBlobValid(_b,10000)) { downloadBlobToDevice(_b, `${name}.mp3`); return; } } } catch (_e) {} }
+            if (_cobaltR.isTunnel) { try { const _r = await fetch(url, {mode:"cors"}); if (_r.ok) { const _b = await _r.blob(); if (isBlobValid(_b,10000)) { downloadBlobToDevice(_b, `${name}.mp3`); return; } } } catch {} }
             if (await proxyDownload(url, `${name}.mp3`)) return;
             await downloadToDevice(url, `${name}.mp3`);
             return;
           }
-        } catch (_e) {}
+        } catch {}
       }
       // 3. Tab baru
       if (s.src) openUrlFallback(s.src);
@@ -2739,13 +2739,13 @@ Return ONLY valid JSON, no explanation:
           const ext = safeExtFromUrl(previewSrc, 'mp3');
           downloadBlobToDevice(cached, `${name}.${ext}`); return;
         }
-      } catch (_e) {}
+      } catch {}
       // 2. Fetch preview URL langsung (sudah ada proxy di downloadToDevice)
       if (previewSrc) {
         try {
           const ext = safeExtFromUrl(previewSrc, 'mp3');
           await downloadToDevice(previewSrc, `${name}.${ext}`); return;
-        } catch (_e) {}
+        } catch {}
         // 3. Proxy langsung
         const ext2 = safeExtFromUrl(previewSrc, 'mp3');
         if (await proxyDownload(previewSrc, `${name}.${ext2}`)) return;
@@ -2768,14 +2768,14 @@ Return ONLY valid JSON, no explanation:
           const ext = safeExtFromUrl(s.src, 'mp3');
           downloadBlobToDevice(cached, `${name}.${ext}`); return;
         }
-      } catch (_e) {}
+      } catch {}
       // 2. Fetch src atau previewUrl langsung
       const directUrl = s.previewUrl || s.src;
       if (directUrl) {
         try {
           const ext = safeExtFromUrl(directUrl, 'mp3');
           await downloadToDevice(directUrl, `${name}.${ext}`); return;
-        } catch (_e) {}
+        } catch {}
         // 3. Proxy
         const ext3 = safeExtFromUrl(directUrl, 'mp3');
         if (await proxyDownload(directUrl, `${name}.${ext3}`)) return;
@@ -2786,11 +2786,11 @@ Return ONLY valid JSON, no explanation:
           const _cobaltR = await cobaltAudioUrl(s.permalink || s.externalUrl);
           const url = _cobaltR?.url;
           if (url) {
-            if (_cobaltR.isTunnel) { try { const _r = await fetch(url, {mode:"cors"}); if (_r.ok) { const _b = await _r.blob(); if (isBlobValid(_b,10000)) { downloadBlobToDevice(_b, `${name}.mp3`); return; } } } catch (_e) {} }
+            if (_cobaltR.isTunnel) { try { const _r = await fetch(url, {mode:"cors"}); if (_r.ok) { const _b = await _r.blob(); if (isBlobValid(_b,10000)) { downloadBlobToDevice(_b, `${name}.mp3`); return; } } } catch {} }
             if (await proxyDownload(url, `${name}.mp3`)) return;
             await downloadToDevice(url, `${name}.mp3`); return;
           }
-        } catch (_e) {}
+        } catch {}
       }
       // 5. Tab baru
       if (directUrl) { openUrlFallback(directUrl); return; }
@@ -2801,7 +2801,7 @@ Return ONLY valid JSON, no explanation:
     // ═══════════════════════════════════════════════════════
     if (s.src) {
       const ext = safeExtFromUrl(s.src, 'mp3');
-      try { await downloadToDevice(s.src, `${name}.${ext}`); return; } catch (_e) {}
+      try { await downloadToDevice(s.src, `${name}.${ext}`); return; } catch {}
       if (await proxyDownload(s.src, `${name}.${ext}`)) return;
       openUrlFallback(s.src);
     } else {
@@ -3144,7 +3144,7 @@ Return ONLY valid JSON, no explanation:
     try {
       const saved = JSON.parse(localStorage.getItem('sn_playlists') || 'null');
       if (Array.isArray(saved) && saved.length) return saved;
-    } catch (_e) {}
+    } catch {}
     return [
       { id:'pl_fav', name:'❤️ Favorit', songIds:[], locked:true },
       { id:'pl_chill', name:'🌙 Chill Night', songIds:[], locked:false },
@@ -3333,7 +3333,7 @@ Return ONLY valid JSON, no explanation:
             localStorage.removeItem('sn_popular_recs_ts');
             setPopularRecs(null);
           }
-        } catch (_e) {}
+        } catch {}
       }
 
       // ── Cuaca via Open-Meteo (gratis, no API key)
@@ -3370,16 +3370,16 @@ Return ONLY valid JSON, no explanation:
             localStorage.removeItem('sn_popular_recs_ts');
             setPopularRecs(null);
           }
-        } catch (_e) {}
+        } catch {}
       }
     }, () => {}, { timeout: 8000 });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  useEffect(() => { try { localStorage.setItem('sn_tab', tab); } catch (_e) {} if (tab !== 'player') setFullscreen(false); }, [tab]);
-  useEffect(() => { try { localStorage.setItem('sn_shuffle', shuffle); } catch (_e) {} }, [shuffle]);
-  useEffect(() => { try { localStorage.setItem('sn_repeat', repeat); } catch (_e) {} }, [repeat]);
-  useEffect(() => { try { localStorage.setItem('sn_liked', JSON.stringify(liked)); } catch (_e) {} }, [liked]);
-  useEffect(() => { try { localStorage.setItem('sn_playlists', JSON.stringify(playlists)); } catch (_e) {} playlistsRef.current = playlists; }, [playlists]);
+  useEffect(() => { try { localStorage.setItem('sn_tab', tab); } catch {} if (tab !== 'player') setFullscreen(false); }, [tab]);
+  useEffect(() => { try { localStorage.setItem('sn_shuffle', shuffle); } catch {} }, [shuffle]);
+  useEffect(() => { try { localStorage.setItem('sn_repeat', repeat); } catch {} }, [repeat]);
+  useEffect(() => { try { localStorage.setItem('sn_liked', JSON.stringify(liked)); } catch {} }, [liked]);
+  useEffect(() => { try { localStorage.setItem('sn_playlists', JSON.stringify(playlists)); } catch {} playlistsRef.current = playlists; }, [playlists]);
 
   // ── Auto-sync playlists ke Google Drive (debounce 3 detik setelah perubahan)
   const syncPlaylistsToCloud = useCallback(async (token, pls, silent = false) => {
@@ -3411,11 +3411,11 @@ Return ONLY valid JSON, no explanation:
     return () => { if (plSyncTimerRef.current) clearTimeout(plSyncTimerRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playlists, accessToken]);
-  useEffect(() => { try { localStorage.setItem('sn_fav_songs', JSON.stringify(favSongs)); } catch (_e) {} }, [favSongs]);
-  useEffect(() => { try { localStorage.setItem('sn_yt_songs', JSON.stringify(ytSongs)); } catch (_e) {} }, [ytSongs]);
-  useEffect(() => { try { localStorage.setItem('sn_history', JSON.stringify(history)); } catch (_e) {} }, [history]);
-  useEffect(() => { try { localStorage.setItem('sn_playstats', JSON.stringify(playStats)); } catch (_e) {} }, [playStats]);
-  useEffect(() => { try { localStorage.setItem('sn_aiSubView', aiSubView); } catch (_e) {} }, [aiSubView]);
+  useEffect(() => { try { localStorage.setItem('sn_fav_songs', JSON.stringify(favSongs)); } catch {} }, [favSongs]);
+  useEffect(() => { try { localStorage.setItem('sn_yt_songs', JSON.stringify(ytSongs)); } catch {} }, [ytSongs]);
+  useEffect(() => { try { localStorage.setItem('sn_history', JSON.stringify(history)); } catch {} }, [history]);
+  useEffect(() => { try { localStorage.setItem('sn_playstats', JSON.stringify(playStats)); } catch {} }, [playStats]);
+  useEffect(() => { try { localStorage.setItem('sn_aiSubView', aiSubView); } catch {} }, [aiSubView]);
 
   // ── Sync favSongs + ytSongs ke Google Drive (debounce 5 detik setelah perubahan)
   const songSyncTimerRef = useRef(null);
@@ -3536,7 +3536,7 @@ Return ONLY valid JSON, no explanation:
         try {
           const savedUser = JSON.parse(localStorage.getItem('sn_google_user') || 'null');
           hint = savedUser?.email || '';
-        } catch (_e) {}
+        } catch {}
         const client = window.google.accounts.oauth2.initTokenClient({
           client_id: GOOGLE_CLIENT_ID, scope: GOOGLE_SCOPES,
           prompt: '',        // no user interaction required
@@ -3782,7 +3782,7 @@ Return ONLY valid JSON, no explanation:
         // Tandai semua sebagai perlu re-fetch src (akan cek cache saat diputar)
         setCustomSongs(saved.map(s => ({ ...s, src: null })));
       }
-    } catch (_e) {}
+    } catch {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOnline]);
 
@@ -3793,12 +3793,12 @@ Return ONLY valid JSON, no explanation:
       // Simpan hanya metadata (bukan src blob URL yang tidak persisten)
       const meta = customSongs.map(({ src: _src, ...rest }) => rest);
       localStorage.setItem('sn_drive_meta', JSON.stringify(meta));
-    } catch (_e) {}
+    } catch {}
   }, [customSongs]);
 
   // ── Sync cachedDriveIds ke localStorage
   useEffect(() => {
-    try { localStorage.setItem('sn_cached_drive_ids', JSON.stringify([...cachedDriveIds])); } catch (_e) {}
+    try { localStorage.setItem('sn_cached_drive_ids', JSON.stringify([...cachedDriveIds])); } catch {}
   }, [cachedDriveIds]);
 
   // ── Validasi cachedDriveIds saat startup: hapus ID yang blobnya hilang atau tidak 100% penuh
@@ -3847,17 +3847,17 @@ Return ONLY valid JSON, no explanation:
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // hanya sekali saat mount
   useEffect(() => {
-    try { localStorage.setItem('sn_cached_yt_ids', JSON.stringify([...cachedYtIds])); } catch (_e) {}
+    try { localStorage.setItem('sn_cached_yt_ids', JSON.stringify([...cachedYtIds])); } catch {}
   }, [cachedYtIds]);
 
   // ── Sync likedYtPending ke localStorage
   useEffect(() => {
-    try { localStorage.setItem('sn_liked_yt_pending', JSON.stringify([...likedYtPending])); } catch (_e) {}
+    try { localStorage.setItem('sn_liked_yt_pending', JSON.stringify([...likedYtPending])); } catch {}
   }, [likedYtPending]);
 
   // ── Sync cachedFavIds ke localStorage
   useEffect(() => {
-    try { localStorage.setItem('sn_cached_fav_ids', JSON.stringify([...cachedFavIds])); } catch (_e) {}
+    try { localStorage.setItem('sn_cached_fav_ids', JSON.stringify([...cachedFavIds])); } catch {}
   }, [cachedFavIds]);
 
   // ── Auto-restore Drive songs if we have a saved valid token
@@ -3931,7 +3931,7 @@ Return ONLY valid JSON, no explanation:
             return merged;
           });
         }
-      } catch (_e) {}
+      } catch {}
       // Muat favSongs + ytSongs dari Drive dan merge dengan lokal
       try {
         const cloudSongs = await driveLoadSongs(tok);
@@ -3951,7 +3951,7 @@ Return ONLY valid JSON, no explanation:
             });
           }
         }
-      } catch (_e) {}
+      } catch {}
     };
 
     if (savedToken) {
@@ -4513,22 +4513,22 @@ Return ONLY valid JSON, no explanation:
           ytProgressRef.current = d.seekTime;
         });
       } catch (_) {}
-      try { navigator.mediaSession.setActionHandler('seekbackward', null); } catch (_e) {}
-      try { navigator.mediaSession.setActionHandler('seekforward',  null); } catch (_e) {}
+      try { navigator.mediaSession.setActionHandler('seekbackward', null); } catch {}
+      try { navigator.mediaSession.setActionHandler('seekforward',  null); } catch {}
     } else {
-      try { navigator.mediaSession.setActionHandler('seekbackward', null); } catch (_e) {}
-      try { navigator.mediaSession.setActionHandler('seekforward',  null); } catch (_e) {}
-      try { navigator.mediaSession.setActionHandler('seekto',       null); } catch (_e) {}
+      try { navigator.mediaSession.setActionHandler('seekbackward', null); } catch {}
+      try { navigator.mediaSession.setActionHandler('seekforward',  null); } catch {}
+      try { navigator.mediaSession.setActionHandler('seekto',       null); } catch {}
     }
     return () => {
-      try { navigator.mediaSession.setActionHandler('play',          null); } catch (_e) {}
-      try { navigator.mediaSession.setActionHandler('pause',         null); } catch (_e) {}
-      try { navigator.mediaSession.setActionHandler('stop',          null); } catch (_e) {}
-      try { navigator.mediaSession.setActionHandler('previoustrack', null); } catch (_e) {}
-      try { navigator.mediaSession.setActionHandler('nexttrack',     null); } catch (_e) {}
-      try { navigator.mediaSession.setActionHandler('seekbackward',  null); } catch (_e) {}
-      try { navigator.mediaSession.setActionHandler('seekforward',   null); } catch (_e) {}
-      try { navigator.mediaSession.setActionHandler('seekto',        null); } catch (_e) {}
+      try { navigator.mediaSession.setActionHandler('play',          null); } catch {}
+      try { navigator.mediaSession.setActionHandler('pause',         null); } catch {}
+      try { navigator.mediaSession.setActionHandler('stop',          null); } catch {}
+      try { navigator.mediaSession.setActionHandler('previoustrack', null); } catch {}
+      try { navigator.mediaSession.setActionHandler('nexttrack',     null); } catch {}
+      try { navigator.mediaSession.setActionHandler('seekbackward',  null); } catch {}
+      try { navigator.mediaSession.setActionHandler('seekforward',   null); } catch {}
+      try { navigator.mediaSession.setActionHandler('seekto',        null); } catch {}
     };
   }, [track, embedTrack, globalCover, playing]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -4664,8 +4664,8 @@ Return ONLY valid JSON, no explanation:
       } catch (_) {}
     }
   }, [volume, muted, embedTrack]);
-  useEffect(() => { try { localStorage.setItem('sn_volume', volume); } catch (_e) {} }, [volume]);
-  useEffect(() => { try { localStorage.setItem('sn_muted', muted ? '1' : '0'); } catch (_e) {} }, [muted]);
+  useEffect(() => { try { localStorage.setItem('sn_volume', volume); } catch {} }, [volume]);
+  useEffect(() => { try { localStorage.setItem('sn_muted', muted ? '1' : '0'); } catch {} }, [muted]);
 
   // ── YouTube time sync: listen to postMessage events from iframe
   useEffect(() => {
@@ -5213,13 +5213,13 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
             result = parsed;
             break;
           }
-        } catch (_e) {}
+        } catch {}
       }
       if (result) {
         setPopularRecs(result);
         localStorage.setItem('sn_popular_recs_ts', String(Date.now()));
       }
-    } catch (_e) {}
+    } catch {}
     finally { setPopularLoading(false); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [popularLoading, popularRecs]);
@@ -5262,7 +5262,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
             return;
           }
         }
-      } catch (_e) {}
+      } catch {}
     };
     window.addEventListener('message', handleEmbedPlay);
     return () => window.removeEventListener('message', handleEmbedPlay);
@@ -5581,7 +5581,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       const base = await getRbServer();
       const data = await fetch(`${base}/json/tags?limit=10&order=stationcount&reverse=true&hidebroken=true`).then(r=>r.json());
       setRbTopTags(data.map(t=>t.name).filter(n=>n && n.length > 1 && n.length < 20));
-    } catch (_e) {}
+    } catch {}
   };
 
   // ── 2. SomaFM (curated, high quality, gratis)
@@ -5631,7 +5631,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       const data = await fetch(`/api/radio-garden/content/page/${placeId}/channels`).then(r=>r.json());
       const channels = data?.data?.content?.[0]?.items || [];
       setGardenStations(channels);
-    } catch (_e) {}
+    } catch {}
   };
 
   const getGardenStreamUrl = (channelId) => {
@@ -6014,7 +6014,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     } catch {
       // createMediaElementSource gagal (misal: element sudah terhubung ke ctx lain)
       // Lepas AudioContext — audio tetap keluar dari element langsung
-      try { ctx.close(); } catch (_e) {}
+      try { ctx.close(); } catch {}
       silenceCtxRef.current = null;
       return;
     }
@@ -6228,7 +6228,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
             });
           }));
           gardenRes.flatMap(r => r.status==='fulfilled'?r.value:[]).filter(s=>s.chId).slice(0,10).forEach(s => cityResults.push(s));
-        } catch (_e) {}
+        } catch {}
         setMultiResults(cityResults);
         setMultiLoading(false);
         if (cityResults.length === 0) setRbError(`Tidak ada stasiun ditemukan untuk "${rawQ}"`);
@@ -6253,7 +6253,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
         if (src === 'SomaFM') {
           let somaData = somaChannels;
           if (somaData.length === 0) {
-            try { const d = await fetch('https://somafm.com/channels.json').then(r=>r.json()); somaData = d.channels||[]; setSomaChannels(somaData); } catch (_e) {}
+            try { const d = await fetch('https://somafm.com/channels.json').then(r=>r.json()); somaData = d.channels||[]; setSomaChannels(somaData); } catch {}
           }
           srcResults = somaData.filter(ch => !sq || ch.title?.toLowerCase().includes(sq) || ch.genre?.toLowerCase().includes(sq) || ch.description?.toLowerCase().includes(sq))
             .map(ch => ({ id:`soma_${ch.id}`, name:ch.title, url:ch.plls?.[0]?.url||`https://ice1.somafm.com/${ch.id}-128-mp3`, country:'US', tags:ch.genre, favicon:ch.image, sourceLabel:'SomaFM', color:'#10b981', description:ch.description }));
@@ -6292,7 +6292,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
               })
               .filter(s => s.url);
             if (mapped.length > 0) srcResults = mapped;
-          } catch (_e) {}
+          } catch {}
           // Fallback ke NTS_STREAMS hardcode jika API gagal
           if (srcResults.length === 0) {
             srcResults = NTS_STREAMS.filter(s => !sq || s.name.toLowerCase().includes(sq) || s.genre?.toLowerCase().includes(sq))
@@ -6309,7 +6309,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
             const iceData = await fetch(iceUrl).then(r=>r.json()).catch(()=>null);
             const mapped = (iceData?.stations || []).filter(s => s.url);
             if (mapped.length > 0) srcResults = mapped;
-          } catch (_e) {}
+          } catch {}
           // Fallback ke curated list jika proxy gagal
           if (srcResults.length === 0) {
             srcResults = ICECAST_CURATED.filter(s => !sq || s.name.toLowerCase().includes(sq) || s.genre?.toLowerCase().includes(sq))
@@ -6323,7 +6323,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
             const mapped = (lautData?.stations || []).filter(s => s.url)
               .map(s => ({ ...s, sourceLabel:'Shoutcast', color:'#e11d48', stationuuid:s.id }));
             if (mapped.length > 0) srcResults = mapped;
-          } catch (_e) {}
+          } catch {}
           if (srcResults.length === 0) {
             srcResults = SHOUTCAST_CURATED.filter(s => !sq || s.name.toLowerCase().includes(sq) || s.genre?.toLowerCase().includes(sq))
               .map(s => ({ ...s, stationuuid:s.id }));
@@ -6336,7 +6336,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
             const mapped = (lautData?.stations || []).filter(s => s.url)
               .map(s => ({ ...s, sourceLabel:'FM Stream', color:'#06b6d4', stationuuid:s.id }));
             if (mapped.length > 0) srcResults = mapped;
-          } catch (_e) {}
+          } catch {}
           if (srcResults.length === 0) {
             srcResults = FMSTREAM_CURATED.filter(s => !sq || s.name.toLowerCase().includes(sq) || s.genre?.toLowerCase().includes(sq))
               .map(s => ({ ...s, stationuuid:s.id }));
@@ -6502,7 +6502,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       }
       const rb = await fetch(url).then(r=>r.json());
       rb.filter(s => s.url_resolved || s.url).slice(0,30).forEach(s => results.push({ ...s, sourceLabel: 'RadioBrowser', color: '#f59e0b' }));
-    } catch (_e) {}
+    } catch {}
     // Radio Garden — cari berdasarkan places + keyword stasiun
     try {
       let gardenPlacesLocal = gardenPlaces;
@@ -6563,7 +6563,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
         );
       }
       results.push(...gardenStns.slice(0, 10));
-    } catch (_e) {}
+    } catch {}
     setMultiResults(results);
     setMultiLoading(false);
     // Trigger health check untuk semua hasil multi-search
@@ -6592,7 +6592,7 @@ Format exactly:
         try { suggestions = JSON.parse(clean); } catch {
           // Fallback: coba extract array string jika format berbeda
           const arrMatch = clean.match(/\[[\s\S]*\]/);
-          if (arrMatch) try { suggestions = JSON.parse(arrMatch[0]); } catch (_e) {}
+          if (arrMatch) try { suggestions = JSON.parse(arrMatch[0]); } catch {}
         }
         if (!Array.isArray(suggestions) || suggestions.length === 0) throw new Error('bad parse');
 
@@ -6622,7 +6622,7 @@ Format exactly:
                 found = await fetch(url2, { signal: AbortSignal.timeout(3000) }).then(r => r.json()).catch(() => []);
               }
             }
-          } catch (_e) {}
+          } catch {}
 
           if (found && found.length > 0) {
             // Ambil stasiun terbaik (sudah diurutkan by votes)
@@ -6752,7 +6752,7 @@ Format exactly:
             setTab('player');
             return;
           }
-        } catch (_e) {}
+        } catch {}
         // Jika gagal, fallback ke embed widget
       }
       // Fallback: embed widget (perilaku lama)
@@ -6771,7 +6771,7 @@ Format exactly:
           if (cachedBlob && cachedBlob.size > 1000) {
             resolvedSrc = URL.createObjectURL(cachedBlob);
           }
-        } catch (_e) {}
+        } catch {}
         const spNativeTrack = {
           id: `ws_spotify_${t.id}`,
           title: t.title || t.name,
@@ -6826,7 +6826,7 @@ Format exactly:
         if (cachedBlob && cachedBlob.size > 1000) {
           td = { ...t, src: URL.createObjectURL(cachedBlob) };
         }
-      } catch (_e) {}
+      } catch {}
     }
     if (t.isDrive && t.driveId && (!t.src || !t.src.startsWith('blob:'))) {
       setLoadingTrack(true);
@@ -6874,7 +6874,7 @@ Format exactly:
             }
             return;
           }
-        } catch (_e) {}
+        } catch {}
       }
 
       // ── Tidak ada cache di Pro mode — cek cache untuk Lite mode saat offline
@@ -6895,7 +6895,7 @@ Format exactly:
               setTab('player');
               return;
             }
-          } catch (_e) {}
+          } catch {}
         }
         // Benar-benar tidak ada cache
         setDriveError(lang==='id'
@@ -6964,7 +6964,7 @@ Format exactly:
               }
               // Cache parsial — lanjut stream adaptif
             }
-          } catch (_e) {}
+          } catch {}
           setDrivePhase('idle');
           const url = await driveStreamLite(t.driveId, useTok, audioRef);
           return url;
@@ -7928,12 +7928,12 @@ Format exactly:
         if (shazamMediaRef.current.state !== 'inactive') {
           shazamMediaRef.current.stop();
         }
-      } catch (_e) {}
+      } catch {}
       shazamMediaRef.current = null;
     }
     // FIX Bug STT: jika STT kebetulan aktif, hentikan juga agar state tidak kotor
     if (sttRef.current) {
-      try { sttRef.current.abort(); } catch (_e) {}
+      try { sttRef.current.abort(); } catch {}
       sttRef.current = null;
       setSttListening(false);
     }
@@ -8150,7 +8150,7 @@ Format exactly:
             return merged;
           });
         }
-      } catch (_e) {}
+      } catch {}
       // ── Restore favSongs + ytSongs dari Drive (merge dengan local)
       try {
         const cloudSongs = await driveLoadSongs(tok);
@@ -8172,7 +8172,7 @@ Format exactly:
             });
           }
         }
-      } catch (_e) {}
+      } catch {}
       await loadDriveSongs(tok, true);
       if (wasPlayingBeforeLogin && audioRef.current && audioRef.current.paused) {
         audioRef.current.play().catch(() => {});
@@ -9406,15 +9406,15 @@ Format exactly:
                     (track.src || window.location.href);
                   const shareItems = [
                     { icon:'📋', label: shareCopied ? '✓ Tersalin!' : 'Salin Link', color:'#6366f1', action: async () => {
-                      try { await navigator.clipboard.writeText(url); setShareCopied(true); setTimeout(()=>setShareCopied(false), 2500); } catch (_e) {}
+                      try { await navigator.clipboard.writeText(url); setShareCopied(true); setTimeout(()=>setShareCopied(false), 2500); } catch {}
                     }},
                     { icon:'💬', label:'WhatsApp', color:'#25D366', action: () => window.open(`https://wa.me/?text=${encodeURIComponent((embedTrack?.title||track.title)+' — '+url)}`, '_blank', 'noopener') },
                     { icon:'✈️', label:'Telegram', color:'#2AABEE', action: () => window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(embedTrack?.title||track.title)}`, '_blank', 'noopener') },
                     { icon:'𝕏', label:'Twitter / X', color:'#e7e9ea', action: () => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent('Dengerin ini bareng: '+(embedTrack?.title||track.title))}&url=${encodeURIComponent(url)}`, '_blank', 'noopener') },
                     { icon:'📧', label:'Email', color:'#f59e0b', action: () => window.open(`mailto:?subject=${encodeURIComponent('Song/Stream: '+(embedTrack?.title||track.title))}&body=${encodeURIComponent(url)}`, '_blank', 'noopener') },
                     { icon:'📱', label:'Share via App', color:'#a78bfa', action: async () => {
-                      if (navigator.share) { try { await navigator.share({ title: embedTrack?.title||track.title, url }); } catch (_e) {} }
-                      else { try { await navigator.clipboard.writeText(url); setShareCopied(true); setTimeout(()=>setShareCopied(false), 2500); } catch (_e) {} }
+                      if (navigator.share) { try { await navigator.share({ title: embedTrack?.title||track.title, url }); } catch {} }
+                      else { try { await navigator.clipboard.writeText(url); setShareCopied(true); setTimeout(()=>setShareCopied(false), 2500); } catch {} }
                     }},
                   ];
                   return (
