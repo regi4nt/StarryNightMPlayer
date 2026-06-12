@@ -223,12 +223,22 @@ export const INVIDIOUS_INSTANCES = [
 // URL https:// dikembalikan apa adanya.
 export function radioUrl(url, customDns = '') {
   if (!url) return url;
-  if (url.startsWith('http://')) {
-    const params = new URLSearchParams({ url });
+  // FIX: jika url sudah berupa /api/radio-proxy?url=..., ekstrak URL asli dulu
+  // agar customDns terbaru bisa diapply dan tidak terjadi double-wrapping
+  // (misalnya saat station di-like lalu diputar ulang dari playlist)
+  let rawUrl = url;
+  if (url.startsWith('/api/radio-proxy?')) {
+    try {
+      const params = new URLSearchParams(url.slice('/api/radio-proxy?'.length));
+      rawUrl = params.get('url') || url;
+    } catch { /* biarkan rawUrl = url */ }
+  }
+  if (rawUrl.startsWith('http://')) {
+    const params = new URLSearchParams({ url: rawUrl });
     if (customDns) params.set('dns', customDns);
     return `/api/radio-proxy?${params.toString()}`;
   }
-  return url;
+  return rawUrl;
 }
 
 export function buildInvidiousUrl(base, apiPath, params = {}) {
@@ -1356,69 +1366,17 @@ async function _ytAudioUrlViaCobalt(videoId, signal) {
   } catch { return null; }
 }
 
-// Download audio YouTube → simpan ke cache
-// ── Ambil URL backend converter (Render/Railway) dari localStorage ───────────
-// User mengisi URL ini di Settings → YouTube → "URL Backend Converter"
-export function getBackendUrl() {
-  try { return (localStorage.getItem('sn_backend_url') || '').trim().replace(/\/$/, ''); }
-  catch { return ''; }
-}
-
-// ── Download via backend converter (yt-dlp + ffmpeg) ─────────────────────────
-// Backend di-hosting di Render.com atau Railway.app (bukan Vercel).
-// Vercel tidak bisa menjalankan yt-dlp/ffmpeg karena Serverless Functions.
-async function downloadYtAudioViaBackend(videoId, onProgress, signal) {
-  const backendUrl = getBackendUrl();
-  if (!backendUrl) return null;
-
-  const backendKey = (() => { try { return localStorage.getItem('sn_backend_key') || ''; } catch { return ''; } })();
-  const headers = backendKey ? { 'X-Backend-Key': backendKey } : {};
-
-  const url = `${backendUrl}/download?videoId=${videoId}&format=mp3`;
-  let res;
-  try {
-    res = await fetch(url, { signal, headers, mode: 'cors' });
-  } catch (e) {
-    if (signal?.aborted) throw e;
-    console.warn('[Backend] Fetch gagal:', e.message);
-    return null;
-  }
-
-  if (!res.ok) {
-    console.warn(`[Backend] HTTP ${res.status} untuk videoId ${videoId}`);
-    return null;
-  }
-
-  const blob = await _readStreamToBlob(res, onProgress, 'audio/mpeg');
-  return blob && blob.size > 10000 ? blob : null;
-}
-
-// Menggunakan backend converter (yt-dlp+ffmpeg) sebagai metode utama jika dikonfigurasi,
-// lalu fallback ke /api/yt-audio (Piped/Invidious proxy), lalu Cobalt.
+// ── Download audio YouTube → simpan ke cache (tanpa backend, Vercel-only)
+// Method 1: /api/yt-audio — server-side proxy Piped/Invidious via Vercel
+// Method 2: /api/cobalt  — Cobalt proxy via Vercel (fallback)
 export async function downloadYtAudio(videoId, onProgress, signal) {
   // Cek cache dulu
   const existing = await ytCacheGet(videoId);
   if (existing && existing.size > 10000) { onProgress && onProgress(100); return; }
 
-  // ── Method 1: Backend converter (yt-dlp + ffmpeg) — jika URL sudah diisi ──
-  // User harus deploy backend ke Render/Railway dan isi URL-nya di Settings.
-  // Ini metode paling andal karena pakai yt-dlp resmi + konversi FFmpeg.
-  if (getBackendUrl()) {
-    try {
-      const blob = await downloadYtAudioViaBackend(videoId, onProgress, signal);
-      if (blob) {
-        await ytCachePut(videoId, blob);
-        onProgress && onProgress(100);
-        return;
-      }
-    } catch (e) {
-      if (signal?.aborted) throw e;
-    }
-  }
-
-  // ── Method 2: /api/yt-audio (server-side Piped/Invidious proxy via Vercel) ─
-  // Ini adalah cara yang benar: server kita fetch audio stream dari YT CDN
-  // menggunakan kredensial Piped (Referer/Origin), lalu stream ke browser.
+  // ── Method 1: /api/yt-audio (Piped/Invidious proxy via Vercel Serverless) ─
+  // Server Vercel fetch audio stream dari YT CDN menggunakan kredensial Piped,
+  // lalu stream ke browser. Andal untuk video yang tidak diblokir per-IP.
   try {
     const proxyUrl = `/api/yt-audio?videoId=${videoId}`;
     const res = await fetch(proxyUrl, { signal, mode: 'cors' });
@@ -1434,7 +1392,7 @@ export async function downloadYtAudio(videoId, onProgress, signal) {
     if (signal?.aborted) throw e;
   }
 
-  // ── Method 3: Cobalt (fallback terakhir) ─────────────────────────────────
+  // ── Method 2: Cobalt (fallback — infrastruktur sendiri, tidak tergantung Piped) ─
   try {
     const cobaltInfo = await _ytAudioUrlViaCobalt(videoId, signal);
     if (cobaltInfo?.url) {
@@ -1449,7 +1407,7 @@ export async function downloadYtAudio(videoId, onProgress, signal) {
     if (signal?.aborted) throw e;
   }
 
-  throw new Error('Download audio YouTube gagal: backend, /api/yt-audio, dan Cobalt tidak tersedia');
+  throw new Error('Download audio YouTube gagal: /api/yt-audio dan Cobalt tidak tersedia');
 }
 
 // ── Unduh file audio ke perangkat (bukan cache browser) — memicu dialog Save As

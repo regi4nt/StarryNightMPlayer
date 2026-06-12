@@ -3205,6 +3205,9 @@ Return ONLY valid JSON, no explanation:
   const hlsRef              = useRef(null);   // HLS.js instance untuk stream .m3u8
   const radioReconnectRef   = useRef(null);   // setTimeout handle untuk auto-reconnect
   const radioReconnectCount = useRef(0);       // berapa kali sudah reconnect
+  const silenceAnalyserRef  = useRef(null);   // AnalyserNode untuk deteksi stream silent
+  const silenceTimerRef     = useRef(null);   // setTimeout handle untuk cek silence
+  const silenceCtxRef       = useRef(null);   // AudioContext khusus silence check (terpisah dari EQ)
   const chatEndRef    = useRef(null);
   const ytMusicSectionRef = useRef(null);
   const tokenRef      = useRef(null);
@@ -4320,6 +4323,7 @@ Return ONLY valid JSON, no explanation:
       if (!a.src || a.src === window.location.href) return;
       if (track.isRadio) {
         console.warn('[Radio] Stream error, scheduling reconnect. code:', err?.code);
+        stopSilenceDetection(); // FIX: bersihkan silence detector sebelum reconnect
         scheduleRadioReconnect(track);
         return;
       }
@@ -4392,7 +4396,7 @@ Return ONLY valid JSON, no explanation:
         if (!a.paused) setStreamBuffering(true);
       }, 800);
     };
-    const onPlaying2 = () => { if (track.isRadio) { setStreamBuffering(false); radioReconnectCount.current = 0; if (radioReconnectRef.current) { clearTimeout(radioReconnectRef.current); radioReconnectRef.current = null; } if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; } if (waitingTimer) { clearTimeout(waitingTimer); waitingTimer = null; } } };
+    const onPlaying2 = () => { if (track.isRadio) { setStreamBuffering(false); radioReconnectCount.current = 0; if (radioReconnectRef.current) { clearTimeout(radioReconnectRef.current); radioReconnectRef.current = null; } if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; } if (waitingTimer) { clearTimeout(waitingTimer); waitingTimer = null; } // FIX Bug #2: mulai deteksi silent stream setiap kali 'playing' event fire (termasuk setelah reconnect). // Jika stream berjalan tapi tidak ada audio, akan trigger reconnect otomatis setelah 6 detik. startSilenceDetection(a, track); } };
     a.addEventListener('timeupdate',     onTime);
     a.addEventListener('loadedmetadata', onMeta);
     a.addEventListener('durationchange', onDurChange);
@@ -4442,13 +4446,14 @@ Return ONLY valid JSON, no explanation:
       clearInterval(durPoll);
       if (stallTimer) clearTimeout(stallTimer);
       if (waitingTimer) clearTimeout(waitingTimer);
+      stopSilenceDetection(); // FIX: bersihkan AudioContext silence saat track berganti
       a.pause(); a.src = '';
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
     };
   // FIX Bug 3: pakai track.id sebagai dependency tambahan untuk radio
   // Kalau dua station berbeda kebetulan punya URL sama, track.src tidak berubah
   // tapi track.id berbeda → useEffect tetap re-run dan audio direset dengan benar
-  }, [track.src, track.isRadio ? track.id : null]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [track.src, track.isRadio ? track.id : null, startSilenceDetection, stopSilenceDetection]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Sync playingRef
   useEffect(() => { playingRef.current = playing; }, [playing]);
@@ -5964,6 +5969,80 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
   }, [loadHlsLib]);
 
   // ── Auto-reconnect untuk stream radio yang putus
+  // ── Silence detection untuk radio stream
+  // Mendeteksi kondisi "audio berjalan tapi tidak ada suara":
+  // - Koneksi stream berhasil (tidak ada error)
+  // - Browser menganggap audio sedang diputar (playing=true)
+  // - Tapi AnalyserNode tidak mendeteksi sinyal audio apapun
+  // Ini terjadi karena beberapa sebab:
+  //   1. Server kirim stream kosong / data nol
+  //   2. Domain tidak ada di ALLOWED_DOMAINS radio-proxy → 403, tapi audio element
+  //      tidak selalu fire 'error' untuk koneksi yang ditutup server setelah header
+  //   3. ISP/network memblokir konten tapi mengirim HTTP 200 dengan body kosong
+  const stopSilenceDetection = useCallback(() => {
+    if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
+    silenceAnalyserRef.current = null;
+    // Tutup AudioContext khusus silence agar tidak ada resource leak
+    if (silenceCtxRef.current && silenceCtxRef.current.state !== 'closed') {
+      silenceCtxRef.current.close().catch(() => {});
+      silenceCtxRef.current = null;
+    }
+  }, []);
+
+  const startSilenceDetection = useCallback((audioEl, trackObj) => {
+    stopSilenceDetection();
+    // Jangan cek jika bukan radio atau audio tidak ada
+    if (!trackObj?.isRadio || !audioEl) return;
+    // Buat AudioContext baru khusus untuk deteksi silence
+    // (terpisah dari audioCtxRef yang dipakai EQ, untuk mencegah konflik crossOrigin)
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return; // browser lama tidak support
+    let ctx;
+    try {
+      ctx = new AC();
+      silenceCtxRef.current = ctx;
+    } catch { return; }
+
+    let analyser;
+    try {
+      const source = ctx.createMediaElementSource(audioEl);
+      analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      analyser.connect(ctx.destination);
+      silenceAnalyserRef.current = analyser;
+    } catch {
+      // createMediaElementSource bisa gagal jika elemen sudah di-connect ke AudioContext lain
+      // (misalnya EQ aktif dan pakai crossOrigin). Dalam kasus ini, skip silence detection
+      // dan andalkan mekanisme stall/error yang sudah ada.
+      try { ctx.close(); } catch {}
+      silenceCtxRef.current = null;
+      return;
+    }
+
+    // Tunggu 6 detik setelah stream mulai (beri waktu buffering awal)
+    // lalu cek apakah ada sinyal audio masuk
+    silenceTimerRef.current = setTimeout(() => {
+      silenceTimerRef.current = null;
+      if (!analyser || !playingRef.current) return;
+      // Pastikan track belum berganti
+      if (trackRef.current?.src !== trackObj.src) return;
+      const buf = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(buf);
+      const avg = buf.reduce((a, b) => a + b, 0) / buf.length;
+      if (avg < 0.5) {
+        // Rata-rata energi frekuensi < 0.5 dari 255 → stream diam / tidak ada audio
+        console.warn('[Radio] Silent stream detected (avg energy:', avg.toFixed(3), ') — scheduling reconnect');
+        // Cleanup context sebelum reconnect agar tidak ada dangling resource
+        stopSilenceDetection();
+        scheduleRadioReconnect(trackObj);
+      } else {
+        // Ada suara → lepas detection (hemat resource), stream sehat
+        stopSilenceDetection();
+      }
+    }, 6000);
+  }, [stopSilenceDetection]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const scheduleRadioReconnect = useCallback((trackObj) => {
     if (radioReconnectRef.current) clearTimeout(radioReconnectRef.current);
     const attempt = radioReconnectCount.current;
@@ -5972,6 +6051,10 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       radioReconnectCount.current = 0;
       setPlaying(false);
       setStreamBuffering(false);
+      // FIX Bug #3: bersihkan state radio agar UI tidak stuck menampilkan stasiun
+      // yang sudah tidak bisa diputar (tombol LIVE RADIO / info stasiun tetap muncul)
+      setRadioStation(null);
+      setRadioPlaying(false);
       return;
     }
     // Exponential back-off: 500ms, 1s, 2s, 4s, 10s, 20s
@@ -5993,19 +6076,21 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
       }
       const src = trackObj.src;
       if (src.includes('.m3u8')) {
+        stopSilenceDetection(); // bersihkan context lama sebelum HLS reconnect
         attachHls(a, src, () => { a.play().catch(() => {}); });
       } else {
         a.src = '';
         setTimeout(() => {
           // Double-check lagi setelah 500ms inner delay
           if (trackRef.current?.src !== trackObj.src) return;
+          stopSilenceDetection(); // bersihkan context lama sebelum reconnect
           a.src = src + (src.includes('?') ? '&' : '?') + '_t=' + Date.now(); // cache-bust agar server kirim stream baru
           a.load();
           a.play().catch(() => {});
         }, 500);
       }
     }, delay);
-  }, [attachHls]);
+  }, [attachHls, stopSilenceDetection]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Universal play function for any external radio station
   const playRbStation = (station) => {
@@ -6658,9 +6743,15 @@ Format exactly:
       return;
     }
     if (t.isRadio) {
-      const radioTrackObj = { id: t.id, title: t.title, artist: t.artist, album: 'Live Radio', cover: t.cover, src: t.src, color: t.color||'#f59e0b', bg: t.bg||'rgba(245,158,11,0.15)', mood: 'live, radio', isRadio: true };
+      // FIX: selalu jalankan radioUrl() pada t.src sebelum diputar.
+      // t.src bisa berisi URL mentah http:// (disimpan saat station di-like dari queue sidebar
+      // dengan src:station.url tanpa radioUrl), atau sudah berupa /api/radio-proxy?url=...
+      // radioUrl() idempoten untuk https:// dan /api/..., aman dipanggil berulang kali.
+      const proxiedSrc = radioUrl(t.src, customDnsRef.current);
+      const radioTrackObj = { id: t.id, title: t.title, artist: t.artist, album: 'Live Radio', cover: t.cover, src: proxiedSrc, color: t.color||'#f59e0b', bg: t.bg||'rgba(245,158,11,0.15)', mood: 'live, radio', isRadio: true };
       stopAllMedia('radio');
-      setRadioStation({ id: t.id.replace('radio_',''), name: t.title, url: t.src, color: t.color||'#f59e0b' });
+      // FIX: simpan proxiedSrc di radioStation.url agar reconnect juga pakai URL yang benar
+      setRadioStation({ id: t.id.replace('radio_',''), name: t.title, url: proxiedSrc, color: t.color||'#f59e0b' });
       setRadioPlaying(true); setTrack(radioTrackObj); setPlaying(true); setTab('player'); return;
     }
     let td = { ...t };
