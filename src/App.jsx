@@ -1869,6 +1869,62 @@ Return ONLY valid JSON, no explanation:
     if (allItems.length > 0) ytSearchCacheSet(query + '_' + mode, allItems);
   };
 
+
+  // ── Tutup semua media aktif sebelum switch ke sumber baru
+  // mode: 'radio' | 'embed' | 'local'
+  const stopAllMedia = (incomingMode) => {
+    // Tutup YouTube embed
+    if (incomingMode !== 'embed') {
+      if (embedTrack?.type === 'youtube' && ytIframeRef.current) {
+        try { ytIframeRef.current.contentWindow.postMessage(JSON.stringify({ event:'command', func:'pauseVideo', args:'' }), '*'); } catch(_) {}
+      }
+      setEmbedTrack(null);
+      setYtProgress(0); setYtDuration(0);
+      ytQueueRef.current=[]; ytQueueIdxRef.current=-1;
+    }
+    // Tutup SoundCloud widget
+    if (incomingMode !== 'embed') {
+      setScWidget({});
+    }
+    // Stop Spotify preview — selalu hentikan saat beralih ke sumber lain
+    if (spPreviewRef.current) { spPreviewRef.current.pause(); spPreviewRef.current = null; }
+    setSpPlaying(false);
+    // Stop radio jika incoming bukan radio — tanpa syarat trackRef.isRadio karena
+    // radioAudioRef/HLS bisa aktif bahkan ketika track sudah beralih ke sumber lain
+    // FIX: saat radio→radio (ganti station), audio lama HARUS di-stop dulu sebelum play baru
+    // Tanpa ini, dua stream berjalan bersamaan selama beberapa detik
+    if (incomingMode !== 'radio') {
+      if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
+      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
+      if (radioReconnectRef.current) { clearTimeout(radioReconnectRef.current); radioReconnectRef.current = null; }
+      radioReconnectCount.current = 0;
+      setStreamBuffering(false);
+      setRadioPlaying(false);
+      setRadioStation(null); // wajib: bersihkan state station agar tombol X radio tidak ghost
+    } else {
+      // Incoming adalah radio baru — stop audio & HLS lama dulu, tapi pertahankan state
+      if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
+      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
+      if (radioReconnectRef.current) { clearTimeout(radioReconnectRef.current); radioReconnectRef.current = null; }
+      radioReconnectCount.current = 0;
+      setStreamBuffering(false);
+    }
+    // Stop Drive jika incoming adalah embed (Drive tidak relevan saat embed aktif)
+    // Untuk mode radio & local: audio sudah di-stop di blok di atas; jangan panggil setPlaying(false)
+    // karena caller (playRbStation / play) akan langsung memanggil setPlaying(true) setelahnya.
+    if (incomingMode === 'embed') {
+      if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
+      setPlaying(false);
+      // Reset track ke default agar tombol X Drive tidak ghost saat embedTrack aktif
+      if (trackRef.current?.isDrive) setTrack(SONGS[0]);
+    }
+    // Untuk mode local: hentikan playing agar track lama tidak terus berjalan
+    // (audio baru akan di-setup oleh useEffect [track.src, track.id])
+    if (incomingMode === 'local') {
+      setPlaying(false);
+    }
+  };
+
   const playYouTube = async (item, queue, queueIdx) => {
     // Support Piped format (url), Invidious format (videoId), or direct videoId
     let videoId = item.videoId || null;
@@ -1955,61 +2011,6 @@ Return ONLY valid JSON, no explanation:
   // Keep ref always pointing to latest playYouTube (avoids stale closure in ytNext/ytPrev)
   playYouTubeRef.current = playYouTube;
 
-
-  // ── Tutup semua media aktif sebelum switch ke sumber baru
-  // mode: 'radio' | 'embed' | 'local'
-  const stopAllMedia = (incomingMode) => {
-    // Tutup YouTube embed
-    if (incomingMode !== 'embed') {
-      if (embedTrack?.type === 'youtube' && ytIframeRef.current) {
-        try { ytIframeRef.current.contentWindow.postMessage(JSON.stringify({ event:'command', func:'pauseVideo', args:'' }), '*'); } catch(_) {}
-      }
-      setEmbedTrack(null);
-      setYtProgress(0); setYtDuration(0);
-      ytQueueRef.current=[]; ytQueueIdxRef.current=-1;
-    }
-    // Tutup SoundCloud widget
-    if (incomingMode !== 'embed') {
-      setScWidget({});
-    }
-    // Stop Spotify preview — selalu hentikan saat beralih ke sumber lain
-    if (spPreviewRef.current) { spPreviewRef.current.pause(); spPreviewRef.current = null; }
-    setSpPlaying(false);
-    // Stop radio jika incoming bukan radio — tanpa syarat trackRef.isRadio karena
-    // radioAudioRef/HLS bisa aktif bahkan ketika track sudah beralih ke sumber lain
-    // FIX: saat radio→radio (ganti station), audio lama HARUS di-stop dulu sebelum play baru
-    // Tanpa ini, dua stream berjalan bersamaan selama beberapa detik
-    if (incomingMode !== 'radio') {
-      if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
-      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
-      if (radioReconnectRef.current) { clearTimeout(radioReconnectRef.current); radioReconnectRef.current = null; }
-      radioReconnectCount.current = 0;
-      setStreamBuffering(false);
-      setRadioPlaying(false);
-      setRadioStation(null); // wajib: bersihkan state station agar tombol X radio tidak ghost
-    } else {
-      // Incoming adalah radio baru — stop audio & HLS lama dulu, tapi pertahankan state
-      if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
-      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
-      if (radioReconnectRef.current) { clearTimeout(radioReconnectRef.current); radioReconnectRef.current = null; }
-      radioReconnectCount.current = 0;
-      setStreamBuffering(false);
-    }
-    // Stop Drive jika incoming adalah embed (Drive tidak relevan saat embed aktif)
-    // Untuk mode radio & local: audio sudah di-stop di blok di atas; jangan panggil setPlaying(false)
-    // karena caller (playRbStation / play) akan langsung memanggil setPlaying(true) setelahnya.
-    if (incomingMode === 'embed') {
-      if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; }
-      setPlaying(false);
-      // Reset track ke default agar tombol X Drive tidak ghost saat embedTrack aktif
-      if (trackRef.current?.isDrive) setTrack(SONGS[0]);
-    }
-    // Untuk mode local: hentikan playing agar track lama tidak terus berjalan
-    // (audio baru akan di-setup oleh useEffect [track.src, track.id])
-    if (incomingMode === 'local') {
-      setPlaying(false);
-    }
-  };
 
   // ── Play web-search native audio (Jamendo/FMA/ccMixter/Audius/Deezer/SC/SP)
   const playWsTrack = useCallback(async (item, queue, queueIdx) => {
