@@ -19,7 +19,7 @@ import { applyRateLimit } from './_lib/rateLimit.js';
 import dns from 'dns';
 
 export const config = {
-  runtime: 'nodejs',
+  runtime: 'nodejs22.x',
   // maxDuration: batas maksimal serverless function per-request di Vercel.
   // Ini adalah PENYEBAB UTAMA buffering radio — stream diputus paksa saat timeout,
   // browser harus reconnect, dan selama reconnect terjadi jeda/buffering.

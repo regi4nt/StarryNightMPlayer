@@ -19,7 +19,7 @@
 import { applyRateLimit } from './_lib/rateLimit.js';
 
 export const config = {
-  runtime: 'nodejs',
+  runtime: 'nodejs22.x',
 };
 
 export default async function handler(req, res) {

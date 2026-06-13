@@ -35,7 +35,7 @@
 import crypto from 'crypto';
 
 export const config = {
-  runtime: 'nodejs',
+  runtime: 'nodejs22.x',
   api: { bodyParser: { sizeLimit: '12mb' } },
 };
 
