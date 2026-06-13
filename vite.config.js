@@ -172,6 +172,12 @@ export default defineConfig(({ mode }) => {
           if (id.includes('src/radioStations')) {
             return 'radio-data';
           }
+          // utils.js — standalone utilities tanpa import dari src lain.
+          // Dipisahkan agar lazy chunks mengimport dari sini (bukan dari index),
+          // memutus circular chunk reference yang menyebabkan TDZ error.
+          if (id.includes('src/utils')) {
+            return 'app-utils';
+          }
           // NOTE: src/translations dan src/constants TIDAK dipisahkan ke chunk manual
           // karena keduanya di-import synchronous oleh App.jsx. Jika dipisahkan, Rollup
           // bisa mengeksekusi index chunk sebelum live bindings dari chunk tersebut
