@@ -239,7 +239,7 @@ export function radioUrl(url, customDns = '') {
   // FIX RADIO SUARA: proxy http:// DAN https:// agar CORS tidak memblokir audio.
   // Browser memblokir audio dari domain radio eksternal (tidak ada header CORS),
   // termasuk URL https://. Proxy server-side mengatasi ini untuk kedua skema.
-  if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+  if (rawUrl.startsWith('http://')) {
     const params = new URLSearchParams({ url: rawUrl });
     if (customDns) params.set('dns', customDns);
     return `/api/radio-proxy?${params.toString()}`;
