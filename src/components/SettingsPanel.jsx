@@ -10,7 +10,7 @@ function useWindowWidth() {
   }, []);
   return width;
 }
-import { SLEEP_OPTIONS, fmtSec } from '../utils.js';
+import { SLEEP_OPTIONS, fmtSec } from '../constants.js';
 
 class SettingsErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { hasError: false, error: null }; }

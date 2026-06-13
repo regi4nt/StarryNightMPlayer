@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Upload, X } from 'lucide-react';
-import { btn } from '../utils.js';
+import { btn } from '../constants.js';
 
 function UploadModal({ onClose, onUpload, uploading, uploadProgress, color, isLite, t }) {
   const [file,setFile]=useState(null), [title,setTitle]=useState(''), [artist,setArtist]=useState(''), [album,setAlbum]=useState(''), [dragging,setDragging]=useState(false);

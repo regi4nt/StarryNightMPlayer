@@ -155,8 +155,8 @@ export default defineConfig(({ mode }) => {
         assetFileNames: 'assets/[name]-[hash].[ext]',
         // ── Manual chunks: pisahkan vendor & fitur besar ──────────
         manualChunks(id) {
-          // Vendor: React core + lucide-react bundled together so icons are always
-          // available before App.jsx executes (prevents "Music is not defined" errors)
+          // Vendor: React core + lucide-react digabung agar icon selalu tersedia
+          // sebelum App.jsx dieksekusi (mencegah ReferenceError: Music is not defined)
           if (
             id.includes('node_modules/react') ||
             id.includes('node_modules/react-dom') ||
@@ -164,29 +164,20 @@ export default defineConfig(({ mode }) => {
           ) {
             return 'vendor-react';
           }
-          // Translations (static, loaded early)
+          // Translations (statis, dimuat awal)
           if (id.includes('src/translations')) {
             return 'translations';
           }
-          // utils.js MUST be its own chunk — it is imported by both the main index
-          // chunk AND by lazy chunks (SongRow, SettingsPanel, UploadModal, Player).
-          // Without this, Rollup would inline utils into the index chunk, making lazy
-          // chunks statically import FROM the index chunk → circular chunk reference
-          // → TDZ ReferenceError at runtime when lazy chunks load.
-          if (id.includes('src/utils')) {
-            return 'app-utils';
+          // Constants & utils (data besar, dimuat awal)
+          if (id.includes('src/constants')) {
+            return 'app-constants';
           }
-          // NOTE: src/constants.js is intentionally NOT given a manual chunk.
-          // Splitting it previously caused TDZ: the main chunk accessed `const`
-          // exports from the constants chunk before they were initialized.
-          // Rollup inlines constants into the main index chunk instead.
-          //
           // Radio station data — only needed when Stream tab opens
           if (id.includes('src/radioStations')) {
             return 'radio-data';
           }
-          // Lazy components → Rollup auto-creates separate chunks via dynamic import
-          // (SettingsPanel, PlaylistViews, UploadModal already get their own chunks)
+          // Lazy components → Rollup otomatis buat chunk terpisah karena dynamic import
+          // (SettingsPanel, PlaylistViews, UploadModal sudah jadi chunk sendiri)
         },
       }
     },

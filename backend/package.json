@@ -1,0 +1,22 @@
+{
+  "name": "starrynight-backend",
+  "version": "1.0.0",
+  "description": "Backend converter yt-dlp + FFmpeg untuk StarryNight MPlayer",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "express-rate-limit": "^7.3.1",
+    "ytdl-core": "^4.11.5",
+    "fluent-ffmpeg": "^2.1.3",
+    "@distube/ytdl-core": "^4.14.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
