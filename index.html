@@ -174,6 +174,7 @@
             return;
           }
           sessionStorage.setItem(RESET_KEY, '1');
+          sessionStorage.removeItem('sw_cc_reloaded');
           warn('Auto-unregister dipicu: ' + reason);
 
           // Unregister semua SW
@@ -278,22 +279,38 @@
 
         // ── Reload otomatis saat SW baru mengambil alih kontrol ──
         // (controllerchange terjadi setelah skipWaiting + clientsClaim)
-        var refreshing = false;
+        // CC_RELOAD_KEY dipakai terpisah dari RESET_KEY dan disimpan di
+        // sessionStorage. Variabel JS `refreshing` saja TIDAK cukup karena
+        // direset setiap kali skrip dieksekusi ulang setelah reload — pada
+        // first-load setelah cache/cookie/site-data dibersihkan, SW baru selalu
+        // install->activate->controllerchange di SETIAP reload (tidak ada yang
+        // sudah ter-cache), sehingga tanpa flag persist ini terjadi reload loop
+        // tak berhenti dan halaman tidak pernah terbuka.
+        var CC_RELOAD_KEY = 'sw_cc_reloaded';
         navigator.serviceWorker.addEventListener('controllerchange', function () {
-          if (refreshing) return;
-          refreshing = true;
-          log('SW controller berubah — reload untuk pakai SW terbaru.');
-          // Bersihkan flag reset agar pada reload berikutnya bisa reset lagi jika perlu
-          sessionStorage.removeItem(RESET_KEY);
+          log('SW controller berubah.');
+          try {
+            if (sessionStorage.getItem(CC_RELOAD_KEY) === '1') {
+              log('Sudah pernah reload karena controllerchange — skip reload kali ini.');
+              return;
+            }
+            sessionStorage.setItem(CC_RELOAD_KEY, '1');
+          } catch (e) {}
+          log('Reload untuk pakai SW terbaru.');
           window.location.reload();
         });
 
-        // ── Error handler global — tangkap error fetch dari SW ──
+        // ── Error handler global — tangkap error fetch yang BENAR-BENAR dari SW ──
+        // Diperketat: hanya bereaksi pada error yang eksplisit menyebut service
+        // worker / sw.js / workbox, BUKAN error fetch generik (gambar, audio,
+        // API, dll). Versi sebelumnya memicu nukeAndReload untuk SEMUA
+        // "Failed to fetch", yang sering terjadi tepat setelah cache dibersihkan
+        // (banyak resource gagal di percobaan pertama) → menyebabkan reset+reload
+        // loop dan halaman tak pernah benar-benar terbuka.
         window.addEventListener('error', function (evt) {
           var msg = evt.message || '';
-          // Pola error yang khas dari SW yang corrupt/bug
-          if (/Failed to fetch|NetworkError|fetch.*sw/i.test(msg)) {
-            nukeAndReload('Error fetch global mencurigakan: ' + msg);
+          if (/service.?worker|sw\.js|workbox/i.test(msg) && /Failed to fetch|NetworkError/i.test(msg)) {
+            nukeAndReload('Error fetch SW spesifik: ' + msg);
           }
         });
 
