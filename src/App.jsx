@@ -6097,7 +6097,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     // Saat Vercel memutus stream karena timeout, browser langsung error — kita perlu reconnect
     // secepat mungkin agar jeda audio tidak terasa. 200ms hampir tidak terdengar.
     // Back-off: 200ms, 800ms, 1.5s, 3s, 6s, 12s, 20s, 20s
-    const delays = [200, 800, 1500, 3000, 6000, 12000, 20000, 20000];
+    const delays = [3000, 6000, 12000, 20000, 30000, 30000, 30000, 30000];
     const delay = delays[attempt] ?? 20000;
     console.warn(`[Radio] Reconnect attempt ${attempt + 1} in ${delay}ms`);
     setStreamBuffering(true);
