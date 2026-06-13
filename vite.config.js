@@ -168,10 +168,12 @@ export default defineConfig(({ mode }) => {
           if (id.includes('src/translations')) {
             return 'translations';
           }
-          // Constants & utils (data besar, dimuat awal)
-          if (id.includes('src/constants')) {
-            return 'app-constants';
-          }
+          // NOTE: src/constants.js is intentionally NOT put in a separate manual chunk.
+          // Splitting it caused a TDZ (Temporal Dead Zone) ReferenceError at runtime:
+          // Rollup's ES module live bindings + async chunk loading meant the main chunk
+          // could try to access `const` exports from constants before they were initialized.
+          // Letting Rollup inline constants into the main index chunk fixes this.
+          //
           // Radio station data — only needed when Stream tab opens
           if (id.includes('src/radioStations')) {
             return 'radio-data';
