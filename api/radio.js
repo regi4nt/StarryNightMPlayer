@@ -11,7 +11,7 @@
 
 import { applyRateLimit } from './_lib/rateLimit.js';
 
-export const config = { runtime: 'nodejs22.x', maxDuration: 20 };
+export const config = { runtime: 'nodejs', maxDuration: 20 };
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 

@@ -24,7 +24,7 @@
 
 import { applyRateLimit } from './_lib/rateLimit.js';
 
-export const config = { runtime: 'nodejs22.x' };
+export const config = { runtime: 'nodejs' };
 
 // Cache token per sp_dc (in-memory, reset saat instance recycle)
 // Key: sp_dc hash (bukan sp_dc asli), Value: { token, exp }

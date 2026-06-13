@@ -1,6 +1,6 @@
 import { applyRateLimit } from './_lib/rateLimit.js';
 
-export const config = { runtime: 'nodejs22.x' };
+export const config = { runtime: 'nodejs' };
 
 /**
  * /api/cobalt

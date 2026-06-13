@@ -7,7 +7,7 @@
  * Frontend menggunakan ini agar bisa memakai /api/youtube?action=search
  * sebagai proxy meskipun user tidak memasukkan key sendiri di Settings.
  */
-export const config = { runtime: 'nodejs22.x' };
+export const config = { runtime: 'nodejs' };
 
 export default function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
