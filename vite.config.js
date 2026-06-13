@@ -154,6 +154,10 @@ export default defineConfig(({ mode }) => {
         entryFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
         // ── Manual chunks: pisahkan vendor & fitur besar ──────────
+        // PENTING: Jangan pisahkan modul yang di-import secara synchronous oleh App.jsx
+        // (seperti constants.js dan translations.js) ke chunk terpisah — Rollup bisa
+        // mengeksekusi index chunk sebelum chunk tersebut selesai inisialisasi, yang
+        // menyebabkan ReferenceError: Cannot access 'X' before initialization (TDZ error).
         manualChunks(id) {
           // Vendor: React core + lucide-react digabung agar icon selalu tersedia
           // sebelum App.jsx dieksekusi (mencegah ReferenceError: Music is not defined)
@@ -164,18 +168,14 @@ export default defineConfig(({ mode }) => {
           ) {
             return 'vendor-react';
           }
-          // Translations (statis, dimuat awal)
-          if (id.includes('src/translations')) {
-            return 'translations';
-          }
-          // Constants & utils (data besar, dimuat awal)
-          if (id.includes('src/constants')) {
-            return 'app-constants';
-          }
-          // Radio station data — only needed when Stream tab opens
+          // Radio station data — only needed when Stream tab opens (dynamic import only)
           if (id.includes('src/radioStations')) {
             return 'radio-data';
           }
+          // NOTE: src/translations dan src/constants TIDAK dipisahkan ke chunk manual
+          // karena keduanya di-import synchronous oleh App.jsx. Jika dipisahkan, Rollup
+          // bisa mengeksekusi index chunk sebelum live bindings dari chunk tersebut
+          // terinisialisasi → TDZ ReferenceError di production build.
           // Lazy components → Rollup otomatis buat chunk terpisah karena dynamic import
           // (SettingsPanel, PlaylistViews, UploadModal sudah jadi chunk sendiri)
         },
