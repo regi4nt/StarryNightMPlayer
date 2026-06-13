@@ -1,3 +1,4 @@
+// RADIO_PERSISTENCE_GUARD
 import React, { useState, useEffect, useRef, useCallback, useReducer, useMemo, lazy, Suspense } from 'react';
 // ── Optimasi: reducers & memoized values
 import {
