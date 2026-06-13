@@ -1,4 +1,10 @@
 
+// Re-export shared utilities so App.jsx imports from constants.js stay unchanged.
+// The actual definitions live in utils.js to avoid circular chunk references —
+// lazy components (SongRow, SettingsPanel, UploadModal) import from utils.js
+// directly, preventing them from depending on the main index chunk.
+export { fmt, fmtSec, SLEEP_OPTIONS, btn, isPhoneDevice, downloadToDevice, downloadBlobToDevice } from './utils.js';
+
 export function openNewTab(url) {
   // Cara 1: window.open langsung — paling andal jika dipanggil dari user gesture
   const w = window.open(url, '_blank', 'noopener,noreferrer');
@@ -188,14 +194,7 @@ export const COVERS = [
 ];
 export const randItem = arr => arr[Math.floor(Math.random() * arr.length)];
 
-export const SLEEP_OPTIONS = [
-  { label:'5 menit',  min:5  },
-  { label:'10 menit', min:10 },
-  { label:'15 menit', min:15 },
-  { label:'30 menit', min:30 },
-  { label:'45 menit', min:45 },
-  { label:'1 jam',    min:60 },
-];
+// SLEEP_OPTIONS moved to utils.js (re-exported above)
 
 // ═══════════════════════════════════════════════════════
 //  AI — Multi-provider: OpenRouter, Gemini, Groq
@@ -1416,69 +1415,8 @@ export async function downloadYtAudio(videoId, onProgress, signal) {
   throw new Error('Download audio YouTube gagal: /api/yt-audio dan Cobalt tidak tersedia');
 }
 
-// ── Unduh file audio ke perangkat (bukan cache browser) — memicu dialog Save As
-export async function downloadToDevice(url, filename, headers = {}) {
-  const hasCustomHeaders = Object.keys(headers).length > 0;
+// downloadToDevice, downloadBlobToDevice moved to utils.js (re-exported at top of this file)
 
-  // ── Fungsi helper: buat blob URL lalu picu anchor download ───────────────
-  const triggerBlobDownload = (blob) => {
-    const blobUrl = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = blobUrl; a.download = filename;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
-  };
-
-  if (!hasCustomHeaders) {
-    // ── Attempt 1: fetch langsung dengan CORS ────────────────────────────
-    try {
-      const res = await fetch(url, { mode: 'cors' });
-      if (res.ok) {
-        const blob = await res.blob();
-        if (blob.size > 500) { triggerBlobDownload(blob); return; }
-      }
-    } catch { /* CORS atau network error — coba proxy */ }
-
-    // ── Attempt 2: server-side proxy (mengatasi CORS) ────────────────────
-    if (url.startsWith('https://')) {
-      try {
-        const proxyUrl = `/api/audio-proxy?url=${encodeURIComponent(url)}`;
-        const res = await fetch(proxyUrl, { mode: 'cors' });
-        if (res.ok) {
-          const blob = await res.blob();
-          if (blob.size > 500) { triggerBlobDownload(blob); return; }
-        }
-      } catch { /* proxy gagal — fallback ke anchor */ }
-    }
-
-    // ── Attempt 3: anchor[download] langsung — hanya berhasil jika same-origin
-    //   atau server kirim Content-Disposition: attachment.
-    //   Jika cross-origin tanpa header tsb, browser akan REDIRECT/buka tab,
-    //   tapi ini adalah last resort terbaik yang tersisa.
-    const a = document.createElement('a');
-    a.href = url; a.download = filename; a.target = '_blank'; a.rel = 'noopener noreferrer';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    return;
-  }
-
-  // ── Ada custom headers (mis. Drive API): harus lewat fetch ───────────────
-  const res = await fetch(url, { headers });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const blob = await res.blob();
-  triggerBlobDownload(blob);
-}
-
-// ── Unduh blob yang sudah ada di memori ke perangkat (tanpa fetch ulang)
-export function downloadBlobToDevice(blob, filename) {
-  const blobUrl = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = blobUrl;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
-}
 
 // ── Dapatkan URL audio YouTube dari Piped (tanpa simpan ke cache)
 // Dapatkan URL audio YT tanpa simpan ke cache — fallback Piped → Invidious → Cobalt
@@ -2249,20 +2187,8 @@ export async function driveUploadSong(file, meta, token) {
 // ═══════════════════════════════════════════════════════
 //  HELPERS
 // ═══════════════════════════════════════════════════════
-export const fmt = t => { if (!t||isNaN(t)) return '0:00'; return `${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,'0')}`; };
-export const fmtSec = s => { const m=Math.floor(s/60), sec=s%60; return `${m}:${String(sec).padStart(2,'0')}`; };
+// fmt, fmtSec moved to utils.js (re-exported above)
 
 
 
-// ══════════════════════════════════════════════
-//  DEVICE DETECTION
-// ══════════════════════════════════════════════
-export function isPhoneDevice() {
-  const ua = navigator.userAgent;
-  const isMobileUA = /android|iphone|ipod|blackberry|windows phone/i.test(ua);
-  const isTabletUA = /ipad|tablet|(android(?!.*mobile))/i.test(ua);
-  const smallScreen = Math.min(window.screen.width, window.screen.height) < 500;
-  return (isMobileUA && !isTabletUA) || smallScreen;
-}
-
-export const btn = { background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.5)', padding: 8, display: 'flex', borderRadius: 8 };
+// isPhoneDevice, btn moved to utils.js (re-exported at top of this file)
