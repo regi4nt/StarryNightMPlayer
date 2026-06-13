@@ -6135,7 +6135,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
           a.preload = 'auto';
           a.src = src + (src.includes('?') ? '&' : '?') + '_t=' + Date.now();
           a.load();
-          a.play().catch(() => {});
+          a.addEventListener('canplay', () => { a.play().catch(() => {}); }, { once: true });
         }, 50); // FIX: kurangi dari 100ms ke 50ms — makin cepat reconnect makin kecil jeda
       }
     }, delay);
