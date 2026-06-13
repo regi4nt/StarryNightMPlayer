@@ -64,7 +64,11 @@ function SongRow({ s, i, track, playing, liked, setLiked, toggleFav, play, setPl
         // Radio: selalu panggil play(s) agar stream reconnect (radio tidak bisa di-resume dengan .play())
         // Non-radio aktif: toggle play/pause. Non-radio tidak aktif: mulai putar.
         if (s.isRadio) {
-          play(s);
+          if (isActive) {
+            if (!playing && typeof setPlaying === 'function') setPlaying(true);
+          } else {
+            play(s);
+          }
         } else if (isActive) {
           if (typeof setPlaying === 'function') setPlaying(p => !p);
         } else {
