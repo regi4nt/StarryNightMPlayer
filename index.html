@@ -342,6 +342,64 @@
         updateWCOGeometry();
       })();
     </script>
+    <script>
+      // ── Stale Chunk Guard (eager chunks) ─────────────────────────────────
+      // Menangkap error fatal saat memuat/menjalankan chunk utama (vendor-react,
+      // index) yang bisa terjadi jika browser mendapat kombinasi chunk yang TIDAK
+      // konsisten (mis. index-xxxx.js dari build baru + vendor-react-yyyy.js dari
+      // build lama, atau sebaliknya — terjadi saat HTML sudah ter-update tapi
+      // sebagian asset masih lama, atau sebaliknya). Gejala umum: "Cannot access
+      // 'X' before initialization" (TDZ) dari kode React minified, atau error
+      // "Failed to fetch dynamically imported module" / "Unexpected token" dari
+      // <script type="module">.
+      //
+      // Solusi: hard-reload SEKALI (bypass cache) untuk mengambil kombinasi
+      // chunk yang konsisten dari index.html terbaru. Flag di sessionStorage
+      // mencegah reload loop jika error tetap terjadi setelah reload.
+      (function () {
+        var STALE_KEY = 'sn_stale_chunk_reload';
+        function isStaleChunkError(msg) {
+          return /Cannot access '.*' before initialization|before initialization|Failed to fetch dynamically imported module|Unexpected token|Importing a module script failed|is not defined/i.test(msg || '');
+        }
+        function hardReload(reason) {
+          try {
+            if (sessionStorage.getItem(STALE_KEY) === '1') {
+              console.warn('[StaleChunkGuard] Sudah reload sebelumnya, tidak reload lagi. Alasan:', reason);
+              return false;
+            }
+            sessionStorage.setItem(STALE_KEY, '1');
+          } catch (e) {}
+          console.warn('[StaleChunkGuard] Reload karena:', reason);
+          // location.reload(true) sudah deprecated; gunakan replace + cache-buster
+          // agar browser benar-benar mengambil ulang index.html & chunk terbaru.
+          var url = new URL(window.location.href);
+          url.searchParams.set('_r', Date.now().toString(36));
+          window.location.replace(url.toString());
+          return true;
+        }
+        window.addEventListener('error', function (evt) {
+          if (isStaleChunkError(evt.message)) {
+            hardReload('error: ' + evt.message);
+          }
+        });
+        window.addEventListener('unhandledrejection', function (evt) {
+          var msg = (evt.reason && (evt.reason.message || String(evt.reason))) || '';
+          if (isStaleChunkError(msg)) {
+            hardReload('unhandledrejection: ' + msg);
+          }
+        });
+        // Jika React berhasil mount dengan baik, bersihkan flag agar deploy
+        // berikutnya bisa memicu reload ini lagi jika perlu.
+        window.addEventListener('DOMContentLoaded', function () {
+          setTimeout(function () {
+            var root = document.getElementById('root');
+            if (root && root.children.length > 0) {
+              try { sessionStorage.removeItem(STALE_KEY); } catch (e) {}
+            }
+          }, 3000);
+        });
+      })();
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
