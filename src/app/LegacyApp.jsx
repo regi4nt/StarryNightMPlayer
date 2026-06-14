@@ -4194,7 +4194,7 @@ Return ONLY valid JSON, no explanation:
     const a = new Audio();
     a.volume = muted ? 0 : volume;
     // Lite: preload none (hemat bandwidth). Radio: auto (mulai buffer segera untuk kurangi loading awal)
-    a.preload = isLite ? 'none' : (track.isRadio ? 'auto' : 'metadata');
+    a.preload = isLite ? 'none' : (track.isRadio ? 'metadata' : 'metadata');
     // Mobile: izinkan playback di background / lock screen
     a.setAttribute('playsinline', '');
     a.setAttribute('webkit-playsinline', '');
@@ -6161,10 +6161,10 @@ function scheduleRadioReconnect(trackObj) {
           stopSilenceDetection();
           // FIX BUFFERING: set preload='auto' sebelum src agar browser langsung
           // mulai buffering begitu src di-set, tanpa menunggu play().
-          a.preload = 'auto';
+          a.preload = 'metadata';
           a.src = src + (src.includes('?') ? '&' : '?') + '_t=' + Date.now();
-          a.load();
-          a.addEventListener('canplay', () => { a.play().catch(() => {}); }, { once: true });
+          a.play().catch((
+) => {}); }, { once: true });
         }, 50); // FIX: kurangi dari 100ms ke 50ms — makin cepat reconnect makin kecil jeda
       }
     }, delay);
@@ -11150,6 +11150,23 @@ Format exactly:
                           const countries = platform.countries || [];
                           const selCountry = countries.find(c => c.id === radioCountry) || null;
                           const selGenre = selCountry ? (selCountry.genres.find(g => g.id === radioGenre) || null) : null;
+                          
+const toggleRadioPlayback = () => {
+  const next = !playing;
+  if (audioRef.current) {
+    try {
+      if (next) {
+        const pr = audioRef.current.play();
+        if (pr && pr.catch) pr.catch(()=>{});
+      } else {
+        audioRef.current.pause();
+      }
+    } catch(e) {}
+  }
+  setPlaying(next);
+  setRadioPlaying(next);
+};
+
                           const playStation = (station, genreColor) => {
                             const stationColor = genreColor || '#f59e0b';
                             const radioTrackObj = {
@@ -11165,8 +11182,7 @@ Format exactly:
                               isRadio: true,
                             };
                             if (track.id === radioTrackObj.id) {
-                              setPlaying(p => !p);
-                              setRadioPlaying(p => !p);
+                              toggleRadioPlayback();
                             } else {
                               // Stop any YouTube embed
                               play(radioTrackObj);
@@ -11592,7 +11608,7 @@ Format exactly:
                                                       isRadio: true,
                                                     };
                                                     if (track.id === radioTrackObj.id) {
-                                                      setPlaying(p=>!p); setRadioPlaying(p=>!p);
+                                                      toggleRadioPlayback();
                                                     } else {
                                                       // Perbarui antrean navigasi: kurasi + RB + Garden gabungan
                                                       rbBrowseRef.current = [...(selGenre.stations || []), ...rbBrowseStations, ...gardenBrowseStations];
@@ -11657,7 +11673,7 @@ Format exactly:
                                               isRadio: true,
                                             };
                                             if (track.id === radioTrackObj.id) {
-                                              setPlaying(p=>!p); setRadioPlaying(p=>!p);
+                                              toggleRadioPlayback();
                                             } else {
                                               // Perbarui antrean navigasi: kurasi + RB + Garden gabungan
                                               rbBrowseRef.current = [...(selGenre?.stations || []), ...rbBrowseStations, ...gardenBrowseStations];
@@ -11775,7 +11791,7 @@ Format exactly:
                                                     isRadio: true,
                                                   };
                                                   if (track.id === station.id) {
-                                                    setPlaying(p=>!p); setRadioPlaying(p=>!p);
+                                                    toggleRadioPlayback();
                                                   } else {
                                                     // Perbarui antrean navigasi: kurasi + RB + Garden gabungan
                                                     rbBrowseRef.current = [...(selGenre?.stations || []), ...rbBrowseStations, ...gardenBrowseStations];
