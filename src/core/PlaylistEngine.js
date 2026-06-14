@@ -10,7 +10,7 @@ export default class PlaylistEngine {
   play(item){
     const target = item || this.current();
     if(!target) return;
-    const url = target.streamUrl || target.url;
+    const url = target.streamUrl || target.url || target.src;
     this.audioManager.setSource(url, target.type || 'track', target.id);
     this.audioManager.audio.play?.().catch(()=>{});
   }

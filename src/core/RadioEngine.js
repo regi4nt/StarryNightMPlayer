@@ -15,6 +15,7 @@ export default class RadioEngine {
     if(!exists){
       list.push({
         id:station.id,name:station.name,streamUrl:station.streamUrl||station.url,
+        url:station.url||station.streamUrl,
         favicon:station.favicon,country:station.country,codec:station.codec,
         bitrate:station.bitrate,source:station.source||'radio'
       });

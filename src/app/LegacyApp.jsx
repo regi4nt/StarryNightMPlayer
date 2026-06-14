@@ -6190,6 +6190,8 @@ function scheduleRadioReconnect(trackObj) {
       bg: `${stationColor}22`,
       mood: 'live, radio',
       isRadio: true,
+      url: streamUrl,
+      streamUrl: streamUrl,
       sourceLabel: station.sourceLabel || 'Radio',
     };
     if (track.id === radioTrackObj.id) {
@@ -6842,7 +6844,7 @@ Format exactly:
       // [playing] effect first in the same flush, overwriting src and aborting play().
       freshlyLoadedTrackIdRef.current = radioTrackObj.id;
       // FIX: simpan proxiedSrc (tanpa timestamp) di radioStation.url agar reconnect juga pakai URL yang benar
-      setRadioStation({ id: t.id.replace('radio_',''), name: t.title, url: proxiedSrc, color: t.color||'#f59e0b' });
+      setRadioStation({ id: t.id.replace('radio_','').replace('rb_',''), name: t.title, url: proxiedSrc, color: t.color||'#f59e0b' });
       setRadioPlaying(true); setTrack(radioTrackObj); setPlaying(true); setTab('player'); return;
     }
     let td = { ...t };
@@ -7148,7 +7150,7 @@ Format exactly:
     const nextStation = stations[(idx + 1) % stations.length];
     if (!nextStation) return;
     const radioTrackObj = {
-      id: `radio_${nextStation.id}`,
+      id: `rb_${nextStation.id}`,
       title: nextStation.name,
       artist: nextStation.city + ' · Live Radio',
       album: 'Live Radio',
@@ -7183,7 +7185,7 @@ Format exactly:
     const prevStation = stations[(idx - 1 + stations.length) % stations.length];
     if (!prevStation) return;
     const radioTrackObj = {
-      id: `radio_${prevStation.id}`,
+      id: `rb_${prevStation.id}`,
       title: prevStation.name,
       artist: prevStation.city + ' · Live Radio',
       album: 'Live Radio',
@@ -9276,7 +9278,7 @@ Format exactly:
                         return (
                           <div key={station.id} onClick={() => {
                             const radioTrackObj = {
-                              id: `radio_${station.id}`,
+                              id: `rb_${station.id}`,
                               title: station.name,
                               artist: station.city + ' · Live Radio',
                               album: 'Live Radio',
@@ -11169,7 +11171,7 @@ const toggleRadioPlayback = () => {
                           const playStation = (station, genreColor) => {
                             const stationColor = genreColor || '#f59e0b';
                             const radioTrackObj = {
-                              id: `radio_${station.id}`,
+                              id: `rb_${station.id}`,
                               title: station.name,
                               artist: station.city + ' · Live Radio',
                               album: 'Live Radio',
@@ -11595,7 +11597,7 @@ const toggleRadioPlayback = () => {
                                                 <div key={station.id}
                                                   onClick={() => {
                                                     const radioTrackObj = {
-                                                      id: `radio_${station.id}`,
+                                                      id: `rb_${station.id}`,
                                                       title: station.name,
                                                       artist: station.city + ' · Live Radio',
                                                       album: 'Live Radio',
@@ -11660,7 +11662,7 @@ const toggleRadioPlayback = () => {
                                         <div key={station.id}
                                           onClick={() => {
                                             const radioTrackObj = {
-                                              id: `radio_${station.id}`,
+                                              id: `rb_${station.id}`,
                                               title: station.name,
                                               artist: station.city + ' · Live Radio',
                                               album: 'Live Radio',
