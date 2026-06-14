@@ -223,6 +223,8 @@ export const INVIDIOUS_INSTANCES = [
 // URL https:// dikembalikan apa adanya.
 export function radioUrl(url, customDns = '') {
   if (!url) return url;
+  if (/^https:\/\//i.test(url)) return url;
+  if (/^http:\/\//i.test(url)) return `/api/radio-proxy?url=${encodeURIComponent(url)}`;
   return url;
 }
 
