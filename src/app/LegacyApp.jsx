@@ -13,12 +13,12 @@ import {
   playerReducer, playerInitialState,
   uiReducer, uiInitialState,
   lyricsReducer, lyricsInitialState,
-} from './reducers.js';
+} from '../reducers.js';
 import {
   useAllSongs, useAllSongIds, useDisplayedSongs,
   useFilteredPlaylists, useCachedIdSets,
   useWsAudioItems, useSortedWsResults, useRbMergedResults,
-} from './useMemoizedValues.js';
+} from '../useMemoizedValues.js';
 import {
   Play, Pause, SkipBack, SkipForward,
   ListMusic, Compass, Heart, Volume2, VolumeX,
@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 
 // ── Split modules ────────────────────────────────────────
-import { T } from './translations.js';
+import { T } from '../translations.js';
 import {
   openNewTab, STREAMING_PLATFORMS, MUSIC_SOURCES, SONGS, builtinSongs,
   getStreamingPlatforms, getStreamingPlatformsSync,
@@ -60,10 +60,10 @@ import {
   driveSavePlaylists, driveLoadPlaylists,
   driveSaveSongs, driveLoadSongs,
   recompressCacheEntries,
-} from './constants.js';
+} from '../constants.js';
 
 // ── Lazy-loaded components ────────────────────────────────
-import { PlatformLogo } from './components/PlatformLogo.jsx'; // eager — used in stream tab
+import { PlatformLogo } from '../components/PlatformLogo.jsx'; // eager — used in stream tab
 // Stale-chunk guard: if a dynamic import fails (e.g. after a new deployment invalidates
 // old content-hashed filenames), reload the page so the browser fetches fresh assets.
 const reloadOnStalChunk = (err) => {
@@ -92,9 +92,9 @@ const PlaylistFormView    = lazy(() => import('./components/PlaylistViews.jsx').
 const PlaylistModal       = lazy(() => import('./components/PlaylistViews.jsx').then(m => ({ default: m.PlaylistModal })).catch(reloadOnStalChunk));
 // Error Boundaries MUST be eagerly imported — React.lazy() can't wrap them because
 // the boundary must be synchronously available when a child throws during render.
-import { PlaylistErrorBoundary } from './components/PlaylistErrorBoundary.jsx';
+import { PlaylistErrorBoundary } from '../components/PlaylistErrorBoundary.jsx';
 // AppLogo & OrbitalRing are critical player UI — eager import
-import { AppLogo, OrbitalRing } from './components/Player.jsx';
+import { AppLogo, OrbitalRing } from '../components/Player.jsx';
 // SongRow hanya muncul di tab Library/Playlist (bukan initial render) — lazy aman
 const SongRow        = lazy(() => import('./components/SongRow.jsx').then(m => ({ default: m.SongRow })).catch(reloadOnStalChunk));
 const SettingsPanel  = lazy(() => import('./components/SettingsPanel.jsx').then(m => ({ default: m.SettingsPanel })).catch(reloadOnStalChunk));
