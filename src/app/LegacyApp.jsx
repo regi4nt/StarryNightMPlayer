@@ -4194,7 +4194,7 @@ Return ONLY valid JSON, no explanation:
     const a = new Audio();
     a.volume = muted ? 0 : volume;
     // Lite: preload none (hemat bandwidth). Radio: auto (mulai buffer segera untuk kurangi loading awal)
-    a.preload = isLite ? 'none' : (track.isRadio ? 'metadata' : 'metadata');
+    a.preload = isLite ? 'none' : (track.isRadio ? 'auto' : 'metadata');
     // Mobile: izinkan playback di background / lock screen
     a.setAttribute('playsinline', '');
     a.setAttribute('webkit-playsinline', '');
@@ -6163,8 +6163,7 @@ function scheduleRadioReconnect(trackObj) {
           // mulai buffering begitu src di-set, tanpa menunggu play().
           a.preload = 'metadata';
           a.src = src + (src.includes('?') ? '&' : '?') + '_t=' + Date.now();
-          a.play().catch((
-) => {}); }, { once: true });
+          a.play().catch(() => {});
         }, 50); // FIX: kurangi dari 100ms ke 50ms — makin cepat reconnect makin kecil jeda
       }
     }, delay);
