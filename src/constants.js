@@ -223,28 +223,7 @@ export const INVIDIOUS_INSTANCES = [
 // URL https:// dikembalikan apa adanya.
 export function radioUrl(url, customDns = '') {
   if (!url) return url;
-  // FIX: relative /api/* URLs (e.g. /api/radio-garden/...) are already server-side proxied
-  // via Vercel rewrites — do NOT wrap them in radio-proxy (would double-proxy and break them).
-  if (url.startsWith('/api/')) return url;
-  // FIX: jika url sudah berupa /api/radio-proxy?url=..., ekstrak URL asli dulu
-  // agar customDns terbaru bisa diapply dan tidak terjadi double-wrapping
-  // (misalnya saat station di-like lalu diputar ulang dari playlist)
-  let rawUrl = url;
-  if (url.startsWith('/api/radio-proxy?')) {
-    try {
-      const params = new URLSearchParams(url.slice('/api/radio-proxy?'.length));
-      rawUrl = params.get('url') || url;
-    } catch { /* biarkan rawUrl = url */ }
-  }
-  // FIX RADIO SUARA: proxy http:// DAN https:// agar CORS tidak memblokir audio.
-  // Browser memblokir audio dari domain radio eksternal (tidak ada header CORS),
-  // termasuk URL https://. Proxy server-side mengatasi ini untuk kedua skema.
-  if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
-    const params = new URLSearchParams({ url: rawUrl });
-    if (customDns) params.set('dns', customDns);
-    return `/api/radio-proxy?${params.toString()}`;
-  }
-  return rawUrl;
+  return url;
 }
 
 export function buildInvidiousUrl(base, apiPath, params = {}) {

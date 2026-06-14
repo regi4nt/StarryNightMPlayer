@@ -4605,18 +4605,23 @@ Return ONLY valid JSON, no explanation:
       // HTTP stream sudah terputus — harus reload src agar server kirim stream baru.
       // Gunakan attachHlsRef (ref) bukan attachHls langsung untuk hindari circular dependency.
       if (trackRef.current?.isRadio) {
+        // FIX: jika useEffect [track] baru saja memuat & memutar track radio ini
+        // (mis. saat klik radio dari playlist), jangan reload src lagi di sini —
+        // itu akan abort a.play() yang sedang berjalan dan menyebabkan stream gagal.
         if (freshlyLoadedTrackIdRef.current === trackRef.current.id) {
           freshlyLoadedTrackIdRef.current = null;
           return;
         }
-        // Radio dari playlist harus resume tanpa reload stream.
-        // Hanya play() jika source masih terpasang.
-        if (!a.src) {
-          const rawSrc = (trackRef.current.src || '').replace(/[&?]_[tr]=\d+/g, '');
-          if (!rawSrc) { setPlaying(false); return; }
-          a.src = rawSrc;
+        // Strip cache-bust params lama agar tidak numpuk (?_t=123&_r=456&_r=789)
+        const rawSrc = (trackRef.current.src || '').replace(/[&?]_[tr]=\d+/g, '');
+        if (!rawSrc) { setPlaying(false); return; }
+        if (rawSrc.includes('.m3u8')) {
+          attachHlsRef.current?.(a, rawSrc, () => { a.play().catch(() => setPlaying(false)); });
+        } else {
+          a.src = rawSrc + (rawSrc.includes('?') ? '&' : '?') + '_r=' + Date.now();
+          a.load();
+          a.play().catch(e => { console.warn('radio resume error:', e); setPlaying(false); });
         }
-        a.play().catch(e => { console.warn('radio resume error:', e); setPlaying(false); });
       } else {
         a.play().catch(e => { console.warn('play error:', e); setPlaying(false); });
       }
