@@ -88,17 +88,17 @@ const reloadOnStalChunk = (err) => {
   throw err;
 };
 
-const PlaylistFormView    = lazy(() => import('./components/PlaylistViews.jsx').then(m => ({ default: m.PlaylistFormView })).catch(reloadOnStalChunk));
-const PlaylistModal       = lazy(() => import('./components/PlaylistViews.jsx').then(m => ({ default: m.PlaylistModal })).catch(reloadOnStalChunk));
+const PlaylistFormView    = lazy(() => import('../components/PlaylistViews.jsx').then(m => ({ default: m.PlaylistFormView })).catch(reloadOnStalChunk));
+const PlaylistModal       = lazy(() => import('../components/PlaylistViews.jsx').then(m => ({ default: m.PlaylistModal })).catch(reloadOnStalChunk));
 // Error Boundaries MUST be eagerly imported — React.lazy() can't wrap them because
 // the boundary must be synchronously available when a child throws during render.
 import { PlaylistErrorBoundary } from '../components/PlaylistErrorBoundary.jsx';
 // AppLogo & OrbitalRing are critical player UI — eager import
 import { AppLogo, OrbitalRing } from '../components/Player.jsx';
 // SongRow hanya muncul di tab Library/Playlist (bukan initial render) — lazy aman
-const SongRow        = lazy(() => import('./components/SongRow.jsx').then(m => ({ default: m.SongRow })).catch(reloadOnStalChunk));
-const SettingsPanel  = lazy(() => import('./components/SettingsPanel.jsx').then(m => ({ default: m.SettingsPanel })).catch(reloadOnStalChunk));
-const UploadModal    = lazy(() => import('./components/UploadModal.jsx').then(m => ({ default: m.UploadModal })).catch(reloadOnStalChunk));
+const SongRow        = lazy(() => import('../components/SongRow.jsx').then(m => ({ default: m.SongRow })).catch(reloadOnStalChunk));
+const SettingsPanel  = lazy(() => import('../components/SettingsPanel.jsx').then(m => ({ default: m.SettingsPanel })).catch(reloadOnStalChunk));
+const UploadModal    = lazy(() => import('../components/UploadModal.jsx').then(m => ({ default: m.UploadModal })).catch(reloadOnStalChunk));
 
 // ── Suspense fallback ─────────────────────────────────────
 const Spinner = () => (
