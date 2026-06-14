@@ -4266,8 +4266,6 @@ Return ONLY valid JSON, no explanation:
       // FIX: jika kita sedang sengaja clear src untuk reconnect, abaikan error ini.
       // Browser menembak error code 4 saat a.src diset ke '' — bukan error nyata.
       if (radioSrcClearingRef.current) return;
-      if (!a.src) return;
-      if (a.error?.code === 4 && a.readyState === 0) return;
       if (track.isRadio) {
         console.warn('[Radio] Stream error, scheduling reconnect. code:', err?.code);
         stopSilenceDetectionRef.current?.(); // FIX: bersihkan silence detector sebelum reconnect
@@ -4607,23 +4605,18 @@ Return ONLY valid JSON, no explanation:
       // HTTP stream sudah terputus — harus reload src agar server kirim stream baru.
       // Gunakan attachHlsRef (ref) bukan attachHls langsung untuk hindari circular dependency.
       if (trackRef.current?.isRadio) {
-        // FIX: jika useEffect [track] baru saja memuat & memutar track radio ini
-        // (mis. saat klik radio dari playlist), jangan reload src lagi di sini —
-        // itu akan abort a.play() yang sedang berjalan dan menyebabkan stream gagal.
         if (freshlyLoadedTrackIdRef.current === trackRef.current.id) {
           freshlyLoadedTrackIdRef.current = null;
           return;
         }
-        // Strip cache-bust params lama agar tidak numpuk (?_t=123&_r=456&_r=789)
-        const rawSrc = (trackRef.current.src || '').replace(/[&?]_[tr]=\d+/g, '');
-        if (!rawSrc) { setPlaying(false); return; }
-        if (rawSrc.includes('.m3u8')) {
-          attachHlsRef.current?.(a, rawSrc, () => { a.play().catch(() => setPlaying(false)); });
-        } else {
-          a.src = rawSrc + (rawSrc.includes('?') ? '&' : '?') + '_r=' + Date.now();
-          a.load();
-          a.play().catch(e => { console.warn('radio resume error:', e); setPlaying(false); });
+        // Radio dari playlist harus resume tanpa reload stream.
+        // Hanya play() jika source masih terpasang.
+        if (!a.src) {
+          const rawSrc = (trackRef.current.src || '').replace(/[&?]_[tr]=\d+/g, '');
+          if (!rawSrc) { setPlaying(false); return; }
+          a.src = rawSrc;
         }
+        a.play().catch(e => { console.warn('radio resume error:', e); setPlaying(false); });
       } else {
         a.play().catch(e => { console.warn('play error:', e); setPlaying(false); });
       }
@@ -6156,24 +6149,17 @@ function scheduleRadioReconnect(trackObj) {
         // FIX: set flag before clearing src so the onError handler ignores the
         // spurious code-4 event that Chrome fires synchronously on a.src = ''.
         radioSrcClearingRef.current = true;
-        a.pause();
-        a.removeAttribute('src');
-        a.load();
+        a.src = '';
+        radioSrcClearingRef.current = false;
         setTimeout(() => {
           if (stripBust(trackRef.current?.src) !== stripBust(trackObj.src)) return;
           stopSilenceDetection();
-          const newSrc = src + (src.includes('?') ? '&' : '?') + '_t=' + Date.now();
+          // FIX BUFFERING: set preload='auto' sebelum src agar browser langsung
+          // mulai buffering begitu src di-set, tanpa menunggu play().
           a.preload = 'metadata';
-          a.src = newSrc;
-          const startPlayback = async () => {
-            a.removeEventListener('loadedmetadata', startPlayback);
-            a.removeEventListener('canplay', startPlayback);
-            radioSrcClearingRef.current = false;
-            try { await a.play(); } catch (e) { console.warn('[Radio] reconnect play failed', e); }
-          };
-          a.addEventListener('loadedmetadata', startPlayback, { once:true });
-          a.addEventListener('canplay', startPlayback, { once:true });
-        }, 100); // FIX: kurangi dari 100ms ke 50ms — makin cepat reconnect makin kecil jeda
+          a.src = src + (src.includes('?') ? '&' : '?') + '_t=' + Date.now();
+          a.play().catch(() => {});
+        }, 50); // FIX: kurangi dari 100ms ke 50ms — makin cepat reconnect makin kecil jeda
       }
     }, delay);
   
