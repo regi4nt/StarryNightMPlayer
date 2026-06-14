@@ -4266,6 +4266,8 @@ Return ONLY valid JSON, no explanation:
       // FIX: jika kita sedang sengaja clear src untuk reconnect, abaikan error ini.
       // Browser menembak error code 4 saat a.src diset ke '' — bukan error nyata.
       if (radioSrcClearingRef.current) return;
+      if (!a.src) return;
+      if (a.error?.code === 4 && a.readyState === 0) return;
       if (track.isRadio) {
         console.warn('[Radio] Stream error, scheduling reconnect. code:', err?.code);
         stopSilenceDetectionRef.current?.(); // FIX: bersihkan silence detector sebelum reconnect
@@ -6154,17 +6156,24 @@ function scheduleRadioReconnect(trackObj) {
         // FIX: set flag before clearing src so the onError handler ignores the
         // spurious code-4 event that Chrome fires synchronously on a.src = ''.
         radioSrcClearingRef.current = true;
-        a.src = '';
-        radioSrcClearingRef.current = false;
+        a.pause();
+        a.removeAttribute('src');
+        a.load();
         setTimeout(() => {
           if (stripBust(trackRef.current?.src) !== stripBust(trackObj.src)) return;
           stopSilenceDetection();
-          // FIX BUFFERING: set preload='auto' sebelum src agar browser langsung
-          // mulai buffering begitu src di-set, tanpa menunggu play().
+          const newSrc = src + (src.includes('?') ? '&' : '?') + '_t=' + Date.now();
           a.preload = 'metadata';
-          a.src = src + (src.includes('?') ? '&' : '?') + '_t=' + Date.now();
-          a.play().catch(() => {});
-        }, 50); // FIX: kurangi dari 100ms ke 50ms — makin cepat reconnect makin kecil jeda
+          a.src = newSrc;
+          const startPlayback = async () => {
+            a.removeEventListener('loadedmetadata', startPlayback);
+            a.removeEventListener('canplay', startPlayback);
+            radioSrcClearingRef.current = false;
+            try { await a.play(); } catch (e) { console.warn('[Radio] reconnect play failed', e); }
+          };
+          a.addEventListener('loadedmetadata', startPlayback, { once:true });
+          a.addEventListener('canplay', startPlayback, { once:true });
+        }, 100); // FIX: kurangi dari 100ms ke 50ms — makin cepat reconnect makin kecil jeda
       }
     }, delay);
   
