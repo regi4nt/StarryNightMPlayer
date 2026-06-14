@@ -10,8 +10,21 @@ export default class PlaylistEngine {
   play(item){
     const target = item || this.current();
     if(!target) return;
+
     const url = target.streamUrl || target.url || target.src;
-    this.audioManager.setSource(url, target.type || 'track', target.id);
+
+    const isRadio =
+      target.isRadio === true ||
+      target.type === 'radio' ||
+      String(target.id || '').startsWith('radio_') ||
+      String(target.id || '').startsWith('rb_');
+
+    this.audioManager.setSource(
+      url,
+      isRadio ? 'radio' : (target.type || 'track'),
+      target.id
+    );
+
     this.audioManager.audio.play?.().catch(()=>{});
   }
   next(){
