@@ -88,8 +88,7 @@ const reloadOnStalChunk = (err) => {
   throw err;
 };
 
-const PlaylistFormView    = lazy(() => import('../components/PlaylistViews.jsx').then(m => ({ default: m.PlaylistFormView })).catch(reloadOnStalChunk));
-const PlaylistModal       = lazy(() => import('../components/PlaylistViews.jsx').then(m => ({ default: m.PlaylistModal })).catch(reloadOnStalChunk));
+import { PlaylistFormView, PlaylistModal } from '../components/PlaylistViews.jsx';
 // Error Boundaries MUST be eagerly imported — React.lazy() can't wrap them because
 // the boundary must be synchronously available when a child throws during render.
 import { PlaylistErrorBoundary } from '../components/PlaylistErrorBoundary.jsx';
@@ -6105,7 +6104,7 @@ Response HANYA JSON ini (tanpa markdown, tanpa teks lain):
     return () => clearInterval(timer);
   }, [scheduleRadioReconnect]);
 
-const scheduleRadioReconnect = useCallback((trackObj) => {
+function scheduleRadioReconnect(trackObj) {
     if (radioReconnectRef.current) clearTimeout(radioReconnectRef.current);
     const attempt = radioReconnectCount.current;
     // FIX BUFFERING: Naikkan max attempt dari 6 ke 8.
@@ -6169,7 +6168,8 @@ const scheduleRadioReconnect = useCallback((trackObj) => {
         }, 50); // FIX: kurangi dari 100ms ke 50ms — makin cepat reconnect makin kecil jeda
       }
     }, delay);
-  }, [attachHls, stopSilenceDetection]); // eslint-disable-line react-hooks/exhaustive-deps
+  
+} // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync attachHlsRef setiap kali attachHls berubah
   useEffect(() => { attachHlsRef.current = attachHls; }, [attachHls]);
